@@ -129,7 +129,7 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
 
   // === ESSAY MODE (original behavior) ===
   if (mode === "essay") {
-    const card = dueCards[cardIndex];
+    const card = filteredDueCards[cardIndex];
     const dueSections = card ? getDueSections(card) : [];
     const section = dueSections[sectionIndex];
 
@@ -140,7 +140,7 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
       if (sectionIndex + 1 < dueSections.length) {
         setSectionIndex((i) => i + 1);
         setShowAnswer(false);
-      } else if (cardIndex + 1 < dueCards.length) {
+      } else if (cardIndex + 1 < filteredDueCards.length) {
         setCardIndex((i) => i + 1);
         setSectionIndex(0);
         setShowAnswer(false);
@@ -153,8 +153,8 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
       return <FinishedScreen onBack={onBack} />;
     }
 
-    const totalDueSections = dueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
-    const completedSections = dueCards.slice(0, cardIndex).reduce((sum, c) => sum + getDueSections(c).length, 0) + sectionIndex;
+    const totalDueSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
+    const completedSections = filteredDueCards.slice(0, cardIndex).reduce((sum, c) => sum + getDueSections(c).length, 0) + sectionIndex;
 
     return (
       <ReviewCard
