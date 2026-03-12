@@ -2,6 +2,15 @@ import { Card, createSection } from "./spaced-repetition";
 
 const CARDS_KEY = "sr-essay-cards";
 const CATEGORIES_KEY = "sr-essay-categories";
+const REVIEW_LOG_KEY = "sr-review-log";
+
+export interface ReviewLogEntry {
+  timestamp: number;
+  cardId: string;
+  sectionId: string;
+  grade: number;
+  category: string;
+}
 
 function migrateCard(card: any): Card {
   if (!card.sections) {
@@ -41,4 +50,23 @@ export function loadCategories(): string[] {
 
 export function saveCategories(categories: string[]) {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+}
+
+export function loadReviewLog(): ReviewLogEntry[] {
+  try {
+    const data = localStorage.getItem(REVIEW_LOG_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveReviewLog(log: ReviewLogEntry[]) {
+  localStorage.setItem(REVIEW_LOG_KEY, JSON.stringify(log));
+}
+
+export function addReviewLogEntry(entry: ReviewLogEntry) {
+  const log = loadReviewLog();
+  log.push(entry);
+  saveReviewLog(log);
 }
