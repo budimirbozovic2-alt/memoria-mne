@@ -11,9 +11,10 @@ function migrateCard(card: any): Card {
       sections: [createSection("Cjelina 1", card.answer || "")],
       category: card.category || "Opšte",
       createdAt: card.createdAt || Date.now(),
+      readCount: card.readCount || 0,
     };
   }
-  return card;
+  return { ...card, readCount: card.readCount || 0 };
 }
 
 export function loadCards(): Card[] {
