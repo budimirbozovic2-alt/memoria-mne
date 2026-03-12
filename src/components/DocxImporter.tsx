@@ -18,6 +18,7 @@ interface Props {
 }
 
 type HeadingLevel = "h1" | "h2" | "h3";
+type SplitMode = "heading" | "delimiter";
 
 const headingLabels: Record<HeadingLevel, string> = {
   h1: "Heading 1",
@@ -28,8 +29,10 @@ const headingLabels: Record<HeadingLevel, string> = {
 export default function DocxImporter({ open, onClose, categories, onImport }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [htmlContent, setHtmlContent] = useState<string>("");
+  const [splitMode, setSplitMode] = useState<SplitMode>("heading");
   const [splitHeading, setSplitHeading] = useState<HeadingLevel>("h1");
   const [sectionHeading, setSectionHeading] = useState<HeadingLevel>("h2");
+  const [delimiter, setDelimiter] = useState("");
   const [parsedCards, setParsedCards] = useState<ParsedCard[]>([]);
   const [category, setCategory] = useState(categories[0] ?? "Opšte");
   const [newCategory, setNewCategory] = useState("");
@@ -50,6 +53,48 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
   const parseContent = useCallback(() => {
     if (!htmlContent) return;
 
+    if (splitMode === "delimiter" && delimiter.trim()) {
+      // Delimiter-based parsing: split plain text by delimiter
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlContent, "text/html");
+      const fullText = doc.body.innerText || doc.body.textContent || "";
+      const delim = delimiter.trim();
+      
+      const cards: ParsedCard[] = [];
+      // Split by delimiter, keeping the delimiter as the start of each chunk
+      const parts = fullText.split(new RegExp(`(?=${delim.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'));
+      
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed) continue;
+        
+        // Find where the delimiter line ends (first line break after delimiter)
+        const firstNewline = trimmed.indexOf('\n');
+        let question: string;
+        let answerContent: string;
+        
+        if (firstNewline === -1) {
+          question = trimmed;
+          answerContent = "";
+        } else {
+          question = trimmed.substring(0, firstNewline).trim();
+          answerContent = trimmed.substring(firstNewline + 1).trim();
+        }
+        
+        if (question && answerContent) {
+          cards.push({
+            question,
+            sections: [{ title: "Odgovor", content: `<p>${answerContent.replace(/\n/g, '</p><p>')}</p>` }],
+          });
+        }
+      }
+      
+      setParsedCards(cards);
+      setStep("preview");
+      return;
+    }
+
+    // Heading-based parsing
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlContent, "text/html");
     const elements = Array.from(doc.body.children);
@@ -97,7 +142,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
     flushCard();
     setParsedCards(cards);
     setStep("preview");
-  }, [htmlContent, splitHeading, sectionHeading]);
+  }, [htmlContent, splitMode, splitHeading, sectionHeading, delimiter]);
 
   const handleImport = () => {
     const cat = newCategory.trim() || category;
@@ -149,33 +194,71 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
             </p>
 
             <div className="space-y-4">
+              {/* Split mode toggle */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Pitanja se dijele po:</label>
-                <Select value={splitHeading} onValueChange={(v) => setSplitHeading(v as HeadingLevel)}>
-                  <SelectTrigger className="bg-card">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(["h1", "h2", "h3"] as HeadingLevel[]).map((h) => (
-                      <SelectItem key={h} value={h}>{headingLabels[h]} — svaki {headingLabels[h]} = novo pitanje</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium">Način razdvajanja</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode("heading")}
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${splitMode === "heading" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                  >
+                    Po headingu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode("delimiter")}
+                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${splitMode === "delimiter" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                  >
+                    Po tekstualnoj oznaci
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Cjeline unutar pitanja se dijele po:</label>
-                <Select value={sectionHeading} onValueChange={(v) => setSectionHeading(v as HeadingLevel)}>
-                  <SelectTrigger className="bg-card">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(["h1", "h2", "h3"] as HeadingLevel[]).map((h) => (
-                      <SelectItem key={h} value={h} disabled={h === splitHeading}>{headingLabels[h]} — svaki {headingLabels[h]} = nova cjelina</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {splitMode === "heading" ? (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Pitanja se dijele po:</label>
+                    <Select value={splitHeading} onValueChange={(v) => setSplitHeading(v as HeadingLevel)}>
+                      <SelectTrigger className="bg-card">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(["h1", "h2", "h3"] as HeadingLevel[]).map((h) => (
+                          <SelectItem key={h} value={h}>{headingLabels[h]} — svaki {headingLabels[h]} = novo pitanje</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Cjeline unutar pitanja se dijele po:</label>
+                    <Select value={sectionHeading} onValueChange={(v) => setSectionHeading(v as HeadingLevel)}>
+                      <SelectTrigger className="bg-card">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(["h1", "h2", "h3"] as HeadingLevel[]).map((h) => (
+                          <SelectItem key={h} value={h} disabled={h === splitHeading}>{headingLabels[h]} — svaki {headingLabels[h]} = nova cjelina</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tekstualna oznaka za razdvajanje</label>
+                  <input
+                    value={delimiter}
+                    onChange={(e) => setDelimiter(e.target.value)}
+                    placeholder='npr. "čl." ili "Pitanje:"'
+                    className="flex h-10 w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Svaki put kad se naiđe na ovu oznaku, red sa oznakom postaje pitanje kartice, a tekst do sljedeće oznake postaje odgovor.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Kategorija</label>
