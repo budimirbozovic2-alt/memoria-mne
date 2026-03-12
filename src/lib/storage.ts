@@ -1,0 +1,30 @@
+import { Card } from "./spaced-repetition";
+
+const CARDS_KEY = "sr-essay-cards";
+const CATEGORIES_KEY = "sr-essay-categories";
+
+export function loadCards(): Card[] {
+  try {
+    const data = localStorage.getItem(CARDS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCards(cards: Card[]) {
+  localStorage.setItem(CARDS_KEY, JSON.stringify(cards));
+}
+
+export function loadCategories(): string[] {
+  try {
+    const data = localStorage.getItem(CATEGORIES_KEY);
+    return data ? JSON.parse(data) : ["Opšte"];
+  } catch {
+    return ["Opšte"];
+  }
+}
+
+export function saveCategories(categories: string[]) {
+  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+}
