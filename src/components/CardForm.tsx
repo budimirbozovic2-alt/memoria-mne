@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, X, GripVertical, Maximize2, Minimize2 } from "lucide-react";
+import { Plus, X, GripVertical } from "lucide-react";
+import RichTextEditor from "@/components/RichTextEditor";
 
 interface SectionInput {
   title: string;
@@ -131,11 +132,10 @@ export default function CardForm({ categories, onSave, onCancel, editCard, onUpd
                 </button>
               )}
             </div>
-            <Textarea
+            <RichTextEditor
               value={section.content}
-              onChange={(e) => updateSection(i, "content", e.target.value)}
+              onChange={(val) => updateSection(i, "content", val)}
               placeholder="Sadržaj ove cjeline odgovora..."
-              className="min-h-[100px] resize-y bg-background text-sm"
             />
           </div>
         ))}
