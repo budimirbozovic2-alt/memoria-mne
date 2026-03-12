@@ -19,16 +19,29 @@ interface Props {
 
 export default function ReviewSession({ dueCards, onReviewSection, onBack }: Props) {
   const [mode, setMode] = useState<ReviewMode>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cardIndex, setCardIndex] = useState(0);
   const [sectionIndex, setSectionIndex] = useState(0);
   const [randomIndex, setRandomIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [finished, setFinished] = useState(false);
 
+  // Get unique categories from due cards
+  const dueCategories = useMemo(() => {
+    const cats = new Set(dueCards.map((c) => c.category));
+    return Array.from(cats).sort();
+  }, [dueCards]);
+
+  // Filter cards by selected category
+  const filteredDueCards = useMemo(() => {
+    if (!selectedCategory) return dueCards;
+    return dueCards.filter((c) => c.category === selectedCategory);
+  }, [dueCards, selectedCategory]);
+
   // Random mode: flatten all due sections and shuffle
   const randomItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
-    dueCards.forEach((card) => {
+    filteredDueCards.forEach((card) => {
       getDueSections(card).forEach((section) => {
         items.push({ card, section });
       });
@@ -39,11 +52,12 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
       [items[i], items[j]] = [items[j], items[i]];
     }
     return items;
-  }, [dueCards]);
+  }, [filteredDueCards]);
 
   // Mode selection screen
   if (mode === null) {
-    const totalSections = dueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
+    const filteredCount = filteredDueCards.length;
+    const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10">
         <div>
@@ -51,8 +65,32 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
             <ArrowLeft className="h-4 w-4" /> Nazad
           </button>
           <h2 className="text-3xl font-serif">Način ponavljanja</h2>
-          <p className="text-muted-foreground mt-2">{dueCards.length} pitanja · {totalSections} cjelina za ponavljanje</p>
+          <p className="text-muted-foreground mt-2">{filteredCount} pitanja · {filteredSections} cjelina za ponavljanje</p>
         </div>
+
+        {/* Category filter */}
+        {dueCategories.length > 1 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Kategorija</label>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+              >
+                Sve
+              </button>
+              {dueCategories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setSelectedCategory(c)}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-4">
           <button
@@ -91,7 +129,7 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
 
   // === ESSAY MODE (original behavior) ===
   if (mode === "essay") {
-    const card = dueCards[cardIndex];
+    const card = filteredDueCards[cardIndex];
     const dueSections = card ? getDueSections(card) : [];
     const section = dueSections[sectionIndex];
 
@@ -102,7 +140,7 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
       if (sectionIndex + 1 < dueSections.length) {
         setSectionIndex((i) => i + 1);
         setShowAnswer(false);
-      } else if (cardIndex + 1 < dueCards.length) {
+      } else if (cardIndex + 1 < filteredDueCards.length) {
         setCardIndex((i) => i + 1);
         setSectionIndex(0);
         setShowAnswer(false);
@@ -115,8 +153,8 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
       return <FinishedScreen onBack={onBack} />;
     }
 
-    const totalDueSections = dueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
-    const completedSections = dueCards.slice(0, cardIndex).reduce((sum, c) => sum + getDueSections(c).length, 0) + sectionIndex;
+    const totalDueSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
+    const completedSections = filteredDueCards.slice(0, cardIndex).reduce((sum, c) => sum + getDueSections(c).length, 0) + sectionIndex;
 
     return (
       <ReviewCard
