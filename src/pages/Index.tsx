@@ -15,7 +15,7 @@ type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" 
 const Index = () => {
   const {
     cards, categories, dueCards, stats, categoryStats, cardCountByCategory,
-    addCard, updateCard, deleteCard, splitCard, reviewSection,
+    addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
     addCategory, renameCategory, deleteCategory,
   } = useCards();
   const [view, setView] = useState<View>("dashboard");
