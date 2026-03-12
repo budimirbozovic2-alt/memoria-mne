@@ -132,11 +132,10 @@ export default function CardForm({ categories, onSave, onCancel, editCard, onUpd
                 </button>
               )}
             </div>
-            <Textarea
+            <RichTextEditor
               value={section.content}
-              onChange={(e) => updateSection(i, "content", e.target.value)}
+              onChange={(val) => updateSection(i, "content", val)}
               placeholder="Sadržaj ove cjeline odgovora..."
-              className="min-h-[100px] resize-y bg-background text-sm"
             />
           </div>
         ))}
