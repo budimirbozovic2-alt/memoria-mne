@@ -284,21 +284,23 @@ function ReviewCard({
           transition={{ duration: 0.3 }}
           className="space-y-6"
         >
+          {/* Essay question title - always visible above */}
+          <div className="rounded-lg bg-secondary/50 border px-5 py-3">
+            <span className="text-xs uppercase tracking-widest text-muted-foreground">{card.category}</span>
+            <p className="mt-1 text-lg leading-relaxed font-serif">{card.question}</p>
+          </div>
+
           <div className="rounded-xl bg-card border p-8">
             <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-widest text-muted-foreground">{card.category}</span>
-              {lapses > 0 && !sectionIsLeech && (
-                <span className="text-xs text-warning">· {lapses} pad{lapses === 1 ? "" : "ova"}</span>
-              )}
-            </div>
-            <p className="mt-4 text-xl leading-relaxed font-serif">{card.question}</p>
-            <div className="mt-4 flex items-center gap-2 text-sm text-primary">
-              <ChevronRight className="h-4 w-4" />
-              <span className="font-medium">{section.title}</span>
+              <ChevronRight className="h-4 w-4 text-primary" />
+              <span className="font-medium text-primary">{section.title}</span>
               {totalSectionsInCard > 1 && (
-                <span className="text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   ({sectionIndex + 1}/{totalSectionsInCard} cjelina)
                 </span>
+              )}
+              {lapses > 0 && !sectionIsLeech && (
+                <span className="text-xs text-warning ml-auto">· {lapses} pad{lapses === 1 ? "" : "ova"}</span>
               )}
             </div>
             {section.interval > 0 && (
