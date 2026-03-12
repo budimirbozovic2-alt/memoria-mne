@@ -1,14 +1,20 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { Card, createCard, createSection, calculateNextReview, getDueCards, getStats, getCategoryStats } from "@/lib/spaced-repetition";
-import { loadCards, saveCards, loadCategories, saveCategories, addReviewLogEntry, loadReviewLog, ReviewLogEntry } from "@/lib/storage";
+import { Card, createCard, createSection, calculateNextReview, getDueCards, getStats, getCategoryStats, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
+import { loadCards, saveCards, loadCategories, saveCategories, addReviewLogEntry, loadReviewLog, ReviewLogEntry, loadSRSettings, saveSRSettings } from "@/lib/storage";
 
 export function useCards() {
   const [cards, setCards] = useState<Card[]>(() => loadCards());
   const [categories, setCategories] = useState<string[]>(() => loadCategories());
   const [reviewLog, setReviewLog] = useState<ReviewLogEntry[]>(() => loadReviewLog());
+  const [srSettings, setSRSettings] = useState<SRSettings>(() => loadSRSettings());
 
   useEffect(() => { saveCards(cards); }, [cards]);
   useEffect(() => { saveCategories(categories); }, [categories]);
+
+  const updateSRSettings = useCallback((settings: SRSettings) => {
+    setSRSettings(settings);
+    saveSRSettings(settings);
+  }, []);
 
   const addCard = useCallback((question: string, sections: { title: string; content: string }[], category: string) => {
     const card = createCard(question, sections, category);
@@ -44,7 +50,6 @@ export function useCards() {
     setCards((prev) =>
       prev.map((c) => {
         if (c.id !== cardId) return c;
-        // Log the review
         const entry: ReviewLogEntry = {
           timestamp: Date.now(),
           cardId,
@@ -59,12 +64,12 @@ export function useCards() {
           ...c,
           sections: c.sections.map((s) => {
             if (s.id !== sectionId) return s;
-            return { ...s, ...calculateNextReview(s, grade) };
+            return { ...s, ...calculateNextReview(s, grade, srSettings) };
           }),
         };
       })
     );
-  }, []);
+  }, [srSettings]);
 
   const splitCard = useCallback((id: string) => {
     setCards((prev) => {
@@ -102,7 +107,7 @@ export function useCards() {
   }, []);
 
   const exportData = useCallback(() => {
-    const data = JSON.stringify({ cards, categories, reviewLog }, null, 2);
+    const data = JSON.stringify({ cards, categories, reviewLog, srSettings }, null, 2);
     const blob = new Blob([data], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -110,7 +115,7 @@ export function useCards() {
     a.download = `memoria-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [cards, categories, reviewLog]);
+  }, [cards, categories, reviewLog, srSettings]);
 
   const importData = useCallback((file: File) => {
     const reader = new FileReader();
@@ -118,7 +123,11 @@ export function useCards() {
       try {
         const parsed = JSON.parse(e.target?.result as string);
         if (Array.isArray(parsed.cards)) {
-          setCards(parsed.cards.map((c: any) => ({ ...c, readCount: c.readCount || 0 })));
+          setCards(parsed.cards.map((c: any) => ({
+            ...c,
+            readCount: c.readCount || 0,
+            sections: (c.sections || []).map((s: any) => ({ ...s, lapses: s.lapses || 0 })),
+          })));
         }
         if (Array.isArray(parsed.categories)) {
           setCategories(parsed.categories);
@@ -126,12 +135,15 @@ export function useCards() {
         if (Array.isArray(parsed.reviewLog)) {
           setReviewLog(parsed.reviewLog);
         }
+        if (parsed.srSettings) {
+          updateSRSettings({ ...DEFAULT_SR_SETTINGS, ...parsed.srSettings });
+        }
       } catch {
         alert("Greška pri čitanju fajla. Provjerite format.");
       }
     };
     reader.readAsText(file);
-  }, []);
+  }, [updateSRSettings]);
 
   const importCards = useCallback((newCards: { question: string; sections: { title: string; content: string }[] }[], category: string) => {
     const created = newCards.map((c) => createCard(c.question, c.sections, category));
@@ -155,9 +167,9 @@ export function useCards() {
   );
 
   return {
-    cards, categories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog,
+    cards, categories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings,
     addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
     exportData, importData, importCards,
-    addCategory, renameCategory, deleteCategory,
+    addCategory, renameCategory, deleteCategory, updateSRSettings,
   };
 }

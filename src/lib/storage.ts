@@ -1,8 +1,9 @@
-import { Card, createSection } from "./spaced-repetition";
+import { Card, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "./spaced-repetition";
 
 const CARDS_KEY = "sr-essay-cards";
 const CATEGORIES_KEY = "sr-essay-categories";
 const REVIEW_LOG_KEY = "sr-review-log";
+const SR_SETTINGS_KEY = "sr-settings";
 
 export interface ReviewLogEntry {
   timestamp: number;
@@ -69,4 +70,17 @@ export function addReviewLogEntry(entry: ReviewLogEntry) {
   const log = loadReviewLog();
   log.push(entry);
   saveReviewLog(log);
+}
+
+export function loadSRSettings(): SRSettings {
+  try {
+    const data = localStorage.getItem(SR_SETTINGS_KEY);
+    return data ? { ...DEFAULT_SR_SETTINGS, ...JSON.parse(data) } : DEFAULT_SR_SETTINGS;
+  } catch {
+    return DEFAULT_SR_SETTINGS;
+  }
+}
+
+export function saveSRSettings(settings: SRSettings) {
+  localStorage.setItem(SR_SETTINGS_KEY, JSON.stringify(settings));
 }
