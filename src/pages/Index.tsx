@@ -7,7 +7,7 @@ import ReviewSession from "@/components/ReviewSession";
 import LearnSession from "@/components/LearnSession";
 import CategoryManager from "@/components/CategoryManager";
 import { Card } from "@/lib/spaced-repetition";
-import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap } from "lucide-react";
+import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn";
@@ -16,6 +16,7 @@ const Index = () => {
   const {
     cards, categories, dueCards, stats, categoryStats, cardCountByCategory,
     addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
+    exportData, importData,
     addCategory, renameCategory, deleteCategory,
   } = useCards();
   const [view, setView] = useState<View>("dashboard");
@@ -61,9 +62,18 @@ const Index = () => {
             ))}
           </nav>
         </div>
-        <button onClick={toggleDark} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground">
-          {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <label className="p-2 rounded-lg hover:bg-secondary text-muted-foreground cursor-pointer" title="Uvezi backup">
+            <Upload className="h-4 w-4" />
+            <input type="file" accept=".json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importData(f); e.target.value = ""; }} />
+          </label>
+          <button onClick={exportData} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Izvezi backup">
+            <Download className="h-4 w-4" />
+          </button>
+          <button onClick={toggleDark} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground">
+            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+        </div>
       </header>
 
       <main className="flex-1 px-6 py-8 max-w-5xl mx-auto w-full">
