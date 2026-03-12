@@ -15,7 +15,7 @@ type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" 
 
 const Index = () => {
   const {
-    cards, categories, dueCards, stats, categoryStats, cardCountByCategory,
+    cards, categories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog,
     addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
     exportData, importData, importCards,
     addCategory, renameCategory, deleteCategory,
