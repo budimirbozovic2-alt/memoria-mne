@@ -43,7 +43,13 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
     setFile(f);
     try {
       const arrayBuffer = await f.arrayBuffer();
-      const result = await mammoth.convertToHtml({ arrayBuffer });
+      const result = await mammoth.convertToHtml({
+        arrayBuffer,
+      }, {
+        styleMap: [
+          "p[style-name='List Paragraph'] => p.list-paragraph:fresh",
+        ],
+      });
       setHtmlContent(result.value);
       setStep("configure");
     } catch {
