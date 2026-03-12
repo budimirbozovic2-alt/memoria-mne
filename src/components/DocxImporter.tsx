@@ -18,6 +18,7 @@ interface Props {
 }
 
 type HeadingLevel = "h1" | "h2" | "h3";
+type SplitMode = "heading" | "delimiter";
 
 const headingLabels: Record<HeadingLevel, string> = {
   h1: "Heading 1",
@@ -28,8 +29,10 @@ const headingLabels: Record<HeadingLevel, string> = {
 export default function DocxImporter({ open, onClose, categories, onImport }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [htmlContent, setHtmlContent] = useState<string>("");
+  const [splitMode, setSplitMode] = useState<SplitMode>("heading");
   const [splitHeading, setSplitHeading] = useState<HeadingLevel>("h1");
   const [sectionHeading, setSectionHeading] = useState<HeadingLevel>("h2");
+  const [delimiter, setDelimiter] = useState("");
   const [parsedCards, setParsedCards] = useState<ParsedCard[]>([]);
   const [category, setCategory] = useState(categories[0] ?? "Opšte");
   const [newCategory, setNewCategory] = useState("");
