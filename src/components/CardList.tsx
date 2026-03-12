@@ -1,6 +1,6 @@
 import { Card, getCardScore, getSectionScore } from "@/lib/spaced-repetition";
 import { format } from "date-fns";
-import { Edit2, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Edit2, Trash2, ChevronDown, ChevronRight, Scissors } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
@@ -9,6 +9,7 @@ interface Props {
   filterCategory: string | null;
   onEdit: (card: Card) => void;
   onDelete: (id: string) => void;
+  onSplit: (id: string) => void;
 }
 
 function ScoreBadge({ score }: { score: number }) {
