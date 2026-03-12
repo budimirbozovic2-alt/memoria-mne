@@ -28,7 +28,7 @@ function SectionBar({ score }: { score: number }) {
   );
 }
 
-export default function CardList({ cards, filterCategory, onEdit, onDelete }: Props) {
+export default function CardList({ cards, filterCategory, onEdit, onDelete, onSplit }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const filtered = filterCategory ? cards.filter((c) => c.category === filterCategory) : cards;
 
