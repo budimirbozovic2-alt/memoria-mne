@@ -1,8 +1,9 @@
-import { Card, createSection } from "./spaced-repetition";
+import { Card, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "./spaced-repetition";
 
 const CARDS_KEY = "sr-essay-cards";
 const CATEGORIES_KEY = "sr-essay-categories";
 const REVIEW_LOG_KEY = "sr-review-log";
+const SR_SETTINGS_KEY = "sr-settings";
 
 export interface ReviewLogEntry {
   timestamp: number;
