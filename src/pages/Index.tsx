@@ -65,7 +65,10 @@ const Index = () => {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <label className="p-2 rounded-lg hover:bg-secondary text-muted-foreground cursor-pointer" title="Uvezi backup">
+          <button onClick={() => setDocxOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Uvezi iz DOCX">
+            <FileText className="h-4 w-4" />
+          </button>
+          <label className="p-2 rounded-lg hover:bg-secondary text-muted-foreground cursor-pointer" title="Uvezi JSON backup">
             <Upload className="h-4 w-4" />
             <input type="file" accept=".json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importData(f); e.target.value = ""; }} />
           </label>
