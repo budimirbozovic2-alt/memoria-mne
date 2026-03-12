@@ -16,6 +16,7 @@ const Index = () => {
   const {
     cards, categories, dueCards, stats, categoryStats, cardCountByCategory,
     addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
+    exportData, importData,
     addCategory, renameCategory, deleteCategory,
   } = useCards();
   const [view, setView] = useState<View>("dashboard");
