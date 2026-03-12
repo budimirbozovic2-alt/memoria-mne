@@ -35,6 +35,7 @@ const Index = () => {
 
   const navItems = [
     { key: "dashboard" as View, icon: Home, label: "Početna" },
+    { key: "learn" as View, icon: GraduationCap, label: "Uči" },
     { key: "cards" as View, icon: BookOpen, label: "Kartice" },
     { key: "categories" as View, icon: FolderOpen, label: "Kategorije" },
     { key: "create" as View, icon: Plus, label: "Nova" },
