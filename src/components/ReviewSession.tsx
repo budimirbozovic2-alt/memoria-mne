@@ -19,16 +19,29 @@ interface Props {
 
 export default function ReviewSession({ dueCards, onReviewSection, onBack }: Props) {
   const [mode, setMode] = useState<ReviewMode>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cardIndex, setCardIndex] = useState(0);
   const [sectionIndex, setSectionIndex] = useState(0);
   const [randomIndex, setRandomIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [finished, setFinished] = useState(false);
 
+  // Get unique categories from due cards
+  const dueCategories = useMemo(() => {
+    const cats = new Set(dueCards.map((c) => c.category));
+    return Array.from(cats).sort();
+  }, [dueCards]);
+
+  // Filter cards by selected category
+  const filteredDueCards = useMemo(() => {
+    if (!selectedCategory) return dueCards;
+    return dueCards.filter((c) => c.category === selectedCategory);
+  }, [dueCards, selectedCategory]);
+
   // Random mode: flatten all due sections and shuffle
   const randomItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
-    dueCards.forEach((card) => {
+    filteredDueCards.forEach((card) => {
       getDueSections(card).forEach((section) => {
         items.push({ card, section });
       });
@@ -39,7 +52,7 @@ export default function ReviewSession({ dueCards, onReviewSection, onBack }: Pro
       [items[i], items[j]] = [items[j], items[i]];
     }
     return items;
-  }, [dueCards]);
+  }, [filteredDueCards]);
 
   // Mode selection screen
   if (mode === null) {
