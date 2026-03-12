@@ -75,9 +75,25 @@ export default function CardForm({ categories, onSave, onCancel, editCard, onUpd
     <form onSubmit={handleSubmit} className={`space-y-6 ${widthClasses[formWidth]} transition-all duration-300`}>
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-serif">{editCard ? "Uredi karticu" : "Nova kartica"}</h2>
-        <button type="button" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
-          <X className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1 bg-secondary rounded-lg p-1">
+            {(Object.keys(widthClasses) as FormWidth[]).map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => setFormWidth(w)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  formWidth === w ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {widthLabels[w]}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-2">
