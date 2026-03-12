@@ -19,7 +19,7 @@ function migrateCard(card: any): Card {
 export function loadCards(): Card[] {
   try {
     const data = localStorage.getItem(CARDS_KEY);
-    return data ? JSON.parse(data) : [];
+    return data ? (JSON.parse(data) as any[]).map(migrateCard) : [];
   } catch {
     return [];
   }
