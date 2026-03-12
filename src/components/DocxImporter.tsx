@@ -33,6 +33,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
   const [splitHeading, setSplitHeading] = useState<HeadingLevel>("h1");
   const [sectionHeading, setSectionHeading] = useState<HeadingLevel>("h2");
   const [delimiter, setDelimiter] = useState("");
+  const [sectionDelimiter, setSectionDelimiter] = useState("");
   const [parsedCards, setParsedCards] = useState<ParsedCard[]>([]);
   const [category, setCategory] = useState(categories[0] ?? "Opšte");
   const [newCategory, setNewCategory] = useState("");
