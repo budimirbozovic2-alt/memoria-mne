@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, X, GripVertical, Maximize2, Minimize2 } from "lucide-react";
+import { Plus, X, GripVertical } from "lucide-react";
+import RichTextEditor from "@/components/RichTextEditor";
 
 interface SectionInput {
   title: string;
