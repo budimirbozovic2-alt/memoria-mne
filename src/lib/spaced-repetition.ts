@@ -17,6 +17,7 @@ export interface Card {
   sections: Section[];
   category: string;
   createdAt: number;
+  readCount: number;
 }
 
 export interface ReviewGrade {
@@ -80,6 +81,7 @@ export function createCard(question: string, sections: { title: string; content:
     sections: sections.map((s) => createSection(s.title, s.content)),
     category,
     createdAt: Date.now(),
+    readCount: 0,
   };
 }
 

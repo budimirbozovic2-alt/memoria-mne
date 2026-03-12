@@ -4,17 +4,18 @@ import Dashboard from "@/components/Dashboard";
 import CardForm from "@/components/CardForm";
 import CardList from "@/components/CardList";
 import ReviewSession from "@/components/ReviewSession";
+import LearnSession from "@/components/LearnSession";
 import CategoryManager from "@/components/CategoryManager";
 import { Card } from "@/lib/spaced-repetition";
-import { Plus, BookOpen, Home, Moon, Sun, FolderOpen } from "lucide-react";
+import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories";
+type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn";
 
 const Index = () => {
   const {
     cards, categories, dueCards, stats, categoryStats, cardCountByCategory,
-    addCard, updateCard, deleteCard, splitCard, reviewSection,
+    addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
     addCategory, renameCategory, deleteCategory,
   } = useCards();
   const [view, setView] = useState<View>("dashboard");
@@ -34,6 +35,7 @@ const Index = () => {
 
   const navItems = [
     { key: "dashboard" as View, icon: Home, label: "Početna" },
+    { key: "learn" as View, icon: GraduationCap, label: "Uči" },
     { key: "cards" as View, icon: BookOpen, label: "Kartice" },
     { key: "categories" as View, icon: FolderOpen, label: "Kategorije" },
     { key: "create" as View, icon: Plus, label: "Nova" },
@@ -74,6 +76,11 @@ const Index = () => {
           {view === "review" && (
             <motion.div key="review" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <ReviewSession dueCards={dueCards} onReviewSection={reviewSection} onBack={() => setView("dashboard")} />
+            </motion.div>
+          )}
+          {view === "learn" && (
+            <motion.div key="learn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <LearnSession cards={cards} categories={categories} onMarkRead={markRead} onBack={() => setView("dashboard")} />
             </motion.div>
           )}
           {(view === "create" || view === "edit") && (

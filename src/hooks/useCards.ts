@@ -86,6 +86,10 @@ export function useCards() {
     setCards((prev) => prev.map((c) => (c.category === name ? { ...c, category: "Opšte" } : c)));
   }, []);
 
+  const markRead = useCallback((id: string) => {
+    setCards((prev) => prev.map((c) => c.id === id ? { ...c, readCount: (c.readCount || 0) + 1 } : c));
+  }, []);
+
   const cardCountByCategory = useMemo(() => {
     const counts: Record<string, number> = {};
     categories.forEach((cat) => { counts[cat] = 0; });
@@ -101,7 +105,7 @@ export function useCards() {
 
   return {
     cards, categories, dueCards, stats, categoryStats, cardCountByCategory,
-    addCard, updateCard, deleteCard, splitCard, reviewSection,
+    addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
     addCategory, renameCategory, deleteCategory,
   };
 }
