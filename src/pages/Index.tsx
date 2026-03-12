@@ -6,8 +6,9 @@ import CardList from "@/components/CardList";
 import ReviewSession from "@/components/ReviewSession";
 import LearnSession from "@/components/LearnSession";
 import CategoryManager from "@/components/CategoryManager";
+import DocxImporter from "@/components/DocxImporter";
 import { Card } from "@/lib/spaced-repetition";
-import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload } from "lucide-react";
+import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn";
@@ -16,9 +17,10 @@ const Index = () => {
   const {
     cards, categories, dueCards, stats, categoryStats, cardCountByCategory,
     addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
-    exportData, importData,
+    exportData, importData, importCards,
     addCategory, renameCategory, deleteCategory,
   } = useCards();
+  const [docxOpen, setDocxOpen] = useState(false);
   const [view, setView] = useState<View>("dashboard");
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -63,7 +65,10 @@ const Index = () => {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <label className="p-2 rounded-lg hover:bg-secondary text-muted-foreground cursor-pointer" title="Uvezi backup">
+          <button onClick={() => setDocxOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Uvezi iz DOCX">
+            <FileText className="h-4 w-4" />
+          </button>
+          <label className="p-2 rounded-lg hover:bg-secondary text-muted-foreground cursor-pointer" title="Uvezi JSON backup">
             <Upload className="h-4 w-4" />
             <input type="file" accept=".json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importData(f); e.target.value = ""; }} />
           </label>
@@ -150,6 +155,13 @@ const Index = () => {
           </button>
         ))}
       </nav>
+
+      <DocxImporter
+        open={docxOpen}
+        onClose={() => setDocxOpen(false)}
+        categories={categories}
+        onImport={(cards, cat) => { importCards(cards, cat); setDocxOpen(false); }}
+      />
     </div>
   );
 };

@@ -119,6 +119,14 @@ export function useCards() {
     reader.readAsText(file);
   }, []);
 
+  const importCards = useCallback((newCards: { question: string; sections: { title: string; content: string }[] }[], category: string) => {
+    const created = newCards.map((c) => createCard(c.question, c.sections, category));
+    setCards((prev) => [...prev, ...created]);
+    if (!categories.includes(category)) {
+      setCategories((prev) => [...prev, category]);
+    }
+  }, [categories]);
+
   const cardCountByCategory = useMemo(() => {
     const counts: Record<string, number> = {};
     categories.forEach((cat) => { counts[cat] = 0; });
@@ -135,7 +143,7 @@ export function useCards() {
   return {
     cards, categories, dueCards, stats, categoryStats, cardCountByCategory,
     addCard, updateCard, deleteCard, splitCard, reviewSection, markRead,
-    exportData, importData,
+    exportData, importData, importCards,
     addCategory, renameCategory, deleteCategory,
   };
 }
