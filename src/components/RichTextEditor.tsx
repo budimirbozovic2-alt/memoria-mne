@@ -13,11 +13,15 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
   const isComposing = useRef(false);
 
   useEffect(() => {
-    // Only sync from prop when the editor is NOT focused (external changes only)
-    if (editorRef.current && value !== internalValue.current && document.activeElement !== editorRef.current) {
-      internalValue.current = value;
-      editorRef.current.innerHTML = value;
+    const editor = editorRef.current;
+    if (!editor) return;
+
+    // Sync only when editor is not focused (prevents cursor reset while typing/lists)
+    if (document.activeElement !== editor && editor.innerHTML !== value) {
+      editor.innerHTML = value;
     }
+
+    internalValue.current = value;
   }, [value]);
 
   const execCommand = useCallback((command: string, val?: string) => {
