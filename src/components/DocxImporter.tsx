@@ -34,7 +34,8 @@ const splitModeLabels: Record<SplitMode, string> = {
 export default function DocxImporter({ open, onClose, categories, onImport }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [htmlContent, setHtmlContent] = useState<string>("");
-  const [splitMode, setSplitMode] = useState<SplitMode>("heading");
+  const [questionSplitMode, setQuestionSplitMode] = useState<SplitMode>("heading");
+  const [sectionSplitMode, setSectionSplitMode] = useState<SplitMode>("heading");
   const [splitHeading, setSplitHeading] = useState<HeadingLevel>("h1");
   const [sectionHeading, setSectionHeading] = useState<HeadingLevel>("h2");
   const [delimiter, setDelimiter] = useState("");
