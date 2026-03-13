@@ -83,7 +83,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   // Setup screen
   if (!started) {
     const sortOptions: { key: SortMode; label: string; desc: string; icon: typeof ListOrdered }[] = [
-      { key: "order", label: "Redom", desc: "Kronološkim redoslijedom kako su dodana", icon: ListOrdered },
+      { key: "order", label: "Hronološki raspored", desc: "Kronološkim redoslijedom kako su dodana", icon: ListOrdered },
       { key: "weakest", label: "Najslabija prvo", desc: "Pitanja sa najnižim rezultatom prvo", icon: TrendingDown },
       { key: "strongest", label: "Najjača prvo", desc: "Pitanja sa najvišim rezultatom prvo", icon: TrendingUp },
     ];
