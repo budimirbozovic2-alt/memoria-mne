@@ -46,6 +46,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
   const [category, setCategory] = useState(categories[0] ?? "Opšte");
   const [newCategory, setNewCategory] = useState("");
   const [step, setStep] = useState<"upload" | "configure" | "preview">("upload");
+  const [cardType, setCardType] = useState<CardType>("essay");
 
   const handleFileSelect = useCallback(async (f: File) => {
     setFile(f);
