@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Eye, ChevronRight, BookOpen, Shuffle, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Eye, ChevronRight, BookOpen, Shuffle, AlertTriangle, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { speak, stopSpeaking } from "@/lib/tts";
 
 type ReviewMode = "essay" | "random" | null;
 
