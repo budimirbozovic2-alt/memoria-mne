@@ -283,8 +283,8 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
                 )}
               </div>
 
-              {/* Section split mode */}
-              <div className="space-y-2">
+              {/* Section split mode — only for essay */}
+              {cardType === "essay" && (<div className="space-y-2">
                 <label className="text-sm font-medium">Razdvajanje cjelina unutar pitanja</label>
                 <div className="flex gap-2">
                   {(["heading", "delimiter"] as SplitMode[]).map((m) => (
