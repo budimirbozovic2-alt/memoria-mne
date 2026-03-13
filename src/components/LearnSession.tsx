@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { Card, getCardScore } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, TrendingUp, ListOrdered, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, TrendingUp, ListOrdered, Zap, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { speak } from "@/lib/tts";
 
 type SortMode = "order" | "weakest" | "strongest";
 
