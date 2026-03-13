@@ -17,6 +17,7 @@ interface Props {
   subcategories: Record<string, string[]>;
   onSave: (question: string, sections: SectionInput[], category: string, subcategory?: string) => void;
   onSaveFlash: (question: string, answer: string, category: string, subcategory?: string) => void;
+  onSaveReverseFlash?: (question: string, answer: string, category: string, subcategory?: string) => void;
   onCancel: () => void;
   editCard?: Card | null;
   onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; category?: string; subcategory?: string }) => void;
