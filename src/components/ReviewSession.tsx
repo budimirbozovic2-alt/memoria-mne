@@ -64,7 +64,7 @@ export default function ReviewSession({ dueCards, srSettings, onReviewSection, o
           <p className="text-muted-foreground mt-2">{filteredCount} pitanja · {filteredSections} cjelina za ponavljanje</p>
         </div>
 
-        {dueCategories.length > 1 && (
+        {dueCategories.length >= 1 && (
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">Kategorija</label>
             <div className="flex gap-2 flex-wrap">
