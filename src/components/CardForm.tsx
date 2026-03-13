@@ -137,6 +137,9 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
         });
       } else {
         onSaveFlash(question, flashAnswer, cat, sub);
+        if (createReverse && onSaveReverseFlash) {
+          onSaveReverseFlash(question, flashAnswer, cat, sub);
+        }
       }
     } else {
       if (!question.trim() || sections.some((s) => !s.content.trim())) return;
