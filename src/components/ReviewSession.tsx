@@ -96,10 +96,10 @@ export default function ReviewSession({ dueCards, srSettings, onReviewSection, o
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <BookOpen className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-medium">Esejska pitanja</h3>
+              <h3 className="text-lg font-medium">Redom po pitanjima</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Sve cjeline jednog pitanja izlaze redom. Idealno za vježbanje cijelih esejskih odgovora.
+              Sve cjeline jednog pitanja izlaze redom. Idealno za vježbanje cijelih odgovora.
             </p>
           </button>
 
@@ -111,7 +111,7 @@ export default function ReviewSession({ dueCards, srSettings, onReviewSection, o
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Shuffle className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-medium">Kratka pitanja</h3>
+              <h3 className="text-lg font-medium">Nasumično</h3>
             </div>
             <p className="text-sm text-muted-foreground">
               Cjeline iz svih pitanja izlaze nasumičnim redoslijedom. Idealno za brzo ponavljanje.
@@ -237,6 +237,7 @@ function ReviewCard({
 
   const sectionIsLeech = isLeech(section, srSettings);
   const lapses = section.lapses || 0;
+  const isFlash = card.type === "flash";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -284,45 +285,55 @@ function ReviewCard({
           transition={{ duration: 0.3 }}
           className="space-y-6"
         >
-          {/* Essay question title - always visible above */}
+          {/* Question header */}
           <div className="rounded-lg bg-secondary/50 border px-5 py-3">
-            <span className="text-xs uppercase tracking-widest text-muted-foreground">{card.category}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">{card.category}</span>
+              {card.subcategory && (
+                <span className="text-xs text-muted-foreground">› {card.subcategory}</span>
+              )}
+            </div>
             <p className="mt-1 text-lg leading-relaxed font-serif">{card.question}</p>
           </div>
 
-          <div className="rounded-xl bg-card border p-8">
-            <div className="flex items-center gap-2">
-              <ChevronRight className="h-4 w-4 text-primary" />
-              <span className="font-medium text-primary">{section.title}</span>
-              {totalSectionsInCard > 1 && (
-                <span className="text-sm text-muted-foreground">
-                  ({sectionIndex + 1}/{totalSectionsInCard} cjelina)
-                </span>
-              )}
-              {lapses > 0 && !sectionIsLeech && (
-                <span className="text-xs text-warning ml-auto">· {lapses} pad{lapses === 1 ? "" : "ova"}</span>
+          {/* Section info (hidden for flash cards) */}
+          {!isFlash && (
+            <div className="rounded-xl bg-card border p-8">
+              <div className="flex items-center gap-2">
+                <ChevronRight className="h-4 w-4 text-primary" />
+                <span className="font-medium text-primary">{section.title}</span>
+                {totalSectionsInCard > 1 && (
+                  <span className="text-sm text-muted-foreground">
+                    ({sectionIndex + 1}/{totalSectionsInCard} cjelina)
+                  </span>
+                )}
+                {lapses > 0 && !sectionIsLeech && (
+                  <span className="text-xs text-warning ml-auto">· {lapses} pad{lapses === 1 ? "" : "ova"}</span>
+                )}
+              </div>
+              {section.interval > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Interval: {formatInterval(section.interval)} · EF: {section.easeFactor.toFixed(2)}
+                </p>
               )}
             </div>
-            {section.interval > 0 && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Interval: {formatInterval(section.interval)} · EF: {section.easeFactor.toFixed(2)}
-              </p>
-            )}
-          </div>
+          )}
 
           {!showAnswer ? (
             <Button onClick={() => setShowAnswer(true)} className="w-full py-6 text-base" variant="outline">
-              <Eye className="h-4 w-4 mr-2" /> Prikaži odgovor za ovu cjelinu
+              <Eye className="h-4 w-4 mr-2" /> {isFlash ? "Prikaži odgovor" : "Prikaži odgovor za ovu cjelinu"}
             </Button>
           ) : (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div className="rounded-xl bg-secondary/50 border p-8">
-                <span className="text-xs uppercase tracking-widest text-muted-foreground">{section.title}</span>
-                <div className="mt-4 text-base leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: section.content }} />
+                {!isFlash && (
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">{section.title}</span>
+                )}
+                <div className={`${!isFlash ? "mt-4" : ""} text-base leading-relaxed whitespace-pre-wrap`} dangerouslySetInnerHTML={{ __html: section.content }} />
               </div>
 
               <div>
-                <p className="text-sm text-muted-foreground mb-3">Koliko ste znali ovu cjelinu?</p>
+                <p className="text-sm text-muted-foreground mb-3">Koliko ste znali?</p>
                 <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                   {GRADES.map((g) => (
                     <button

@@ -15,7 +15,6 @@ interface Props {
   categories: string[];
   cards: Card[];
   reviewLog: ReviewLogEntry[];
-  onStartReview: () => void;
 }
 
 function ScoreBar({ score }: { score: number }) {
@@ -53,7 +52,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog, onStartReview }: Props) {
+export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog }: Props) {
   const topStats = [
     { label: "Za ponavljanje", value: stats.due, icon: Clock, accent: "text-primary" },
     { label: "Ukupno pitanja", value: stats.total, icon: Layers, accent: "text-muted-foreground" },
@@ -61,7 +60,6 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
     { label: "Naučene cjeline", value: stats.learnedSections, icon: Brain, accent: "text-success" },
   ];
 
-  // Category scores bar chart data
   const categoryChartData = useMemo(() => {
     return categories
       .filter((cat) => categoryStats[cat]?.total > 0)
@@ -72,7 +70,6 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
       }));
   }, [categories, categoryStats]);
 
-  // Activity over last 14 days
   const activityData = useMemo(() => {
     const now = new Date();
     const start = subDays(now, 13);
@@ -91,7 +88,6 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
     });
   }, [reviewLog, cards]);
 
-  // Mastery distribution pie chart
   const masteryData = useMemo(() => {
     let novo = 0, ucenje = 0, napredno = 0, savladano = 0;
     cards.forEach((c) => {
@@ -121,7 +117,7 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
           <span className="text-primary">ponavljanje</span>
         </h1>
         <p className="mt-4 text-lg text-muted-foreground max-w-md">
-          Esejska pitanja razdvojena na cjeline sa praćenjem znanja.
+          Esejska i blic pitanja sa praćenjem znanja.
         </p>
       </motion.div>
 
@@ -140,19 +136,6 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
           </motion.div>
         ))}
       </div>
-
-      {stats.due > 0 && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 }}
-          onClick={onStartReview}
-          className="inline-flex items-center gap-2 bg-primary text-primary-foreground px-8 py-4 rounded-xl text-lg font-medium hover:opacity-90 transition-opacity"
-        >
-          <Brain className="h-5 w-5" />
-          Ponavljaj ({stats.due})
-        </motion.button>
-      )}
 
       {hasData && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

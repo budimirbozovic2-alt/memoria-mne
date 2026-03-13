@@ -2,6 +2,7 @@ import { Card, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "./spaced-r
 
 const CARDS_KEY = "sr-essay-cards";
 const CATEGORIES_KEY = "sr-essay-categories";
+const SUBCATEGORIES_KEY = "sr-essay-subcategories";
 const REVIEW_LOG_KEY = "sr-review-log";
 const SR_SETTINGS_KEY = "sr-settings";
 
@@ -20,13 +21,17 @@ function migrateCard(card: any): Card {
       question: card.question,
       sections: [createSection("Cjelina 1", card.answer || "")],
       category: card.category || "Opšte",
+      subcategory: card.subcategory || "",
       createdAt: card.createdAt || Date.now(),
       readCount: card.readCount || 0,
+      type: card.type || "essay",
     };
   }
   return {
     ...card,
     readCount: card.readCount || 0,
+    type: card.type || "essay",
+    subcategory: card.subcategory || "",
     sections: (card.sections || []).map((s: any) => ({ ...s, lapses: s.lapses || 0 })),
   };
 }
@@ -55,6 +60,19 @@ export function loadCategories(): string[] {
 
 export function saveCategories(categories: string[]) {
   localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+}
+
+export function loadSubcategories(): Record<string, string[]> {
+  try {
+    const data = localStorage.getItem(SUBCATEGORIES_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveSubcategories(subcategories: Record<string, string[]>) {
+  localStorage.setItem(SUBCATEGORIES_KEY, JSON.stringify(subcategories));
 }
 
 export function loadReviewLog(): ReviewLogEntry[] {

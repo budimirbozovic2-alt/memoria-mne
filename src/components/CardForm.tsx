@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, X, GripVertical, Scissors } from "lucide-react";
+import { Plus, X, GripVertical, Scissors, Zap, FileText } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
 
 interface SectionInput {
@@ -14,13 +14,16 @@ interface SectionInput {
 
 interface Props {
   categories: string[];
-  onSave: (question: string, sections: SectionInput[], category: string) => void;
+  subcategories: Record<string, string[]>;
+  onSave: (question: string, sections: SectionInput[], category: string, subcategory?: string) => void;
+  onSaveFlash: (question: string, answer: string, category: string, subcategory?: string) => void;
   onCancel: () => void;
   editCard?: Card | null;
-  onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; category?: string }) => void;
+  onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; category?: string; subcategory?: string }) => void;
 }
 
 type FormWidth = "compact" | "normal" | "wide" | "full";
+type CardType = "essay" | "flash";
 
 const widthClasses: Record<FormWidth, string> = {
   compact: "max-w-xl",
@@ -51,14 +54,12 @@ function parseHtmlToParagraphs(html: string): string[] {
         const inner = el.innerHTML.trim();
         if (inner && inner !== "<br>") blocks.push(inner);
       } else {
-        // inline element, wrap as block
         const outer = el.outerHTML.trim();
         if (outer) blocks.push(outer);
       }
     }
   };
   if (div.children.length === 0) {
-    // Plain text with <br> splits
     const parts = html.split(/<br\s*\/?>/gi).map(s => s.trim()).filter(Boolean);
     return parts.length > 0 ? parts : [html];
   }
@@ -66,18 +67,27 @@ function parseHtmlToParagraphs(html: string): string[] {
   return blocks.length > 0 ? blocks : [html];
 }
 
-export default function CardForm({ categories, onSave, onCancel, editCard, onUpdate }: Props) {
+export default function CardForm({ categories, subcategories, onSave, onSaveFlash, onCancel, editCard, onUpdate }: Props) {
+  const [cardType, setCardType] = useState<CardType>(editCard?.type || "essay");
   const [question, setQuestion] = useState(editCard?.question ?? "");
+  const [flashAnswer, setFlashAnswer] = useState(
+    editCard?.type === "flash" ? editCard.sections[0]?.content ?? "" : ""
+  );
   const [sections, setSections] = useState<SectionInput[]>(
-    editCard?.sections.map((s) => ({ title: s.title, content: s.content })) ?? [
-      { title: "Cjelina 1", content: "" },
-    ]
+    editCard && editCard.type !== "flash"
+      ? editCard.sections.map((s) => ({ title: s.title, content: s.content }))
+      : [{ title: "Cjelina 1", content: "" }]
   );
   const [category, setCategory] = useState(editCard?.category ?? categories[0] ?? "Opšte");
+  const [subcategory, setSubcategory] = useState(editCard?.subcategory ?? "");
   const [newCategory, setNewCategory] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
+  const [newSubcategory, setNewSubcategory] = useState("");
+  const [showNewSub, setShowNewSub] = useState(false);
   const [formWidth, setFormWidth] = useState<FormWidth>("wide");
   const [cuttingIndex, setCuttingIndex] = useState<number | null>(null);
+
+  const availableSubs = subcategories[category] || [];
 
   const addSection = () => {
     setSections((prev) => [...prev, { title: `Cjelina ${prev.length + 1}`, content: "" }]);
@@ -112,12 +122,28 @@ export default function CardForm({ categories, onSave, onCancel, editCard, onUpd
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!question.trim() || sections.some((s) => !s.content.trim())) return;
     const cat = showNewCat && newCategory.trim() ? newCategory.trim() : category;
-    if (editCard && onUpdate) {
-      onUpdate(editCard.id, { question, sections, category: cat });
+    const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory;
+
+    if (cardType === "flash") {
+      if (!question.trim() || !flashAnswer.trim()) return;
+      if (editCard && onUpdate) {
+        onUpdate(editCard.id, {
+          question,
+          sections: [{ title: "Odgovor", content: flashAnswer }],
+          category: cat,
+          subcategory: sub,
+        });
+      } else {
+        onSaveFlash(question, flashAnswer, cat, sub);
+      }
     } else {
-      onSave(question, sections, cat);
+      if (!question.trim() || sections.some((s) => !s.content.trim())) return;
+      if (editCard && onUpdate) {
+        onUpdate(editCard.id, { question, sections, category: cat, subcategory: sub });
+      } else {
+        onSave(question, sections, cat, sub);
+      }
     }
   };
 
@@ -146,77 +172,115 @@ export default function CardForm({ categories, onSave, onCancel, editCard, onUpd
         </div>
       </div>
 
+      {/* Card type toggle */}
+      {!editCard && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setCardType("essay")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex-1 justify-center ${
+              cardType === "essay" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            }`}
+          >
+            <FileText className="h-4 w-4" />
+            Esejsko pitanje
+          </button>
+          <button
+            type="button"
+            onClick={() => setCardType("flash")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex-1 justify-center ${
+              cardType === "flash" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            }`}
+          >
+            <Zap className="h-4 w-4" />
+            Blic pitanje
+          </button>
+        </div>
+      )}
+
       <div className="space-y-2">
         <label className="text-sm font-medium text-muted-foreground">Pitanje</label>
         <Textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Unesite esejsko pitanje..."
+          placeholder={cardType === "flash" ? "Unesite pitanje..." : "Unesite esejsko pitanje..."}
           className="min-h-[80px] resize-y bg-card"
         />
       </div>
 
-      {/* Sections */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Cjeline odgovora</label>
-          <Button type="button" variant="outline" size="sm" onClick={addSection}>
-            <Plus className="h-3 w-3 mr-1" /> Dodaj cjelinu
-          </Button>
+      {/* Flash card answer */}
+      {cardType === "flash" ? (
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-muted-foreground">Odgovor</label>
+          <RichTextEditor
+            value={flashAnswer}
+            onChange={setFlashAnswer}
+            placeholder="Unesite odgovor..."
+          />
         </div>
+      ) : (
+        /* Essay sections */
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium text-muted-foreground">Cjeline odgovora</label>
+            <Button type="button" variant="outline" size="sm" onClick={addSection}>
+              <Plus className="h-3 w-3 mr-1" /> Dodaj cjelinu
+            </Button>
+          </div>
 
-        {sections.map((section, i) => (
-          <div key={i} className="rounded-xl border bg-card p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <GripVertical className="h-4 w-4 text-muted-foreground/40" />
-              <Input
-                value={section.title}
-                onChange={(e) => updateSection(i, "title", e.target.value)}
-                placeholder="Naziv cjeline..."
-                className="bg-background font-medium text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => setCuttingIndex(cuttingIndex === i ? null : i)}
-                className={`p-1 rounded-lg transition-colors ${
-                  cuttingIndex === i
-                    ? "bg-warning/20 text-warning"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                }`}
-                title="Režim rezanja"
-              >
-                <Scissors className="h-4 w-4" />
-              </button>
-              {sections.length > 1 && (
-                <button type="button" onClick={() => removeSection(i)} className="text-muted-foreground hover:text-destructive p-1">
-                  <X className="h-4 w-4" />
+          {sections.map((section, i) => (
+            <div key={i} className="rounded-xl border bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <GripVertical className="h-4 w-4 text-muted-foreground/40" />
+                <Input
+                  value={section.title}
+                  onChange={(e) => updateSection(i, "title", e.target.value)}
+                  placeholder="Naziv cjeline..."
+                  className="bg-background font-medium text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCuttingIndex(cuttingIndex === i ? null : i)}
+                  className={`p-1 rounded-lg transition-colors ${
+                    cuttingIndex === i
+                      ? "bg-warning/20 text-warning"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  }`}
+                  title="Režim rezanja"
+                >
+                  <Scissors className="h-4 w-4" />
                 </button>
+                {sections.length > 1 && (
+                  <button type="button" onClick={() => removeSection(i)} className="text-muted-foreground hover:text-destructive p-1">
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {cuttingIndex === i ? (
+                <CuttingView
+                  content={section.content}
+                  onCut={(pIdx) => handleCut(i, pIdx)}
+                  onCancel={() => setCuttingIndex(null)}
+                />
+              ) : (
+                <RichTextEditor
+                  value={section.content}
+                  onChange={(val) => updateSection(i, "content", val)}
+                  placeholder="Sadržaj ove cjeline odgovora..."
+                />
               )}
             </div>
-
-            {cuttingIndex === i ? (
-              <CuttingView
-                content={section.content}
-                onCut={(pIdx) => handleCut(i, pIdx)}
-                onCancel={() => setCuttingIndex(null)}
-              />
-            ) : (
-              <RichTextEditor
-                value={section.content}
-                onChange={(val) => updateSection(i, "content", val)}
-                placeholder="Sadržaj ove cjeline odgovora..."
-              />
-            )}
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Category */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-muted-foreground">Kategorija</label>
         {!showNewCat ? (
           <div className="flex gap-2">
-            <Select value={category} onValueChange={setCategory}>
+            <Select value={category} onValueChange={(v) => { setCategory(v); setSubcategory(""); }}>
               <SelectTrigger className="bg-card">
                 <SelectValue />
               </SelectTrigger>
@@ -245,8 +309,43 @@ export default function CardForm({ categories, onSave, onCancel, editCard, onUpd
         )}
       </div>
 
+      {/* Subcategory */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-muted-foreground">Podkategorija (opciono)</label>
+        {!showNewSub ? (
+          <div className="flex gap-2">
+            <Select value={subcategory || "__none__"} onValueChange={(v) => setSubcategory(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="bg-card">
+                <SelectValue placeholder="Bez podkategorije" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Bez podkategorije</SelectItem>
+                {availableSubs.map((sc) => (
+                  <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="button" variant="outline" size="icon" onClick={() => setShowNewSub(true)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              value={newSubcategory}
+              onChange={(e) => setNewSubcategory(e.target.value)}
+              placeholder="Nova podkategorija..."
+              className="bg-card"
+            />
+            <Button type="button" variant="outline" size="icon" onClick={() => { setShowNewSub(false); if (newSubcategory.trim()) setSubcategory(newSubcategory.trim()); }}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </div>
+
       <Button type="submit" className="w-full">
-        {editCard ? "Sačuvaj izmjene" : "Dodaj karticu"}
+        {editCard ? "Sačuvaj izmjene" : cardType === "flash" ? "Dodaj blic pitanje" : "Dodaj karticu"}
       </Button>
     </form>
   );
