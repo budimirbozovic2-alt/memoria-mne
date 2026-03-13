@@ -48,7 +48,6 @@ const Index = () => {
     { key: "learn" as View, icon: GraduationCap, label: "Uči" },
     { key: "cards" as View, icon: BookOpen, label: "Kartice" },
     { key: "categories" as View, icon: FolderOpen, label: "Kategorije" },
-    { key: "create" as View, icon: Plus, label: "Nova" },
   ];
 
   const availableSubcategories = filterCategory ? (subcategories[filterCategory] || []) : [];
