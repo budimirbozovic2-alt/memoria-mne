@@ -86,7 +86,7 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
   const [showNewSub, setShowNewSub] = useState(false);
   const [formWidth, setFormWidth] = useState<FormWidth>("wide");
   const [cuttingIndex, setCuttingIndex] = useState<number | null>(null);
-  const [createReverse, setCreateReverse] = useState(true);
+  
 
   const availableSubs = subcategories[category] || [];
 
