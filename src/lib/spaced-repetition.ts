@@ -17,8 +17,10 @@ export interface Card {
   question: string;
   sections: Section[];
   category: string;
+  subcategory?: string;
   createdAt: number;
   readCount: number;
+  type: "essay" | "flash";
 }
 
 export interface ReviewGrade {
@@ -38,12 +40,12 @@ export const GRADES: ReviewGrade[] = [
 ];
 
 export interface SRSettings {
-  initialInterval: number;      // days after first success (default 1)
-  secondInterval: number;       // days after second success (default 6)
-  minEaseFactor: number;        // minimum ease (default 1.3)
-  failIntervalMinutes: number;  // minutes to wait after first fail (default 10)
-  failIntervalGrowth: number;   // multiply fail interval each consecutive fail (default 2)
-  leechThreshold: number;       // number of lapses to mark as leech (default 5)
+  initialInterval: number;
+  secondInterval: number;
+  minEaseFactor: number;
+  failIntervalMinutes: number;
+  failIntervalGrowth: number;
+  leechThreshold: number;
 }
 
 export const DEFAULT_SR_SETTINGS: SRSettings = {
@@ -60,15 +62,10 @@ export function calculateNextReview(section: Section, grade: number, settings: S
   lapses = lapses || 0;
 
   if (grade < 3) {
-    // Failed — aggressive sub-day scheduling
     lapses += 1;
     repetitions = 0;
-
-    // Progressive sub-day intervals: 10min -> 20min -> 40min etc.
     const failMinutes = settings.failIntervalMinutes * Math.pow(settings.failIntervalGrowth, Math.min(lapses - 1, 5));
-    interval = failMinutes / (24 * 60); // convert to fractional days
-
-    // Penalize ease factor more for lower grades
+    interval = failMinutes / (24 * 60);
     easeFactor = Math.max(
       settings.minEaseFactor,
       easeFactor - (0.2 + (2 - grade) * 0.05)
@@ -78,7 +75,6 @@ export function calculateNextReview(section: Section, grade: number, settings: S
     else if (repetitions === 1) interval = settings.secondInterval;
     else interval = Math.round(interval * easeFactor);
     repetitions += 1;
-
     easeFactor = Math.max(
       settings.minEaseFactor,
       easeFactor + (0.1 - (5 - grade) * (0.08 + (5 - grade) * 0.02))
@@ -126,14 +122,29 @@ export function createSection(title: string, content: string): Section {
   };
 }
 
-export function createCard(question: string, sections: { title: string; content: string }[], category: string): Card {
+export function createCard(question: string, sections: { title: string; content: string }[], category: string, subcategory?: string): Card {
   return {
     id: crypto.randomUUID(),
     question,
     sections: sections.map((s) => createSection(s.title, s.content)),
     category,
+    subcategory: subcategory || "",
     createdAt: Date.now(),
     readCount: 0,
+    type: "essay",
+  };
+}
+
+export function createFlashCard(question: string, answer: string, category: string, subcategory?: string): Card {
+  return {
+    id: crypto.randomUUID(),
+    question,
+    sections: [createSection("Odgovor", answer)],
+    category,
+    subcategory: subcategory || "",
+    createdAt: Date.now(),
+    readCount: 0,
+    type: "flash",
   };
 }
 
@@ -155,7 +166,6 @@ export function getDueSections(card: Card): Section[] {
   return card.sections.filter((s) => s.nextReview <= now);
 }
 
-// Knowledge score for a section (0-100 based on repetitions and ease factor)
 export function getSectionScore(section: Section): number {
   if (section.repetitions === 0) return 0;
   const repScore = Math.min(section.repetitions / 5, 1);

@@ -1,23 +1,37 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Edit2, Trash2, Check, X, Plus, FolderOpen } from "lucide-react";
+import { Edit2, Trash2, Check, X, Plus, FolderOpen, ChevronDown, ChevronRight, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
   categories: string[];
+  subcategories: Record<string, string[]>;
   cardCountByCategory: Record<string, number>;
   onAdd: (name: string) => void;
   onRename: (oldName: string, newName: string) => void;
   onDelete: (name: string) => void;
+  onAddSub: (category: string, subcategory: string) => void;
+  onRenameSub: (category: string, oldName: string, newName: string) => void;
+  onDeleteSub: (category: string, subcategory: string) => void;
   onClose: () => void;
 }
 
-export default function CategoryManager({ categories, cardCountByCategory, onAdd, onRename, onDelete, onClose }: Props) {
+export default function CategoryManager({
+  categories, subcategories, cardCountByCategory,
+  onAdd, onRename, onDelete,
+  onAddSub, onRenameSub, onDeleteSub,
+  onClose,
+}: Props) {
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [newCat, setNewCat] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [editingSub, setEditingSub] = useState<{ cat: string; sub: string } | null>(null);
+  const [editSubValue, setEditSubValue] = useState("");
+  const [addingSubFor, setAddingSubFor] = useState<string | null>(null);
+  const [newSubName, setNewSubName] = useState("");
 
   const startEdit = (cat: string) => {
     setEditingCat(cat);
@@ -40,6 +54,27 @@ export default function CategoryManager({ categories, cardCountByCategory, onAdd
     }
   };
 
+  const startEditSub = (cat: string, sub: string) => {
+    setEditingSub({ cat, sub });
+    setEditSubValue(sub);
+  };
+
+  const confirmEditSub = () => {
+    if (editingSub && editSubValue.trim() && editSubValue.trim() !== editingSub.sub) {
+      onRenameSub(editingSub.cat, editingSub.sub, editSubValue.trim());
+    }
+    setEditingSub(null);
+    setEditSubValue("");
+  };
+
+  const handleAddSub = (cat: string) => {
+    if (newSubName.trim()) {
+      onAddSub(cat, newSubName.trim());
+      setNewSubName("");
+      setAddingSubFor(null);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between">
@@ -54,6 +89,8 @@ export default function CategoryManager({ categories, cardCountByCategory, onAdd
           {categories.map((cat, i) => {
             const count = cardCountByCategory[cat] ?? 0;
             const isEditing = editingCat === cat;
+            const isExpanded = expandedCat === cat;
+            const subs = subcategories[cat] || [];
 
             return (
               <motion.div
@@ -62,47 +99,128 @@ export default function CategoryManager({ categories, cardCountByCategory, onAdd
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ delay: i * 0.03 }}
-                className="flex items-center gap-3 rounded-xl bg-card border p-4"
+                className="rounded-xl bg-card border overflow-hidden"
               >
-                <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex items-center gap-3 p-4">
+                  <button onClick={() => setExpandedCat(isExpanded ? null : cat)} className="shrink-0">
+                    {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                  <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
 
-                {isEditing ? (
-                  <div className="flex-1 flex items-center gap-2">
-                    <Input
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && confirmEdit()}
-                      className="bg-background text-sm h-8"
-                      autoFocus
-                    />
-                    <button onClick={confirmEdit} className="p-1.5 hover:bg-secondary rounded-lg text-success">
-                      <Check className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => setEditingCat(null)} className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground">
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium text-sm">{cat}</span>
-                      <span className="text-xs text-muted-foreground ml-2">
-                        {count} {count === 1 ? "kartica" : "kartica"}
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      <button onClick={() => startEdit(cat)} className="p-1.5 hover:bg-secondary rounded-lg">
-                        <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  {isEditing ? (
+                    <div className="flex-1 flex items-center gap-2">
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && confirmEdit()}
+                        className="bg-background text-sm h-8"
+                        autoFocus
+                      />
+                      <button onClick={confirmEdit} className="p-1.5 hover:bg-secondary rounded-lg text-success">
+                        <Check className="h-4 w-4" />
                       </button>
+                      <button onClick={() => setEditingCat(null)} className="p-1.5 hover:bg-secondary rounded-lg text-muted-foreground">
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium text-sm">{cat}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {count} kartica
+                        </span>
+                        {subs.length > 0 && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            · {subs.length} podkat.
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1">
+                        <button onClick={() => startEdit(cat)} className="p-1.5 hover:bg-secondary rounded-lg">
+                          <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        </button>
+                        <button
+                          onClick={() => onDelete(cat)}
+                          className="p-1.5 hover:bg-destructive/10 rounded-lg"
+                          title={count > 0 ? `${count} kartica će biti prebačeno u "Opšte"` : "Obriši kategoriju"}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Subcategories */}
+                {isExpanded && (
+                  <div className="border-t px-4 pb-4 pt-3 space-y-2 bg-secondary/20">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Podkategorije</span>
+                    </div>
+
+                    {subs.map((sub) => {
+                      const isEditingSub = editingSub?.cat === cat && editingSub?.sub === sub;
+                      return (
+                        <div key={sub} className="flex items-center gap-2 pl-4">
+                          <Tag className="h-3 w-3 text-muted-foreground shrink-0" />
+                          {isEditingSub ? (
+                            <div className="flex-1 flex items-center gap-2">
+                              <Input
+                                value={editSubValue}
+                                onChange={(e) => setEditSubValue(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && confirmEditSub()}
+                                className="bg-background text-xs h-7"
+                                autoFocus
+                              />
+                              <button onClick={confirmEditSub} className="p-1 hover:bg-secondary rounded text-success">
+                                <Check className="h-3 w-3" />
+                              </button>
+                              <button onClick={() => setEditingSub(null)} className="p-1 hover:bg-secondary rounded text-muted-foreground">
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="flex-1 text-sm">{sub}</span>
+                              <button onClick={() => startEditSub(cat, sub)} className="p-1 hover:bg-secondary rounded-lg">
+                                <Edit2 className="h-3 w-3 text-muted-foreground" />
+                              </button>
+                              <button onClick={() => onDeleteSub(cat, sub)} className="p-1 hover:bg-destructive/10 rounded-lg">
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {addingSubFor === cat ? (
+                      <div className="flex gap-2 pl-4">
+                        <Input
+                          value={newSubName}
+                          onChange={(e) => setNewSubName(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleAddSub(cat)}
+                          placeholder="Naziv podkategorije..."
+                          className="bg-background text-xs h-7"
+                          autoFocus
+                        />
+                        <button onClick={() => handleAddSub(cat)} className="p-1 hover:bg-secondary rounded text-success">
+                          <Check className="h-3 w-3" />
+                        </button>
+                        <button onClick={() => { setAddingSubFor(null); setNewSubName(""); }} className="p-1 hover:bg-secondary rounded text-muted-foreground">
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => onDelete(cat)}
-                        className="p-1.5 hover:bg-destructive/10 rounded-lg"
-                        title={count > 0 ? `${count} kartica će biti prebačeno u "Opšte"` : "Obriši kategoriju"}
+                        onClick={() => setAddingSubFor(cat)}
+                        className="flex items-center gap-1.5 pl-4 text-xs text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        <Plus className="h-3 w-3" /> Dodaj podkategoriju
                       </button>
-                    </div>
-                  </>
+                    )}
+                  </div>
                 )}
               </motion.div>
             );

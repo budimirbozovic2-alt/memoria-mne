@@ -1,12 +1,14 @@
 import { Card, getCardScore, getSectionScore } from "@/lib/spaced-repetition";
 import { format } from "date-fns";
-import { Edit2, Trash2, ChevronDown, ChevronRight, Scissors } from "lucide-react";
+import { Edit2, Trash2, ChevronDown, ChevronRight, Scissors, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 
 interface Props {
   cards: Card[];
   filterCategory: string | null;
+  filterSubcategory?: string | null;
+  filterType?: "all" | "essay" | "flash";
   onEdit: (card: Card) => void;
   onDelete: (id: string) => void;
   onSplit: (id: string) => void;
@@ -28,9 +30,15 @@ function SectionBar({ score }: { score: number }) {
   );
 }
 
-export default function CardList({ cards, filterCategory, onEdit, onDelete, onSplit }: Props) {
+export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", onEdit, onDelete, onSplit }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const filtered = filterCategory ? cards.filter((c) => c.category === filterCategory) : cards;
+  let filtered = filterCategory ? cards.filter((c) => c.category === filterCategory) : cards;
+  if (filterSubcategory) {
+    filtered = filtered.filter((c) => c.subcategory === filterSubcategory);
+  }
+  if (filterType !== "all") {
+    filtered = filtered.filter((c) => (c.type || "essay") === filterType);
+  }
 
   if (filtered.length === 0) {
     return <p className="text-muted-foreground text-center py-12">Nema kartica. Kreirajte prvu!</p>;
@@ -41,6 +49,7 @@ export default function CardList({ cards, filterCategory, onEdit, onDelete, onSp
       {filtered.map((card, i) => {
         const expanded = expandedId === card.id;
         const score = getCardScore(card);
+        const isFlash = card.type === "flash";
         return (
           <motion.div
             key={card.id}
@@ -52,10 +61,19 @@ export default function CardList({ cards, filterCategory, onEdit, onDelete, onSp
             <div className="p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="text-xs uppercase tracking-widest text-muted-foreground">{card.category}</span>
+                    {card.subcategory && (
+                      <span className="text-xs text-muted-foreground">› {card.subcategory}</span>
+                    )}
                     <ScoreBadge score={score} />
-                    <span className="text-xs text-muted-foreground">{card.sections.length} cjelina</span>
+                    {isFlash ? (
+                      <span className="text-xs text-primary flex items-center gap-1">
+                        <Zap className="h-3 w-3" /> Blic
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{card.sections.length} cjelina</span>
+                    )}
                   </div>
                   <p className="font-serif text-lg line-clamp-2">{card.question}</p>
                 </div>
@@ -63,7 +81,7 @@ export default function CardList({ cards, filterCategory, onEdit, onDelete, onSp
                   <button onClick={() => setExpandedId(expanded ? null : card.id)} className="p-2 hover:bg-secondary rounded-lg">
                     {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   </button>
-                  {card.sections.length > 1 && (
+                  {!isFlash && card.sections.length > 1 && (
                     <button onClick={() => onSplit(card.id)} className="p-2 hover:bg-secondary rounded-lg" title="Razdvoji na manje kartice">
                       <Scissors className="h-4 w-4 text-muted-foreground" />
                     </button>
@@ -88,23 +106,27 @@ export default function CardList({ cards, filterCategory, onEdit, onDelete, onSp
                   className="overflow-hidden"
                 >
                   <div className="px-5 pb-5 space-y-3 border-t pt-4">
-                    {card.sections.map((s) => {
-                      const sScore = getSectionScore(s);
-                      return (
-                        <div key={s.id} className="space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{s.title}</span>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <ScoreBadge score={sScore} />
-                              <span>Int: {s.interval}d</span>
-                              <span>Sljedeće: {format(new Date(s.nextReview), "dd.MM")}</span>
+                    {isFlash ? (
+                      <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: card.sections[0]?.content || "" }} />
+                    ) : (
+                      card.sections.map((s) => {
+                        const sScore = getSectionScore(s);
+                        return (
+                          <div key={s.id} className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{s.title}</span>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <ScoreBadge score={sScore} />
+                                <span>Int: {s.interval}d</span>
+                                <span>Sljedeće: {format(new Date(s.nextReview), "dd.MM")}</span>
+                              </div>
                             </div>
+                            <SectionBar score={sScore} />
+                            <div className="text-sm text-muted-foreground line-clamp-2" dangerouslySetInnerHTML={{ __html: s.content }} />
                           </div>
-                          <SectionBar score={sScore} />
-                          <div className="text-sm text-muted-foreground line-clamp-2" dangerouslySetInnerHTML={{ __html: s.content }} />
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 </motion.div>
               )}

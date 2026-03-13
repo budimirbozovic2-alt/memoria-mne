@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Card, getCardScore } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, TrendingUp, ListOrdered } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, TrendingUp, ListOrdered, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type SortMode = "order" | "weakest" | "strongest";
@@ -9,12 +9,14 @@ type SortMode = "order" | "weakest" | "strongest";
 interface Props {
   cards: Card[];
   categories: string[];
+  subcategories: Record<string, string[]>;
   onMarkRead: (id: string) => void;
   onBack: () => void;
 }
 
-export default function LearnSession({ cards, categories, onMarkRead, onBack }: Props) {
+export default function LearnSession({ cards, categories, subcategories, onMarkRead, onBack }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("order");
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -26,8 +28,13 @@ export default function LearnSession({ cards, categories, onMarkRead, onBack }: 
     return categories.filter((c) => cats.has(c));
   }, [cards, categories]);
 
+  const availableSubs = selectedCategory ? (subcategories[selectedCategory] || []) : [];
+
   const sortedCards = useMemo(() => {
     let filtered = selectedCategory ? cards.filter((c) => c.category === selectedCategory) : [...cards];
+    if (selectedSubcategory) {
+      filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
+    }
     switch (sortMode) {
       case "weakest":
         return filtered.sort((a, b) => getCardScore(a) - getCardScore(b));
@@ -37,7 +44,7 @@ export default function LearnSession({ cards, categories, onMarkRead, onBack }: 
       default:
         return filtered.sort((a, b) => a.createdAt - b.createdAt);
     }
-  }, [cards, selectedCategory, sortMode]);
+  }, [cards, selectedCategory, selectedSubcategory, sortMode]);
 
   const card = sortedCards[currentIndex];
 
@@ -81,7 +88,7 @@ export default function LearnSession({ cards, categories, onMarkRead, onBack }: 
       { key: "strongest", label: "Najjača prvo", desc: "Pitanja sa najvišim rezultatom prvo", icon: TrendingUp },
     ];
 
-    const filteredCount = selectedCategory ? cards.filter((c) => c.category === selectedCategory).length : cards.length;
+    const filteredCount = sortedCards.length;
 
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10">
@@ -99,7 +106,7 @@ export default function LearnSession({ cards, categories, onMarkRead, onBack }: 
             <label className="text-sm font-medium text-muted-foreground">Kategorija</label>
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => setSelectedCategory(null)}
+                onClick={() => { setSelectedCategory(null); setSelectedSubcategory(null); }}
                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
               >
                 Sve
@@ -107,10 +114,34 @@ export default function LearnSession({ cards, categories, onMarkRead, onBack }: 
               {availableCategories.map((c) => (
                 <button
                   key={c}
-                  onClick={() => setSelectedCategory(c)}
+                  onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
                   className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
                 >
                   {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Subcategory filter */}
+        {selectedCategory && availableSubs.length > 0 && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-muted-foreground">Podkategorija</label>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={() => setSelectedSubcategory(null)}
+                className={`px-2.5 py-1 rounded-md text-xs transition-colors ${!selectedSubcategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+              >
+                Sve
+              </button>
+              {availableSubs.map((sc) => (
+                <button
+                  key={sc}
+                  onClick={() => setSelectedSubcategory(sc)}
+                  className={`px-2.5 py-1 rounded-md text-xs transition-colors ${selectedSubcategory === sc ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                >
+                  {sc}
                 </button>
               ))}
             </div>
@@ -163,6 +194,7 @@ export default function LearnSession({ cards, categories, onMarkRead, onBack }: 
 
   const score = getCardScore(card);
   const isRead = readCards.has(card.id);
+  const isFlash = card.type === "flash";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -196,7 +228,17 @@ export default function LearnSession({ cards, categories, onMarkRead, onBack }: 
           {/* Card header */}
           <div className="rounded-xl bg-card border p-8">
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs uppercase tracking-widest text-muted-foreground">{card.category}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs uppercase tracking-widest text-muted-foreground">{card.category}</span>
+                {card.subcategory && (
+                  <span className="text-xs text-muted-foreground">› {card.subcategory}</span>
+                )}
+                {isFlash && (
+                  <span className="text-xs text-primary flex items-center gap-1">
+                    <Zap className="h-3 w-3" /> Blic
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="px-2 py-1 rounded-md bg-secondary">Snaga: {score}%</span>
                 <span className="px-2 py-1 rounded-md bg-secondary">Pročitano: {card.readCount || 0}×</span>
@@ -205,36 +247,59 @@ export default function LearnSession({ cards, categories, onMarkRead, onBack }: 
             <p className="text-xl leading-relaxed font-serif">{card.question}</p>
           </div>
 
-          {/* Sections */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{card.sections.length} cjelina</span>
-              <button onClick={showAll} className="text-xs text-primary hover:underline flex items-center gap-1">
-                <Eye className="h-3 w-3" /> Prikaži sve
-              </button>
-            </div>
-
-            {card.sections.map((section, i) => (
-              <div key={section.id} className="rounded-xl border bg-card overflow-hidden">
+          {/* Content */}
+          {isFlash ? (
+            <div className="space-y-3">
+              <div className="rounded-xl border bg-card overflow-hidden">
                 <button
-                  onClick={() => toggleSection(i)}
+                  onClick={() => toggleSection(0)}
                   className="w-full flex items-center gap-2 p-4 text-left hover:bg-secondary/30 transition-colors"
                 >
-                  <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSections.has(i) ? "rotate-90" : ""}`} />
-                  <span className="font-medium text-sm">{section.title}</span>
+                  <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSections.has(0) ? "rotate-90" : ""}`} />
+                  <span className="font-medium text-sm">Odgovor</span>
                 </button>
-                {expandedSections.has(i) && (
+                {expandedSections.has(0) && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     className="px-4 pb-4 border-t"
                   >
-                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: section.content }} />
+                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: card.sections[0]?.content || "" }} />
                   </motion.div>
                 )}
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{card.sections.length} cjelina</span>
+                <button onClick={showAll} className="text-xs text-primary hover:underline flex items-center gap-1">
+                  <Eye className="h-3 w-3" /> Prikaži sve
+                </button>
+              </div>
+
+              {card.sections.map((section, i) => (
+                <div key={section.id} className="rounded-xl border bg-card overflow-hidden">
+                  <button
+                    onClick={() => toggleSection(i)}
+                    className="w-full flex items-center gap-2 p-4 text-left hover:bg-secondary/30 transition-colors"
+                  >
+                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSections.has(i) ? "rotate-90" : ""}`} />
+                    <span className="font-medium text-sm">{section.title}</span>
+                  </button>
+                  {expandedSections.has(i) && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      className="px-4 pb-4 border-t"
+                    >
+                      <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: section.content }} />
+                    </motion.div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-3 pt-2">
