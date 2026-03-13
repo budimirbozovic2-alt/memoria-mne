@@ -109,7 +109,10 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
     if (paragraphIndex <= 0 || paragraphIndex >= paragraphs.length) return;
 
     const beforeContent = paragraphs.slice(0, paragraphIndex).map(p => `<p>${p}</p>`).join("");
-    const newTitle = paragraphs[paragraphIndex].replace(/<[^>]*>/g, "").trim();
+    const rawTitle = paragraphs[paragraphIndex].replace(/<[^>]*>/g, "");
+    const tempEl = document.createElement("span");
+    tempEl.innerHTML = rawTitle;
+    const newTitle = (tempEl.textContent || rawTitle).trim();
     const afterContent = paragraphs.slice(paragraphIndex + 1).map(p => `<p>${p}</p>`).join("");
 
     setSections((prev) => {
