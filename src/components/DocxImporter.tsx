@@ -171,7 +171,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
 
   const handleImport = () => {
     const cat = newCategory.trim() || category;
-    onImport(parsedCards, cat);
+    onImport(parsedCards, cat, cardType);
     handleReset();
   };
 
