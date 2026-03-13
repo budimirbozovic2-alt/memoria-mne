@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Upload, ArrowRight } from "lucide-react";
+import { FileText, Upload, ArrowRight, Zap, BookOpen } from "lucide-react";
 import mammoth from "mammoth";
 
 interface ParsedCard {
