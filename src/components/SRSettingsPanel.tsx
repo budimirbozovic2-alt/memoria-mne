@@ -17,6 +17,7 @@ const FIELD_CONFIG = [
   { key: "failIntervalMinutes" as const, label: "Interval pri padu (min)", description: "Vrijeme čekanja nakon prvog pada", min: 1, max: 60, step: 1 },
   { key: "failIntervalGrowth" as const, label: "Rast intervala pri padu", description: "Množilac za svaki uzastopni pad (npr. 2 = 10min → 20min → 40min)", min: 1, max: 4, step: 0.5 },
   { key: "leechThreshold" as const, label: "Prag za 'leech' upozorenje", description: "Broj padova nakon kojeg se cjelina označava kao problematična", min: 2, max: 20, step: 1 },
+  { key: "dailyGoal" as const, label: "Dnevni cilj ponavljanja", description: "Broj ponavljanja koji želite završiti svaki dan", min: 5, max: 100, step: 5 },
 ];
 
 export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
