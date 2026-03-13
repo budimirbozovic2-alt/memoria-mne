@@ -63,136 +63,108 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
     }
   }, []);
 
+  // Helper: split collected content into sections based on sectionSplitMode
+  const splitIntoSections = useCallback((contentHtml: string): { title: string; content: string }[] => {
+    if (!contentHtml.trim()) return [];
+
+    const tempDoc = new DOMParser().parseFromString(contentHtml, "text/html");
+    const elements = Array.from(tempDoc.body.children);
+    const sections: { title: string; content: string }[] = [];
+    let secTitle = "";
+    let secContent = "";
+
+    const flushSec = () => {
+      if (secContent.trim()) {
+        sections.push({
+          title: secTitle || `Cjelina ${sections.length + 1}`,
+          content: secContent.trim(),
+        });
+      }
+      secTitle = "";
+      secContent = "";
+    };
+
+    if (sectionSplitMode === "heading") {
+      for (const el of elements) {
+        const tag = el.tagName.toLowerCase();
+        if (tag === sectionHeading) {
+          flushSec();
+          secTitle = el.textContent?.trim() || "";
+        } else {
+          secContent += el.outerHTML + "\n";
+        }
+      }
+    } else {
+      const secDelim = sectionDelimiter.trim();
+      if (secDelim) {
+        for (const el of elements) {
+          const text = el.textContent?.trim() || "";
+          if (text.startsWith(secDelim)) {
+            flushSec();
+            secTitle = text;
+          } else {
+            secContent += el.outerHTML + "\n";
+          }
+        }
+      } else {
+        // No delimiter specified — single section
+        return [{ title: "Odgovor", content: contentHtml.trim() }];
+      }
+    }
+
+    flushSec();
+    return sections.length > 0 ? sections : [{ title: "Odgovor", content: contentHtml.trim() }];
+  }, [sectionSplitMode, sectionHeading, sectionDelimiter]);
+
   const parseContent = useCallback(() => {
     if (!htmlContent) return;
 
-    if (splitMode === "delimiter" && delimiter.trim()) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(htmlContent, "text/html");
-      const elements = Array.from(doc.body.children);
-      const delim = delimiter.trim();
-      const secDelim = sectionDelimiter.trim();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, "text/html");
+    const elements = Array.from(doc.body.children);
+    const cards: ParsedCard[] = [];
+    let currentQuestion = "";
+    let currentContent = "";
 
-      const cards: ParsedCard[] = [];
-      let currentQuestion = "";
-      let currentContent = "";
-
-      const flushDelimCard = () => {
-        if (!currentQuestion.trim() || !currentContent.trim()) {
-          currentQuestion = "";
-          currentContent = "";
-          return;
+    const flushCard = () => {
+      if (currentQuestion.trim() && currentContent.trim()) {
+        const sections = splitIntoSections(currentContent);
+        if (sections.length > 0) {
+          cards.push({ question: currentQuestion.trim(), sections });
         }
+      }
+      currentQuestion = "";
+      currentContent = "";
+    };
 
-        if (secDelim) {
-          // Split content into sections by delimiter in text
-          const tempDoc = new DOMParser().parseFromString(currentContent, "text/html");
-          const secElements = Array.from(tempDoc.body.children);
-          const sections: { title: string; content: string }[] = [];
-          let secTitle = "";
-          let secContent = "";
-
-          const flushSec = () => {
-            if (secContent.trim()) {
-              sections.push({
-                title: secTitle || `Cjelina ${sections.length + 1}`,
-                content: secContent.trim(),
-              });
-            }
-            secTitle = "";
-            secContent = "";
-          };
-
-          for (const el of secElements) {
-            const text = el.textContent?.trim() || "";
-            if (text.startsWith(secDelim)) {
-              flushSec();
-              secTitle = text;
-            } else {
-              secContent += el.outerHTML + "\n";
-            }
-          }
-          flushSec();
-
-          if (sections.length > 0) {
-            cards.push({ question: currentQuestion, sections });
-          }
-        } else {
-          cards.push({
-            question: currentQuestion,
-            sections: [{ title: "Odgovor", content: currentContent.trim() }],
-          });
-        }
-
-        currentQuestion = "";
-        currentContent = "";
-      };
-
+    if (questionSplitMode === "heading") {
       for (const el of elements) {
-        const text = el.textContent?.trim() || "";
-        if (text.startsWith(delim)) {
-          flushDelimCard();
-          currentQuestion = text;
+        const tag = el.tagName.toLowerCase();
+        if (tag === splitHeading) {
+          flushCard();
+          currentQuestion = el.textContent?.trim() || "";
         } else if (currentQuestion) {
           currentContent += el.outerHTML + "\n";
         }
       }
-      flushDelimCard();
-
-      setParsedCards(cards);
-      setStep("preview");
-      return;
-    }
-
-    // Heading-based parsing
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlContent, "text/html");
-    const elements = Array.from(doc.body.children);
-
-    const cards: ParsedCard[] = [];
-    let currentQuestion = "";
-    let currentSections: { title: string; content: string }[] = [];
-    let currentSectionTitle = "";
-    let currentSectionContent = "";
-
-    const flushSection = () => {
-      if (currentSectionContent.trim()) {
-        currentSections.push({
-          title: currentSectionTitle || `Cjelina ${currentSections.length + 1}`,
-          content: currentSectionContent.trim(),
-        });
-      }
-      currentSectionTitle = "";
-      currentSectionContent = "";
-    };
-
-    const flushCard = () => {
-      flushSection();
-      if (currentQuestion.trim() && currentSections.length > 0) {
-        cards.push({ question: currentQuestion.trim(), sections: [...currentSections] });
-      }
-      currentQuestion = "";
-      currentSections = [];
-    };
-
-    for (const el of elements) {
-      const tag = el.tagName.toLowerCase();
-
-      if (tag === splitHeading) {
-        flushCard();
-        currentQuestion = el.textContent?.trim() || "";
-      } else if (tag === sectionHeading && currentQuestion) {
-        flushSection();
-        currentSectionTitle = el.textContent?.trim() || "";
-      } else if (currentQuestion) {
-        currentSectionContent += el.outerHTML + "\n";
+    } else {
+      const delim = delimiter.trim();
+      if (!delim) return;
+      for (const el of elements) {
+        const text = el.textContent?.trim() || "";
+        if (text.startsWith(delim)) {
+          flushCard();
+          currentQuestion = text;
+        } else if (currentQuestion) {
+          currentContent += el.outerHTML + "\n";
+        }
       }
     }
 
     flushCard();
     setParsedCards(cards);
     setStep("preview");
-  }, [htmlContent, splitMode, splitHeading, sectionHeading, delimiter, sectionDelimiter]);
+  }, [htmlContent, questionSplitMode, splitHeading, delimiter, splitIntoSections]);
 
   const handleImport = () => {
     const cat = newCategory.trim() || category;
