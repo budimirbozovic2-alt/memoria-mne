@@ -56,7 +56,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog }: Props) {
+export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog, srSettings }: Props) {
   const topStats = [
     { label: "Za ponavljanje", value: stats.due, icon: Clock, accent: "text-primary" },
     { label: "Ukupno pitanja", value: stats.total, icon: Layers, accent: "text-muted-foreground" },
