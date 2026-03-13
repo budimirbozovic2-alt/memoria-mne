@@ -234,7 +234,17 @@ const Index = () => {
         open={docxOpen}
         onClose={() => setDocxOpen(false)}
         categories={categories}
-        onImport={(cards, cat) => { importCards(cards, cat); setDocxOpen(false); }}
+        onImport={(cards, cat, cardType) => {
+          if (cardType === "flash") {
+            cards.forEach((c) => {
+              const answer = c.sections.map((s) => s.content).join("\n");
+              addFlashCard(c.question, answer, cat);
+            });
+          } else {
+            importCards(cards, cat);
+          }
+          setDocxOpen(false);
+        }}
       />
     </div>
   );
