@@ -101,7 +101,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
         </div>
 
         {/* Category filter */}
-        {availableCategories.length > 1 && (
+        {availableCategories.length >= 1 && (
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">Kategorija</label>
             <div className="flex gap-2 flex-wrap">
