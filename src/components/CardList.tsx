@@ -129,7 +129,7 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
                               <span className="text-sm font-medium">{s.title}</span>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <ScoreBadge score={sScore} />
-                                <span>Int: {s.interval}d</span>
+                                <span>S: {s.stability?.toFixed(1) ?? 0}d</span>
                                 <span>Sljedeće: {format(new Date(s.nextReview), "dd.MM")}</span>
                               </div>
                             </div>
