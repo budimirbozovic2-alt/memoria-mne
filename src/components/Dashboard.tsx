@@ -141,6 +141,13 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
         ))}
       </div>
 
+      {/* Streak + Heatmap + Retention */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <StreakWidget reviewLog={reviewLog} dailyGoal={srSettings.dailyGoal} />
+        <ActivityHeatmap reviewLog={reviewLog} />
+      </div>
+      <RetentionChart reviewLog={reviewLog} />
+
       {hasData && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Activity Chart */}

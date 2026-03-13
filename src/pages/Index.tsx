@@ -210,7 +210,7 @@ const Index = () => {
                   </div>
                 )}
 
-                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} onEdit={handleEdit} onDelete={deleteCard} onSplit={splitCard} />
+                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} searchQuery={searchQuery} onEdit={handleEdit} onDelete={deleteCard} onSplit={splitCard} />
               </div>
             </motion.div>
           )}
