@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect } from "react";
-import { Bold, Paintbrush } from "lucide-react";
+import { Bold, Italic, Underline, List, ListOrdered, Paintbrush, Heading2 } from "lucide-react";
 
 interface Props {
   value: string;
@@ -12,7 +12,6 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
   const internalValue = useRef(value);
   const isComposing = useRef(false);
 
-  // Only sync from outside when value changes externally (not from our own edits)
   useEffect(() => {
     if (editorRef.current && value !== internalValue.current) {
       internalValue.current = value;
@@ -28,9 +27,9 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
     }
   }, [onChange]);
 
-  const handleBold = () => {
+  const handleBtn = (cmd: string, val?: string) => () => {
     editorRef.current?.focus();
-    execCommand("bold");
+    execCommand(cmd, val);
   };
 
   const handleRed = () => {
@@ -53,6 +52,11 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
     }
   };
 
+  const handleHeading = () => {
+    editorRef.current?.focus();
+    execCommand("formatBlock", "h3");
+  };
+
   const handleInput = () => {
     if (isComposing.current) return;
     if (editorRef.current) {
@@ -69,27 +73,31 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
 
   const isEmpty = !value || value === "<br>" || value.replace(/<[^>]*>/g, "").trim() === "";
 
+  const toolbarButtons = [
+    { icon: Bold, title: "Bolduj (Ctrl+B)", action: handleBtn("bold") },
+    { icon: Italic, title: "Kurziv (Ctrl+I)", action: handleBtn("italic") },
+    { icon: Underline, title: "Podvučeno (Ctrl+U)", action: handleBtn("underline") },
+    { icon: Heading2, title: "Naslov", action: handleHeading },
+    { icon: List, title: "Lista", action: handleBtn("insertUnorderedList") },
+    { icon: ListOrdered, title: "Numerisana lista", action: handleBtn("insertOrderedList") },
+    { icon: Paintbrush, title: "Crvena boja", action: handleRed, hoverClass: "hover:text-destructive" },
+  ];
+
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-1 px-1">
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleBold}
-          className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-          title="Bolduj (Ctrl+B)"
-        >
-          <Bold className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={handleRed}
-          className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-destructive transition-colors"
-          title="Crvena boja"
-        >
-          <Paintbrush className="h-3.5 w-3.5" />
-        </button>
+      <div className="flex items-center gap-0.5 px-1 flex-wrap">
+        {toolbarButtons.map(({ icon: Icon, title, action, hoverClass }) => (
+          <button
+            key={title}
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={action}
+            className={`p-1.5 rounded-md hover:bg-secondary text-muted-foreground ${hoverClass || "hover:text-foreground"} transition-colors`}
+            title={title}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </button>
+        ))}
       </div>
       <div className="relative">
         <div
@@ -101,7 +109,7 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
           onCompositionEnd={() => { isComposing.current = false; handleInput(); }}
           dangerouslySetInnerHTML={{ __html: value }}
           suppressContentEditableWarning
-          className="min-h-[100px] resize-y overflow-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="min-h-[100px] resize-y overflow-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
         />
         {isEmpty && (
           <span className="absolute top-2 left-3 text-sm text-muted-foreground pointer-events-none">
