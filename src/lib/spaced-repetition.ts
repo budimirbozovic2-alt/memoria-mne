@@ -46,6 +46,7 @@ export interface SRSettings {
   failIntervalMinutes: number;
   failIntervalGrowth: number;
   leechThreshold: number;
+  dailyGoal: number;
 }
 
 export const DEFAULT_SR_SETTINGS: SRSettings = {
@@ -55,6 +56,7 @@ export const DEFAULT_SR_SETTINGS: SRSettings = {
   failIntervalMinutes: 10,
   failIntervalGrowth: 2,
   leechThreshold: 5,
+  dailyGoal: 20,
 };
 
 export function calculateNextReview(section: Section, grade: number, settings: SRSettings = DEFAULT_SR_SETTINGS): Partial<Section> {

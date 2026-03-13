@@ -9,6 +9,7 @@ interface Props {
   filterCategory: string | null;
   filterSubcategory?: string | null;
   filterType?: "all" | "essay" | "flash";
+  searchQuery?: string;
   onEdit: (card: Card) => void;
   onDelete: (id: string) => void;
   onSplit: (id: string) => void;
@@ -30,7 +31,7 @@ function SectionBar({ score }: { score: number }) {
   );
 }
 
-export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", onEdit, onDelete, onSplit }: Props) {
+export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", searchQuery = "", onEdit, onDelete, onSplit }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   let filtered = filterCategory ? cards.filter((c) => c.category === filterCategory) : cards;
   if (filterSubcategory) {
@@ -38,6 +39,17 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
   }
   if (filterType !== "all") {
     filtered = filtered.filter((c) => (c.type || "essay") === filterType);
+  }
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter((c) => {
+      const questionMatch = c.question.toLowerCase().includes(q);
+      const contentMatch = c.sections.some((s) => {
+        const plain = s.content.replace(/<[^>]*>/g, "").toLowerCase();
+        return plain.includes(q) || s.title.toLowerCase().includes(q);
+      });
+      return questionMatch || contentMatch;
+    });
   }
 
   if (filtered.length === 0) {

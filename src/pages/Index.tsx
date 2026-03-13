@@ -9,7 +9,7 @@ import CategoryManager from "@/components/CategoryManager";
 import DocxImporter from "@/components/DocxImporter";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
 import { Card } from "@/lib/spaced-repetition";
-import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain } from "lucide-react";
+import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings";
@@ -29,6 +29,7 @@ const Index = () => {
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterSubcategory, setFilterSubcategory] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   const toggleDark = () => {
@@ -47,7 +48,6 @@ const Index = () => {
     { key: "learn" as View, icon: GraduationCap, label: "Uči" },
     { key: "cards" as View, icon: BookOpen, label: "Kartice" },
     { key: "categories" as View, icon: FolderOpen, label: "Kategorije" },
-    { key: "create" as View, icon: Plus, label: "Nova" },
   ];
 
   const availableSubcategories = filterCategory ? (subcategories[filterCategory] || []) : [];
@@ -101,7 +101,7 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {view === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} cards={cards} reviewLog={reviewLog} />
+              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} />
             </motion.div>
           )}
           {view === "review" && (
@@ -121,6 +121,7 @@ const Index = () => {
                 subcategories={subcategories}
                 onSave={(q, s, c, sub) => { addCard(q, s, c, sub); setView("cards"); }}
                 onSaveFlash={(q, a, c, sub) => { addFlashCard(q, a, c, sub); setView("cards"); }}
+                onSaveReverseFlash={(q, a, c, sub) => { addFlashCard(a, q, c, sub); }}
                 onCancel={() => { setView("dashboard"); setEditingCard(null); }}
                 editCard={view === "edit" ? editingCard : null}
                 onUpdate={(id, u) => { updateCard(id, u); setView("cards"); setEditingCard(null); }}
@@ -156,6 +157,18 @@ const Index = () => {
                   <button onClick={() => setView("create")} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:opacity-90 transition-opacity">
                     <Plus className="h-4 w-4" /> Nova
                   </button>
+                </div>
+
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Pretraži kartice..."
+                    className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
                 </div>
 
                 {/* Type filter */}
@@ -197,7 +210,7 @@ const Index = () => {
                   </div>
                 )}
 
-                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} onEdit={handleEdit} onDelete={deleteCard} onSplit={splitCard} />
+                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} searchQuery={searchQuery} onEdit={handleEdit} onDelete={deleteCard} onSplit={splitCard} />
               </div>
             </motion.div>
           )}

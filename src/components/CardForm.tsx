@@ -17,6 +17,7 @@ interface Props {
   subcategories: Record<string, string[]>;
   onSave: (question: string, sections: SectionInput[], category: string, subcategory?: string) => void;
   onSaveFlash: (question: string, answer: string, category: string, subcategory?: string) => void;
+  onSaveReverseFlash?: (question: string, answer: string, category: string, subcategory?: string) => void;
   onCancel: () => void;
   editCard?: Card | null;
   onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; category?: string; subcategory?: string }) => void;
@@ -67,7 +68,7 @@ function parseHtmlToParagraphs(html: string): string[] {
   return blocks.length > 0 ? blocks : [html];
 }
 
-export default function CardForm({ categories, subcategories, onSave, onSaveFlash, onCancel, editCard, onUpdate }: Props) {
+export default function CardForm({ categories, subcategories, onSave, onSaveFlash, onSaveReverseFlash, onCancel, editCard, onUpdate }: Props) {
   const [cardType, setCardType] = useState<CardType>(editCard?.type || "essay");
   const [question, setQuestion] = useState(editCard?.question ?? "");
   const [flashAnswer, setFlashAnswer] = useState(
@@ -86,6 +87,7 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
   const [showNewSub, setShowNewSub] = useState(false);
   const [formWidth, setFormWidth] = useState<FormWidth>("wide");
   const [cuttingIndex, setCuttingIndex] = useState<number | null>(null);
+  const [createReverse, setCreateReverse] = useState(true);
 
   const availableSubs = subcategories[category] || [];
 
@@ -136,6 +138,9 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
         });
       } else {
         onSaveFlash(question, flashAnswer, cat, sub);
+        if (createReverse && onSaveReverseFlash) {
+          onSaveReverseFlash(question, flashAnswer, cat, sub);
+        }
       }
     } else {
       if (!question.trim() || sections.some((s) => !s.content.trim())) return;
@@ -217,6 +222,17 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
             onChange={setFlashAnswer}
             placeholder="Unesite odgovor..."
           />
+          {!editCard && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={createReverse}
+                onChange={(e) => setCreateReverse(e.target.checked)}
+                className="rounded border-input"
+              />
+              Kreiraj i obrnutu karticu (odgovor → pitanje)
+            </label>
+          )}
         </div>
       ) : (
         /* Essay sections */

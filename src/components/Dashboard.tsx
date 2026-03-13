@@ -1,6 +1,6 @@
 import { Brain, Clock, Layers, BookOpen, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
-import { Card, getCardScore, getSectionScore } from "@/lib/spaced-repetition";
+import { Card, getCardScore, getSectionScore, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { useMemo } from "react";
 import {
@@ -8,6 +8,9 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
 } from "recharts";
 import { format, subDays, startOfDay, eachDayOfInterval } from "date-fns";
+import ActivityHeatmap from "./ActivityHeatmap";
+import RetentionChart from "./RetentionChart";
+import StreakWidget from "./StreakWidget";
 
 interface Props {
   stats: { due: number; total: number; totalSections: number; learnedSections: number };
@@ -15,6 +18,7 @@ interface Props {
   categories: string[];
   cards: Card[];
   reviewLog: ReviewLogEntry[];
+  srSettings: SRSettings;
 }
 
 function ScoreBar({ score }: { score: number }) {
@@ -52,7 +56,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog }: Props) {
+export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog, srSettings }: Props) {
   const topStats = [
     { label: "Za ponavljanje", value: stats.due, icon: Clock, accent: "text-primary" },
     { label: "Ukupno pitanja", value: stats.total, icon: Layers, accent: "text-muted-foreground" },
@@ -136,6 +140,13 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
           </motion.div>
         ))}
       </div>
+
+      {/* Streak + Heatmap + Retention */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <StreakWidget reviewLog={reviewLog} dailyGoal={srSettings.dailyGoal} />
+        <ActivityHeatmap reviewLog={reviewLog} />
+      </div>
+      <RetentionChart reviewLog={reviewLog} />
 
       {hasData && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
