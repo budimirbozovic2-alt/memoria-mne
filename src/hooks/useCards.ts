@@ -207,6 +207,16 @@ export function useCards() {
     setCards((prev) => prev.map((c) => c.id === id ? { ...c, readCount: (c.readCount || 0) + 1 } : c));
   }, [setCards]);
 
+  const bulkUpdateCategory = useCallback((ids: string[], category: string, subcategory?: string) => {
+    setCards((prev) => prev.map((c) => {
+      if (!ids.includes(c.id)) return c;
+      return { ...c, category, subcategory: subcategory || "" };
+    }));
+    if (!categories.includes(category)) {
+      setCategories((prev) => [...prev, category]);
+    }
+  }, [setCards, categories, setCategories]);
+
   const toggleTag = useCallback((cardId: string, tag: string) => {
     setCards((prev) => prev.map((c) => {
       if (c.id !== cardId) return c;
@@ -300,7 +310,7 @@ export function useCards() {
 
   return {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings,
-    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag,
+    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateCategory,
     exportData, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,

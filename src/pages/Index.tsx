@@ -9,7 +9,7 @@ import CategoryManager from "@/components/CategoryManager";
 import DocxImporter from "@/components/DocxImporter";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
 import { Card, CARD_TAGS } from "@/lib/spaced-repetition";
-import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Tag } from "lucide-react";
+import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Tag, CheckSquare, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings";
@@ -17,7 +17,7 @@ type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" 
 const Index = () => {
   const {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings,
-    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag,
+    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateCategory,
     exportData, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,
@@ -33,6 +33,36 @@ const Index = () => {
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkSubcategory, setBulkSubcategory] = useState("");
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkApply = () => {
+    if (selectedIds.size === 0 || !bulkCategory) return;
+    bulkUpdateCategory(Array.from(selectedIds), bulkCategory, bulkSubcategory || undefined);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkCategory("");
+    setBulkSubcategory("");
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkCategory("");
+    setBulkSubcategory("");
+  };
+
+  const bulkSubcats = bulkCategory ? (subcategories[bulkCategory] || []) : [];
 
   const toggleDark = () => {
     document.documentElement.classList.toggle("dark");
@@ -155,10 +185,67 @@ const Index = () => {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-3xl font-serif">Kartice</h2>
-                  <button onClick={() => setView("create")} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:opacity-90 transition-opacity">
-                    <Plus className="h-4 w-4" /> Nova
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${selectionMode ? "bg-secondary text-secondary-foreground" : "border text-muted-foreground hover:bg-secondary"}`}
+                    >
+                      {selectionMode ? <><X className="h-4 w-4" /> Otkaži</> : <><CheckSquare className="h-4 w-4" /> Označi</>}
+                    </button>
+                    <button onClick={() => setView("create")} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm hover:opacity-90 transition-opacity">
+                      <Plus className="h-4 w-4" /> Nova
+                    </button>
+                  </div>
                 </div>
+
+                {/* Bulk action bar */}
+                {selectionMode && (
+                  <div className="flex items-center gap-3 flex-wrap p-4 rounded-xl bg-secondary/50 border">
+                    <span className="text-sm font-medium">{selectedIds.size} označeno</span>
+                    <button
+                      onClick={() => {
+                        const allFiltered = cards.filter((c) => {
+                          if (filterCategory && c.category !== filterCategory) return false;
+                          if (filterSubcategory && c.subcategory !== filterSubcategory) return false;
+                          return true;
+                        });
+                        setSelectedIds(new Set(allFiltered.map((c) => c.id)));
+                      }}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Označi sve
+                    </button>
+                    <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:underline">
+                      Poništi
+                    </button>
+                    <div className="flex-1" />
+                    <select
+                      value={bulkCategory}
+                      onChange={(e) => { setBulkCategory(e.target.value); setBulkSubcategory(""); }}
+                      className="px-3 py-1.5 rounded-lg border bg-background text-sm"
+                    >
+                      <option value="">Kategorija...</option>
+                      {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    {bulkSubcats.length > 0 && (
+                      <select
+                        value={bulkSubcategory}
+                        onChange={(e) => setBulkSubcategory(e.target.value)}
+                        className="px-3 py-1.5 rounded-lg border bg-background text-sm"
+                      >
+                        <option value="">Podkategorija...</option>
+                        {bulkSubcats.map((sc) => <option key={sc} value={sc}>{sc}</option>)}
+                      </select>
+                    )}
+                    <button
+                      onClick={handleBulkApply}
+                      disabled={selectedIds.size === 0 || !bulkCategory}
+                      className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 disabled:opacity-50 transition-opacity"
+                    >
+                      Primijeni
+                    </button>
+                  </div>
+                )}
 
                 {/* Search */}
                 <div className="relative">
@@ -223,7 +310,7 @@ const Index = () => {
                   ))}
                 </div>
 
-                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} filterTag={filterTag} searchQuery={searchQuery} onEdit={handleEdit} onDelete={deleteCard} onToggleTag={toggleTag} scrollToCardId={scrollToCardId} onScrolledTo={() => setScrollToCardId(null)} />
+                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} filterTag={filterTag} searchQuery={searchQuery} onEdit={handleEdit} onDelete={deleteCard} onToggleTag={toggleTag} scrollToCardId={scrollToCardId} onScrolledTo={() => setScrollToCardId(null)} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
               </div>
             </motion.div>
           )}
