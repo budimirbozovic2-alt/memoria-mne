@@ -1,8 +1,8 @@
-import { Brain, Clock, Layers, BookOpen, TrendingUp, AlertTriangle, Download, HardDrive } from "lucide-react";
-import { motion } from "framer-motion";
+import { Brain, Clock, Layers, BookOpen, TrendingUp, AlertTriangle, Download, HardDrive, ChevronDown, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, getCardScore, getSectionScore, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell,
@@ -16,6 +16,7 @@ interface Props {
   stats: { due: number; total: number; totalSections: number; learnedSections: number };
   categoryStats: Record<string, { score: number; total: number; due: number }>;
   categories: string[];
+  subcategories: Record<string, string[]>;
   cards: Card[];
   reviewLog: ReviewLogEntry[];
   srSettings: SRSettings;
@@ -57,7 +58,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog, srSettings, onExport }: Props) {
+export default function Dashboard({ stats, categoryStats, categories, subcategories, cards, reviewLog, srSettings, onExport }: Props) {
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const avgRetrievability = useMemo(() => {
     const reviewed = cards.filter((c) => c.sections.some((s) => s.lastReviewed !== null));
     if (reviewed.length === 0) return 0;
@@ -305,7 +307,7 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
         </div>
       )}
 
-      {/* Category list */}
+      {/* Category list with subcategory drill-down */}
       {categories.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -318,18 +320,90 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
             {categories.map((cat) => {
               const s = categoryStats[cat];
               if (!s || s.total === 0) return null;
+              const isExpanded = expandedCategory === cat;
+              const subs = subcategories[cat] || [];
+              const catCards = cards.filter((c) => c.category === cat);
+
+              // Compute subcategory stats
+              const subStats = subs.map((sub) => {
+                const subCards = catCards.filter((c) => c.subcategory === sub);
+                if (subCards.length === 0) return null;
+                const scores = subCards.map(getCardScore);
+                const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+                const due = subCards.filter((c) => c.sections.some((sec) => sec.nextReview <= Date.now())).length;
+                return { name: sub, score: avgScore, total: subCards.length, due };
+              }).filter(Boolean) as { name: string; score: number; total: number; due: number }[];
+
+              // Cards without subcategory
+              const uncat = catCards.filter((c) => !c.subcategory);
+              if (uncat.length > 0 && subs.length > 0) {
+                const scores = uncat.map(getCardScore);
+                const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+                const due = uncat.filter((c) => c.sections.some((sec) => sec.nextReview <= Date.now())).length;
+                subStats.push({ name: "Bez podkategorije", score: avgScore, total: uncat.length, due });
+              }
+
+              const hasSubData = subStats.length > 1;
+
               return (
-                <div key={cat} className="rounded-xl bg-card border p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{cat}</span>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <span>{s.score}%</span>
-                      {s.due > 0 && (
-                        <span className="text-primary">{s.due} za ponavljanje</span>
-                      )}
+                <div key={cat} className="rounded-xl bg-card border overflow-hidden">
+                  <button
+                    onClick={() => hasSubData && setExpandedCategory(isExpanded ? null : cat)}
+                    className={`w-full p-4 space-y-2 text-left ${hasSubData ? "cursor-pointer hover:bg-secondary/30 transition-colors" : ""}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {hasSubData && (
+                          isExpanded
+                            ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="font-medium">{cat}</span>
+                        <span className="text-xs text-muted-foreground">{s.total} kartica</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className={`font-medium ${s.score >= 70 ? "text-success" : s.score >= 40 ? "text-warning" : "text-destructive"}`}>{s.score}%</span>
+                        {s.due > 0 && (
+                          <span className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full">{s.due} za pon.</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <ScoreBar score={s.score} />
+                    <ScoreBar score={s.score} />
+                  </button>
+
+                  <AnimatePresence>
+                    {isExpanded && hasSubData && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 pt-1 space-y-2 border-t">
+                          {subStats
+                            .sort((a, b) => a.score - b.score)
+                            .map((sub) => {
+                              const level = sub.score >= 70 ? "text-success" : sub.score >= 40 ? "text-warning" : "text-destructive";
+                              const levelBg = sub.score >= 70 ? "bg-success" : sub.score >= 40 ? "bg-warning" : "bg-destructive";
+                              const levelLabel = sub.score >= 70 ? "Jako" : sub.score >= 40 ? "Srednje" : "Slabo";
+                              return (
+                                <div key={sub.name} className="flex items-center gap-3 py-1.5">
+                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${levelBg}`} />
+                                  <span className="text-sm flex-1 min-w-0 truncate">{sub.name}</span>
+                                  <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${level} ${levelBg}/10`}>{levelLabel}</span>
+                                  <span className={`text-sm font-medium tabular-nums ${level}`}>{sub.score}%</span>
+                                  <span className="text-xs text-muted-foreground">{sub.total} k.</span>
+                                  {sub.due > 0 && (
+                                    <span className="text-[10px] text-primary">{sub.due} pon.</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               );
             })}
