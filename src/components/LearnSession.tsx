@@ -215,7 +215,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const isFlash = card.type === "flash";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
       <div className="flex items-center justify-between">
         <button onClick={() => setStarted(false)} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Nazad
