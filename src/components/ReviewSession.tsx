@@ -255,6 +255,8 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
       sectionIndex={0}
       totalSectionsInCard={1}
       srSettings={srSettings}
+      viewWidth={viewWidth}
+      onViewWidthChange={setViewWidth}
     />
   );
 }
