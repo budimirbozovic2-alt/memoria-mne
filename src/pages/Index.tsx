@@ -181,7 +181,7 @@ const Index = () => {
           )}
           {view === "frequent-errors" && (
             <motion.div key="errors" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <FrequentErrors cards={cards} onBack={() => setView("dashboard")} />
+              <FrequentErrors cards={cards} onBack={() => setView("dashboard")} onClearErrorLog={clearErrorLog} />
             </motion.div>
           )}
           {view === "cards" && (
