@@ -13,6 +13,8 @@ interface Props {
   onEdit: (card: Card) => void;
   onDelete: (id: string) => void;
   onToggleTag: (cardId: string, tag: string) => void;
+  scrollToCardId?: string | null;
+  onScrolledTo?: () => void;
 }
 
 function ScoreBadge({ score }: { score: number }) {
@@ -89,8 +91,19 @@ function TagBadge({ tagId }: { tagId: string }) {
   );
 }
 
-export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", searchQuery = "", onEdit, onDelete, onToggleTag }: Props) {
+export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", searchQuery = "", onEdit, onDelete, onToggleTag, scrollToCardId, onScrolledTo }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollToCardId && scrollRef.current) {
+      const el = scrollRef.current.querySelector(`[data-card-id="${scrollToCardId}"]`);
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+      }
+      onScrolledTo?.();
+    }
+  }, [scrollToCardId, onScrolledTo]);
   let filtered = filterCategory ? cards.filter((c) => c.category === filterCategory) : cards;
   if (filterSubcategory) {
     filtered = filtered.filter((c) => c.subcategory === filterSubcategory);
@@ -115,7 +128,7 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" ref={scrollRef}>
       {filtered.map((card, i) => {
         const expanded = expandedId === card.id;
         const score = getCardScore(card);
@@ -127,7 +140,8 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.03 }}
-            className="rounded-xl bg-card border hover:border-primary/30 transition-colors overflow-hidden"
+            className={`rounded-xl bg-card border hover:border-primary/30 transition-colors overflow-hidden ${scrollToCardId === card.id ? "ring-2 ring-primary/50" : ""}`}
+            data-card-id={card.id}
           >
             <div className="p-5">
               <div className="flex items-start justify-between gap-4">

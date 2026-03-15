@@ -26,6 +26,7 @@ const Index = () => {
   const [docxOpen, setDocxOpen] = useState(false);
   const [view, setView] = useState<View>("dashboard");
   const [editingCard, setEditingCard] = useState<Card | null>(null);
+  const [scrollToCardId, setScrollToCardId] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterSubcategory, setFilterSubcategory] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
@@ -123,7 +124,7 @@ const Index = () => {
                 onSaveFlash={(q, a, c, sub) => { addFlashCard(q, a, c, sub); setView("cards"); }}
                 onCancel={() => { setView("dashboard"); setEditingCard(null); }}
                 editCard={view === "edit" ? editingCard : null}
-                onUpdate={(id, u) => { updateCard(id, u); setView("cards"); setEditingCard(null); }}
+                onUpdate={(id, u) => { updateCard(id, u); setScrollToCardId(id); setView("cards"); setEditingCard(null); }}
               />
             </motion.div>
           )}
@@ -209,7 +210,7 @@ const Index = () => {
                   </div>
                 )}
 
-                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} searchQuery={searchQuery} onEdit={handleEdit} onDelete={deleteCard} onToggleTag={toggleTag} />
+                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} searchQuery={searchQuery} onEdit={handleEdit} onDelete={deleteCard} onToggleTag={toggleTag} scrollToCardId={scrollToCardId} onScrolledTo={() => setScrollToCardId(null)} />
               </div>
             </motion.div>
           )}
