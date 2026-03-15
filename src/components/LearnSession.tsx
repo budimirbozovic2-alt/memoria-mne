@@ -220,9 +220,24 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
         <button onClick={() => setStarted(false)} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Nazad
         </button>
-        <span className="text-sm text-muted-foreground">
-          {currentIndex + 1} / {sortedCards.length}
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-1 bg-secondary rounded-lg p-1">
+            {(Object.keys(viewWidthClasses) as ViewWidth[]).map((w) => (
+              <button
+                key={w}
+                onClick={() => setViewWidth(w)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewWidth === w ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {viewWidthLabels[w]}
+              </button>
+            ))}
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {currentIndex + 1} / {sortedCards.length}
+          </span>
+        </div>
       </div>
 
       {/* Progress bar */}
