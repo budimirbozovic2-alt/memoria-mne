@@ -207,6 +207,16 @@ export function useCards() {
     setCards((prev) => prev.map((c) => c.id === id ? { ...c, readCount: (c.readCount || 0) + 1 } : c));
   }, [setCards]);
 
+  const bulkUpdateCategory = useCallback((ids: string[], category: string, subcategory?: string) => {
+    setCards((prev) => prev.map((c) => {
+      if (!ids.includes(c.id)) return c;
+      return { ...c, category, subcategory: subcategory || "" };
+    }));
+    if (!categories.includes(category)) {
+      setCategories((prev) => [...prev, category]);
+    }
+  }, [setCards, categories, setCategories]);
+
   const toggleTag = useCallback((cardId: string, tag: string) => {
     setCards((prev) => prev.map((c) => {
       if (c.id !== cardId) return c;
