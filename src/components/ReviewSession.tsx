@@ -8,6 +8,21 @@ import { speak, stopSpeaking } from "@/lib/tts";
 import { useToast } from "@/hooks/use-toast";
 
 type ReviewMode = "essay" | "random" | null;
+type ViewWidth = "compact" | "normal" | "wide" | "full";
+
+const viewWidthClasses: Record<ViewWidth, string> = {
+  compact: "max-w-xl",
+  normal: "max-w-2xl",
+  wide: "max-w-4xl",
+  full: "max-w-full",
+};
+
+const viewWidthLabels: Record<ViewWidth, string> = {
+  compact: "S",
+  normal: "M",
+  wide: "L",
+  full: "XL",
+};
 
 interface DueItem {
   card: Card;
@@ -32,6 +47,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
   const [randomIndex, setRandomIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
 
   const dueCategories = useMemo(() => {
     const cats = new Set(dueCards.map((c) => c.category));
@@ -200,6 +216,8 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
         sectionIndex={sectionIndex}
         totalSectionsInCard={dueSections.length}
         srSettings={srSettings}
+        viewWidth={viewWidth}
+        onViewWidthChange={setViewWidth}
       />
     );
   }
@@ -237,6 +255,8 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
       sectionIndex={0}
       totalSectionsInCard={1}
       srSettings={srSettings}
+      viewWidth={viewWidth}
+      onViewWidthChange={setViewWidth}
     />
   );
 }
@@ -257,7 +277,7 @@ function FinishedScreen({ onBack }: { onBack: () => void }) {
 
 function ReviewCard({
   card, section, showAnswer, setShowAnswer, onGrade, onLogError, onBack,
-  progress, total, sectionIndex, totalSectionsInCard, srSettings,
+  progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange,
 }: {
   card: Card; section: Section; showAnswer: boolean;
   setShowAnswer: (v: boolean) => void; onGrade: (g: number) => void;
@@ -265,6 +285,7 @@ function ReviewCard({
   onBack: () => void; progress: number; total: number;
   sectionIndex: number; totalSectionsInCard: number;
   srSettings: SRSettings;
+  viewWidth: ViewWidth; onViewWidthChange: (w: ViewWidth) => void;
 }) {
   const { toast } = useToast();
 
@@ -296,14 +317,29 @@ function ReviewCard({
   const intervals = previewIntervals(section);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Nazad
         </button>
-        <span className="text-sm text-muted-foreground">
-          {progress + 1} / {total}
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-1 bg-secondary rounded-lg p-1">
+            {(Object.keys(viewWidthClasses) as ViewWidth[]).map((w) => (
+              <button
+                key={w}
+                onClick={() => onViewWidthChange(w)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewWidth === w ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {viewWidthLabels[w]}
+              </button>
+            ))}
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {progress + 1} / {total}
+          </span>
+        </div>
       </div>
 
       <div className="w-full h-1.5 rounded-full bg-secondary overflow-hidden">

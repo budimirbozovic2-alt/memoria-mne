@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, getCardScore } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, ListOrdered, Zap, Volume2 } from "lucide-react";
@@ -7,6 +7,21 @@ import { Button } from "@/components/ui/button";
 import { speak } from "@/lib/tts";
 
 type SortMode = "order" | "weakest" | "leastRead";
+type ViewWidth = "compact" | "normal" | "wide" | "full";
+
+const viewWidthClasses: Record<ViewWidth, string> = {
+  compact: "max-w-xl",
+  normal: "max-w-2xl",
+  wide: "max-w-4xl",
+  full: "max-w-full",
+};
+
+const viewWidthLabels: Record<ViewWidth, string> = {
+  compact: "S",
+  normal: "M",
+  wide: "L",
+  full: "XL",
+};
 
 interface Props {
   cards: Card[];
@@ -24,6 +39,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const [currentIndex, setCurrentIndex] = useState(0);
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
   const [readCards, setReadCards] = useState<Set<string>>(new Set());
+  const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
 
   const availableCategories = useMemo(() => {
     const cats = new Set(cards.map((c) => c.category));
@@ -199,14 +215,29 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const isFlash = card.type === "flash";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
       <div className="flex items-center justify-between">
         <button onClick={() => setStarted(false)} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" /> Nazad
         </button>
-        <span className="text-sm text-muted-foreground">
-          {currentIndex + 1} / {sortedCards.length}
-        </span>
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-1 bg-secondary rounded-lg p-1">
+            {(Object.keys(viewWidthClasses) as ViewWidth[]).map((w) => (
+              <button
+                key={w}
+                onClick={() => setViewWidth(w)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  viewWidth === w ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {viewWidthLabels[w]}
+              </button>
+            ))}
+          </div>
+          <span className="text-sm text-muted-foreground">
+            {currentIndex + 1} / {sortedCards.length}
+          </span>
+        </div>
       </div>
 
       {/* Progress bar */}
