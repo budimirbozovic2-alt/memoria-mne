@@ -124,7 +124,7 @@ const Index = () => {
                 onSaveFlash={(q, a, c, sub) => { addFlashCard(q, a, c, sub); setView("cards"); }}
                 onCancel={() => { setView("dashboard"); setEditingCard(null); }}
                 editCard={view === "edit" ? editingCard : null}
-                onUpdate={(id, u) => { updateCard(id, u); setView("cards"); setEditingCard(null); }}
+                onUpdate={(id, u) => { updateCard(id, u); setScrollToCardId(id); setView("cards"); setEditingCard(null); }}
               />
             </motion.div>
           )}
