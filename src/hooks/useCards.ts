@@ -119,8 +119,25 @@ export function useCards() {
         addReviewLogEntry(entry);
         setReviewLog((log) => [...log, entry]);
 
+        // Track success on error log entries when grade >= 3 (Good/Easy)
+        let errorLog = c.errorLog;
+        if (errorLog && errorLog.length > 0 && grade >= 3) {
+          errorLog = errorLog.map((e) => ({
+            ...e,
+            recentSuccesses: (e.recentSuccesses || 0) + 1,
+            successStreak: (e.successStreak || 0) + 1,
+          }));
+        } else if (errorLog && errorLog.length > 0 && grade === 1) {
+          // Reset streak on "Again"
+          errorLog = errorLog.map((e) => ({
+            ...e,
+            successStreak: 0,
+          }));
+        }
+
         return {
           ...c,
+          ...(errorLog ? { errorLog } : {}),
           sections: c.sections.map((s) => {
             if (s.id !== sectionId) return s;
             return { ...s, ...calculateNextReview(s, grade) };
