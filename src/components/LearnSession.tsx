@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown
 import { Button } from "@/components/ui/button";
 import { speak } from "@/lib/tts";
 
-type SortMode = "order" | "weakest" | "strongest";
+type SortMode = "order" | "weakest" | "leastRead";
 
 interface Props {
   cards: Card[];
