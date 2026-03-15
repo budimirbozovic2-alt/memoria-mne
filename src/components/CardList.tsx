@@ -91,8 +91,19 @@ function TagBadge({ tagId }: { tagId: string }) {
   );
 }
 
-export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", searchQuery = "", onEdit, onDelete, onToggleTag }: Props) {
+export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", searchQuery = "", onEdit, onDelete, onToggleTag, scrollToCardId, onScrolledTo }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollToCardId && scrollRef.current) {
+      const el = scrollRef.current.querySelector(`[data-card-id="${scrollToCardId}"]`);
+      if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+      }
+      onScrolledTo?.();
+    }
+  }, [scrollToCardId, onScrolledTo]);
   let filtered = filterCategory ? cards.filter((c) => c.category === filterCategory) : cards;
   if (filterSubcategory) {
     filtered = filtered.filter((c) => c.subcategory === filterSubcategory);
