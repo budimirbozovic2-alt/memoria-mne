@@ -151,6 +151,43 @@ export default function Dashboard({ stats, categoryStats, categories, cards, rev
         ))}
       </div>
 
+      {/* Alerts */}
+      {(backupOverdue || storageUsage.percent > 70) && (
+        <div className="space-y-3">
+          {backupOverdue && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 p-4 rounded-xl border border-warning/30 bg-warning/5">
+              <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Vrijeme je za backup</p>
+                <p className="text-xs text-muted-foreground">
+                  {lastBackup > 0 ? `Posljednji backup: ${new Date(lastBackup).toLocaleDateString("sr-Latn")}` : "Nikad niste napravili backup."}
+                  {" "}Podaci su samo u ovom pretraživaču.
+                </p>
+              </div>
+              {onExport && (
+                <button onClick={onExport} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity">
+                  <Download className="h-3.5 w-3.5" /> Izvezi
+                </button>
+              )}
+            </motion.div>
+          )}
+          {storageUsage.percent > 70 && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex items-center gap-3 p-4 rounded-xl border ${storageUsage.percent > 90 ? "border-destructive/30 bg-destructive/5" : "border-warning/30 bg-warning/5"}`}>
+              <HardDrive className={`h-5 w-5 flex-shrink-0 ${storageUsage.percent > 90 ? "text-destructive" : "text-warning"}`} />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Prostor za podatke: {storageUsage.percent}%</p>
+                <p className="text-xs text-muted-foreground">
+                  {(storageUsage.usedBytes / 1024 / 1024).toFixed(1)} MB / {(storageUsage.maxBytes / 1024 / 1024).toFixed(0)} MB iskorišteno
+                </p>
+              </div>
+              <div className="w-24 h-2 rounded-full bg-secondary overflow-hidden">
+                <div className={`h-full rounded-full transition-all ${storageUsage.percent > 90 ? "bg-destructive" : "bg-warning"}`} style={{ width: `${storageUsage.percent}%` }} />
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
+
       {/* Streak + Heatmap + Retention */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <StreakWidget reviewLog={reviewLog} dailyGoal={srSettings.dailyGoal} />
