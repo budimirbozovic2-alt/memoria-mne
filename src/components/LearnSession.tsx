@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, getCardScore } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, ListOrdered, Zap, Volume2 } from "lucide-react";
