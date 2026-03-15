@@ -234,6 +234,7 @@ export function useCards() {
     a.download = `memoria-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    setLastBackupTime();
   }, [cards, categories, subcategories, reviewLog, srSettings]);
 
   const importData = useCallback((file: File) => {
