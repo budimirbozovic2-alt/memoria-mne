@@ -1,6 +1,7 @@
-import { Brain, Clock, Layers, BookOpen, TrendingUp, AlertTriangle, Download, HardDrive, ChevronDown, ChevronRight, AlertCircle, LayoutGrid } from "lucide-react";
+import { Brain, Clock, Layers, BookOpen, TrendingUp, AlertTriangle, Download, HardDrive, ChevronDown, ChevronRight, LayoutGrid } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, getCardScore, getSectionScore, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
+import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
 import { useMemo, useState } from "react";
 import {
@@ -21,7 +22,6 @@ interface Props {
   reviewLog: ReviewLogEntry[];
   srSettings: SRSettings;
   onExport?: () => void;
-  onShowErrors?: () => void;
   onShowKnowledgeMap?: () => void;
 }
 
@@ -60,7 +60,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function Dashboard({ stats, categoryStats, categories, subcategories, cards, reviewLog, srSettings, onExport, onShowErrors, onShowKnowledgeMap }: Props) {
+export default function Dashboard({ stats, categoryStats, categories, subcategories, cards, reviewLog, srSettings, onExport, onShowKnowledgeMap }: Props) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const avgRetrievability = useMemo(() => {
     const reviewed = cards.filter((c) => c.sections.some((s) => s.lastReviewed !== null));
@@ -192,43 +192,57 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </div>
       )}
 
-      {/* Frequent Errors Button */}
-      {onShowErrors && (
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={onShowErrors}
-          className="w-full flex items-center gap-3 p-4 rounded-xl border bg-card hover:border-destructive/40 transition-colors group"
-        >
-          <div className="p-2 rounded-lg bg-destructive/10 text-destructive group-hover:bg-destructive/15 transition-colors">
-            <AlertCircle className="h-5 w-5" />
-          </div>
-          <div className="text-left flex-1">
-            <p className="font-medium text-sm">Najčešće greške</p>
-            <p className="text-xs text-muted-foreground">Pregledaj tekst koji najčešće promašuješ</p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </motion.button>
-      )}
+      {/* Knowledge Overview Widget */}
+      {onShowKnowledgeMap && cards.length > 0 && (() => {
+        const levelCounts = [0, 0, 0, 0, 0, 0];
+        cards.forEach((c) => { levelCounts[getCardMasteryLevel(c)]++; });
+        const total = cards.length;
+        return (
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={onShowKnowledgeMap}
+            className="w-full rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors group text-left space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 text-primary" />
+                <h3 className="font-serif text-lg">Mapa Znanja</h3>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+            </div>
+            {/* Horizontal stacked bar */}
+            <div className="flex h-4 rounded-full overflow-hidden bg-secondary">
+              {levelCounts.map((count, lvl) => {
+                if (count === 0) return null;
+                return (
+                  <div
+                    key={lvl}
+                    style={{ width: `${(count / total) * 100}%`, backgroundColor: MASTERY_LEVELS[lvl].color }}
+                    className="transition-all"
+                  />
+                );
+              })}
+            </div>
+            {/* Labels */}
+            <div className="flex flex-wrap gap-x-4 gap-y-1">
+              {levelCounts.map((count, lvl) => {
+                if (count === 0) return null;
+                return (
+                  <div key={lvl} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: MASTERY_LEVELS[lvl].color }} />
+                    {MASTERY_LEVELS[lvl].label}: <span className="font-medium text-foreground">{Math.round(count / total * 100)}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.button>
+        );
+      })()}
 
       {/* Knowledge Map Button */}
-      {onShowKnowledgeMap && (
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={onShowKnowledgeMap}
-          className="w-full flex items-center gap-3 p-4 rounded-xl border bg-card hover:border-primary/40 transition-colors group"
-        >
-          <div className="p-2 rounded-lg bg-primary/10 text-primary group-hover:bg-primary/15 transition-colors">
-            <LayoutGrid className="h-5 w-5" />
-          </div>
-          <div className="text-left flex-1">
-            <p className="font-medium text-sm">Mapa Znanja</p>
-            <p className="text-xs text-muted-foreground">Vizualni pregled savladanosti svih kartica</p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        </motion.button>
-      )}
+
+
 
       {/* Streak + Heatmap + Retention */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
