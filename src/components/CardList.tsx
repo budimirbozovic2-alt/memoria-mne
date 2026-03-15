@@ -211,12 +211,14 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
                     ) : (
                       card.sections.map((s) => {
                         const sScore = getSectionScore(s);
+                        const sRetention = getRetrievability(s);
                         return (
                           <div key={s.id} className="space-y-1.5">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium">{s.title}</span>
                               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <ScoreBadge score={sScore} />
+                                <RetentionBadge retention={sRetention} />
                                 <span>S: {s.stability?.toFixed(1) ?? 0}d</span>
                                 <span>Sljedeće: {format(new Date(s.nextReview), "dd.MM")}</span>
                               </div>
