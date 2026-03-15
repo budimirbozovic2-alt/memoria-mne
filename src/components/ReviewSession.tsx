@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Eye, ChevronRight, BookOpen, Shuffle, AlertTriangle, Volume2 } from "lucide-react";
+import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak, stopSpeaking } from "@/lib/tts";
 import { useToast } from "@/hooks/use-toast";
@@ -100,10 +101,10 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
 
             {/* Subcategory filter */}
             {selectedCategory && dueSubcategories.length > 0 && (
-              <div className="flex gap-2 flex-wrap pl-3 border-l-2 border-primary/20 ml-1 mt-2">
+              <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1 mt-2">
                 <button
                   onClick={() => setSelectedSubcategory(null)}
-                  className={`px-2.5 py-1 rounded-md text-xs transition-colors ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
                 >
                   Sve podkat.
                 </button>
@@ -111,12 +112,12 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
                   <button
                     key={sc}
                     onClick={() => setSelectedSubcategory(sc)}
-                    className={`px-2.5 py-1 rounded-md text-xs transition-colors ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
                   >
                     {sc}
                   </button>
                 ))}
-              </div>
+              </ScrollableRow>
             )}
           </div>
         )}
