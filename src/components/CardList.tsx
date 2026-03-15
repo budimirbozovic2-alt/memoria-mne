@@ -146,6 +146,7 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
       {filtered.map((card, i) => {
         const expanded = expandedId === card.id;
         const score = getCardScore(card);
+        const retention = getCardRetrievability(card);
         const isFlash = card.type === "flash";
         const cardTags = card.tags || [];
         return (
