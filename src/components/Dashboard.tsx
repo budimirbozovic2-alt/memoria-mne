@@ -57,7 +57,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog, srSettings }: Props) {
+export default function Dashboard({ stats, categoryStats, categories, cards, reviewLog, srSettings, onExport }: Props) {
   const avgRetrievability = useMemo(() => {
     const reviewed = cards.filter((c) => c.sections.some((s) => s.lastReviewed !== null));
     if (reviewed.length === 0) return 0;
