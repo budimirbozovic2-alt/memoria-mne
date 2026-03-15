@@ -25,6 +25,16 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
+function RetentionBadge({ retention }: { retention: number }) {
+  if (retention === 0) return null;
+  const color = retention >= 90 ? "text-success" : retention >= 70 ? "text-warning" : "text-destructive";
+  return (
+    <span className={`text-xs flex items-center gap-0.5 ${color}`} title="Vjerovatnoća prisjećanja">
+      <Brain className="h-3 w-3" />{retention}%
+    </span>
+  );
+}
+
 function SectionBar({ score }: { score: number }) {
   const color = score >= 70 ? "bg-success" : score >= 40 ? "bg-warning" : score > 0 ? "bg-destructive" : "bg-muted-foreground/30";
   return (
