@@ -21,7 +21,7 @@ interface Props {
   onBack: () => void;
 }
 
-export default function ReviewSession({ dueCards, srSettings, onReviewSection, onBack }: Props) {
+export default function ReviewSession({ dueCards, srSettings, onReviewSection, onLogError, onBack }: Props) {
   const [mode, setMode] = useState<ReviewMode>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cardIndex, setCardIndex] = useState(0);
