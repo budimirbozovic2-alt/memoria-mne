@@ -131,7 +131,7 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
                     ) : (
                       <span className="text-xs text-muted-foreground">{card.sections.length} cjelina</span>
                     )}
-                    {cardTags.map((t) => <TagBadge key={t} tagId={t} />)}
+                    
                   </div>
                   <p className="font-serif text-lg line-clamp-2">{card.question}</p>
                 </div>
