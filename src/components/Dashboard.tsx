@@ -19,6 +19,7 @@ interface Props {
   cards: Card[];
   reviewLog: ReviewLogEntry[];
   srSettings: SRSettings;
+  onExport?: () => void;
 }
 
 function ScoreBar({ score }: { score: number }) {
