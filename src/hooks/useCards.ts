@@ -250,16 +250,23 @@ export function useCards() {
       if (existing) {
         existing.count += 1;
         existing.lastMissed = new Date().toISOString();
+        existing.successStreak = 0; // Reset streak on new error
       } else {
-        errorLog.push({ text, count: 1, category: c.category, lastMissed: new Date().toISOString() });
+        errorLog.push({ text, count: 1, recentSuccesses: 0, successStreak: 0, category: c.category, lastMissed: new Date().toISOString() });
       }
-      // Adjust FSRS: increase difficulty, reduce stability on all sections
       const sections = c.sections.map((s) => ({
         ...s,
         difficulty: Math.min(10, s.difficulty + 0.5),
         stability: Math.max(0.1, s.stability * 0.85),
       }));
       return { ...c, errorLog, sections };
+    }));
+  }, [setCards]);
+
+  const clearErrorLog = useCallback((cardId: string) => {
+    setCards((prev) => prev.map((c) => {
+      if (c.id !== cardId) return c;
+      return { ...c, errorLog: [] };
     }));
   }, [setCards]);
 
