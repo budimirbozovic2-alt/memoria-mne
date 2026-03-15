@@ -38,8 +38,16 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
   }, [dueCards]);
 
   const filteredDueCards = useMemo(() => {
-    if (!selectedCategory) return dueCards;
-    return dueCards.filter((c) => c.category === selectedCategory);
+    let filtered = dueCards;
+    if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
+    if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
+    return filtered;
+  }, [dueCards, selectedCategory, selectedSubcategory]);
+
+  const dueSubcategories = useMemo(() => {
+    if (!selectedCategory) return [];
+    const subs = new Set(dueCards.filter((c) => c.category === selectedCategory && c.subcategory).map((c) => c.subcategory!));
+    return Array.from(subs).sort();
   }, [dueCards, selectedCategory]);
 
   const randomItems = useMemo<DueItem[]>(() => {
