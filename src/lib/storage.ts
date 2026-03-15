@@ -1,4 +1,4 @@
-import { Card, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "./spaced-repetition";
+import { Card, createSection, SRSettings, DEFAULT_SR_SETTINGS, SectionState } from "./spaced-repetition";
 
 const CARDS_KEY = "sr-essay-cards";
 const CATEGORIES_KEY = "sr-essay-categories";
@@ -15,21 +15,32 @@ export interface ReviewLogEntry {
 }
 
 function migrateSection(s: any): any {
-  // Migrate from SM-2 to FSRS v5
   const migrated = {
     ...s,
     lapses: s.lapses || 0,
     stability: s.stability ?? 0,
     difficulty: s.difficulty ?? 5,
+    elapsedDays: s.elapsedDays ?? 0,
+    scheduledDays: s.scheduledDays ?? (s.interval || 0),
   };
+
+  // Migrate state field
+  if (s.state === undefined) {
+    if (s.lastReviewed === null || s.lastReviewed === undefined) {
+      migrated.state = SectionState.New;
+    } else if (s.stability > 0 && s.interval > 1) {
+      migrated.state = SectionState.Review;
+    } else {
+      migrated.state = SectionState.Learning;
+    }
+  }
 
   // If section has old SM-2 fields but no FSRS stability, estimate from old data
   if (s.stability === undefined && s.easeFactor !== undefined) {
     if (s.repetitions > 0 && s.interval > 0) {
-      // Estimate stability from old interval
       migrated.stability = s.interval / (Math.log(0.95) / Math.log(0.9));
-      // Estimate difficulty from easeFactor (EF 2.5 → D=5, EF 1.3 → D=9)
       migrated.difficulty = Math.max(1, Math.min(10, Math.round(10 - (s.easeFactor - 1.3) * (7 / 1.2))));
+      migrated.state = SectionState.Review;
     }
   }
 
@@ -63,6 +74,21 @@ function migrateCard(card: any): Card {
   };
 }
 
+// Generic localStorage helpers
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveToStorage<T>(key: string, value: T): void {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+// Cards
 export function loadCards(): Card[] {
   try {
     const data = localStorage.getItem(CARDS_KEY);
@@ -73,46 +99,34 @@ export function loadCards(): Card[] {
 }
 
 export function saveCards(cards: Card[]) {
-  localStorage.setItem(CARDS_KEY, JSON.stringify(cards));
+  saveToStorage(CARDS_KEY, cards);
 }
 
+// Categories
 export function loadCategories(): string[] {
-  try {
-    const data = localStorage.getItem(CATEGORIES_KEY);
-    return data ? JSON.parse(data) : ["Opšte"];
-  } catch {
-    return ["Opšte"];
-  }
+  return loadFromStorage(CATEGORIES_KEY, ["Opšte"]);
 }
 
 export function saveCategories(categories: string[]) {
-  localStorage.setItem(CATEGORIES_KEY, JSON.stringify(categories));
+  saveToStorage(CATEGORIES_KEY, categories);
 }
 
+// Subcategories
 export function loadSubcategories(): Record<string, string[]> {
-  try {
-    const data = localStorage.getItem(SUBCATEGORIES_KEY);
-    return data ? JSON.parse(data) : {};
-  } catch {
-    return {};
-  }
+  return loadFromStorage(SUBCATEGORIES_KEY, {});
 }
 
 export function saveSubcategories(subcategories: Record<string, string[]>) {
-  localStorage.setItem(SUBCATEGORIES_KEY, JSON.stringify(subcategories));
+  saveToStorage(SUBCATEGORIES_KEY, subcategories);
 }
 
+// Review Log
 export function loadReviewLog(): ReviewLogEntry[] {
-  try {
-    const data = localStorage.getItem(REVIEW_LOG_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
+  return loadFromStorage(REVIEW_LOG_KEY, []);
 }
 
 export function saveReviewLog(log: ReviewLogEntry[]) {
-  localStorage.setItem(REVIEW_LOG_KEY, JSON.stringify(log));
+  saveToStorage(REVIEW_LOG_KEY, log);
 }
 
 export function addReviewLogEntry(entry: ReviewLogEntry) {
@@ -121,6 +135,7 @@ export function addReviewLogEntry(entry: ReviewLogEntry) {
   saveReviewLog(log);
 }
 
+// SR Settings
 export function loadSRSettings(): SRSettings {
   try {
     const data = localStorage.getItem(SR_SETTINGS_KEY);
@@ -131,5 +146,5 @@ export function loadSRSettings(): SRSettings {
 }
 
 export function saveSRSettings(settings: SRSettings) {
-  localStorage.setItem(SR_SETTINGS_KEY, JSON.stringify(settings));
+  saveToStorage(SR_SETTINGS_KEY, settings);
 }
