@@ -13,7 +13,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings";
+type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors";
 
 const Index = () => {
   const {
