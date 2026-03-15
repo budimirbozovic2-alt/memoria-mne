@@ -16,6 +16,36 @@ interface AggregatedError {
   category: string;
   subcategory?: string;
   status: ErrorStatus;
+  sectionContent: string; // full section text for sentence extraction
+}
+
+/** Find the sentence containing `errorText` and return JSX with the error highlighted */
+function HighlightedSentence({ sectionContent, errorText }: { sectionContent: string; errorText: string }) {
+  // Strip HTML tags for plain text matching
+  const plain = sectionContent.replace(/<[^>]+>/g, "");
+
+  // Find the sentence containing the error text
+  // Split by sentence-ending punctuation, keeping delimiters
+  const sentences = plain.split(/(?<=[.!?])\s+/);
+  const matchingSentence = sentences.find((s) => s.includes(errorText));
+
+  if (!matchingSentence) {
+    // Fallback: just show error text highlighted
+    return <span className="text-destructive font-medium">{errorText}</span>;
+  }
+
+  // Split the sentence around the error text
+  const idx = matchingSentence.indexOf(errorText);
+  const before = matchingSentence.slice(0, idx);
+  const after = matchingSentence.slice(idx + errorText.length);
+
+  return (
+    <span className="text-sm leading-relaxed">
+      {before}
+      <mark className="bg-destructive/15 text-destructive font-medium px-0.5 rounded">{errorText}</mark>
+      {after}
+    </span>
+  );
 }
 
 interface Props {
