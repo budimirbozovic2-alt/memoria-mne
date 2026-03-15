@@ -39,8 +39,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
     switch (sortMode) {
       case "weakest":
         return filtered.sort((a, b) => getCardScore(a) - getCardScore(b));
-      case "strongest":
-        return filtered.sort((a, b) => getCardScore(b) - getCardScore(a));
+      case "leastRead":
+        return filtered.sort((a, b) => (a.readCount || 0) - (b.readCount || 0));
       case "order":
       default:
         return filtered.sort((a, b) => a.createdAt - b.createdAt);
