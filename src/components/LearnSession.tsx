@@ -1,11 +1,11 @@
 import { useState, useMemo } from "react";
 import { Card, getCardScore } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, TrendingUp, ListOrdered, Zap, Volume2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, ListOrdered, Zap, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { speak } from "@/lib/tts";
 
-type SortMode = "order" | "weakest" | "strongest";
+type SortMode = "order" | "weakest" | "leastRead";
 
 interface Props {
   cards: Card[];
@@ -39,8 +39,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
     switch (sortMode) {
       case "weakest":
         return filtered.sort((a, b) => getCardScore(a) - getCardScore(b));
-      case "strongest":
-        return filtered.sort((a, b) => getCardScore(b) - getCardScore(a));
+      case "leastRead":
+        return filtered.sort((a, b) => (a.readCount || 0) - (b.readCount || 0));
       case "order":
       default:
         return filtered.sort((a, b) => a.createdAt - b.createdAt);
@@ -85,8 +85,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   if (!started) {
     const sortOptions: { key: SortMode; label: string; desc: string; icon: typeof ListOrdered }[] = [
       { key: "order", label: "Hronološki raspored", desc: "Kronološkim redoslijedom kako su dodana", icon: ListOrdered },
-      { key: "weakest", label: "Najslabija prvo", desc: "Pitanja sa najnižim rezultatom prvo", icon: TrendingDown },
-      { key: "strongest", label: "Najjača prvo", desc: "Pitanja sa najvišim rezultatom prvo", icon: TrendingUp },
+      { key: "weakest", label: "Pitanja sa najslabijim rezultatima", desc: "Pitanja sa najnižim rezultatom prvo", icon: TrendingDown },
+      { key: "leastRead", label: "Pitanja sa najmanje pregleda", desc: "Nepročitana i najmanje čitana pitanja prvo", icon: Eye },
     ];
 
     const filteredCount = sortedCards.length;
