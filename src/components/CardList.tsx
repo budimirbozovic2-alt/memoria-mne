@@ -92,7 +92,7 @@ function TagBadge({ tagId }: { tagId: string }) {
   );
 }
 
-export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", searchQuery = "", onEdit, onDelete, onToggleTag, scrollToCardId, onScrolledTo }: Props) {
+export default function CardList({ cards, filterCategory, filterSubcategory, filterType = "all", filterTag, searchQuery = "", onEdit, onDelete, onToggleTag, scrollToCardId, onScrolledTo }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
