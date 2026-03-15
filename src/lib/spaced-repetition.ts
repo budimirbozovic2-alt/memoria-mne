@@ -1,18 +1,25 @@
-// Simplified FSRS v5 Algorithm with per-section tracking, leech detection
+// FSRS v5 Algorithm with per-section tracking, state machine, leech detection
+
+export enum SectionState {
+  New = 0,
+  Learning = 1,
+  Review = 2,
+  Relearning = 3,
+}
 
 export interface Section {
   id: string;
   title: string;
   content: string;
-  stability: number;       // FSRS stability (days)
-  difficulty: number;      // FSRS difficulty (1-10)
-  interval: number;        // in days
-  nextReview: number;      // timestamp
+  state: SectionState;          // FSRS state machine
+  stability: number;            // FSRS stability (days)
+  difficulty: number;           // FSRS difficulty (1-10)
+  interval: number;             // in days
+  nextReview: number;           // timestamp
   lastReviewed: number | null;
-  lapses: number;          // count of "Again" presses
-  // Legacy fields kept for migration compatibility
-  easeFactor?: number;
-  repetitions?: number;
+  lapses: number;               // count of "Again" presses
+  elapsedDays: number;          // days since last review
+  scheduledDays: number;        // days that were scheduled
 }
 
 export interface Card {
@@ -74,21 +81,41 @@ function clampDifficulty(d: number): number {
   return Math.max(1, Math.min(10, d));
 }
 
+function getElapsedDays(section: Section): number {
+  if (!section.lastReviewed) return 0;
+  return (Date.now() - section.lastReviewed) / (24 * 60 * 60 * 1000);
+}
+
+function nextState(currentState: SectionState, grade: number): SectionState {
+  switch (currentState) {
+    case SectionState.New:
+      return grade === 1 ? SectionState.Learning : grade <= 3 ? SectionState.Learning : SectionState.Review;
+    case SectionState.Learning:
+      return grade === 1 ? SectionState.Learning : SectionState.Review;
+    case SectionState.Review:
+      return grade === 1 ? SectionState.Relearning : SectionState.Review;
+    case SectionState.Relearning:
+      return grade === 1 ? SectionState.Relearning : SectionState.Review;
+    default:
+      return SectionState.Review;
+  }
+}
+
 export function calculateNextReview(section: Section, grade: number): Partial<Section> {
   let newStability: number;
   let newDifficulty: number;
   let newLapses = section.lapses || 0;
+  const elapsed = getElapsedDays(section);
 
-  const isNew = section.stability === 0 && section.lastReviewed === null;
+  const isNew = section.state === SectionState.New;
+  const newState = nextState(section.state, grade);
 
   if (isNew) {
-    // First review ever — use initial values
     const init = INITIAL_VALUES[grade] || INITIAL_VALUES[3];
     newStability = init.stability;
     newDifficulty = init.difficulty;
     if (grade === 1) newLapses += 1;
   } else {
-    // Subsequent reviews
     const { stability, difficulty } = section;
     switch (grade) {
       case 1: // Again
@@ -117,10 +144,13 @@ export function calculateNextReview(section: Section, grade: number): Partial<Se
   const interval = Math.max(calculateInterval(newStability), 1 / (24 * 60)); // minimum 1 minute
 
   return {
+    state: newState,
     stability: newStability,
     difficulty: newDifficulty,
     interval,
     lapses: newLapses,
+    elapsedDays: elapsed,
+    scheduledDays: interval,
     nextReview: Date.now() + interval * 24 * 60 * 60 * 1000,
     lastReviewed: Date.now(),
   };
@@ -143,7 +173,6 @@ export function formatInterval(interval: number): string {
   return `${(interval / 365).toFixed(1)}g`;
 }
 
-// Preview what the next interval would be for each grade
 export function previewIntervals(section: Section): Record<number, string> {
   const result: Record<number, string> = {};
   for (const grade of [1, 2, 3, 4]) {
@@ -158,12 +187,15 @@ export function createSection(title: string, content: string): Section {
     id: crypto.randomUUID(),
     title,
     content,
+    state: SectionState.New,
     stability: 0,
     difficulty: 5,
     interval: 0,
     nextReview: Date.now(),
     lastReviewed: null,
     lapses: 0,
+    elapsedDays: 0,
+    scheduledDays: 0,
   };
 }
 
@@ -210,13 +242,10 @@ export function getDueSections(card: Card): Section[] {
   return card.sections.filter((s) => s.nextReview <= now);
 }
 
-// Score based on stability: higher stability = better mastery
 export function getSectionScore(section: Section): number {
-  if (section.stability === 0 && section.lastReviewed === null) return 0;
-  // Map stability to 0-100: stability of 30+ days = ~100%
+  if (section.state === SectionState.New) return 0;
   const stabilityScore = Math.min(section.stability / 30, 1);
-  // Penalize high difficulty slightly
-  const difficultyBonus = (10 - section.difficulty) / 9; // 1.0 for difficulty=1, 0 for difficulty=10
+  const difficultyBonus = (10 - section.difficulty) / 9;
   return Math.round((stabilityScore * 0.7 + difficultyBonus * 0.3) * 100);
 }
 
@@ -237,7 +266,7 @@ export function getStats(cards: Card[]) {
   const now = Date.now();
   const due = cards.filter((c) => c.sections.some((s) => s.nextReview <= now)).length;
   const totalSections = cards.reduce((sum, c) => sum + c.sections.length, 0);
-  const learnedSections = cards.reduce((sum, c) => sum + c.sections.filter((s) => s.lastReviewed !== null).length, 0);
+  const learnedSections = cards.reduce((sum, c) => sum + c.sections.filter((s) => s.state !== SectionState.New).length, 0);
   const total = cards.length;
   const leechCount = cards.reduce((sum, c) => sum + c.sections.filter((s) => isLeech(s)).length, 0);
   return { due, total, totalSections, learnedSections, leechCount };
