@@ -95,6 +95,7 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
         const retention = getCardRetrievability(card);
         const isFlash = card.type === "flash";
         const cardTags = card.tags || [];
+        const isFrequent = cardTags.includes("često-na-ispitu");
         return (
           <motion.div
             key={card.id}
