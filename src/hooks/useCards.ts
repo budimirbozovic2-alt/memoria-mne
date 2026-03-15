@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
-import { Card, createCard, createFlashCard, createSection, calculateNextReview, getDueCards, getStats, getCategoryStats, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
+import { Card, createCard, createFlashCard, createSection, calculateNextReview, getDueCards, getStats, getCategoryStats, SRSettings, DEFAULT_SR_SETTINGS, ErrorLogEntry } from "@/lib/spaced-repetition";
 import { loadCards, saveCards, loadCategories, saveCategories, loadSubcategories, saveSubcategories, addReviewLogEntry, loadReviewLog, ReviewLogEntry, loadSRSettings, saveSRSettings, setLastBackupTime } from "@/lib/storage";
 
 // Query keys
