@@ -9,6 +9,7 @@ import ReviewSession from "@/components/ReviewSession";
 import LearnSession from "@/components/LearnSession";
 import CategoryManager from "@/components/CategoryManager";
 import DocxImporter from "@/components/DocxImporter";
+import KnowledgeMap from "@/components/KnowledgeMap";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
 import FrequentErrors from "@/pages/FrequentErrors";
 import { Card } from "@/lib/spaced-repetition";
