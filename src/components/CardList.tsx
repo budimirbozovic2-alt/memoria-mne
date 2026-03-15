@@ -1,4 +1,4 @@
-import { Card, getCardScore, getSectionScore, CARD_TAGS } from "@/lib/spaced-repetition";
+import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability, CARD_TAGS, SectionState } from "@/lib/spaced-repetition";
 import { format } from "date-fns";
 import { Edit2, Trash2, ChevronDown, ChevronRight, Tag, Zap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
