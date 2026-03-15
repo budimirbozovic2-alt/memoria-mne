@@ -134,7 +134,7 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {view === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={exportData} onShowErrors={() => setView("frequent-errors")} onShowKnowledgeMap={() => setView("knowledge-map")} />
+              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={exportData} onShowKnowledgeMap={() => setView("knowledge-map")} />
             </motion.div>
           )}
           {view === "review" && (
