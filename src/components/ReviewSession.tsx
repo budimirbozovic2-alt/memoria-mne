@@ -277,7 +277,7 @@ function FinishedScreen({ onBack }: { onBack: () => void }) {
 
 function ReviewCard({
   card, section, showAnswer, setShowAnswer, onGrade, onLogError, onBack,
-  progress, total, sectionIndex, totalSectionsInCard, srSettings,
+  progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange,
 }: {
   card: Card; section: Section; showAnswer: boolean;
   setShowAnswer: (v: boolean) => void; onGrade: (g: number) => void;
@@ -285,6 +285,7 @@ function ReviewCard({
   onBack: () => void; progress: number; total: number;
   sectionIndex: number; totalSectionsInCard: number;
   srSettings: SRSettings;
+  viewWidth: ViewWidth; onViewWidthChange: (w: ViewWidth) => void;
 }) {
   const { toast } = useToast();
 
