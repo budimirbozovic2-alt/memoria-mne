@@ -85,8 +85,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   if (!started) {
     const sortOptions: { key: SortMode; label: string; desc: string; icon: typeof ListOrdered }[] = [
       { key: "order", label: "Hronološki raspored", desc: "Kronološkim redoslijedom kako su dodana", icon: ListOrdered },
-      { key: "weakest", label: "Najslabija prvo", desc: "Pitanja sa najnižim rezultatom prvo", icon: TrendingDown },
-      { key: "strongest", label: "Najjača prvo", desc: "Pitanja sa najvišim rezultatom prvo", icon: TrendingUp },
+      { key: "weakest", label: "Pitanja sa najslabijim rezultatima", desc: "Pitanja sa najnižim rezultatom prvo", icon: TrendingDown },
+      { key: "leastRead", label: "Pitanja sa najmanje pregleda", desc: "Nepročitana i najmanje čitana pitanja prvo", icon: Eye },
     ];
 
     const filteredCount = sortedCards.length;
