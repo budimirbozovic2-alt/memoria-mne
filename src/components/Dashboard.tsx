@@ -22,7 +22,6 @@ interface Props {
   reviewLog: ReviewLogEntry[];
   srSettings: SRSettings;
   onExport?: () => void;
-  onShowErrors?: () => void;
   onShowKnowledgeMap?: () => void;
 }
 
