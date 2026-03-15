@@ -35,7 +35,6 @@ const Index = () => {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkCategory, setBulkCategory] = useState("");
   const [bulkSubcategory, setBulkSubcategory] = useState("");
 
   const toggleSelect = (id: string) => {
@@ -47,22 +46,20 @@ const Index = () => {
   };
 
   const handleBulkApply = () => {
-    if (selectedIds.size === 0 || !bulkCategory) return;
-    bulkUpdateCategory(Array.from(selectedIds), bulkCategory, bulkSubcategory || undefined);
+    if (selectedIds.size === 0 || !bulkSubcategory || !filterCategory) return;
+    bulkUpdateSubcategory(Array.from(selectedIds), bulkSubcategory);
     setSelectionMode(false);
     setSelectedIds(new Set());
-    setBulkCategory("");
     setBulkSubcategory("");
   };
 
   const exitSelectionMode = () => {
     setSelectionMode(false);
     setSelectedIds(new Set());
-    setBulkCategory("");
     setBulkSubcategory("");
   };
 
-  const bulkSubcats = bulkCategory ? (subcategories[bulkCategory] || []) : [];
+  const bulkSubcats = filterCategory ? (subcategories[filterCategory] || []) : [];
 
   const toggleDark = () => {
     document.documentElement.classList.toggle("dark");
