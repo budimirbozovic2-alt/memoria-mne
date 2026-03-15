@@ -1,8 +1,8 @@
-import { Brain, Clock, Layers, BookOpen, TrendingUp, AlertTriangle, Download, HardDrive } from "lucide-react";
-import { motion } from "framer-motion";
+import { Brain, Clock, Layers, BookOpen, TrendingUp, AlertTriangle, Download, HardDrive, ChevronDown, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card, getCardScore, getSectionScore, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell,
