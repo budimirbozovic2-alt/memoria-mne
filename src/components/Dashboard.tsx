@@ -191,6 +191,25 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </div>
       )}
 
+      {/* Frequent Errors Button */}
+      {onShowErrors && (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={onShowErrors}
+          className="w-full flex items-center gap-3 p-4 rounded-xl border bg-card hover:border-destructive/40 transition-colors group"
+        >
+          <div className="p-2 rounded-lg bg-destructive/10 text-destructive group-hover:bg-destructive/15 transition-colors">
+            <AlertCircle className="h-5 w-5" />
+          </div>
+          <div className="text-left flex-1">
+            <p className="font-medium text-sm">Najčešće greške</p>
+            <p className="text-xs text-muted-foreground">Pregledaj tekst koji najčešće promašuješ</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </motion.button>
+      )}
+
       {/* Streak + Heatmap + Retention */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <StreakWidget reviewLog={reviewLog} dailyGoal={srSettings.dailyGoal} />
