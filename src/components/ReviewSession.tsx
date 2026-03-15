@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Eye, ChevronRight, BookOpen, Shuffle, AlertTriangle, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { speak, stopSpeaking } from "@/lib/tts";
+import { useToast } from "@/hooks/use-toast";
 
 type ReviewMode = "essay" | "random" | null;
 
@@ -16,10 +17,11 @@ interface Props {
   dueCards: Card[];
   srSettings: SRSettings;
   onReviewSection: (cardId: string, sectionId: string, grade: number) => void;
+  onLogError: (cardId: string, text: string) => void;
   onBack: () => void;
 }
 
-export default function ReviewSession({ dueCards, srSettings, onReviewSection, onBack }: Props) {
+export default function ReviewSession({ dueCards, srSettings, onReviewSection, onLogError, onBack }: Props) {
   const [mode, setMode] = useState<ReviewMode>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cardIndex, setCardIndex] = useState(0);
@@ -159,6 +161,7 @@ export default function ReviewSession({ dueCards, srSettings, onReviewSection, o
         showAnswer={showAnswer}
         setShowAnswer={setShowAnswer}
         onGrade={handleGrade}
+        onLogError={onLogError}
         onBack={() => setMode(null)}
         progress={completedSections}
         total={totalDueSections}
@@ -195,6 +198,7 @@ export default function ReviewSession({ dueCards, srSettings, onReviewSection, o
       showAnswer={showAnswer}
       setShowAnswer={setShowAnswer}
       onGrade={handleRandomGrade}
+      onLogError={onLogError}
       onBack={() => setMode(null)}
       progress={randomIndex}
       total={randomItems.length}
@@ -220,15 +224,33 @@ function FinishedScreen({ onBack }: { onBack: () => void }) {
 }
 
 function ReviewCard({
-  card, section, showAnswer, setShowAnswer, onGrade, onBack,
+  card, section, showAnswer, setShowAnswer, onGrade, onLogError, onBack,
   progress, total, sectionIndex, totalSectionsInCard, srSettings,
 }: {
   card: Card; section: Section; showAnswer: boolean;
   setShowAnswer: (v: boolean) => void; onGrade: (g: number) => void;
+  onLogError: (cardId: string, text: string) => void;
   onBack: () => void; progress: number; total: number;
   sectionIndex: number; totalSectionsInCard: number;
   srSettings: SRSettings;
 }) {
+  const { toast } = useToast();
+
+  // N-key error capture
+  useEffect(() => {
+    if (!showAnswer) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "n" && e.key !== "N") return;
+      // Don't trigger if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const selection = window.getSelection()?.toString().trim();
+      if (!selection || selection.length < 2) return;
+      onLogError(card.id, selection);
+      toast({ title: "Greška zabilježena", description: `"${selection.length > 40 ? selection.slice(0, 40) + "…" : selection}"` });
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [showAnswer, card.id, onLogError, toast]);
   const gradeColorMap: Record<string, string> = {
     destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
     warning: "bg-warning text-warning-foreground hover:bg-warning/90",
@@ -332,7 +354,7 @@ function ReviewCard({
             </Button>
           ) : (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-              <div className="rounded-xl bg-secondary/50 border p-8">
+              <div className="rounded-xl bg-secondary/50 border p-8 select-text">
                 <div className="flex items-center justify-between">
                   {!isFlash && (
                     <span className="text-xs uppercase tracking-widest text-muted-foreground">{section.title}</span>
@@ -342,6 +364,9 @@ function ReviewCard({
                   </button>
                 </div>
                 <div className={`${!isFlash ? "mt-4" : ""} text-base leading-relaxed whitespace-pre-wrap`} dangerouslySetInnerHTML={{ __html: section.content }} />
+                <p className="mt-3 text-[10px] text-muted-foreground/60 flex items-center gap-1">
+                  Označi tekst + pritisni <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">N</kbd> za bilježenje greške
+                </p>
               </div>
 
               <div>

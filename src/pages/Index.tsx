@@ -9,16 +9,17 @@ import LearnSession from "@/components/LearnSession";
 import CategoryManager from "@/components/CategoryManager";
 import DocxImporter from "@/components/DocxImporter";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
+import FrequentErrors from "@/pages/FrequentErrors";
 import { Card } from "@/lib/spaced-repetition";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings";
+type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors";
 
 const Index = () => {
   const {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings,
-    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory,
+    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory, logError,
     exportData, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,
@@ -131,12 +132,12 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {view === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={exportData} />
+              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={exportData} onShowErrors={() => setView("frequent-errors")} />
             </motion.div>
           )}
           {view === "review" && (
             <motion.div key="review" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ReviewSession dueCards={dueCards} srSettings={srSettings} onReviewSection={reviewSection} onBack={() => setView("dashboard")} />
+              <ReviewSession dueCards={dueCards} srSettings={srSettings} onReviewSection={reviewSection} onLogError={logError} onBack={() => setView("dashboard")} />
             </motion.div>
           )}
           {view === "learn" && (
@@ -176,6 +177,11 @@ const Index = () => {
           {view === "settings" && (
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <SRSettingsPanel settings={srSettings} onUpdate={updateSRSettings} onBack={() => setView("dashboard")} />
+            </motion.div>
+          )}
+          {view === "frequent-errors" && (
+            <motion.div key="errors" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <FrequentErrors cards={cards} onBack={() => setView("dashboard")} />
             </motion.div>
           )}
           {view === "cards" && (
