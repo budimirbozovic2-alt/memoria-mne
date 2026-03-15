@@ -33,6 +33,36 @@ const Index = () => {
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [bulkSubcategory, setBulkSubcategory] = useState("");
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkApply = () => {
+    if (selectedIds.size === 0 || !bulkCategory) return;
+    bulkUpdateCategory(Array.from(selectedIds), bulkCategory, bulkSubcategory || undefined);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkCategory("");
+    setBulkSubcategory("");
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkCategory("");
+    setBulkSubcategory("");
+  };
+
+  const bulkSubcats = bulkCategory ? (subcategories[bulkCategory] || []) : [];
 
   const toggleDark = () => {
     document.documentElement.classList.toggle("dark");
