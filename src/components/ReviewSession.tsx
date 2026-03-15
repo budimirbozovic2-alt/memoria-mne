@@ -8,6 +8,21 @@ import { speak, stopSpeaking } from "@/lib/tts";
 import { useToast } from "@/hooks/use-toast";
 
 type ReviewMode = "essay" | "random" | null;
+type ViewWidth = "compact" | "normal" | "wide" | "full";
+
+const viewWidthClasses: Record<ViewWidth, string> = {
+  compact: "max-w-xl",
+  normal: "max-w-2xl",
+  wide: "max-w-4xl",
+  full: "max-w-full",
+};
+
+const viewWidthLabels: Record<ViewWidth, string> = {
+  compact: "S",
+  normal: "M",
+  wide: "L",
+  full: "XL",
+};
 
 interface DueItem {
   card: Card;
