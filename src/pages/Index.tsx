@@ -9,6 +9,7 @@ import LearnSession from "@/components/LearnSession";
 import CategoryManager from "@/components/CategoryManager";
 import DocxImporter from "@/components/DocxImporter";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
+import FrequentErrors from "@/pages/FrequentErrors";
 import { Card } from "@/lib/spaced-repetition";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
