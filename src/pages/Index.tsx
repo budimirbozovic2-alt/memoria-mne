@@ -3,6 +3,7 @@ import { useCards } from "@/hooks/useCards";
 import Dashboard from "@/components/Dashboard";
 import CardForm from "@/components/CardForm";
 import CardList from "@/components/CardList";
+import ScrollableRow from "@/components/ScrollableRow";
 import ReviewSession from "@/components/ReviewSession";
 import LearnSession from "@/components/LearnSession";
 import CategoryManager from "@/components/CategoryManager";
