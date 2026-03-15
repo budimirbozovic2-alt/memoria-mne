@@ -130,23 +130,23 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
         {selectedCategory && availableSubs.length > 0 && (
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">Podkategorija</label>
-            <div className="flex gap-2 flex-wrap">
+            <ScrollableRow>
               <button
                 onClick={() => setSelectedSubcategory(null)}
-                className={`px-2.5 py-1 rounded-md text-xs transition-colors ${!selectedSubcategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
               >
-                Sve
+                Sve podkat.
               </button>
               {availableSubs.map((sc) => (
                 <button
                   key={sc}
                   onClick={() => setSelectedSubcategory(sc)}
-                  className={`px-2.5 py-1 rounded-md text-xs transition-colors ${selectedSubcategory === sc ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
                 >
                   {sc}
                 </button>
               ))}
-            </div>
+            </ScrollableRow>
           </div>
         )}
 
