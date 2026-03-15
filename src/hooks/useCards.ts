@@ -119,8 +119,25 @@ export function useCards() {
         addReviewLogEntry(entry);
         setReviewLog((log) => [...log, entry]);
 
+        // Track success on error log entries when grade >= 3 (Good/Easy)
+        let errorLog = c.errorLog;
+        if (errorLog && errorLog.length > 0 && grade >= 3) {
+          errorLog = errorLog.map((e) => ({
+            ...e,
+            recentSuccesses: (e.recentSuccesses || 0) + 1,
+            successStreak: (e.successStreak || 0) + 1,
+          }));
+        } else if (errorLog && errorLog.length > 0 && grade === 1) {
+          // Reset streak on "Again"
+          errorLog = errorLog.map((e) => ({
+            ...e,
+            successStreak: 0,
+          }));
+        }
+
         return {
           ...c,
+          ...(errorLog ? { errorLog } : {}),
           sections: c.sections.map((s) => {
             if (s.id !== sectionId) return s;
             return { ...s, ...calculateNextReview(s, grade) };
@@ -233,16 +250,23 @@ export function useCards() {
       if (existing) {
         existing.count += 1;
         existing.lastMissed = new Date().toISOString();
+        existing.successStreak = 0; // Reset streak on new error
       } else {
-        errorLog.push({ text, count: 1, category: c.category, lastMissed: new Date().toISOString() });
+        errorLog.push({ text, count: 1, recentSuccesses: 0, successStreak: 0, category: c.category, lastMissed: new Date().toISOString() });
       }
-      // Adjust FSRS: increase difficulty, reduce stability on all sections
       const sections = c.sections.map((s) => ({
         ...s,
         difficulty: Math.min(10, s.difficulty + 0.5),
         stability: Math.max(0.1, s.stability * 0.85),
       }));
       return { ...c, errorLog, sections };
+    }));
+  }, [setCards]);
+
+  const clearErrorLog = useCallback((cardId: string) => {
+    setCards((prev) => prev.map((c) => {
+      if (c.id !== cardId) return c;
+      return { ...c, errorLog: [] };
     }));
   }, [setCards]);
 
@@ -328,7 +352,7 @@ export function useCards() {
 
   return {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings,
-    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory, logError,
+    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory, logError, clearErrorLog,
     exportData, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,

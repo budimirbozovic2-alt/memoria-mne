@@ -19,7 +19,7 @@ type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" 
 const Index = () => {
   const {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings,
-    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory, logError,
+    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory, logError, clearErrorLog,
     exportData, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,
@@ -181,7 +181,7 @@ const Index = () => {
           )}
           {view === "frequent-errors" && (
             <motion.div key="errors" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <FrequentErrors cards={cards} onBack={() => setView("dashboard")} />
+              <FrequentErrors cards={cards} onBack={() => setView("dashboard")} onClearErrorLog={clearErrorLog} />
             </motion.div>
           )}
           {view === "cards" && (

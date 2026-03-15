@@ -25,8 +25,18 @@ export interface Section {
 export interface ErrorLogEntry {
   text: string;
   count: number;
+  recentSuccesses: number;
+  successStreak: number;
   category?: string;
   lastMissed: string; // ISO date string
+}
+
+export type ErrorStatus = "critical" | "recovering" | "mastered";
+
+export function getErrorStatus(entry: ErrorLogEntry): ErrorStatus {
+  if (entry.successStreak >= 5) return "mastered";
+  if (entry.recentSuccesses > entry.count) return "recovering";
+  return "critical";
 }
 
 export interface Card {
