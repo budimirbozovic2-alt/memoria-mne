@@ -100,6 +100,8 @@ export default function FrequentErrors({ cards, onBack, onClearErrorLog }: Props
     const cardIdsWithErrors = new Set<string>();
 
     cards.forEach((card) => {
+      // Collect all section content for sentence matching
+      const allContent = card.sections.map((s) => s.content).join(" ");
       (card.errorLog || []).forEach((entry) => {
         cardIdsWithErrors.add(card.id);
         allErrors.push({
@@ -113,6 +115,7 @@ export default function FrequentErrors({ cards, onBack, onClearErrorLog }: Props
           category: card.category,
           subcategory: card.subcategory,
           status: getErrorStatus(entry),
+          sectionContent: allContent,
         });
       });
     });
