@@ -73,7 +73,7 @@ function createWindow(splash) {
     minWidth: 900,
     minHeight: 670,
     show: false,
-    icon: path.join(__dirname, 'public/icon.ico'),
+    icon: path.join(__dirname, isDev ? 'public/favicon.ico' : 'dist/favicon.ico'),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
