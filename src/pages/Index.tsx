@@ -12,6 +12,7 @@ import DocxImporter from "@/components/DocxImporter";
 import KnowledgeMap from "@/components/KnowledgeMap";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
 import FrequentErrors from "@/pages/FrequentErrors"; // kept for backward compat
+import ExportImportDialog from "@/components/ExportImportDialog";
 import { Card } from "@/lib/spaced-repetition";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -22,12 +23,13 @@ const Index = () => {
   const {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings,
     addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory, logError, clearErrorLog,
-    exportData, importData, importCards,
+    exportData, exportTemplate, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,
     updateSRSettings,
   } = useCards();
   const [docxOpen, setDocxOpen] = useState(false);
+  const [exportImportOpen, setExportImportOpen] = useState(false);
   const [view, setView] = useState<View>("dashboard");
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [scrollToCardId, setScrollToCardId] = useState<string | null>(null);
@@ -117,11 +119,7 @@ const Index = () => {
           <button onClick={() => setDocxOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Uvezi iz DOCX">
             <FileText className="h-4 w-4" />
           </button>
-          <label className="p-2 rounded-lg hover:bg-secondary text-muted-foreground cursor-pointer" title="Uvezi JSON backup">
-            <Upload className="h-4 w-4" />
-            <input type="file" accept=".json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importData(f); e.target.value = ""; }} />
-          </label>
-          <button onClick={exportData} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Izvezi backup">
+          <button onClick={() => setExportImportOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Export / Import">
             <Download className="h-4 w-4" />
           </button>
           <button onClick={toggleDark} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground">
@@ -134,7 +132,7 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {view === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={exportData} onShowKnowledgeMap={() => setView("knowledge-map")} />
+              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} />
             </motion.div>
           )}
           {view === "review" && (
@@ -382,6 +380,15 @@ const Index = () => {
           }
           setDocxOpen(false);
         }}
+      />
+
+      <ExportImportDialog
+        open={exportImportOpen}
+        onOpenChange={setExportImportOpen}
+        onExportTemplate={exportTemplate}
+        onExportFull={exportData}
+        onImport={importData}
+        cards={cards}
       />
     </div>
   );

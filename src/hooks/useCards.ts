@@ -270,55 +270,108 @@ export function useCards() {
     }));
   }, [setCards]);
 
-  const exportData = useCallback(() => {
-    const data = JSON.stringify({ cards, categories, subcategories, reviewLog, srSettings }, null, 2);
-    const blob = new Blob([data], { type: "application/json" });
+  const downloadJson = useCallback((data: object, filename: string) => {
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `memoria-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-    setLastBackupTime();
-  }, [cards, categories, subcategories, reviewLog, srSettings]);
+  }, []);
 
-  const importData = useCallback((file: File) => {
+  const exportTemplate = useCallback(() => {
+    const templateCards = cards.map((c) => ({
+      id: c.id,
+      question: c.question,
+      sections: c.sections.map((s) => ({ title: s.title, content: s.content })),
+      category: c.category,
+      subcategory: c.subcategory || "",
+      type: c.type,
+      tags: c.tags || [],
+    }));
+    downloadJson(
+      { version: 2, type: "template", cards: templateCards, categories, subcategories },
+      `memoria-template-${new Date().toISOString().slice(0, 10)}.json`,
+    );
+  }, [cards, categories, subcategories, downloadJson]);
+
+  const exportData = useCallback(() => {
+    downloadJson(
+      { version: 2, type: "full", cards, categories, subcategories, reviewLog, srSettings },
+      `memoria-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    );
+    setLastBackupTime();
+  }, [cards, categories, subcategories, reviewLog, srSettings, downloadJson]);
+
+  const importData = useCallback((file: File, strategy: "keep" | "overwrite" | "skip" = "skip") => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const parsed = JSON.parse(e.target?.result as string);
         if (Array.isArray(parsed.cards)) {
-          const imported = parsed.cards.map((c: any) => ({
+          const migrateImported = (c: any) => ({
             ...c,
             readCount: c.readCount || 0,
             type: c.type || "essay",
             subcategory: c.subcategory || "",
             tags: c.tags || [],
+            errorLog: c.errorLog || [],
             sections: (c.sections || []).map((s: any) => ({
               ...s,
+              id: s.id || crypto.randomUUID(),
               state: s.state ?? 0,
               lapses: s.lapses || 0,
               stability: s.stability ?? 0,
               difficulty: s.difficulty ?? 5,
+              interval: s.interval ?? 0,
+              nextReview: s.nextReview ?? 0,
+              lastReviewed: s.lastReviewed ?? null,
               elapsedDays: s.elapsedDays ?? 0,
               scheduledDays: s.scheduledDays ?? 0,
             })),
-          }));
-          qc.setQueryData(KEYS.cards, imported);
-          saveCards(imported);
+          });
+
+          const existingCards = qc.getQueryData<Card[]>(KEYS.cards) || [];
+          const existingMap = new Map(existingCards.map(c => [c.id, c]));
+          const importedCards: Card[] = parsed.cards.map(migrateImported);
+
+          let merged: Card[];
+          if (strategy === "overwrite") {
+            // Overwrite duplicates, keep non-duplicates from both
+            const importedMap = new Map(importedCards.map((c: any) => [c.id, c] as [string, Card]));
+            merged = existingCards.map(c => importedMap.has(c.id) ? importedMap.get(c.id)! : c);
+            // Add cards that don't exist yet
+            importedCards.forEach((c: Card) => { if (!existingMap.has(c.id)) merged.push(c); });
+          } else {
+            // "keep" or "skip" — keep existing, add only new
+            merged = [...existingCards];
+            importedCards.forEach((c: Card) => { if (!existingMap.has(c.id)) merged.push(c); });
+          }
+
+          qc.setQueryData(KEYS.cards, merged);
+          saveCards(merged);
         }
         if (Array.isArray(parsed.categories)) {
-          qc.setQueryData(KEYS.categories, parsed.categories);
-          saveCategories(parsed.categories);
+          const existing = qc.getQueryData<string[]>(KEYS.categories) || ["Opšte"];
+          const merged = [...new Set([...existing, ...parsed.categories])];
+          qc.setQueryData(KEYS.categories, merged);
+          saveCategories(merged);
         }
         if (parsed.subcategories && typeof parsed.subcategories === "object") {
-          qc.setQueryData(KEYS.subcategories, parsed.subcategories);
-          saveSubcategories(parsed.subcategories);
+          const existing = qc.getQueryData<Record<string, string[]>>(KEYS.subcategories) || {};
+          const merged = { ...existing };
+          for (const [cat, subs] of Object.entries(parsed.subcategories as Record<string, string[]>)) {
+            merged[cat] = [...new Set([...(merged[cat] || []), ...subs])];
+          }
+          qc.setQueryData(KEYS.subcategories, merged);
+          saveSubcategories(merged);
         }
-        if (Array.isArray(parsed.reviewLog)) {
+        if (Array.isArray(parsed.reviewLog) && strategy === "overwrite") {
           qc.setQueryData(KEYS.reviewLog, parsed.reviewLog);
         }
-        if (parsed.srSettings) {
+        if (parsed.srSettings && strategy === "overwrite") {
           updateSRSettings({ ...DEFAULT_SR_SETTINGS, ...parsed.srSettings });
         }
       } catch {
@@ -353,7 +406,7 @@ export function useCards() {
   return {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings,
     addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory, logError, clearErrorLog,
-    exportData, importData, importCards,
+    exportData, exportTemplate, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,
     updateSRSettings,
