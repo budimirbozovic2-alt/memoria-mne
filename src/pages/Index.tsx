@@ -141,6 +141,9 @@ const Index = () => {
           <button onClick={() => setDocxOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Uvezi iz DOCX">
             <FileText className="h-4 w-4" />
           </button>
+          <button onClick={() => setGlobalSearchOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Pretraži (Ctrl+K)">
+            <Search className="h-4 w-4" />
+          </button>
           <button onClick={() => setExportImportOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Export / Import">
             <Download className="h-4 w-4" />
           </button>
