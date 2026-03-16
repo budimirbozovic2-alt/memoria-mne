@@ -5,9 +5,157 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  minimal?: boolean;
 }
 
-export default function RichTextEditor({ value, onChange, placeholder }: Props) {
+/** Try to detect and apply markdown-style formatting in the current text node. */
+function tryMarkdownAutoFormat(editor: HTMLDivElement): boolean {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || !sel.isCollapsed) return false;
+
+  const node = sel.anchorNode;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return false;
+
+  const text = node.textContent || "";
+  const offset = sel.anchorOffset;
+
+  // Inline patterns – trigger after closing marker is typed
+  // **bold**
+  const boldMatch = text.slice(0, offset).match(/\*\*(.+?)\*\*$/);
+  if (boldMatch) {
+    const start = offset - boldMatch[0].length;
+    replaceTextRange(node, start, offset, `<b>${boldMatch[1]}</b>`, editor);
+    return true;
+  }
+
+  // *italic* (but not **)
+  const italicMatch = text.slice(0, offset).match(/(?<!\*)\*([^*]+?)\*$/);
+  if (italicMatch) {
+    const start = offset - italicMatch[0].length;
+    replaceTextRange(node, start, offset, `<i>${italicMatch[1]}</i>`, editor);
+    return true;
+  }
+
+  // __underline__
+  const underlineMatch = text.slice(0, offset).match(/__(.+?)__$/);
+  if (underlineMatch) {
+    const start = offset - underlineMatch[0].length;
+    replaceTextRange(node, start, offset, `<u>${underlineMatch[1]}</u>`, editor);
+    return true;
+  }
+
+  // ~~strikethrough~~
+  const strikeMatch = text.slice(0, offset).match(/~~(.+?)~~$/);
+  if (strikeMatch) {
+    const start = offset - strikeMatch[0].length;
+    replaceTextRange(node, start, offset, `<s>${strikeMatch[1]}</s>`, editor);
+    return true;
+  }
+
+  // Block-level: at start of a block, after pressing space
+  const trimmed = text.slice(0, offset);
+
+  // # Heading (after space)
+  if (/^#{1,3}\s$/.test(trimmed)) {
+    const parentBlock = getParentBlock(node, editor);
+    if (parentBlock) {
+      const rest = text.slice(offset);
+      const h = document.createElement("h3");
+      h.textContent = rest || "\u200B";
+      parentBlock.replaceWith(h);
+      setCursorEnd(h);
+      return true;
+    }
+  }
+
+  // - or * for unordered list (after space)
+  if (/^[-*]\s$/.test(trimmed)) {
+    document.execCommand("insertUnorderedList", false);
+    // Remove the marker text
+    const newSel = window.getSelection();
+    if (newSel?.anchorNode) {
+      const n = newSel.anchorNode;
+      if (n.nodeType === Node.TEXT_NODE && n.textContent) {
+        n.textContent = n.textContent.replace(/^[-*]\s/, "");
+      }
+    }
+    return true;
+  }
+
+  // 1. for ordered list (after space)
+  if (/^\d+\.\s$/.test(trimmed)) {
+    document.execCommand("insertOrderedList", false);
+    const newSel = window.getSelection();
+    if (newSel?.anchorNode) {
+      const n = newSel.anchorNode;
+      if (n.nodeType === Node.TEXT_NODE && n.textContent) {
+        n.textContent = n.textContent.replace(/^\d+\.\s/, "");
+      }
+    }
+    return true;
+  }
+
+  return false;
+}
+
+function replaceTextRange(node: Node, start: number, end: number, html: string, editor: HTMLDivElement) {
+  const text = node.textContent || "";
+  const before = text.slice(0, start);
+  const after = text.slice(end);
+
+  const span = document.createElement("span");
+  span.innerHTML = (before ? before : "") + html + (after ? after : "");
+
+  const parent = node.parentNode;
+  if (!parent) return;
+
+  // Replace the text node with new content
+  const frag = document.createDocumentFragment();
+  while (span.firstChild) frag.appendChild(span.firstChild);
+  parent.replaceChild(frag, node);
+
+  // Set cursor after the inserted element
+  const sel = window.getSelection();
+  if (sel) {
+    const range = document.createRange();
+    // Find the last inserted node
+    const walker = document.createTreeWalker(parent, NodeFilter.SHOW_ALL);
+    let last: Node | null = null;
+    while (walker.nextNode()) last = walker.currentNode;
+    if (last) {
+      if (last.nodeType === Node.TEXT_NODE) {
+        range.setStart(last, (last.textContent || "").length);
+      } else {
+        range.setStartAfter(last);
+      }
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  }
+}
+
+function getParentBlock(node: Node, editor: HTMLDivElement): HTMLElement | null {
+  let current = node.parentElement;
+  while (current && current !== editor) {
+    const tag = current.tagName.toLowerCase();
+    if (["p", "div", "h1", "h2", "h3", "h4", "li"].includes(tag)) return current;
+    current = current.parentElement;
+  }
+  return null;
+}
+
+function setCursorEnd(el: HTMLElement) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+export default function RichTextEditor({ value, onChange, placeholder, minimal }: Props) {
   const editorRef = useRef<HTMLDivElement>(null);
   const internalValue = useRef(value);
   const isComposing = useRef(false);
@@ -16,7 +164,6 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
     const editor = editorRef.current;
     if (!editor) return;
 
-    // Sync only when editor is not focused (prevents cursor reset while typing/lists)
     if (document.activeElement !== editor && editor.innerHTML !== value) {
       editor.innerHTML = value;
     }
@@ -65,6 +212,8 @@ export default function RichTextEditor({ value, onChange, placeholder }: Props) 
   const handleInput = () => {
     if (isComposing.current) return;
     if (editorRef.current) {
+      // Try markdown auto-formatting
+      tryMarkdownAutoFormat(editorRef.current);
       internalValue.current = editorRef.current.innerHTML;
       onChange(editorRef.current.innerHTML);
     }
