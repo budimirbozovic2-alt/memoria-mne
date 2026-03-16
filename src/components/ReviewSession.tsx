@@ -288,22 +288,39 @@ function ReviewCard({
   viewWidth: ViewWidth; onViewWidthChange: (w: ViewWidth) => void;
 }) {
   const { toast } = useToast();
+  const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);
 
-  // N-key error capture
+  // Keyboard shortcuts: Space to reveal, 1-4 to grade, Z to undo
   useEffect(() => {
-    if (!showAnswer) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key !== "n" && e.key !== "N") return;
-      // Don't trigger if typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const selection = window.getSelection()?.toString().trim();
-      if (!selection || selection.length < 2) return;
-      onLogError(card.id, selection);
-      toast({ title: "Greška zabilježena", description: `"${selection.length > 40 ? selection.slice(0, 40) + "…" : selection}"` });
+
+      // Space to reveal answer
+      if (e.key === " " && !showAnswer) {
+        e.preventDefault();
+        setShowAnswer(true);
+        return;
+      }
+
+      // 1-4 to grade (only when answer is shown)
+      if (showAnswer && ["1", "2", "3", "4"].includes(e.key)) {
+        e.preventDefault();
+        lastGradeRef.current = { cardId: card.id, sectionId: section.id, grade: parseInt(e.key) };
+        onGrade(parseInt(e.key));
+        return;
+      }
+
+      // N-key error capture
+      if (showAnswer && (e.key === "n" || e.key === "N")) {
+        const selection = window.getSelection()?.toString().trim();
+        if (!selection || selection.length < 2) return;
+        onLogError(card.id, selection);
+        toast({ title: "Greška zabilježena", description: `"${selection.length > 40 ? selection.slice(0, 40) + "…" : selection}"` });
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showAnswer, card.id, onLogError, toast]);
+  }, [showAnswer, card.id, section.id, onGrade, onLogError, toast, setShowAnswer]);
   const gradeColorMap: Record<string, string> = {
     destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
     warning: "bg-warning text-warning-foreground hover:bg-warning/90",

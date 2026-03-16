@@ -220,6 +220,28 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
+    // Smart Image Paste: check for image files in clipboard
+    const items = e.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const dataUrl = ev.target?.result as string;
+          if (dataUrl && editorRef.current) {
+            document.execCommand("insertHTML", false, `<img src="${dataUrl}" style="max-width:100%;border-radius:6px;margin:4px 0;" />`);
+            internalValue.current = editorRef.current.innerHTML;
+            onChange(editorRef.current.innerHTML);
+          }
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+    }
+    // Plain text paste
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, text);

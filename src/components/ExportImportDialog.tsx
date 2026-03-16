@@ -61,9 +61,9 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
     reader.readAsText(file);
   };
 
-  const handleConflictChoice = (strategy: "keep" | "overwrite") => {
+  const handleConflictChoice = (strategy: "keep" | "overwrite" | "newer") => {
     if (conflict?.file) {
-      onImport(conflict.file, strategy);
+      onImport(conflict.file, strategy === "newer" ? "newer" : strategy);
     }
     handleOpenChange(false);
   };
