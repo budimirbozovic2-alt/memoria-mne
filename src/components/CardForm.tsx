@@ -123,13 +123,15 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
     setCuttingIndex(null);
   };
 
+  const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cat = showNewCat && newCategory.trim() ? newCategory.trim() : category;
     const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory;
 
     if (cardType === "flash") {
-      if (!question.trim() || !flashAnswer.trim()) return;
+      if (!stripHtml(question) || !stripHtml(flashAnswer)) return;
       if (editCard && onUpdate) {
         onUpdate(editCard.id, {
           question,
