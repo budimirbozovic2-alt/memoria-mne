@@ -56,7 +56,7 @@ function createSplashWindow() {
       contextIsolation: true,
     },
   });
-  splash.loadFile(path.join(__dirname, 'public/splash.html'));
+  splash.loadFile(path.join(__dirname, isDev ? 'public/splash.html' : 'dist/splash.html'));
   return splash;
 }
 
