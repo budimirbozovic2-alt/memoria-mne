@@ -4,6 +4,21 @@ const fs = require('fs');
 
 const isDev = !app.isPackaged;
 const configPath = path.join(app.getPath('userData'), 'window-state.json');
+const crashLogPath = path.join(app.getPath('userData'), 'crash.log');
+
+// ── Global Error Handler ──
+function logCrash(label, err) {
+  const timestamp = new Date().toISOString();
+  const msg = `[${timestamp}] ${label}: ${err?.stack || err}\n`;
+  try { fs.appendFileSync(crashLogPath, msg); } catch (_) {}
+}
+
+process.on('uncaughtException', (err) => {
+  logCrash('uncaughtException', err);
+});
+process.on('unhandledRejection', (reason) => {
+  logCrash('unhandledRejection', reason);
+});
 
 // ── Single Instance Lock ──
 const gotLock = app.requestSingleInstanceLock();
