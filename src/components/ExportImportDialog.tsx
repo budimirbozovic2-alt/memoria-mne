@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/lib/spaced-repetition";
-import { Download, Upload, FileBox, Package, AlertTriangle, Check } from "lucide-react";
+import { Download, Upload, FileBox, Package, AlertTriangle, Check, Clock } from "lucide-react";
 
 interface ExportImportDialogProps {
   open: boolean;
