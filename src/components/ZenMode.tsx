@@ -78,10 +78,13 @@ export default function ZenMode({ active, onToggle }: Props) {
     if (seconds <= 0) {
       setTimerRunning(false);
       if (phase === "focus") {
+        addPomodoroEntry({ timestamp: Date.now(), type: "focus", durationMinutes: FOCUS_DURATION / 60 });
+        setPomodoroStats(getPomodoroStats());
         playChime("focus");
         setPhase("break");
         setSeconds(BREAK_DURATION);
       } else {
+        addPomodoroEntry({ timestamp: Date.now(), type: "break", durationMinutes: BREAK_DURATION / 60 });
         playChime("break");
         setPhase("focus");
         setSeconds(FOCUS_DURATION);
