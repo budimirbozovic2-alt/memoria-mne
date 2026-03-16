@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, X, GripVertical, Scissors, Zap, FileText } from "lucide-react";
 import RichTextEditor from "@/components/RichTextEditor";
