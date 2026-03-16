@@ -154,6 +154,15 @@ let backupInterval = null;
 app.whenReady().then(() => {
   const splash = createSplashWindow();
   createWindow(splash);
+
+  // Start auto-backup every 15 minutes (production only)
+  if (!isDev) {
+    // First backup after 2 minutes
+    setTimeout(() => {
+      performAutoBackup();
+      backupInterval = setInterval(performAutoBackup, BACKUP_INTERVAL_MS);
+    }, 2 * 60 * 1000);
+  }
 });
 
 // ── Focus existing window if second instance attempted ──
@@ -165,7 +174,7 @@ app.on('second-instance', () => {
 });
 
 app.on('window-all-closed', () => {
+  if (backupInterval) clearInterval(backupInterval);
   if (process.platform !== 'darwin') app.quit();
 });
-
 } // end of gotLock else block
