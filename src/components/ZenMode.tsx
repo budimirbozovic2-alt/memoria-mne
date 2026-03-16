@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Play, Pause, Volume2, VolumeX, RotateCcw, Maximize, Minimize } from "lucide-react";
+import { X, Play, Pause, Volume2, VolumeX, RotateCcw, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { startBrownNoise, stopBrownNoise, setBrownNoiseVolume, isBrownNoisePlaying } from "@/lib/brown-noise";
+import { addPomodoroEntry, getPomodoroStats } from "@/lib/storage";
 
 type TimerPhase = "focus" | "break";
 
