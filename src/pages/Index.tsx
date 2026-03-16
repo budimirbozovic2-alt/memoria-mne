@@ -427,6 +427,15 @@ const Index = () => {
       <AnimatePresence>
         <ZenMode active={zenMode} onToggle={() => setZenMode(false)} />
       </AnimatePresence>
+
+      <GlobalSearch
+        cards={cards}
+        open={globalSearchOpen}
+        onClose={() => setGlobalSearchOpen(false)}
+        onNavigateToCard={(card) => {
+          handleEdit(card);
+        }}
+      />
     </div>
   );
 };
