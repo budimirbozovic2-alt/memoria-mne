@@ -2,14 +2,14 @@ import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/lib/spaced-repetition";
-import { Download, Upload, FileBox, Package, AlertTriangle, Check } from "lucide-react";
+import { Download, Upload, FileBox, Package, AlertTriangle, Check, Clock } from "lucide-react";
 
 interface ExportImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onExportTemplate: () => void;
   onExportFull: () => void;
-  onImport: (file: File, strategy: "keep" | "overwrite" | "skip") => void;
+  onImport: (file: File, strategy: "keep" | "overwrite" | "skip" | "newer") => void;
   cards: Card[];
 }
 
@@ -61,9 +61,9 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
     reader.readAsText(file);
   };
 
-  const handleConflictChoice = (strategy: "keep" | "overwrite") => {
+  const handleConflictChoice = (strategy: "keep" | "overwrite" | "newer") => {
     if (conflict?.file) {
-      onImport(conflict.file, strategy);
+      onImport(conflict.file, strategy === "newer" ? "newer" : strategy);
     }
     handleOpenChange(false);
   };
@@ -138,6 +138,13 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-3 py-4">
+              <Button variant="outline" className="justify-start gap-3 h-auto py-4" onClick={() => handleConflictChoice("newer")}>
+                <Clock className="h-5 w-5 text-primary" />
+                <div className="text-left">
+                  <p className="font-medium">Zadrži noviji progres</p>
+                  <p className="text-xs text-muted-foreground">Za svaku karticu — zadrži onu koja je novije ponavljana</p>
+                </div>
+              </Button>
               <Button variant="outline" className="justify-start gap-3 h-auto py-4" onClick={() => handleConflictChoice("keep")}>
                 <Check className="h-5 w-5 text-success" />
                 <div className="text-left">

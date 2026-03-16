@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { useCards } from "@/hooks/useCards";
 import Dashboard from "@/components/Dashboard";
@@ -11,9 +11,11 @@ import CategoryManager from "@/components/CategoryManager";
 import DocxImporter from "@/components/DocxImporter";
 import KnowledgeMap from "@/components/KnowledgeMap";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
-import FrequentErrors from "@/pages/FrequentErrors"; // kept for backward compat
+import FrequentErrors from "@/pages/FrequentErrors";
 import ExportImportDialog from "@/components/ExportImportDialog";
 import ZenMode from "@/components/ZenMode";
+import GlobalSearch from "@/components/GlobalSearch";
+import EmptyState from "@/components/EmptyState";
 import { Card } from "@/lib/spaced-repetition";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -44,6 +46,19 @@ const Index = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkSubcategory, setBulkSubcategory] = useState("");
   const [zenMode, setZenMode] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+
+  // Ctrl+K global shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setGlobalSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -126,6 +141,9 @@ const Index = () => {
           <button onClick={() => setDocxOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Uvezi iz DOCX">
             <FileText className="h-4 w-4" />
           </button>
+          <button onClick={() => setGlobalSearchOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Pretraži (Ctrl+K)">
+            <Search className="h-4 w-4" />
+          </button>
           <button onClick={() => setExportImportOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Export / Import">
             <Download className="h-4 w-4" />
           </button>
@@ -139,12 +157,20 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {view === "dashboard" && (
             <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} />
+              {cards.length === 0 ? (
+                <EmptyState type="dashboard" onAction={() => setView("create")} />
+              ) : (
+                <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} />
+              )}
             </motion.div>
           )}
           {view === "review" && (
             <motion.div key="review" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <ReviewSession dueCards={dueCards} subcategories={subcategories} srSettings={srSettings} onReviewSection={reviewSection} onLogError={logError} onBack={() => setView("dashboard")} />
+              {dueCards.length === 0 ? (
+                <EmptyState type="review" />
+              ) : (
+                <ReviewSession dueCards={dueCards} subcategories={subcategories} srSettings={srSettings} onReviewSection={reviewSection} onLogError={logError} onBack={() => setView("dashboard")} />
+              )}
             </motion.div>
           )}
           {view === "learn" && (
@@ -401,6 +427,15 @@ const Index = () => {
       <AnimatePresence>
         <ZenMode active={zenMode} onToggle={() => setZenMode(false)} />
       </AnimatePresence>
+
+      <GlobalSearch
+        cards={cards}
+        open={globalSearchOpen}
+        onClose={() => setGlobalSearchOpen(false)}
+        onNavigateToCard={(card) => {
+          handleEdit(card);
+        }}
+      />
     </div>
   );
 };
