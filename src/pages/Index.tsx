@@ -115,6 +115,11 @@ const Index = () => {
           </nav>
         </div>
         <div className="flex items-center gap-2">
+          {(view === "review" || view === "learn") && (
+            <button onClick={() => setZenMode(!zenMode)} className={`p-2 rounded-lg hover:bg-secondary transition-colors ${zenMode ? "text-primary bg-primary/10" : "text-muted-foreground"}`} title="Zen Mode">
+              <Focus className="h-4 w-4" />
+            </button>
+          )}
           <button onClick={() => setView("settings")} className={`p-2 rounded-lg hover:bg-secondary transition-colors ${view === "settings" ? "text-primary" : "text-muted-foreground"}`} title="Podešavanja">
             <Settings className="h-4 w-4" />
           </button>
