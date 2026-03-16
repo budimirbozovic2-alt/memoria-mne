@@ -127,6 +127,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   const storageUsage = useMemo(() => getStorageUsage(), [cards, reviewLog]);
   const backupOverdue = useMemo(() => isBackupOverdue(), []);
   const lastBackup = useMemo(() => getLastBackupTime(), []);
+  const pomStats = useMemo(() => getPomodoroStats(), []);
 
   return (
     <div className="space-y-10">
