@@ -43,6 +43,7 @@ const Index = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkSubcategory, setBulkSubcategory] = useState("");
+  const [zenMode, setZenMode] = useState(false);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
