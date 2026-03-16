@@ -465,6 +465,9 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
           </div>
         </motion.div>
       )}
+
+      {/* Forgetting Curve - Prognoza znanja */}
+      <ForgettingCurve cards={cards} categories={categories} />
     </div>
   );
 }
