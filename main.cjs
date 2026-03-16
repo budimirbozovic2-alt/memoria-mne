@@ -50,7 +50,7 @@ function createSplashWindow() {
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    icon: path.join(__dirname, 'public/icon.ico'),
+    icon: path.join(__dirname, isDev ? 'public/favicon.ico' : 'dist/favicon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
