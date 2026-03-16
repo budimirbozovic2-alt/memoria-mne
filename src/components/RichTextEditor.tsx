@@ -239,20 +239,25 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center gap-0.5 px-1 flex-wrap">
-        {toolbarButtons.map(({ icon: Icon, title, action, hoverClass }) => (
-          <button
-            key={title}
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={action}
-            className={`p-1.5 rounded-md hover:bg-secondary text-muted-foreground ${hoverClass || "hover:text-foreground"} transition-colors`}
-            title={title}
-          >
-            <Icon className="h-3.5 w-3.5" />
-          </button>
-        ))}
-      </div>
+      {!minimal && (
+        <div className="flex items-center gap-0.5 px-1 flex-wrap">
+          {toolbarButtons.map(({ icon: Icon, title, action, hoverClass }) => (
+            <button
+              key={title}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={action}
+              className={`p-1.5 rounded-md hover:bg-secondary text-muted-foreground ${hoverClass || "hover:text-foreground"} transition-colors`}
+              title={title}
+            >
+              <Icon className="h-3.5 w-3.5" />
+            </button>
+          ))}
+          <span className="ml-auto text-[10px] text-muted-foreground/50 select-none">
+            MD: **bold** *italic* __underline__ - lista 1. num # naslov
+          </span>
+        </div>
+      )}
       <div className="relative">
         <div
           ref={editorRef}
@@ -262,7 +267,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
           onCompositionStart={() => { isComposing.current = true; }}
           onCompositionEnd={() => { isComposing.current = false; handleInput(); }}
           suppressContentEditableWarning
-          className="min-h-[100px] resize-y overflow-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
+          className={`${minimal ? "min-h-[60px]" : "min-h-[100px]"} resize-y overflow-auto rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4`}
         />
         {isEmpty && (
           <span className="absolute top-2 left-3 text-sm text-muted-foreground pointer-events-none">
