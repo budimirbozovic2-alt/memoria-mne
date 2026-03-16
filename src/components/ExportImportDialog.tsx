@@ -9,7 +9,7 @@ interface ExportImportDialogProps {
   onOpenChange: (open: boolean) => void;
   onExportTemplate: () => void;
   onExportFull: () => void;
-  onImport: (file: File, strategy: "keep" | "overwrite" | "skip") => void;
+  onImport: (file: File, strategy: "keep" | "overwrite" | "skip" | "newer") => void;
   cards: Card[];
 }
 
