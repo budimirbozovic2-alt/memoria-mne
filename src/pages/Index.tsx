@@ -397,6 +397,10 @@ const Index = () => {
         onImport={importData}
         cards={cards}
       />
+
+      <AnimatePresence>
+        <ZenMode active={zenMode} onToggle={() => setZenMode(false)} />
+      </AnimatePresence>
     </div>
   );
 };
