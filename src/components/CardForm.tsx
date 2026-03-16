@@ -204,11 +204,11 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
 
       <div className="space-y-2">
         <label className="text-sm font-medium text-muted-foreground">Pitanje</label>
-        <Textarea
+        <RichTextEditor
           value={question}
-          onChange={(e) => setQuestion(e.target.value)}
+          onChange={setQuestion}
           placeholder={cardType === "flash" ? "Unesite pitanje..." : "Unesite esejsko pitanje..."}
-          className="min-h-[80px] resize-y bg-card"
+          minimal
         />
       </div>
 
