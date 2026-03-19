@@ -171,9 +171,9 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     return { reviewTarget, newTarget };
   }, [focusRatio, dailyGoal, stats.totalSections]);
 
-  const storageUsage = useMemo(() => getStorageUsage(), [cards, reviewLog]);
-  const backupOverdue = useMemo(() => isBackupOverdue(), []);
-  const lastBackup = useMemo(() => getLastBackupTime(), []);
+  const storageUsage = useDeferredCompute(() => getStorageUsage(), [cards, reviewLog]);
+  const backupOverdue = useDeferredCompute(() => isBackupOverdue(), []);
+  const lastBackup = useDeferredCompute(() => getLastBackupTime(), []);
 
   // Planner suggestion + time predictor + cognitive debt
   const plannerData = useMemo(() => {
