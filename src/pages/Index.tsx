@@ -23,7 +23,7 @@ import GlobalSearch from "@/components/GlobalSearch";
 import EmptyState from "@/components/EmptyState";
 import { Card } from "@/lib/spaced-repetition";
 import { createMnemonicCard, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
-import { recordAppEntry, recordFirstAction } from "@/lib/metacognitive-storage";
+import { recordAppEntry, recordFirstAction, addActivityEntry, ActivityType } from "@/lib/metacognitive-storage";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus, RotateCcw, BarChart3, Target } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -112,6 +112,30 @@ const Index = () => {
   // Track first learning action (Slippage)
   useEffect(() => {
     if (view === "review" || view === "learn") recordFirstAction();
+  }, [view]);
+
+  // Auto time tracking per view
+  useEffect(() => {
+    const viewToActivity: Partial<Record<View, ActivityType>> = {
+      review: "review",
+      learn: "learn-active",
+      mnemonic: "mnemonic-workshop",
+      create: "admin",
+      edit: "admin",
+      categories: "admin",
+      stats: "analysis",
+      metacognitive: "analysis",
+      planner: "analysis",
+    };
+    const actType = viewToActivity[view];
+    if (!actType) return;
+    const start = Date.now();
+    return () => {
+      const duration = Date.now() - start;
+      if (duration > 5000) { // only log if >5 seconds
+        addActivityEntry({ timestamp: start, type: actType, durationMs: duration });
+      }
+    };
   }, [view]);
 
   // Ctrl+K global shortcut

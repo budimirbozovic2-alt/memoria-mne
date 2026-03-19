@@ -14,6 +14,7 @@ import {
   getTodayReviewStats,
   loadSlippageLog, SlippageEntry, getDeepWorkStats,
   getLearningVelocity,
+  getTimeDistribution, getWeeklyTimeDistribution, RESERVOIR_LABELS, RESERVOIR_COLORS,
 } from "@/lib/metacognitive-storage";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -97,6 +98,7 @@ function DiaryTab({ cards, reviewLog, onSendToWorkshop }: { cards: Card[]; revie
   const today = new Date().toISOString().slice(0, 10);
   const todayEntry = diary.find(d => d.date === today);
   const todayStats = useMemo(() => getTodayReviewStats(reviewLog), [reviewLog]);
+  const todayTime = useMemo(() => getTimeDistribution(1), []);
 
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards]);
 
@@ -153,6 +155,26 @@ function DiaryTab({ cards, reviewLog, onSendToWorkshop }: { cards: Card[]; revie
           <div className="text-xs text-muted-foreground mt-1">Lapsusi (1-2)</div>
         </div>
       </div>
+
+      {/* Auto time tracking summary */}
+      {todayTime.totalMs > 60000 && (
+        <div className="rounded-xl border bg-card p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Radno vrijeme danas</span>
+          </div>
+          <div className="flex h-2.5 rounded-md overflow-hidden bg-secondary">
+            {todayTime.review > 0 && <div style={{ width: `${(todayTime.review / todayTime.totalMs) * 100}%`, background: RESERVOIR_COLORS.review }} />}
+            {todayTime.learning > 0 && <div style={{ width: `${(todayTime.learning / todayTime.totalMs) * 100}%`, background: RESERVOIR_COLORS.learning }} />}
+            {todayTime.creative > 0 && <div style={{ width: `${(todayTime.creative / todayTime.totalMs) * 100}%`, background: RESERVOIR_COLORS.creative }} />}
+            {todayTime.analysis > 0 && <div style={{ width: `${(todayTime.analysis / todayTime.totalMs) * 100}%`, background: RESERVOIR_COLORS.analysis }} />}
+          </div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Efektivno: {Math.round(todayTime.cognitiveMs / 60000)} min</span>
+            <span>Logistika: {Math.round(todayTime.logisticMs / 60000)} min</span>
+          </div>
+        </div>
+      )}
 
       {/* Weekly chart */}
       <div className="rounded-xl border bg-card p-5">
@@ -727,6 +749,9 @@ function EfficiencyTab() {
   const slippageLog = useMemo(() => loadSlippageLog(), []);
   const deepWork = useMemo(() => getDeepWorkStats(7), []);
   const deepWork30 = useMemo(() => getDeepWorkStats(30), []);
+  const todayTime = useMemo(() => getTimeDistribution(1), []);
+  const weekTime = useMemo(() => getTimeDistribution(7), []);
+  const weeklyChart = useMemo(() => getWeeklyTimeDistribution(), []);
 
   const formatMs = (ms: number) => {
     if (ms < 60000) return `${Math.round(ms / 1000)}s`;
@@ -788,6 +813,109 @@ function EfficiencyTab() {
           <div className="text-xs text-muted-foreground mt-1">Ukupno (7d)</div>
         </div>
       </div>
+
+      {/* Time Distribution — Today + Week */}
+      {(todayTime.totalMs > 60000 || weekTime.totalMs > 60000) && (
+        <div className="rounded-xl border bg-card p-5 space-y-4">
+          <h3 className="text-sm font-medium">Distribucija vremena</h3>
+
+          {/* Today pie */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {todayTime.totalMs > 60000 && (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground font-medium">Danas</p>
+                <div className="flex items-center gap-6">
+                  <ResponsiveContainer width="50%" height={140}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: RESERVOIR_LABELS.review, value: Math.round(todayTime.review / 60000), fill: RESERVOIR_COLORS.review },
+                          { name: RESERVOIR_LABELS.learning, value: Math.round(todayTime.learning / 60000), fill: RESERVOIR_COLORS.learning },
+                          { name: RESERVOIR_LABELS.creative, value: Math.round(todayTime.creative / 60000), fill: RESERVOIR_COLORS.creative },
+                          { name: RESERVOIR_LABELS.analysis, value: Math.round(todayTime.analysis / 60000), fill: RESERVOIR_COLORS.analysis },
+                        ].filter(d => d.value > 0)}
+                        dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={55} paddingAngle={3}
+                      >
+                        {[
+                          { fill: RESERVOIR_COLORS.review },
+                          { fill: RESERVOIR_COLORS.learning },
+                          { fill: RESERVOIR_COLORS.creative },
+                          { fill: RESERVOIR_COLORS.analysis },
+                        ].filter((_, i) => [todayTime.review, todayTime.learning, todayTime.creative, todayTime.analysis][i] > 0)
+                         .map((d, i) => <Cell key={i} fill={d.fill} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} formatter={(v: number) => `${v} min`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-1.5 text-xs">
+                    <p><span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: RESERVOIR_COLORS.review }} />{RESERVOIR_LABELS.review}: {Math.round(todayTime.review / 60000)}m</p>
+                    <p><span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: RESERVOIR_COLORS.learning }} />{RESERVOIR_LABELS.learning}: {Math.round(todayTime.learning / 60000)}m</p>
+                    <p><span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: RESERVOIR_COLORS.creative }} />{RESERVOIR_LABELS.creative}: {Math.round(todayTime.creative / 60000)}m</p>
+                    <p><span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: RESERVOIR_COLORS.analysis }} />{RESERVOIR_LABELS.analysis}: {Math.round(todayTime.analysis / 60000)}m</p>
+                    <p className="pt-1 border-t text-muted-foreground">Neto kogn.: {todayTime.cognitivePct}%</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {weekTime.totalMs > 60000 && (
+              <div className="space-y-3">
+                <p className="text-xs text-muted-foreground font-medium">Prosjek sedmice</p>
+                <div className="flex items-center gap-6">
+                  <ResponsiveContainer width="50%" height={140}>
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: RESERVOIR_LABELS.review, value: Math.round(weekTime.review / 60000), fill: RESERVOIR_COLORS.review },
+                          { name: RESERVOIR_LABELS.learning, value: Math.round(weekTime.learning / 60000), fill: RESERVOIR_COLORS.learning },
+                          { name: RESERVOIR_LABELS.creative, value: Math.round(weekTime.creative / 60000), fill: RESERVOIR_COLORS.creative },
+                          { name: RESERVOIR_LABELS.analysis, value: Math.round(weekTime.analysis / 60000), fill: RESERVOIR_COLORS.analysis },
+                        ].filter(d => d.value > 0)}
+                        dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={30} outerRadius={55} paddingAngle={3}
+                      >
+                        {[
+                          { fill: RESERVOIR_COLORS.review },
+                          { fill: RESERVOIR_COLORS.learning },
+                          { fill: RESERVOIR_COLORS.creative },
+                          { fill: RESERVOIR_COLORS.analysis },
+                        ].filter((_, i) => [weekTime.review, weekTime.learning, weekTime.creative, weekTime.analysis][i] > 0)
+                         .map((d, i) => <Cell key={i} fill={d.fill} />)}
+                      </Pie>
+                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} formatter={(v: number) => `${v} min`} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-1.5 text-xs">
+                    <p><span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: RESERVOIR_COLORS.review }} />{RESERVOIR_LABELS.review}: {Math.round(weekTime.review / 60000)}m</p>
+                    <p><span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: RESERVOIR_COLORS.learning }} />{RESERVOIR_LABELS.learning}: {Math.round(weekTime.learning / 60000)}m</p>
+                    <p><span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: RESERVOIR_COLORS.creative }} />{RESERVOIR_LABELS.creative}: {Math.round(weekTime.creative / 60000)}m</p>
+                    <p><span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ background: RESERVOIR_COLORS.analysis }} />{RESERVOIR_LABELS.analysis}: {Math.round(weekTime.analysis / 60000)}m</p>
+                    <p className="pt-1 border-t text-muted-foreground">Neto kogn.: {weekTime.cognitivePct}%</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Weekly Stacked Bar Chart */}
+      {weeklyChart.some(d => d.review + d.learning + d.creative + d.analysis > 0) && (
+        <div className="rounded-xl border bg-card p-5 space-y-4">
+          <h3 className="text-sm font-medium">Sedmična distribucija (min po danu)</h3>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={weeklyChart}>
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} unit="m" />
+              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} formatter={(v: number) => `${v} min`} />
+              <Bar dataKey="review" name={RESERVOIR_LABELS.review} stackId="a" fill={RESERVOIR_COLORS.review} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="learning" name={RESERVOIR_LABELS.learning} stackId="a" fill={RESERVOIR_COLORS.learning} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="creative" name={RESERVOIR_LABELS.creative} stackId="a" fill={RESERVOIR_COLORS.creative} radius={[0, 0, 0, 0]} />
+              <Bar dataKey="analysis" name={RESERVOIR_LABELS.analysis} stackId="a" fill={RESERVOIR_COLORS.analysis} radius={[4, 4, 0, 0]} />
+              <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Deep Work ratio alert */}
       {deepWork.totalMs > 0 && !isHealthyRatio && (
