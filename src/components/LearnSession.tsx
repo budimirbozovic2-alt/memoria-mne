@@ -189,6 +189,22 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
           <AnimatePresence>
             {showOnboarding && <LearnOnboarding onComplete={() => setShowOnboarding(false)} />}
           </AnimatePresence>
+
+          {dueCount > 50 && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-3 p-4 rounded-xl border border-warning/30 bg-warning/5"
+            >
+              <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Previše dospjelih kartica ({dueCount})</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Preporučujemo da prvo ponovite bar polovinu dospjelih kartica prije učenja novog materijala.
+                </p>
+              </div>
+            </motion.div>
+          )}
           <div>
             <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
               <ArrowLeft className="h-4 w-4" /> Nazad
