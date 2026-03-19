@@ -175,8 +175,8 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   const backupOverdue = useDeferredCompute(() => isBackupOverdue(), []);
   const lastBackup = useDeferredCompute(() => getLastBackupTime(), []);
 
-  // Planner suggestion + time predictor + cognitive debt
-  const plannerData = useMemo(() => {
+  // Planner suggestion + time predictor (DEFERRED — heavy)
+  const plannerData = useDeferredCompute(() => {
     const planner = loadPlanner();
     if (!planner.finalGoalDate) return null;
     const totalSections = stats.totalSections;
