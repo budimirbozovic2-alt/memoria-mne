@@ -20,6 +20,7 @@ export interface Section {
   lapses: number;               // count of "Again" presses
   elapsedDays: number;          // days since last review
   scheduledDays: number;        // days that were scheduled
+  firstReviewPending: boolean;  // 20-min rule: waiting for first repetition
 }
 
 export interface ErrorLogEntry {
