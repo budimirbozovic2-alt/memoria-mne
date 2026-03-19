@@ -1,6 +1,8 @@
 import Dexie, { type Table } from "dexie";
 import { Card } from "./spaced-repetition";
 import { ReviewLogEntry, PomodoroLogEntry, LearnCardProgress } from "./storage";
+import type { DiaryEntry, CalibrationEntry, LatencyEntry, SlippageEntry, ActivityEntry } from "./metacognitive-storage";
+import type { PlannerConfig, DisciplineEntry } from "./planner-storage";
 
 // ─── Database Schema ────────────────────────────────────
 class MemoriaDB extends Dexie {
@@ -10,6 +12,13 @@ class MemoriaDB extends Dexie {
   reviewLog!: Table<ReviewLogEntry & { id?: number }, number>;
   pomodoroLog!: Table<PomodoroLogEntry & { id?: number }, number>;
   settings!: Table<{ key: string; value: any }, string>;
+  // v2: metacognitive + planner tables
+  diary!: Table<DiaryEntry, string>;
+  calibrationLog!: Table<CalibrationEntry & { id?: number }, number>;
+  latencyLog!: Table<LatencyEntry & { id?: number }, number>;
+  slippageLog!: Table<SlippageEntry & { id?: number }, number>;
+  activityLog!: Table<ActivityEntry & { id?: number }, number>;
+  disciplineLog!: Table<DisciplineEntry & { id?: number }, number>;
 
   constructor() {
     super("MemoriaDB");
@@ -20,6 +29,20 @@ class MemoriaDB extends Dexie {
       reviewLog: "++id, cardId, sectionId, timestamp, category",
       pomodoroLog: "++id, timestamp, type",
       settings: "key",
+    });
+    this.version(2).stores({
+      cards: "id, category, subcategory, type, createdAt",
+      categories: "id, name",
+      subcategories: "id, category",
+      reviewLog: "++id, cardId, sectionId, timestamp, category",
+      pomodoroLog: "++id, timestamp, type",
+      settings: "key",
+      diary: "id, date",
+      calibrationLog: "++id, timestamp, cardId",
+      latencyLog: "++id, timestamp, cardId",
+      slippageLog: "++id, date",
+      activityLog: "++id, timestamp, type",
+      disciplineLog: "++id, date",
     });
   }
 }
