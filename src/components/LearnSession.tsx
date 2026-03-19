@@ -417,6 +417,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
           <ArrowLeft className="h-4 w-4 mr-2" /> Nazad na početnu
         </Button>
       </motion.div>
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
