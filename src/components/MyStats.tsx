@@ -320,6 +320,12 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
           {/* Embed MetacognitiveCenter inline without its own header/back button */}
           <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded onSendToWorkshop={onSendToWorkshop} />
         </TabsContent>
+
+        <TabsContent value="cognitive">
+          <div className="mt-4">
+            <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} />
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
