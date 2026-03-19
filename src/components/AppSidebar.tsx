@@ -127,7 +127,7 @@ export default function AppSidebar() {
         <SidebarSeparator />
 
         {/* Analytics */}
-        <SidebarGroup defaultOpen>
+        <SidebarGroup>
           {!collapsed && <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Analitika</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
