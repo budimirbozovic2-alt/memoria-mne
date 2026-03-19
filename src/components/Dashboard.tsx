@@ -25,6 +25,7 @@ interface Props {
   onExport?: () => void;
   onShowKnowledgeMap?: () => void;
   onStartReview?: () => void;
+  onOpenMnemonic?: () => void;
 }
 
 function ScoreBar({ score }: { score: number }) {
