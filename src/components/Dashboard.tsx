@@ -25,6 +25,7 @@ interface Props {
   onExport?: () => void;
   onShowKnowledgeMap?: () => void;
   onStartReview?: () => void;
+  onOpenMnemonic?: () => void;
 }
 
 function ScoreBar({ score }: { score: number }) {
@@ -62,7 +63,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function Dashboard({ stats, categoryStats, categories, subcategories, cards, reviewLog, srSettings, onExport, onShowKnowledgeMap, onStartReview }: Props) {
+export default function Dashboard({ stats, categoryStats, categories, subcategories, cards, reviewLog, srSettings, onExport, onShowKnowledgeMap, onStartReview, onOpenMnemonic }: Props) {
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const avgRetrievability = useMemo(() => {
     const reviewed = cards.filter((c) => c.sections.some((s) => s.lastReviewed !== null));
@@ -157,6 +158,26 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
           </motion.div>
         ))}
       </div>
+
+      {/* Memorization button */}
+      {onOpenMnemonic && (
+        <motion.button
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          onClick={onOpenMnemonic}
+          className="w-full rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors group text-left flex items-center gap-4"
+        >
+          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Brain className="h-6 w-6 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-serif text-lg">Memorizacija</h3>
+            <p className="text-sm text-muted-foreground">Radionica i testiranje mentalnih kuka</p>
+          </div>
+          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+        </motion.button>
+      )}
 
       {/* Pomodoro Stats */}
       {pomStats.total > 0 && (

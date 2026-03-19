@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { useCards } from "@/hooks/useCards";
 import Dashboard from "@/components/Dashboard";
@@ -11,16 +11,19 @@ import CategoryManager from "@/components/CategoryManager";
 import DocxImporter from "@/components/DocxImporter";
 import KnowledgeMap from "@/components/KnowledgeMap";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
+import MnemonicModule from "@/components/MnemonicModule";
+import MajorSystemSettings from "@/components/MajorSystemSettings";
 import FrequentErrors from "@/pages/FrequentErrors";
 import ExportImportDialog from "@/components/ExportImportDialog";
 import ZenMode from "@/components/ZenMode";
 import GlobalSearch from "@/components/GlobalSearch";
 import EmptyState from "@/components/EmptyState";
 import { Card } from "@/lib/spaced-repetition";
+import { createMnemonicCard, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map";
+type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings";
 
 const Index = () => {
   const {
@@ -47,6 +50,33 @@ const Index = () => {
   const [bulkSubcategory, setBulkSubcategory] = useState("");
   const [zenMode, setZenMode] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+
+  // Mnemonic cloning: when "memorizacija" tag is toggled ON, clone card to mnemonic_cards
+  const handleToggleTag = useCallback((cardId: string, tag: string) => {
+    toggleTag(cardId, tag);
+    if (tag === "memorizacija") {
+      const card = cards.find(c => c.id === cardId);
+      if (card && !(card.tags || []).includes("memorizacija")) {
+        // Tag is being added — clone to mnemonic store
+        const mnemonicCards = loadMnemonicCards();
+        const alreadyCloned = mnemonicCards.some(mc => mc.originalCardId === cardId);
+        if (!alreadyCloned) {
+          const clone = createMnemonicCard(
+            cardId,
+            card.question,
+            card.sections.map(s => ({ title: s.title, content: s.content })),
+            card.category,
+            card.subcategory,
+          );
+          saveMnemonicCards([...mnemonicCards, clone]);
+        }
+      } else if (card && (card.tags || []).includes("memorizacija")) {
+        // Tag is being removed — remove clone
+        const mnemonicCards = loadMnemonicCards();
+        saveMnemonicCards(mnemonicCards.filter(mc => mc.originalCardId !== cardId));
+      }
+    }
+  }, [toggleTag, cards]);
 
   // Ctrl+K global shortcut
   useEffect(() => {
@@ -160,7 +190,7 @@ const Index = () => {
               {cards.length === 0 ? (
                 <EmptyState type="dashboard" onAction={() => setView("create")} />
               ) : (
-                <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} onStartReview={() => setView("review")} />
+                <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} onStartReview={() => setView("review")} onOpenMnemonic={() => setView("mnemonic")} />
               )}
             </motion.div>
           )}
@@ -209,7 +239,7 @@ const Index = () => {
           )}
           {view === "settings" && (
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SRSettingsPanel settings={srSettings} onUpdate={updateSRSettings} onBack={() => setView("dashboard")} />
+              <SRSettingsPanel settings={srSettings} onUpdate={updateSRSettings} onBack={() => setView("dashboard")} onOpenMajorSystem={() => setView("major-system-settings")} />
             </motion.div>
           )}
           {view === "frequent-errors" && (
@@ -220,6 +250,16 @@ const Index = () => {
           {view === "knowledge-map" && (
             <motion.div key="kmap" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <KnowledgeMap cards={cards} categories={categories} subcategories={subcategories} onBack={() => setView("dashboard")} />
+            </motion.div>
+          )}
+          {view === "mnemonic" && (
+            <motion.div key="mnemonic" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <MnemonicModule onBack={() => setView("dashboard")} />
+            </motion.div>
+          )}
+          {view === "major-system-settings" && (
+            <motion.div key="major-settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <MajorSystemSettings onBack={() => setView("settings")} />
             </motion.div>
           )}
           {view === "cards" && (
@@ -377,7 +417,7 @@ const Index = () => {
                   </div>
                 </div>
 
-                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} filterTag={filterTag} searchQuery={searchQuery} onEdit={handleEdit} onDelete={deleteCard} onToggleTag={toggleTag} scrollToCardId={scrollToCardId} onScrolledTo={() => setScrollToCardId(null)} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
+                <CardList cards={cards} filterCategory={filterCategory} filterSubcategory={filterSubcategory} filterType={filterType} filterTag={filterTag} searchQuery={searchQuery} onEdit={handleEdit} onDelete={deleteCard} onToggleTag={handleToggleTag} scrollToCardId={scrollToCardId} onScrolledTo={() => setScrollToCardId(null)} selectionMode={selectionMode} selectedIds={selectedIds} onToggleSelect={toggleSelect} />
               </div>
             </motion.div>
           )}
