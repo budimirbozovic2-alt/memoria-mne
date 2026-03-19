@@ -29,6 +29,7 @@ interface Props {
   onBack: () => void;
   settings?: SRSettings;
   embedded?: boolean;
+  onSendToWorkshop?: (cardId: string) => void;
 }
 
 export default function MetacognitiveCenter({ cards, categories, reviewLog, onBack, settings, embedded }: Props) {
