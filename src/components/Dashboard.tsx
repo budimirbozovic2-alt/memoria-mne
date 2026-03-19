@@ -426,7 +426,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
       )}
 
       {/* Actual vs Ideal Ratio Chart (14 days) */}
-      {ratioHistory.some(d => d["Stvarni ponavljanje"] !== null) && (
+      {ratioHistory && ratioHistory.some(d => d["Stvarni ponavljanje"] !== null) && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
           className="rounded-xl bg-card border p-5 space-y-4">
           <div className="flex items-center gap-2">
