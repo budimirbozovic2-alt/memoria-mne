@@ -15,6 +15,7 @@ import ActivityHeatmap from "./ActivityHeatmap";
 import RetentionChart from "./RetentionChart";
 import ForgettingCurve from "./ForgettingCurve";
 import MetacognitiveCenter from "./MetacognitiveCenter";
+import CognitiveAnalytics from "./CognitiveAnalytics";
 
 interface Props {
   cards: Card[];
