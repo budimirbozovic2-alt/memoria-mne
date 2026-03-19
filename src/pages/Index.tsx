@@ -127,7 +127,8 @@ const Index = () => {
   const navItems = [
     { key: "dashboard" as View, icon: Home, label: "Početna" },
     { key: "learn" as View, icon: GraduationCap, label: "Uči" },
-    { key: "review" as View, icon: Brain, label: "Ponavljaj", badge: stats.due > 0 ? stats.due : undefined },
+    { key: "review" as View, icon: RotateCcw, label: "Ponavljaj", badge: stats.due > 0 ? stats.due : undefined },
+    { key: "mnemonic" as View, icon: Brain, label: "Memorizacija" },
     { key: "cards" as View, icon: BookOpen, label: "Kartice" },
     { key: "categories" as View, icon: FolderOpen, label: "Kategorije" },
   ];
