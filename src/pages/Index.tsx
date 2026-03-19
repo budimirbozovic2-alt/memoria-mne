@@ -21,6 +21,7 @@ import GlobalSearch from "@/components/GlobalSearch";
 import EmptyState from "@/components/EmptyState";
 import { Card } from "@/lib/spaced-repetition";
 import { createMnemonicCard, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
+import { recordAppEntry, recordFirstAction } from "@/lib/metacognitive-storage";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus, RotateCcw, BarChart3 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
