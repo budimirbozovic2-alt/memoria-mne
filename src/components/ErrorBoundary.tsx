@@ -26,6 +26,20 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error(`[ErrorBoundary${this.props.label ? ` — ${this.props.label}` : ""}]`, error, info.componentStack);
+    try {
+      const LOG_KEY = "memoria-crash-log";
+      const MAX_ENTRIES = 50;
+      const existing: CrashEntry[] = JSON.parse(localStorage.getItem(LOG_KEY) || "[]");
+      existing.push({
+        timestamp: new Date().toISOString(),
+        label: this.props.label || "unknown",
+        message: error.message,
+        stack: error.stack || "",
+        componentStack: info.componentStack || "",
+      });
+      if (existing.length > MAX_ENTRIES) existing.splice(0, existing.length - MAX_ENTRIES);
+      localStorage.setItem(LOG_KEY, JSON.stringify(existing));
+    } catch (_) {}
   }
 
   handleRetry = () => {
