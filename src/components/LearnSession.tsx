@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Card, getCardScore } from "@/lib/spaced-repetition";
+import { Card, getCardScore, getDueCards } from "@/lib/spaced-repetition";
 import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress } from "@/lib/storage";
 import { motion, AnimatePresence } from "framer-motion";
 import {
