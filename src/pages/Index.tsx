@@ -190,7 +190,7 @@ const Index = () => {
               {cards.length === 0 ? (
                 <EmptyState type="dashboard" onAction={() => setView("create")} />
               ) : (
-                <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} onStartReview={() => setView("review")} />
+                <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} onStartReview={() => setView("review")} onOpenMnemonic={() => setView("mnemonic")} />
               )}
             </motion.div>
           )}
