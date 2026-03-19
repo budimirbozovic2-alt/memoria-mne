@@ -7,6 +7,7 @@ import { AppProvider } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MainLayout from "@/components/MainLayout";
 import { lazy, Suspense } from "react";
+import { PageSkeleton } from "@/components/ui/page-skeleton";
 import NotFound from "./pages/NotFound";
 
 // Lazy-loaded route pages
@@ -28,12 +29,6 @@ const MajorSystemPage = lazy(() => import("@/views/MajorSystemPage"));
 
 const queryClient = new QueryClient();
 
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-[200px]">
-    <div className="animate-pulse text-muted-foreground text-sm">Učitavanje...</div>
-  </div>
-);
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -43,7 +38,7 @@ const App = () => (
         <AppProvider>
           <ErrorBoundary>
             <MainLayout>
-              <Suspense fallback={<LoadingFallback />}>
+              <Suspense fallback={<PageSkeleton />}>
                 <Routes>
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/review" element={<ReviewPage />} />

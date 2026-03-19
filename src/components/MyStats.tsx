@@ -162,11 +162,7 @@ const DisciplineChart = memo(function DisciplineChart({ data }: { data: any[] })
   );
 });
 
-const TabFallback = () => (
-  <div className="flex items-center justify-center min-h-[200px]">
-    <div className="animate-pulse text-muted-foreground text-sm">Učitavanje...</div>
-  </div>
-);
+import { TabSkeleton } from "@/components/ui/page-skeleton";
 
 // ─── Main component ──────────────────────────────────────
 
@@ -346,7 +342,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         </TabsContent>
 
         <TabsContent value="metacognitive">
-          <Suspense fallback={<TabFallback />}>
+          <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Metakognicija">
               <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded onSendToWorkshop={onSendToWorkshop} />
             </ErrorBoundary>
@@ -354,7 +350,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         </TabsContent>
 
         <TabsContent value="cognitive">
-          <Suspense fallback={<TabFallback />}>
+          <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Kognicija">
               <div className="mt-4">
                 <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} onSendToWorkshop={onSendToWorkshop} />
