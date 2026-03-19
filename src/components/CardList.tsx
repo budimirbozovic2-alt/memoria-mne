@@ -138,13 +138,22 @@ export default function CardList({ cards, filterCategory, filterSubcategory, fil
                 </div>
                 <div className="flex gap-1">
                   <button
-                    onClick={() => onToggleTag(card.id, "često-na-ispitu")}
+                    onClick={() => onToggleTag(card.id, "často-na-ispitu")}
                     className={`p-2 rounded-lg transition-colors ${
                       isFrequent ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"
                     }`}
                     title={isFrequent ? "Često na ispitu (klikni da ukloniš)" : "Označi kao često na ispitu"}
                   >
                     <Flame className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => onToggleTag(card.id, "memorizacija")}
+                    className={`p-2 rounded-lg transition-colors ${
+                      cardTags.includes("memorizacija") ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"
+                    }`}
+                    title={cardTags.includes("memorizacija") ? "Memorizacija (klikni da ukloniš)" : "Dodaj u Memorizaciju"}
+                  >
+                    <Brain className="h-4 w-4" />
                   </button>
                   <button onClick={() => setExpandedId(expanded ? null : card.id)} className="p-2 hover:bg-secondary rounded-lg">
                     {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
