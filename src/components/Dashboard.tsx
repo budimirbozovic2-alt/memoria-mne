@@ -517,7 +517,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
               <div className="flex-1">
                 <p className="text-sm font-medium">Vrijeme je za backup</p>
                 <p className="text-xs text-muted-foreground">
-                  {lastBackup > 0 ? `Posljednji backup: ${new Date(lastBackup).toLocaleDateString("sr-Latn")}` : "Nikad niste napravili backup."}
+                  {lastBackup && lastBackup > 0 ? `Posljednji backup: ${new Date(lastBackup).toLocaleDateString("sr-Latn")}` : "Nikad niste napravili backup."}
                   {" "}Podaci su samo u ovom pretraživaču.
                 </p>
               </div>
