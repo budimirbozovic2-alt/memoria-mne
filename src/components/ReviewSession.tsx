@@ -313,6 +313,8 @@ function ReviewCard({
     if (!showAnswer) {
       setAnswerRevealedAt(null);
       setCanGradeEasy(false);
+      setConfidence(null);
+      questionShownAt.current = Date.now();
     }
   }, [showAnswer, card.id, section.id]);
 
@@ -324,9 +326,20 @@ function ReviewCard({
   }, [answerRevealedAt]);
 
   const handleRevealAnswer = useCallback(() => {
+    // Record latency
+    const latencyMs = Date.now() - questionShownAt.current;
+    addLatencyEntry({ timestamp: Date.now(), cardId: card.id, sectionId: section.id, latencyMs, category: card.category });
     setShowAnswer(true);
     setAnswerRevealedAt(Date.now());
-  }, [setShowAnswer]);
+  }, [setShowAnswer, card.id, section.id, card.category]);
+
+  // Wrap onGrade to also log calibration
+  const handleGradeWithCalibration = useCallback((grade: number) => {
+    if (confidence !== null) {
+      addCalibrationEntry({ timestamp: Date.now(), cardId: card.id, sectionId: section.id, confidence, actualGrade: grade, category: card.category });
+    }
+    onGrade(grade);
+  }, [confidence, card.id, section.id, card.category, onGrade]);
 
   // Keyboard shortcuts: Space to reveal, 1-4 to grade, Z to undo
   useEffect(() => {
