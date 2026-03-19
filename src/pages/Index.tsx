@@ -239,7 +239,7 @@ const Index = () => {
           )}
           {view === "settings" && (
             <motion.div key="settings" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <SRSettingsPanel settings={srSettings} onUpdate={updateSRSettings} onBack={() => setView("dashboard")} />
+              <SRSettingsPanel settings={srSettings} onUpdate={updateSRSettings} onBack={() => setView("dashboard")} onOpenMajorSystem={() => setView("major-system-settings")} />
             </motion.div>
           )}
           {view === "frequent-errors" && (
