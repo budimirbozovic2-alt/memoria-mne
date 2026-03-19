@@ -82,6 +82,12 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   // Persistence
   const [progress, setProgress] = useState<Record<string, LearnCardProgress>>(() => loadLearnProgress());
 
+  // Session statistics
+  const [sessionStartTime] = useState(() => Date.now());
+  const [totalGrades, setTotalGrades] = useState<number[]>([]);
+  const [modulesCompleted, setModulesCompleted] = useState(0);
+  const [chainResets, setChainResets] = useState(0);
+
   useEffect(() => {
     saveLearnProgress(progress);
   }, [progress]);
