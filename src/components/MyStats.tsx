@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, LayoutGrid, TrendingUp, Brain, Layers, BookOpen, Target, Clock, Flame, Activity, CalendarClock, ChevronRight, Award } from "lucide-react";
+import { ArrowLeft, LayoutGrid, TrendingUp, Brain, Layers, BookOpen, Target, Clock, Flame, Activity, CalendarClock, ChevronRight, Award, Microscope } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, getCardScore, getSectionScore, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
@@ -15,6 +15,7 @@ import ActivityHeatmap from "./ActivityHeatmap";
 import RetentionChart from "./RetentionChart";
 import ForgettingCurve from "./ForgettingCurve";
 import MetacognitiveCenter from "./MetacognitiveCenter";
+import CognitiveAnalytics from "./CognitiveAnalytics";
 
 interface Props {
   cards: Card[];
@@ -51,7 +52,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function MyStats({ cards, categories, subcategories, categoryStats, reviewLog, srSettings, onBack, onShowKnowledgeMap, onShowPlanner, onSendToWorkshop }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "metacognitive">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "metacognitive" | "cognitive">("overview");
 
   const activityData = useMemo(() => {
     const now = new Date();
@@ -111,12 +112,15 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
 
       {/* Tab switch between Overview and Metacognitive */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-        <TabsList className="w-full grid grid-cols-2">
+        <TabsList className="w-full grid grid-cols-3">
           <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm">
             <TrendingUp className="h-3.5 w-3.5" /> Pregled
           </TabsTrigger>
           <TabsTrigger value="metacognitive" className="gap-1.5 text-xs sm:text-sm">
             <Brain className="h-3.5 w-3.5" /> Analitika
+          </TabsTrigger>
+          <TabsTrigger value="cognitive" className="gap-1.5 text-xs sm:text-sm">
+            <Microscope className="h-3.5 w-3.5" /> Kognicija
           </TabsTrigger>
         </TabsList>
 
@@ -315,6 +319,12 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         <TabsContent value="metacognitive">
           {/* Embed MetacognitiveCenter inline without its own header/back button */}
           <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded onSendToWorkshop={onSendToWorkshop} />
+        </TabsContent>
+
+        <TabsContent value="cognitive">
+          <div className="mt-4">
+            <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
