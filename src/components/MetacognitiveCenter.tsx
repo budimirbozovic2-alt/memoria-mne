@@ -749,6 +749,9 @@ function EfficiencyTab() {
   const slippageLog = useMemo(() => loadSlippageLog(), []);
   const deepWork = useMemo(() => getDeepWorkStats(7), []);
   const deepWork30 = useMemo(() => getDeepWorkStats(30), []);
+  const todayTime = useMemo(() => getTimeDistribution(1), []);
+  const weekTime = useMemo(() => getTimeDistribution(7), []);
+  const weeklyChart = useMemo(() => getWeeklyTimeDistribution(), []);
 
   const formatMs = (ms: number) => {
     if (ms < 60000) return `${Math.round(ms / 1000)}s`;
