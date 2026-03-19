@@ -37,6 +37,7 @@ interface Props {
   onMarkRead: (id: string) => void;
   onReviewSection: (cardId: string, sectionId: string, grade: number) => void;
   onBack: () => void;
+  dueCount?: number;
 }
 
 const GRADE_LABELS = ["", "Ponovo", "Teško", "Dobro", "Lako"];
