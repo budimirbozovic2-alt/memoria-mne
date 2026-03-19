@@ -16,63 +16,101 @@ export interface InterferencePair {
   score: number; // 0-100
 }
 
-/** Detect cards that share similar error patterns (interference) */
+/** 
+ * Detect cards that share similar error patterns (interference).
+ * Optimized: groups cards by category first, then uses error-text hash map
+ * to find overlaps in O(n * e) instead of O(n² * e²).
+ */
 export function calcInterferencePairs(cards: Card[], limit = 10): InterferencePair[] {
-  // Build error-text -> card mapping
-  const errorToCards = new Map<string, { cardId: string; question: string; category: string; count: number }[]>();
-
+  // Step 1: Group cards by category (only compare within same category)
+  const byCategory = new Map<string, Card[]>();
   cards.forEach(c => {
-    (c.errorLog || []).forEach(err => {
-      if (getErrorStatus(err) === "mastered") return;
-      const normalized = err.text.toLowerCase().trim().slice(0, 80);
-      if (normalized.length < 5) return;
-      const existing = errorToCards.get(normalized) || [];
-      existing.push({ cardId: c.id, question: c.question, category: c.category, count: err.count });
-      errorToCards.set(normalized, existing);
-    });
+    const activeErrors = (c.errorLog || []).filter(e => getErrorStatus(e) !== "mastered");
+    if (activeErrors.length === 0) return;
+    const list = byCategory.get(c.category) || [];
+    list.push(c);
+    byCategory.set(c.category, list);
   });
 
-  // Find cards in same category with overlapping errors
-  const pairScores = new Map<string, { a: typeof cards[0]; b: typeof cards[0]; shared: string[]; score: number }>();
+  // Step 2: For each category group, build error-prefix → cardId[] map
+  const pairScores = new Map<string, { a: Card; b: Card; shared: string[]; score: number }>();
 
-  cards.forEach((cardA, i) => {
-    const errorsA = (cardA.errorLog || []).filter(e => getErrorStatus(e) !== "mastered").map(e => e.text.toLowerCase().trim().slice(0, 80));
-    if (errorsA.length === 0) return;
+  byCategory.forEach((catCards) => {
+    if (catCards.length < 2) return;
 
-    cards.forEach((cardB, j) => {
-      if (j <= i) return;
-      if (cardA.category !== cardB.category) return;
+    // Build card error data once
+    const cardErrors = catCards.map(c => {
+      const errors = (c.errorLog || [])
+        .filter(e => getErrorStatus(e) !== "mastered")
+        .map(e => e.text.toLowerCase().trim().slice(0, 80))
+        .filter(t => t.length >= 5);
+      const prefixes = errors.map(e => e.slice(0, 15));
+      const words = new Set(c.question.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+      return { card: c, errors, prefixes: new Set(prefixes), words };
+    });
 
-      const errorsB = (cardB.errorLog || []).filter(e => getErrorStatus(e) !== "mastered").map(e => e.text.toLowerCase().trim().slice(0, 80));
-      if (errorsB.length === 0) return;
+    // Build prefix → card indices map for O(1) lookup
+    const prefixToIndices = new Map<string, number[]>();
+    cardErrors.forEach((ce, idx) => {
+      ce.prefixes.forEach(prefix => {
+        const list = prefixToIndices.get(prefix) || [];
+        list.push(idx);
+        prefixToIndices.set(prefix, list);
+      });
+    });
 
-      // Find shared error texts (fuzzy: check if one contains part of the other)
-      const shared: string[] = [];
-      errorsA.forEach(eA => {
-        errorsB.forEach(eB => {
-          if (eA === eB || (eA.length > 10 && eB.includes(eA.slice(0, 15))) || (eB.length > 10 && eA.includes(eB.slice(0, 15)))) {
-            shared.push(eA);
-          }
+    // Find pairs via shared prefixes (avoids O(n²) full scan)
+    const checkedPairs = new Set<string>();
+    
+    cardErrors.forEach((ceA, idxA) => {
+      // Collect candidate card indices that share at least one prefix
+      const candidateIndices = new Set<number>();
+      ceA.prefixes.forEach(prefix => {
+        (prefixToIndices.get(prefix) || []).forEach(idx => {
+          if (idx > idxA) candidateIndices.add(idx);
         });
       });
 
-      if (shared.length === 0) return;
+      candidateIndices.forEach(idxB => {
+        const pairKey = `${idxA}:${idxB}`;
+        if (checkedPairs.has(pairKey)) return;
+        checkedPairs.add(pairKey);
 
-      // Also check if questions are similar (same words)
-      const wordsA = new Set(cardA.question.toLowerCase().split(/\s+/).filter(w => w.length > 3));
-      const wordsB = new Set(cardB.question.toLowerCase().split(/\s+/).filter(w => w.length > 3));
-      let commonWords = 0;
-      wordsA.forEach(w => { if (wordsB.has(w)) commonWords++; });
-      const questionSimilarity = wordsA.size > 0 ? commonWords / wordsA.size : 0;
+        const ceB = cardErrors[idxB];
 
-      const score = Math.min(100, Math.round((shared.length * 30) + (questionSimilarity * 70)));
-      const key = [cardA.id, cardB.id].sort().join(":");
-      pairScores.set(key, { a: cardA, b: cardB, shared, score });
+        // Find shared errors via prefix matching
+        const shared: string[] = [];
+        ceA.errors.forEach(eA => {
+          const prefixA = eA.slice(0, 15);
+          if (ceB.prefixes.has(prefixA)) {
+            // Verify full match or containment
+            const match = ceB.errors.find(eB => 
+              eA === eB || eB.includes(prefixA) || eA.includes(eB.slice(0, 15))
+            );
+            if (match) shared.push(eA);
+          }
+        });
+
+        if (shared.length === 0) return;
+
+        // Question similarity via word overlap
+        let commonWords = 0;
+        ceA.words.forEach(w => { if (ceB.words.has(w)) commonWords++; });
+        const questionSimilarity = ceA.words.size > 0 ? commonWords / ceA.words.size : 0;
+
+        const score = Math.min(100, Math.round((shared.length * 30) + (questionSimilarity * 70)));
+        if (score < 20) return;
+
+        const key = [ceA.card.id, ceB.card.id].sort().join(":");
+        const existing = pairScores.get(key);
+        if (!existing || score > existing.score) {
+          pairScores.set(key, { a: ceA.card, b: ceB.card, shared, score });
+        }
+      });
     });
   });
 
   return Array.from(pairScores.values())
-    .filter(p => p.score >= 20)
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(p => ({

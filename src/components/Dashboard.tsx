@@ -1,4 +1,5 @@
-import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Timer, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge, Lightbulb, Hourglass, Brain, Zap } from "lucide-react";
+import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge, Lightbulb, Hourglass, Brain, Zap } from "lucide-react";
+import PomodoroTimer from "@/components/PomodoroTimer";
 import { motion } from "framer-motion";
 import { Card, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS, getPendingFirstReviewCount } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
