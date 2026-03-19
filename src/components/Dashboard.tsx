@@ -1,11 +1,12 @@
-import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Timer, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge, Lightbulb, Hourglass, Brain, Zap } from "lucide-react";
+import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge, Lightbulb, Hourglass, Brain, Zap } from "lucide-react";
+import PomodoroTimer from "@/components/PomodoroTimer";
 import { motion } from "framer-motion";
 import { Card, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS, getPendingFirstReviewCount } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
 import { loadDiary, loadActivityLog, loadSlippageLog, getTimeDistribution } from "@/lib/metacognitive-storage";
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getDailySuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, getDisciplineEmoji, getDisciplineLabel, loadDisciplineLog } from "@/lib/planner-storage";
 import { calcEnergyRecommendation, calcStrategicRealityCheck } from "@/lib/cognitive-analytics";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
@@ -74,61 +75,7 @@ function calcActualRatio(reviewLog: ReviewLogEntry[], cards: Card[]) {
   };
 }
 
-// ─── Pomodoro Timer ──────────────────────────────────────
-function PomodoroTimer() {
-  const [mode, setMode] = useState<"work" | "break">("work");
-  const [seconds, setSeconds] = useState(25 * 60);
-  const [running, setRunning] = useState(false);
-  const intervalRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (running) {
-      intervalRef.current = window.setInterval(() => {
-        setSeconds(prev => {
-          if (prev <= 1) {
-            setRunning(false);
-            if (mode === "work") { setMode("break"); return 5 * 60; }
-            else { setMode("work"); return 25 * 60; }
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running, mode]);
-
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  const progress = mode === "work"
-    ? ((25 * 60 - seconds) / (25 * 60)) * 100
-    : ((5 * 60 - seconds) / (5 * 60)) * 100;
-
-  const reset = () => { setRunning(false); setSeconds(mode === "work" ? 25 * 60 : 5 * 60); };
-
-  return (
-    <div className="rounded-xl bg-card border p-5 space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Timer className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-medium">{mode === "work" ? "Fokus" : "Pauza"}</h3>
-        </div>
-        <span className={`text-xs px-2 py-0.5 rounded-full ${mode === "work" ? "bg-primary/10 text-primary" : "bg-success/10 text-success"}`}>
-          {mode === "work" ? "25 min" : "5 min"}
-        </span>
-      </div>
-      <div className="text-center">
-        <p className="text-4xl font-serif tabular-nums">{String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}</p>
-      </div>
-      <Progress value={progress} className="h-1.5" />
-      <div className="flex gap-2 justify-center">
-        <Button variant={running ? "outline" : "default"} size="sm" onClick={() => setRunning(!running)} className="gap-1.5">
-          {running ? "Pauziraj" : <><Play className="h-3.5 w-3.5" /> Pokreni</>}
-        </Button>
-        <Button variant="ghost" size="sm" onClick={reset}>Reset</Button>
-      </div>
-    </div>
-  );
-}
+// PomodoroTimer moved to src/components/PomodoroTimer.tsx (global in MainLayout)
 
 // ─── Custom Tooltip ──────────────────────────────────────
 const ChartTooltip = ({ active, payload, label }: any) => {
