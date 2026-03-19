@@ -245,6 +245,9 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
 
   const cognitiveDebt = useMemo(() => getCognitiveDebt(dailyGoal), [dailyGoal]);
 
+  // Time distribution for today
+  const todayTime = useMemo(() => getTimeDistribution(1), []);
+
   // Energy-Material Matcher
   const energyRec = useMemo(() => calcEnergyRecommendation(), []);
 
