@@ -71,7 +71,7 @@ export default function AppSidebar() {
         <SidebarSeparator />
 
         {/* Primary: Learning flow */}
-        <SidebarGroup defaultOpen>
+        <SidebarGroup>
           {!collapsed && <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Učenje</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
