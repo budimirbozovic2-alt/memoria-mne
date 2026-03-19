@@ -104,6 +104,20 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   const goalProgress = Math.min(100, Math.round((todayReviews / Math.max(1, dailyGoal)) * 100));
   const pendingFirstReview = useMemo(() => getPendingFirstReviewCount(cards), [cards]);
 
+  // Streak calculation
+  const streak = useMemo(() => {
+    const reviewDays = new Set(reviewLog.map(e => getDayKey(e.timestamp)));
+    let count = 0;
+    const cursor = new Date();
+    if (!reviewDays.has(getDayKey(cursor.getTime()))) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    while (reviewDays.has(getDayKey(cursor.getTime()))) {
+      count++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return count;
+  }, [reviewLog]);
   // Today's diary goal text
   const diaryGoal = useMemo(() => {
     const diary = loadDiary();
@@ -190,7 +204,26 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
             <Target className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-medium">Dnevni cilj</h3>
           </div>
-          <span className="text-sm font-medium tabular-nums">{todayReviews} / {dailyGoal}</span>
+          <div className="flex items-center gap-3">
+            {streak > 0 && (
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 15, delay: 0.5 }}
+                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/10 border border-warning/20"
+              >
+                <motion.span
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+                  className="text-sm"
+                >
+                  🔥
+                </motion.span>
+                <span className="text-xs font-bold text-warning tabular-nums">{streak} {streak === 1 ? "dan" : streak < 5 ? "dana" : "dana"}</span>
+              </motion.div>
+            )}
+            <span className="text-sm font-medium tabular-nums">{todayReviews} / {dailyGoal}</span>
+          </div>
         </div>
         <Progress value={goalProgress} className="h-2.5" />
         {goalProgress >= 100 && (
