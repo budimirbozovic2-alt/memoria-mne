@@ -4,7 +4,8 @@ import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress } fr
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown,
-  ListOrdered, Zap, Volume2, Brain, Link2, RotateCcw, HelpCircle
+  ListOrdered, Zap, Volume2, Brain, Link2, RotateCcw, HelpCircle,
+  Clock, Target, BarChart3, RotateCw, Trophy
 } from "lucide-react";
 import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
