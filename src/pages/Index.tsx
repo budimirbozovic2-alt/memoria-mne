@@ -82,7 +82,30 @@ const Index = () => {
     }
   }, [toggleTag, cards]);
 
-  // Record app entry for Slippage tracking
+  // Send lapse card to Mnemonic Workshop
+  const handleSendToWorkshop = useCallback((cardId: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+    // Add "memorizacija" tag if not present
+    if (!(card.tags || []).includes("memorizacija")) {
+      toggleTag(cardId, "memorizacija");
+      // Clone to mnemonic store
+      const mnemonicCards = loadMnemonicCards();
+      const alreadyCloned = mnemonicCards.some(mc => mc.originalCardId === cardId);
+      if (!alreadyCloned) {
+        const clone = createMnemonicCard(
+          cardId,
+          card.question,
+          card.sections.map(s => ({ title: s.title, content: s.content })),
+          card.category,
+          card.subcategory,
+          (card.tags || []).filter(t => t !== "memorizacija"),
+        );
+        saveMnemonicCards([...mnemonicCards, clone]);
+      }
+    }
+    setView("mnemonic");
+  }, [cards, toggleTag]);
   useEffect(() => { recordAppEntry(); }, []);
 
   // Track first learning action (Slippage)
