@@ -1,4 +1,5 @@
 import { useState, useMemo, memo, lazy, Suspense } from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { motion } from "framer-motion";
 import { ArrowLeft, LayoutGrid, TrendingUp, Brain, Layers, Target, Award, Microscope, ChevronRight } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -323,37 +324,55 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
 
             {/* Heatmap + Retention */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <ActivityHeatmap reviewLog={reviewLog} />
-              <RetentionChart reviewLog={reviewLog} />
+              <ErrorBoundary compact label="Heatmap aktivnosti">
+                <ActivityHeatmap reviewLog={reviewLog} />
+              </ErrorBoundary>
+              <ErrorBoundary compact label="Grafikon retencije">
+                <RetentionChart reviewLog={reviewLog} />
+              </ErrorBoundary>
             </div>
 
             {hasData && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <ActivityChart data={activityData} />
-                <MasteryPieChart data={masteryData} />
-                <CategoryBarChart data={categoryChartData} />
+                <ErrorBoundary compact label="Grafikon aktivnosti">
+                  <ActivityChart data={activityData} />
+                </ErrorBoundary>
+                <ErrorBoundary compact label="Distribucija znanja">
+                  <MasteryPieChart data={masteryData} />
+                </ErrorBoundary>
+                <ErrorBoundary compact label="Kategorije">
+                  <CategoryBarChart data={categoryChartData} />
+                </ErrorBoundary>
               </div>
             )}
 
             {/* Forgetting Curve */}
-            <ForgettingCurve cards={cards} categories={categories} />
+            <ErrorBoundary compact label="Kriva zaboravljanja">
+              <ForgettingCurve cards={cards} categories={categories} />
+            </ErrorBoundary>
 
             {/* Discipline Trend */}
-            <DisciplineChart data={disciplineTrend} />
+            <ErrorBoundary compact label="Trend discipline">
+              <DisciplineChart data={disciplineTrend} />
+            </ErrorBoundary>
           </div>
         </TabsContent>
 
         <TabsContent value="metacognitive">
           <Suspense fallback={<TabFallback />}>
-            <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded onSendToWorkshop={onSendToWorkshop} />
+            <ErrorBoundary label="Metakognicija">
+              <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded onSendToWorkshop={onSendToWorkshop} />
+            </ErrorBoundary>
           </Suspense>
         </TabsContent>
 
         <TabsContent value="cognitive">
           <Suspense fallback={<TabFallback />}>
-            <div className="mt-4">
-              <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} onSendToWorkshop={onSendToWorkshop} />
-            </div>
+            <ErrorBoundary label="Kognicija">
+              <div className="mt-4">
+                <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} onSendToWorkshop={onSendToWorkshop} />
+              </div>
+            </ErrorBoundary>
           </Suspense>
         </TabsContent>
       </Tabs>
