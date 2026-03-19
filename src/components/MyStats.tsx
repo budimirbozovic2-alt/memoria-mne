@@ -24,6 +24,7 @@ interface Props {
   srSettings: SRSettings;
   onBack: () => void;
   onShowKnowledgeMap?: () => void;
+  onSendToWorkshop?: (cardId: string) => void;
 }
 
 const MASTERY_COLORS = [
