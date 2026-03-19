@@ -104,6 +104,20 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   const goalProgress = Math.min(100, Math.round((todayReviews / Math.max(1, dailyGoal)) * 100));
   const pendingFirstReview = useMemo(() => getPendingFirstReviewCount(cards), [cards]);
 
+  // Streak calculation
+  const streak = useMemo(() => {
+    const reviewDays = new Set(reviewLog.map(e => getDayKey(e.timestamp)));
+    let count = 0;
+    const cursor = new Date();
+    if (!reviewDays.has(getDayKey(cursor.getTime()))) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    while (reviewDays.has(getDayKey(cursor.getTime()))) {
+      count++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return count;
+  }, [reviewLog]);
   // Today's diary goal text
   const diaryGoal = useMemo(() => {
     const diary = loadDiary();
