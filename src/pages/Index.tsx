@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { useCards } from "@/hooks/useCards";
 import Dashboard from "@/components/Dashboard";
@@ -11,16 +11,19 @@ import CategoryManager from "@/components/CategoryManager";
 import DocxImporter from "@/components/DocxImporter";
 import KnowledgeMap from "@/components/KnowledgeMap";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
+import MnemonicModule from "@/components/MnemonicModule";
+import MajorSystemSettings from "@/components/MajorSystemSettings";
 import FrequentErrors from "@/pages/FrequentErrors";
 import ExportImportDialog from "@/components/ExportImportDialog";
 import ZenMode from "@/components/ZenMode";
 import GlobalSearch from "@/components/GlobalSearch";
 import EmptyState from "@/components/EmptyState";
 import { Card } from "@/lib/spaced-repetition";
+import { createMnemonicCard, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
 import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map";
+type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings";
 
 const Index = () => {
   const {
