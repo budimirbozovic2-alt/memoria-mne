@@ -5,7 +5,7 @@ import DocxImporter from "@/components/DocxImporter";
 import ExportImportDialog from "@/components/ExportImportDialog";
 import ZenMode from "@/components/ZenMode";
 import GlobalSearch from "@/components/GlobalSearch";
-import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, FileText, Settings, Brain, Search, Focus, RotateCcw, BarChart3, Target } from "lucide-react";
+import { BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, FileText, Settings, Brain, Search, Focus, RotateCcw, BarChart3, Target } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 
 const NAV_ITEMS: { key: View; icon: typeof Home; label: string }[] = [
@@ -20,10 +20,8 @@ const NAV_ITEMS: { key: View; icon: typeof Home; label: string }[] = [
 ];
 
 export default function MainLayout({ children }: { children: ReactNode }) {
-  const {
-    view, setView, stats, cards,
-    categories, exportData, exportTemplate, importData, importCards, addFlashCard,
-  } = useAppContext();
+  const ctx = useAppContext();
+  const { view, setView, setEditingCard, stats, cards, categories, exportData, exportTemplate, importData, importCards, addFlashCard } = ctx;
 
   const [docxOpen, setDocxOpen] = useState(false);
   const [exportImportOpen, setExportImportOpen] = useState(false);
@@ -31,7 +29,6 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
 
-  // Ctrl+K global shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -48,18 +45,11 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     setDark(d => !d);
   }, []);
 
-  const handleEdit = useCallback((card: any) => {
-    const { setEditingCard } = useAppContext as any;
-  }, []);
-
   return (
     <div className="min-h-screen flex flex-col">
       <header className="border-b px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <h1
-            className="text-xl font-serif italic tracking-tight text-primary cursor-pointer"
-            onClick={() => setView("dashboard")}
-          >
+          <h1 className="text-xl font-serif italic tracking-tight text-primary cursor-pointer" onClick={() => setView("dashboard")}>
             Memoria
           </h1>
           <nav className="hidden md:flex gap-1">
@@ -70,9 +60,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
                   key={key}
                   onClick={() => setView(key)}
                   className={`relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${
-                    view === key
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    view === key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -88,23 +76,14 @@ export default function MainLayout({ children }: { children: ReactNode }) {
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          {/* Global Pomodoro Timer (compact) */}
           <PomodoroTimer compact />
           <div className="w-px h-5 bg-border mx-1" />
           {(view === "review" || view === "learn") && (
-            <button
-              onClick={() => setZenMode(!zenMode)}
-              className={`p-2 rounded-lg hover:bg-secondary transition-colors ${zenMode ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
-              title="Zen Mode"
-            >
+            <button onClick={() => setZenMode(!zenMode)} className={`p-2 rounded-lg hover:bg-secondary transition-colors ${zenMode ? "text-primary bg-primary/10" : "text-muted-foreground"}`} title="Zen Mode">
               <Focus className="h-4 w-4" />
             </button>
           )}
-          <button
-            onClick={() => setView("settings")}
-            className={`p-2 rounded-lg hover:bg-secondary transition-colors ${view === "settings" ? "text-primary" : "text-muted-foreground"}`}
-            title="Podešavanja"
-          >
+          <button onClick={() => setView("settings")} className={`p-2 rounded-lg hover:bg-secondary transition-colors ${view === "settings" ? "text-primary" : "text-muted-foreground"}`} title="Podešavanja">
             <Settings className="h-4 w-4" />
           </button>
           <button onClick={() => setDocxOpen(true)} className="p-2 rounded-lg hover:bg-secondary text-muted-foreground" title="Uvezi iz DOCX">
@@ -126,18 +105,11 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      {/* Mobile bottom nav */}
       <nav className="md:hidden border-t flex justify-around py-3 bg-background">
         {NAV_ITEMS.map(({ key, icon: Icon, label }) => {
           const badge = key === "review" && stats.due > 0 ? stats.due : undefined;
           return (
-            <button
-              key={key}
-              onClick={() => setView(key)}
-              className={`relative flex flex-col items-center gap-1 text-xs transition-colors ${
-                view === key ? "text-primary" : "text-muted-foreground"
-              }`}
-            >
+            <button key={key} onClick={() => setView(key)} className={`relative flex flex-col items-center gap-1 text-xs transition-colors ${view === key ? "text-primary" : "text-muted-foreground"}`}>
               <Icon className="h-5 w-5" />
               {label}
               {badge !== undefined && (
@@ -150,15 +122,14 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      {/* Modals/overlays */}
       <DocxImporter
         open={docxOpen}
         onClose={() => setDocxOpen(false)}
         categories={categories}
         onImport={(docxCards, cat, cardType) => {
           if (cardType === "flash") {
-            docxCards.forEach((c) => {
-              const answer = c.sections.map((s) => s.content).join("\n");
+            docxCards.forEach(c => {
+              const answer = c.sections.map(s => s.content).join("\n");
               addFlashCard(c.question, answer, cat);
             });
           } else {
@@ -183,8 +154,8 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         open={globalSearchOpen}
         onClose={() => setGlobalSearchOpen(false)}
         onNavigateToCard={(card) => {
-          // Navigate to edit
-          const ctx = useAppContext as any;
+          setEditingCard(card);
+          setView("edit");
         }}
       />
     </div>
