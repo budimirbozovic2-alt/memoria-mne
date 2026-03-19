@@ -51,6 +51,33 @@ const Index = () => {
   const [zenMode, setZenMode] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
 
+  // Mnemonic cloning: when "memorizacija" tag is toggled ON, clone card to mnemonic_cards
+  const handleToggleTag = useCallback((cardId: string, tag: string) => {
+    toggleTag(cardId, tag);
+    if (tag === "memorizacija") {
+      const card = cards.find(c => c.id === cardId);
+      if (card && !(card.tags || []).includes("memorizacija")) {
+        // Tag is being added — clone to mnemonic store
+        const mnemonicCards = loadMnemonicCards();
+        const alreadyCloned = mnemonicCards.some(mc => mc.originalCardId === cardId);
+        if (!alreadyCloned) {
+          const clone = createMnemonicCard(
+            cardId,
+            card.question,
+            card.sections.map(s => ({ title: s.title, content: s.content })),
+            card.category,
+            card.subcategory,
+          );
+          saveMnemonicCards([...mnemonicCards, clone]);
+        }
+      } else if (card && (card.tags || []).includes("memorizacija")) {
+        // Tag is being removed — remove clone
+        const mnemonicCards = loadMnemonicCards();
+        saveMnemonicCards(mnemonicCards.filter(mc => mc.originalCardId !== cardId));
+      }
+    }
+  }, [toggleTag, cards]);
+
   // Ctrl+K global shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
