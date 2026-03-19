@@ -240,7 +240,13 @@ export function createSection(title: string, content: string): Section {
     lapses: 0,
     elapsedDays: 0,
     scheduledDays: 0,
+    firstReviewPending: false,
   };
+}
+
+// Count sections pending their 20-minute first review
+export function getPendingFirstReviewCount(cards: Card[]): number {
+  return cards.reduce((sum, c) => sum + c.sections.filter((s) => s.firstReviewPending && s.nextReview <= Date.now()).length, 0);
 }
 
 export function createCard(question: string, sections: { title: string; content: string }[], category: string, subcategory?: string): Card {
