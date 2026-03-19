@@ -1,9 +1,10 @@
-import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Timer, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge, Lightbulb, Hourglass } from "lucide-react";
+import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Timer, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge, Lightbulb, Hourglass, Brain, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { Card, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS, getPendingFirstReviewCount } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
 import { loadDiary, loadActivityLog, loadSlippageLog } from "@/lib/metacognitive-storage";
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getDailySuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, getDisciplineEmoji, getDisciplineLabel, loadDisciplineLog } from "@/lib/planner-storage";
+import { calcEnergyRecommendation, calcStrategicRealityCheck } from "@/lib/cognitive-analytics";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
