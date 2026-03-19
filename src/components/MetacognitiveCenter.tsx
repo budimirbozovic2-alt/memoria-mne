@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, BookOpen, Target, Clock, Brain, TrendingUp, AlertTriangle, CheckCircle, XCircle, Gauge } from "lucide-react";
+import { ArrowLeft, BookOpen, Target, Clock, Brain, TrendingUp, AlertTriangle, CheckCircle, XCircle, Gauge, Flame, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
