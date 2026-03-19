@@ -296,7 +296,7 @@ const Index = () => {
           )}
           {view === "metacognitive" && (
             <motion.div key="metacognitive" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={() => setView("stats")} settings={srSettings} />
+              <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={() => setView("stats")} settings={srSettings} onSendToWorkshop={handleSendToWorkshop} />
             </motion.div>
           )}
           {view === "stats" && (
