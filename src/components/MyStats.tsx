@@ -162,9 +162,6 @@ const DisciplineChart = memo(function DisciplineChart({ data }: { data: any[] })
   );
 });
 
-const TabFallback = lazy(() => import("@/components/ui/page-skeleton").then(m => ({ default: m.TabSkeleton })));
-
-// Use TabSkeleton directly (no need for extra lazy here)
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 
 // ─── Main component ──────────────────────────────────────
