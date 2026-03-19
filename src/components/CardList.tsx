@@ -258,7 +258,6 @@ export default function CardList({
           } as any}
           style={{ height: "100%" }}
         />
-        />
       </div>
     );
   }
