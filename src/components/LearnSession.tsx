@@ -499,8 +499,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
           </div>
         )}
 
-        <Button onClick={onBack} variant="outline" className="w-full">
-          <ArrowLeft className="h-4 w-4 mr-2" /> Nazad na početnu
+        <Button onClick={onBack} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Check className="h-4 w-4 mr-2" /> Zaključi sesiju i sačuvaj napredak
         </Button>
       </motion.div>
     );
