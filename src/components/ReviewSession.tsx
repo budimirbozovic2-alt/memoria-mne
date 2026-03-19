@@ -6,6 +6,7 @@ import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak, stopSpeaking } from "@/lib/tts";
 import { useToast } from "@/hooks/use-toast";
+import { addCalibrationEntry, addLatencyEntry, isAnalysisNeededToday } from "@/lib/metacognitive-storage";
 
 type ReviewMode = "essay" | "random" | null;
 type ViewWidth = "compact" | "normal" | "wide" | "full";
@@ -264,6 +265,19 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
 // === Shared Components ===
 
 function FinishedScreen({ onBack }: { onBack: () => void }) {
+  const needsAnalysis = isAnalysisNeededToday();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (needsAnalysis) {
+      toast({
+        title: "📝 Dnevna samoanaliza",
+        description: "Posjetite Metakognitivni Centar i zabilježite šta je bilo dobro i šta mijenjate sutra.",
+        duration: 8000,
+      });
+    }
+  }, [needsAnalysis]);
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-6 py-20">
       <h2 className="text-4xl font-serif italic">Bravo!</h2>
@@ -291,12 +305,16 @@ function ReviewCard({
   const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);
   const [answerRevealedAt, setAnswerRevealedAt] = useState<number | null>(null);
   const [canGradeEasy, setCanGradeEasy] = useState(false);
+  const [confidence, setConfidence] = useState<number | null>(null);
+  const questionShownAt = useRef<number>(Date.now());
 
   // Reset timer when card/section changes or answer is hidden
   useEffect(() => {
     if (!showAnswer) {
       setAnswerRevealedAt(null);
       setCanGradeEasy(false);
+      setConfidence(null);
+      questionShownAt.current = Date.now();
     }
   }, [showAnswer, card.id, section.id]);
 
@@ -308,9 +326,20 @@ function ReviewCard({
   }, [answerRevealedAt]);
 
   const handleRevealAnswer = useCallback(() => {
+    // Record latency
+    const latencyMs = Date.now() - questionShownAt.current;
+    addLatencyEntry({ timestamp: Date.now(), cardId: card.id, sectionId: section.id, latencyMs, category: card.category });
     setShowAnswer(true);
     setAnswerRevealedAt(Date.now());
-  }, [setShowAnswer]);
+  }, [setShowAnswer, card.id, section.id, card.category]);
+
+  // Wrap onGrade to also log calibration
+  const handleGradeWithCalibration = useCallback((grade: number) => {
+    if (confidence !== null) {
+      addCalibrationEntry({ timestamp: Date.now(), cardId: card.id, sectionId: section.id, confidence, actualGrade: grade, category: card.category });
+    }
+    onGrade(grade);
+  }, [confidence, card.id, section.id, card.category, onGrade]);
 
   // Keyboard shortcuts: Space to reveal, 1-4 to grade, Z to undo
   useEffect(() => {
@@ -330,7 +359,7 @@ function ReviewCard({
         if (grade === 4 && !canGradeEasy) return;
         e.preventDefault();
         lastGradeRef.current = { cardId: card.id, sectionId: section.id, grade };
-        onGrade(grade);
+        handleGradeWithCalibration(grade);
         return;
       }
 
@@ -344,7 +373,7 @@ function ReviewCard({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showAnswer, card.id, section.id, onGrade, onLogError, toast, handleRevealAnswer, canGradeEasy]);
+  }, [showAnswer, card.id, section.id, handleGradeWithCalibration, onLogError, toast, handleRevealAnswer, canGradeEasy]);
   const gradeColorMap: Record<string, string> = {
     destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
     warning: "bg-warning text-warning-foreground hover:bg-warning/90",
@@ -458,10 +487,35 @@ function ReviewCard({
           )}
 
           {!showAnswer ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <p className="text-sm italic text-muted-foreground text-center">
                 Pokušaj odgovoriti na glas prije otkrivanja.
               </p>
+
+              {/* Confidence selector */}
+              <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground text-center">Koliko si siguran/na u odgovor?</p>
+                <div className="flex justify-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map(level => (
+                    <button
+                      key={level}
+                      onClick={() => setConfidence(level)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                        confidence === level
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-secondary text-secondary-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+                  <span>Nimalo</span>
+                  <span>Potpuno</span>
+                </div>
+              </div>
+
               <Button onClick={handleRevealAnswer} className="w-full py-6 text-base" variant="outline">
                 <Eye className="h-4 w-4 mr-2" /> {isFlash ? "Prikaži odgovor" : "Prikaži odgovor za ovu cjelinu"}
               </Button>
@@ -492,7 +546,7 @@ function ReviewCard({
                     return (
                       <button
                         key={g.value}
-                        onClick={() => !disabled && onGrade(g.value)}
+                        onClick={() => !disabled && handleGradeWithCalibration(g.value)}
                         disabled={disabled}
                         className={`rounded-xl px-3 py-4 text-sm font-medium transition-all ${gradeColorMap[g.color]} ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
                         title={disabled ? "Pričekajte bar 3 sekunde" : undefined}

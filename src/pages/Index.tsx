@@ -12,6 +12,7 @@ import DocxImporter from "@/components/DocxImporter";
 import KnowledgeMap from "@/components/KnowledgeMap";
 import SRSettingsPanel from "@/components/SRSettingsPanel";
 import MnemonicModule from "@/components/MnemonicModule";
+import MetacognitiveCenter from "@/components/MetacognitiveCenter";
 import MajorSystemSettings from "@/components/MajorSystemSettings";
 import FrequentErrors from "@/pages/FrequentErrors";
 import ExportImportDialog from "@/components/ExportImportDialog";
@@ -20,10 +21,10 @@ import GlobalSearch from "@/components/GlobalSearch";
 import EmptyState from "@/components/EmptyState";
 import { Card } from "@/lib/spaced-repetition";
 import { createMnemonicCard, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
-import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus, RotateCcw } from "lucide-react";
+import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus, RotateCcw, BarChart3 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings";
+type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings" | "metacognitive";
 
 const Index = () => {
   const {
@@ -129,7 +130,8 @@ const Index = () => {
     { key: "dashboard" as View, icon: Home, label: "Početna" },
     { key: "learn" as View, icon: GraduationCap, label: "Uči" },
     { key: "review" as View, icon: RotateCcw, label: "Ponavljaj", badge: stats.due > 0 ? stats.due : undefined },
-    { key: "mnemonic" as View, icon: Brain, label: "Memorizacija" },
+    { key: "mnemonic" as View, icon: Brain, label: "Memo" },
+    { key: "metacognitive" as View, icon: BarChart3, label: "Centar" },
     { key: "cards" as View, icon: BookOpen, label: "Kartice" },
     { key: "categories" as View, icon: FolderOpen, label: "Kategorije" },
   ];
@@ -257,6 +259,11 @@ const Index = () => {
           {view === "mnemonic" && (
             <motion.div key="mnemonic" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <MnemonicModule onBack={() => setView("dashboard")} />
+            </motion.div>
+          )}
+          {view === "metacognitive" && (
+            <motion.div key="metacognitive" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <MetacognitiveCenter cards={cards} reviewLog={reviewLog} onBack={() => setView("dashboard")} />
             </motion.div>
           )}
           {view === "major-system-settings" && (
