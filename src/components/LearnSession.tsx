@@ -4,11 +4,12 @@ import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress } fr
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown,
-  ListOrdered, Zap, Volume2, Brain, Link2, RotateCcw
+  ListOrdered, Zap, Volume2, Brain, Link2, RotateCcw, HelpCircle
 } from "lucide-react";
 import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak } from "@/lib/tts";
+import LearnOnboarding, { hasSeenOnboarding } from "@/components/LearnOnboarding";
 
 type SortMode = "order" | "weakest" | "leastRead";
 type ViewWidth = "compact" | "normal" | "wide" | "full";
@@ -54,6 +55,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("order");
   const [started, setStarted] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
 
   // Session state
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -176,12 +178,26 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
 
       return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10">
+          <AnimatePresence>
+            {showOnboarding && <LearnOnboarding onComplete={() => setShowOnboarding(false)} />}
+          </AnimatePresence>
           <div>
             <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
               <ArrowLeft className="h-4 w-4" /> Nazad
             </button>
-            <h2 className="text-3xl font-serif">Učenje</h2>
-            <p className="text-muted-foreground mt-2">Izaberi režim učenja koji odgovara tvom nivou.</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-serif">Učenje</h2>
+                <p className="text-muted-foreground mt-2">Izaberi režim učenja koji odgovara tvom nivou.</p>
+              </div>
+              <button
+                onClick={() => setShowOnboarding(true)}
+                className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                title="Vodič kroz režime učenja"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-4">
