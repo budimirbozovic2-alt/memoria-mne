@@ -382,12 +382,12 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
     const seconds = Math.floor((elapsed % 60000) / 1000);
     const avgGrade = totalGrades.length > 0 ? (totalGrades.reduce((a, b) => a + b, 0) / totalGrades.length).toFixed(1) : "—";
 
-    // Log activity for Deep Work tracking
-    const activityType = learnMode === "free" ? "learn-free" as const
-      : learnMode === "active-recall" ? "learn-active" as const
-      : "learn-chain" as const;
-    // Use ref-like approach to avoid double logging
-    if (elapsed > 5000) {
+    // Log activity for Deep Work tracking (once only)
+    if (!activityLoggedRef.current && elapsed > 5000) {
+      activityLoggedRef.current = true;
+      const activityType = learnMode === "free" ? "learn-free" as const
+        : learnMode === "active-recall" ? "learn-active" as const
+        : "learn-chain" as const;
       addActivityEntry({ timestamp: Date.now(), type: activityType, durationMs: elapsed });
     }
 
