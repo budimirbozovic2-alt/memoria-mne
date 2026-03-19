@@ -121,12 +121,11 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     return deficit > 20; // warning if actual review is 20%+ below target
   }, [focusRatio, actualRatio]);
 
-  // 14-day ratio history chart
-  const ratioHistory = useMemo(() => {
+  // 14-day ratio history chart (DEFERRED — heavy)
+  const ratioHistory = useDeferredCompute(() => {
     const now = new Date();
     const days = eachDayOfInterval({ start: subDays(now, 13), end: now });
 
-    // Build section first-seen map
     const sectionFirstSeen = new Map<string, number>();
     reviewLog.forEach(e => {
       const key = `${e.cardId}:${e.sectionId}`;
