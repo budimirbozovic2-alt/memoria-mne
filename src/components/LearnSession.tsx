@@ -4,11 +4,12 @@ import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress } fr
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown,
-  ListOrdered, Zap, Volume2, Brain, Link2, RotateCcw
+  ListOrdered, Zap, Volume2, Brain, Link2, RotateCcw, HelpCircle
 } from "lucide-react";
 import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak } from "@/lib/tts";
+import LearnOnboarding, { hasSeenOnboarding } from "@/components/LearnOnboarding";
 
 type SortMode = "order" | "weakest" | "leastRead";
 type ViewWidth = "compact" | "normal" | "wide" | "full";
