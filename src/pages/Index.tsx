@@ -303,7 +303,7 @@ const Index = () => {
           )}
           {view === "stats" && (
             <motion.div key="stats" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <MyStats cards={cards} categories={categories} subcategories={subcategories} categoryStats={categoryStats} reviewLog={reviewLog} srSettings={srSettings} onBack={() => setView("dashboard")} onShowKnowledgeMap={() => setView("knowledge-map")} onSendToWorkshop={handleSendToWorkshop} />
+              <MyStats cards={cards} categories={categories} subcategories={subcategories} categoryStats={categoryStats} reviewLog={reviewLog} srSettings={srSettings} onBack={() => setView("dashboard")} onShowKnowledgeMap={() => setView("knowledge-map")} onShowPlanner={() => setView("planner")} onSendToWorkshop={handleSendToWorkshop} />
             </motion.div>
           )}
           {view === "planner" && (
