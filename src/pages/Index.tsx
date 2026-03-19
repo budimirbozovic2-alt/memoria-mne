@@ -15,6 +15,7 @@ import MnemonicModule from "@/components/MnemonicModule";
 import MetacognitiveCenter from "@/components/MetacognitiveCenter";
 import MyStats from "@/components/MyStats";
 import MajorSystemSettings from "@/components/MajorSystemSettings";
+import StrategicPlanner from "@/components/StrategicPlanner";
 import FrequentErrors from "@/pages/FrequentErrors";
 import ExportImportDialog from "@/components/ExportImportDialog";
 import ZenMode from "@/components/ZenMode";
