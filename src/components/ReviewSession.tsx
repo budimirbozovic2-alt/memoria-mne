@@ -48,6 +48,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
   const [randomIndex, setRandomIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const [finished, setFinished] = useState(false);
+  const reviewStartRef = useRef(Date.now());
   const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
 
   const dueCategories = useMemo(() => {
