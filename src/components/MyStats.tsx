@@ -48,7 +48,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export default function MyStats({ cards, categories, subcategories, categoryStats, reviewLog, srSettings, onBack, onShowKnowledgeMap }: Props) {
+export default function MyStats({ cards, categories, subcategories, categoryStats, reviewLog, srSettings, onBack, onShowKnowledgeMap, onSendToWorkshop }: Props) {
   const [activeTab, setActiveTab] = useState<"overview" | "metacognitive">("overview");
 
   const activityData = useMemo(() => {
