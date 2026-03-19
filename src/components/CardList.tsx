@@ -1,7 +1,7 @@
 import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability } from "@/lib/spaced-repetition";
 import { format } from "date-fns";
 import { Edit2, Trash2, ChevronDown, ChevronRight, Zap, Brain, Flame } from "lucide-react";
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, CSSProperties } from "react";
 import { List } from "react-window";
 
 interface Props {
@@ -48,10 +48,10 @@ function SectionBar({ score }: { score: number }) {
 const ROW_HEIGHT = 100;
 const VIRTUALIZATION_THRESHOLD = 50;
 
-function CardRow({ card, expanded, scrollToCardId, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete }: {
+interface CardRowProps {
   card: Card;
   expanded: boolean;
-  scrollToCardId?: string | null;
+  highlighted: boolean;
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
@@ -59,7 +59,9 @@ function CardRow({ card, expanded, scrollToCardId, selectionMode, selectedIds, o
   onExpand: (id: string | null) => void;
   onEdit: (card: Card) => void;
   onDelete: (id: string) => void;
-}) {
+}
+
+function CardRowInner({ card, expanded, highlighted, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete }: CardRowProps) {
   const score = getCardScore(card);
   const retention = getCardRetrievability(card);
   const isFlash = card.type === "flash";
@@ -68,9 +70,7 @@ function CardRow({ card, expanded, scrollToCardId, selectionMode, selectedIds, o
 
   return (
     <div
-      className={`rounded-xl bg-card border hover:border-primary/30 transition-colors overflow-hidden ${
-        scrollToCardId === card.id ? "ring-2 ring-primary/50" : ""
-      }`}
+      className={`rounded-xl bg-card border hover:border-primary/30 transition-colors overflow-hidden ${highlighted ? "ring-2 ring-primary/50" : ""}`}
       data-card-id={card.id}
     >
       <div className="p-5">
@@ -100,18 +100,10 @@ function CardRow({ card, expanded, scrollToCardId, selectionMode, selectedIds, o
             <p className="font-serif text-lg line-clamp-2">{card.question}</p>
           </div>
           <div className="flex gap-1">
-            <button
-              onClick={() => onToggleTag(card.id, "često-na-ispitu")}
-              className={`p-2 rounded-lg transition-colors ${isFrequent ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`}
-              title={isFrequent ? "Često na ispitu (klikni da ukloniš)" : "Označi kao često na ispitu"}
-            >
+            <button onClick={() => onToggleTag(card.id, "često-na-ispitu")} className={`p-2 rounded-lg transition-colors ${isFrequent ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`} title={isFrequent ? "Često na ispitu (klikni da ukloniš)" : "Označi kao često na ispitu"}>
               <Flame className="h-4 w-4" />
             </button>
-            <button
-              onClick={() => onToggleTag(card.id, "memorizacija")}
-              className={`p-2 rounded-lg transition-colors ${cardTags.includes("memorizacija") ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`}
-              title={cardTags.includes("memorizacija") ? "Memorizacija (klikni da ukloniš)" : "Dodaj u Memorizaciju"}
-            >
+            <button onClick={() => onToggleTag(card.id, "memorizacija")} className={`p-2 rounded-lg transition-colors ${cardTags.includes("memorizacija") ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`} title={cardTags.includes("memorizacija") ? "Memorizacija (klikni da ukloniš)" : "Dodaj u Memorizaciju"}>
               <Brain className="h-4 w-4" />
             </button>
             <button onClick={() => onExpand(expanded ? null : card.id)} className="p-2 hover:bg-secondary rounded-lg">
@@ -158,6 +150,43 @@ function CardRow({ card, expanded, scrollToCardId, selectionMode, selectedIds, o
   );
 }
 
+// Row component for react-window virtualization
+interface VirtualRowProps {
+  filteredCards: Card[];
+  expandedId: string | null;
+  scrollToCardId?: string | null;
+  selectionMode?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleTag: (cardId: string, tag: string) => void;
+  onExpand: (id: string | null) => void;
+  onEdit: (card: Card) => void;
+  onDelete: (id: string) => void;
+}
+
+function VirtualRow({ index, style, ...rowProps }: { index: number; style: CSSProperties; ariaAttributes: any } & VirtualRowProps) {
+  const { filteredCards, expandedId, scrollToCardId, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete } = rowProps;
+  const card = filteredCards[index];
+  if (!card) return null;
+
+  return (
+    <div style={{ ...style, paddingBottom: 12 }}>
+      <CardRowInner
+        card={card}
+        expanded={expandedId === card.id}
+        highlighted={scrollToCardId === card.id}
+        selectionMode={selectionMode}
+        selectedIds={selectedIds}
+        onToggleSelect={onToggleSelect}
+        onToggleTag={onToggleTag}
+        onExpand={onExpand}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
+    </div>
+  );
+}
+
 export default function CardList({
   cards, filterCategory, filterSubcategory, filterType = "all", filterTag, searchQuery = "",
   onEdit, onDelete, onToggleTag, scrollToCardId, onScrolledTo,
@@ -165,7 +194,6 @@ export default function CardList({
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<typeof List | null>(null);
 
   const [containerWidth, setContainerWidth] = useState(800);
   useEffect(() => {
@@ -198,9 +226,7 @@ export default function CardList({
   }, [cards, filterCategory, filterSubcategory, filterType, filterTag, searchQuery]);
 
   useEffect(() => {
-    if (scrollToCardId) {
-      onScrolledTo?.();
-    }
+    if (scrollToCardId) onScrolledTo?.();
   }, [scrollToCardId, onScrolledTo]);
 
   const useVirtualization = filtered.length >= VIRTUALIZATION_THRESHOLD;
@@ -214,28 +240,23 @@ export default function CardList({
       <div ref={containerRef}>
         <List
           height={Math.min(filtered.length * ROW_HEIGHT, 700)}
-          itemCount={filtered.length}
-          itemSize={ROW_HEIGHT}
-          width={containerWidth}
+          rowCount={filtered.length}
+          rowHeight={ROW_HEIGHT}
           overscanCount={5}
-        >
-          {({ index, style }: { index: number; style: React.CSSProperties }) => (
-            <div style={{ ...style, paddingBottom: 12 }}>
-              <CardRow
-                card={filtered[index]}
-                expanded={expandedId === filtered[index].id}
-                scrollToCardId={scrollToCardId}
-                selectionMode={selectionMode}
-                selectedIds={selectedIds}
-                onToggleSelect={onToggleSelect}
-                onToggleTag={onToggleTag}
-                onExpand={setExpandedId}
-                onEdit={onEdit}
-                onDelete={onDelete}
-              />
-            </div>
-          )}
-        </List>
+          rowComponent={VirtualRow}
+          rowProps={{
+            filteredCards: filtered,
+            expandedId,
+            scrollToCardId,
+            selectionMode,
+            selectedIds,
+            onToggleSelect,
+            onToggleTag,
+            onExpand: setExpandedId,
+            onEdit,
+            onDelete,
+          } satisfies VirtualRowProps}
+        />
       </div>
     );
   }
@@ -243,11 +264,11 @@ export default function CardList({
   return (
     <div ref={containerRef} className="space-y-3">
       {filtered.map(card => (
-        <CardRow
+        <CardRowInner
           key={card.id}
           card={card}
           expanded={expandedId === card.id}
-          scrollToCardId={scrollToCardId}
+          highlighted={scrollToCardId === card.id}
           selectionMode={selectionMode}
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
