@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { MnemonicCard, MnemonicStatus } from "@/lib/mnemonic-storage";
-import { ArrowLeft, Brain, Film, Type, ChevronDown, ChevronRight, Sparkles, CheckCircle2, Wrench } from "lucide-react";
+import { useState, useMemo } from "react";
+import { MnemonicCard, MnemonicStatus, loadMajorSystem, resolveNumber, extractNumbers, detectEnumerationItems } from "@/lib/mnemonic-storage";
+import { ArrowLeft, Brain, Film, Type, ChevronDown, ChevronRight, Sparkles, CheckCircle2, Wrench, Hash, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -19,6 +19,9 @@ const STATUS_CONFIG: Record<MnemonicStatus, { label: string; icon: typeof Brain;
 export default function MnemonicWorkshop({ cards, onUpdateCard, onBack }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<MnemonicStatus | "all">("all");
+
+  // Live-load Major System so settings changes are instant
+  const majorSystem = useMemo(() => loadMajorSystem(), [expandedId]);
 
   const filtered = filterStatus === "all" ? cards : cards.filter(c => c.mnemonicStatus === filterStatus);
 
@@ -62,6 +65,11 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onBack }: Props)
             const statusConf = STATUS_CONFIG[card.mnemonicStatus];
             const StatusIcon = statusConf.icon;
 
+            // Auto-structuring: extract numbers and enumerations from all sections
+            const allContent = card.sections.map(s => s.content).join(" ");
+            const numbers = isExpanded ? extractNumbers(allContent) : [];
+            const enumItems = isExpanded ? detectEnumerationItems(allContent) : [];
+
             return (
               <div key={card.id} className="rounded-xl border bg-card overflow-hidden">
                 <button
@@ -73,9 +81,12 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onBack }: Props)
                     <p className="font-medium truncate">{card.question}</p>
                     <p className="text-xs text-muted-foreground">{card.category}{card.subcategory ? ` / ${card.subcategory}` : ""}</p>
                   </div>
-                  <div className={`flex items-center gap-1 text-xs font-medium ${statusConf.color}`}>
-                    <StatusIcon className="h-3.5 w-3.5" />
-                    {statusConf.label}
+                  <div className="flex items-center gap-2">
+                    {numbers.length > 0 && <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{numbers.length} 🔢</span>}
+                    <div className={`flex items-center gap-1 text-xs font-medium ${statusConf.color}`}>
+                      <StatusIcon className="h-3.5 w-3.5" />
+                      {statusConf.label}
+                    </div>
                   </div>
                 </button>
 
@@ -100,6 +111,55 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onBack }: Props)
                           ))}
                         </div>
 
+                        {/* Major System suggestions for numbers */}
+                        {numbers.length > 0 && (
+                          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                            <p className="text-xs font-medium text-primary uppercase tracking-wider flex items-center gap-1.5">
+                              <Hash className="h-3.5 w-3.5" /> Major sistem — sugestije
+                            </p>
+                            <div className="space-y-1.5">
+                              {numbers.map(({ number, context }, idx) => {
+                                const resolved = resolveNumber(number, majorSystem);
+                                return (
+                                  <div key={idx} className="flex items-start gap-2 text-sm">
+                                    <span className="font-mono font-bold text-primary min-w-[40px] text-right">{number}</span>
+                                    <span className="text-foreground font-medium">= {resolved.term}</span>
+                                    {resolved.location && (
+                                      <span className="flex items-center gap-0.5 text-xs text-warning">
+                                        <MapPin className="h-3 w-3" /> {resolved.location}
+                                      </span>
+                                    )}
+                                    <span className="text-xs text-muted-foreground ml-auto truncate max-w-[200px]">„{context}"</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Enumeration detection → Acronym helper */}
+                        {enumItems.length >= 2 && (
+                          <div className="rounded-lg border border-warning/20 bg-warning/5 p-3 space-y-2">
+                            <p className="text-xs font-medium text-warning uppercase tracking-wider flex items-center gap-1.5">
+                              <Type className="h-3.5 w-3.5" /> Nabrajanje detektovano — akronim ({enumItems.length} slova)
+                            </p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {enumItems.map((item, idx) => {
+                                const firstLetter = item.trim()[0]?.toUpperCase() || "?";
+                                return (
+                                  <div key={idx} className="flex items-center gap-1 px-2 py-1 rounded-md bg-background border text-xs">
+                                    <span className="font-bold text-warning">{firstLetter}</span>
+                                    <span className="text-muted-foreground truncate max-w-[120px]">{item}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Sugestija: <strong className="text-foreground">{enumItems.map(i => i.trim()[0]?.toUpperCase() || "").join("")}</strong>
+                            </p>
+                          </div>
+                        )}
+
                         {/* Mental Video */}
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-1.5">
@@ -117,13 +177,21 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onBack }: Props)
                         <div className="space-y-2">
                           <label className="text-sm font-medium flex items-center gap-1.5">
                             <Type className="h-3.5 w-3.5 text-primary" /> Akronim / Mentalna kuka
+                            {enumItems.length >= 2 && (
+                              <span className="text-xs text-muted-foreground ml-1">({enumItems.length} slova potrebno)</span>
+                            )}
                           </label>
                           <input
                             value={card.acronym}
                             onChange={(e) => onUpdateCard(card.id, { acronym: e.target.value, mnemonicStatus: card.mnemonicStatus === "new" ? "in-workshop" : card.mnemonicStatus })}
-                            placeholder="Npr. kratka reč, broj iz Major Sistema, asocijacija..."
+                            placeholder={enumItems.length >= 2
+                              ? `Unesite akronim od ${enumItems.length} slova (npr. ${enumItems.map(i => i.trim()[0]?.toUpperCase() || "").join("")})`
+                              : "Npr. kratka reč, broj iz Major Sistema, asocijacija..."}
                             className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                           />
+                          {enumItems.length >= 2 && card.acronym.length > 0 && card.acronym.length !== enumItems.length && (
+                            <p className="text-xs text-warning">⚠ Akronim ima {card.acronym.length} slova, a nabrajanje ima {enumItems.length} stavki</p>
+                          )}
                         </div>
 
                         {/* Status + Stats */}
