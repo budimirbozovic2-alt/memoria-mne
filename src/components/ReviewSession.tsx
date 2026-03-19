@@ -83,6 +83,13 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     return items;
   }, [filteredDueCards]);
 
+  // Log activity when session finishes
+  useEffect(() => {
+    if (finished) {
+      addActivityEntry({ timestamp: Date.now(), type: "review", durationMs: Date.now() - reviewStartRef.current });
+    }
+  }, [finished]);
+
   if (mode === null) {
     const filteredCount = filteredDueCards.length;
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
