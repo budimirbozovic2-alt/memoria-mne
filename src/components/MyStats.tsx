@@ -342,7 +342,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         </TabsContent>
 
         <TabsContent value="metacognitive">
-          <Suspense fallback={<TabFallback />}>
+          <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Metakognicija">
               <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded onSendToWorkshop={onSendToWorkshop} />
             </ErrorBoundary>
@@ -350,7 +350,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         </TabsContent>
 
         <TabsContent value="cognitive">
-          <Suspense fallback={<TabFallback />}>
+          <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Kognicija">
               <div className="mt-4">
                 <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} onSendToWorkshop={onSendToWorkshop} />
