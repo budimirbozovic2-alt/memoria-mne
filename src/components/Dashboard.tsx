@@ -528,7 +528,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
               )}
             </motion.div>
           )}
-          {storageUsage.percent > 70 && (
+          {storageUsage && storageUsage.percent > 70 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex items-center gap-3 p-4 rounded-xl border ${storageUsage.percent > 90 ? "border-destructive/30 bg-destructive/5" : "border-warning/30 bg-warning/5"}`}>
               <HardDrive className={`h-5 w-5 flex-shrink-0 ${storageUsage.percent > 90 ? "text-destructive" : "text-warning"}`} />
               <div className="flex-1">
