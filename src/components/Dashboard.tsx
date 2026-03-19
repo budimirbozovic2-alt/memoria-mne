@@ -288,6 +288,33 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </div>
       </motion.div>
 
+      {/* Energy-Material Matcher */}
+      {energyRec && (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.22 }}
+          className="flex items-start gap-3 p-4 rounded-xl border border-warning/30 bg-warning/5">
+          <Brain className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-warning">Prilagođen režim učenja</p>
+            <p className="text-xs text-muted-foreground mt-1">{energyRec.message}</p>
+            {energyRec.suggestMnemonics && (
+              <p className="text-xs text-primary mt-1">💡 Preporuka: otvori Memorizaciju za lagani dril kuka.</p>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Strategic Reality Check */}
+      {strategicAlert && strategicAlert.type === "ambitious" && (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.24 }}
+          className="flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary/5">
+          <Zap className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium">Plan je previše ambiciozan</p>
+            <p className="text-xs text-muted-foreground mt-1">{strategicAlert.message}</p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Core Stats Grid */}
       <div className="grid grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl bg-card border p-5 space-y-2">
