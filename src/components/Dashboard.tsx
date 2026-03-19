@@ -1,6 +1,6 @@
 import { Brain, Clock, Layers, BookOpen, TrendingUp, AlertTriangle, Download, HardDrive, ChevronDown, ChevronRight, LayoutGrid, Timer, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Card, getCardScore, getSectionScore, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
+import { Card, getCardScore, getSectionScore, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS, getPendingFirstReviewCount } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime, getPomodoroStats } from "@/lib/storage";
 import { useMemo, useState } from "react";
