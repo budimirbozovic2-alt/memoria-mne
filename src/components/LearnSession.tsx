@@ -928,8 +928,9 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                           <p className="text-xs text-muted-foreground text-center">Bilo šta ispod 4 = reset na modul 1</p>
                           <div className="grid grid-cols-4 gap-2">
                             {[1, 2, 3, 4].map((g) => (
-                              <Button key={g} onClick={() => handleChainReviewGrade(g)} className={`${GRADE_COLORS[g]} border-0`} variant="outline">
-                                {g} — {GRADE_LABELS[g]}
+                              <Button key={g} onClick={() => handleChainReviewGrade(g)} className={`${GRADE_COLORS[g]} border-0 flex-col h-auto py-2`} variant="outline">
+                                <span className="font-bold">{g} — {GRADE_LABELS[g]}</span>
+                                <span className="text-[10px] opacity-75 font-normal">{GRADE_DESCRIPTIONS[g]}</span>
                               </Button>
                             ))}
                           </div>
