@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { Edit2, Trash2, ChevronDown, ChevronRight, Zap, Brain, Flame } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { FixedSizeList as List } from "react-window";
+import { List } from "react-window";
 
 interface Props {
   cards: Card[];
