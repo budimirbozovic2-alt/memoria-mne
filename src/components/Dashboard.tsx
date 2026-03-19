@@ -477,7 +477,10 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
                               const levelBg = sub.score >= 70 ? "bg-success" : sub.score >= 40 ? "bg-warning" : "bg-destructive";
                               const levelLabel = sub.score >= 70 ? "Jako" : sub.score >= 40 ? "Srednje" : "Slabo";
                               return (
-                                <div key={sub.name} className="flex items-center gap-3 py-1.5">
+                                <div key={sub.name} className={`flex items-center gap-3 py-1.5 ${
+                                    sub.due / sub.total > 0.5 ? "border-l-2 border-l-destructive pl-2" :
+                                    sub.due / sub.total > 0.25 ? "border-l-2 border-l-warning pl-2" : ""
+                                  }`}>
                                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${levelBg}`} />
                                   <span className="text-sm flex-1 min-w-0 truncate">{sub.name}</span>
                                   <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${level} ${levelBg}/10`}>{levelLabel}</span>
