@@ -44,7 +44,7 @@ export default function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { stats } = useAppContext();
+  const { stats } = useCardContext();
   const currentPath = location.pathname;
 
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
