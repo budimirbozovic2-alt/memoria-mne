@@ -1,0 +1,323 @@
+import { Card, getCardRetrievability, ErrorLogEntry, getErrorStatus } from "./spaced-repetition";
+import { ReviewLogEntry } from "./storage";
+import { LatencyEntry, loadLatency, loadSlippageLog } from "./metacognitive-storage";
+import { loadDisciplineLog, DisciplineEntry } from "./planner-storage";
+import { differenceInDays } from "date-fns";
+
+// ═══════════════════════════════════════════════════════════
+// 1. Interference Index — find confusable card pairs
+// ═══════════════════════════════════════════════════════════
+
+export interface InterferencePair {
+  cardA: { id: string; question: string; category: string };
+  cardB: { id: string; question: string; category: string };
+  sharedErrors: string[];
+  score: number; // 0-100
+}
+
+/** Detect cards that share similar error patterns (interference) */
+export function calcInterferencePairs(cards: Card[], limit = 10): InterferencePair[] {
+  // Build error-text -> card mapping
+  const errorToCards = new Map<string, { cardId: string; question: string; category: string; count: number }[]>();
+
+  cards.forEach(c => {
+    (c.errorLog || []).forEach(err => {
+      if (getErrorStatus(err) === "mastered") return;
+      const normalized = err.text.toLowerCase().trim().slice(0, 80);
+      if (normalized.length < 5) return;
+      const existing = errorToCards.get(normalized) || [];
+      existing.push({ cardId: c.id, question: c.question, category: c.category, count: err.count });
+      errorToCards.set(normalized, existing);
+    });
+  });
+
+  // Find cards in same category with overlapping errors
+  const pairScores = new Map<string, { a: typeof cards[0]; b: typeof cards[0]; shared: string[]; score: number }>();
+
+  cards.forEach((cardA, i) => {
+    const errorsA = (cardA.errorLog || []).filter(e => getErrorStatus(e) !== "mastered").map(e => e.text.toLowerCase().trim().slice(0, 80));
+    if (errorsA.length === 0) return;
+
+    cards.forEach((cardB, j) => {
+      if (j <= i) return;
+      if (cardA.category !== cardB.category) return;
+
+      const errorsB = (cardB.errorLog || []).filter(e => getErrorStatus(e) !== "mastered").map(e => e.text.toLowerCase().trim().slice(0, 80));
+      if (errorsB.length === 0) return;
+
+      // Find shared error texts (fuzzy: check if one contains part of the other)
+      const shared: string[] = [];
+      errorsA.forEach(eA => {
+        errorsB.forEach(eB => {
+          if (eA === eB || (eA.length > 10 && eB.includes(eA.slice(0, 15))) || (eB.length > 10 && eA.includes(eB.slice(0, 15)))) {
+            shared.push(eA);
+          }
+        });
+      });
+
+      if (shared.length === 0) return;
+
+      // Also check if questions are similar (same words)
+      const wordsA = new Set(cardA.question.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+      const wordsB = new Set(cardB.question.toLowerCase().split(/\s+/).filter(w => w.length > 3));
+      let commonWords = 0;
+      wordsA.forEach(w => { if (wordsB.has(w)) commonWords++; });
+      const questionSimilarity = wordsA.size > 0 ? commonWords / wordsA.size : 0;
+
+      const score = Math.min(100, Math.round((shared.length * 30) + (questionSimilarity * 70)));
+      const key = [cardA.id, cardB.id].sort().join(":");
+      pairScores.set(key, { a: cardA, b: cardB, shared, score });
+    });
+  });
+
+  return Array.from(pairScores.values())
+    .filter(p => p.score >= 20)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(p => ({
+      cardA: { id: p.a.id, question: p.a.question, category: p.a.category },
+      cardB: { id: p.b.id, question: p.b.question, category: p.b.category },
+      sharedErrors: p.shared.slice(0, 3),
+      score: p.score,
+    }));
+}
+
+// ═══════════════════════════════════════════════════════════
+// 2. Memory Stability Score — predict forgetting per category
+// ═══════════════════════════════════════════════════════════
+
+export interface CategoryStabilityInfo {
+  category: string;
+  avgStability: number;      // days
+  avgRetrievability: number; // 0-1
+  criticalSections: number;  // sections that will drop below 85% by exam
+  totalSections: number;
+}
+
+export function calcCategoryStability(
+  cards: Card[],
+  categories: string[],
+  examDateStr: string | null
+): CategoryStabilityInfo[] {
+  const examDate = examDateStr ? new Date(examDateStr) : null;
+  const daysToExam = examDate ? Math.max(0, differenceInDays(examDate, new Date())) : null;
+
+  return categories.map(cat => {
+    const catCards = cards.filter(c => c.category === cat);
+    let totalStability = 0;
+    let totalRetrievability = 0;
+    let criticalCount = 0;
+    let sectionCount = 0;
+
+    catCards.forEach(c => {
+      c.sections.forEach(s => {
+        if (!s.lastReviewed) return;
+        sectionCount++;
+        totalStability += s.stability;
+
+        const elapsed = (Date.now() - s.lastReviewed) / (24 * 60 * 60 * 1000);
+        const R = s.stability > 0 ? Math.exp(-elapsed / s.stability) : 0;
+        totalRetrievability += R;
+
+        // Will this section drop below 85% by exam?
+        if (daysToExam !== null && s.stability > 0) {
+          const totalElapsed = elapsed + daysToExam;
+          const futureR = Math.exp(-totalElapsed / s.stability);
+          if (futureR < 0.85) criticalCount++;
+        }
+      });
+    });
+
+    return {
+      category: cat,
+      avgStability: sectionCount > 0 ? totalStability / sectionCount : 0,
+      avgRetrievability: sectionCount > 0 ? totalRetrievability / sectionCount : 0,
+      criticalSections: criticalCount,
+      totalSections: sectionCount,
+    };
+  }).filter(c => c.totalSections > 0);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 3. Stress-Performance Index — compare fast vs normal responses
+// ═══════════════════════════════════════════════════════════
+
+export interface StressPerformance {
+  normalAvgGrade: number;
+  stressAvgGrade: number;
+  stressResistance: number; // 0-100, higher = more resistant
+  normalCount: number;
+  stressCount: number;
+}
+
+/** 
+ * Proxy for stress: responses with latency < 50% of personal average.
+ * Compare accuracy in "stressed" (fast-forced) vs normal conditions.
+ */
+export function calcStressPerformance(reviewLog: ReviewLogEntry[]): StressPerformance | null {
+  const latencyLog = loadLatency();
+  if (latencyLog.length < 10) return null;
+
+  const avgLatency = latencyLog.reduce((s, e) => s + e.latencyMs, 0) / latencyLog.length;
+  const stressThreshold = avgLatency * 0.5; // fast = under 50% of average
+
+  // Map latency entries to their grades
+  const latencyMap = new Map<string, number>();
+  latencyLog.forEach(e => {
+    latencyMap.set(`${e.cardId}:${e.sectionId}:${e.timestamp}`, e.latencyMs);
+  });
+
+  // Find review entries that have matching latency data
+  let normalGrades: number[] = [];
+  let stressGrades: number[] = [];
+
+  reviewLog.forEach(r => {
+    // Find closest latency entry (within 30 seconds)
+    const matching = latencyLog.find(l =>
+      l.cardId === r.cardId && l.sectionId === r.sectionId &&
+      Math.abs(l.timestamp - r.timestamp) < 30000
+    );
+    if (!matching) return;
+
+    if (matching.latencyMs < stressThreshold) {
+      stressGrades.push(r.grade);
+    } else {
+      normalGrades.push(r.grade);
+    }
+  });
+
+  if (normalGrades.length < 5 || stressGrades.length < 3) return null;
+
+  const normalAvg = normalGrades.reduce((s, g) => s + g, 0) / normalGrades.length;
+  const stressAvg = stressGrades.reduce((s, g) => s + g, 0) / stressGrades.length;
+
+  // Resistance: 100 = no drop, 0 = huge drop
+  const maxDrop = 3; // max possible grade drop
+  const actualDrop = Math.max(0, normalAvg - stressAvg);
+  const resistance = Math.round(Math.max(0, (1 - actualDrop / maxDrop) * 100));
+
+  return {
+    normalAvgGrade: Math.round(normalAvg * 10) / 10,
+    stressAvgGrade: Math.round(stressAvg * 10) / 10,
+    stressResistance: resistance,
+    normalCount: normalGrades.length,
+    stressCount: stressGrades.length,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// 4. Friction Analysis — subject transition time
+// ═══════════════════════════════════════════════════════════
+
+export interface FrictionInsight {
+  fromCategory: string;
+  toCategory: string;
+  avgTransitionMinutes: number;
+  count: number;
+  isSlow: boolean; // > 10 min
+}
+
+export function calcFrictionAnalysis(reviewLog: ReviewLogEntry[], limit = 10): {
+  transitions: FrictionInsight[];
+  suggestion: string | null;
+} {
+  if (reviewLog.length < 10) return { transitions: [], suggestion: null };
+
+  // Sort by timestamp
+  const sorted = [...reviewLog].sort((a, b) => a.timestamp - b.timestamp);
+
+  // Track category transitions
+  const transitionMap = new Map<string, { totalMs: number; count: number }>();
+
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = sorted[i - 1];
+    const curr = sorted[i];
+    if (prev.category === curr.category) continue;
+
+    const gap = curr.timestamp - prev.timestamp;
+    // Only count reasonable gaps (1 second to 60 minutes)
+    if (gap < 1000 || gap > 60 * 60 * 1000) continue;
+
+    const key = `${prev.category} → ${curr.category}`;
+    const existing = transitionMap.get(key) || { totalMs: 0, count: 0 };
+    existing.totalMs += gap;
+    existing.count++;
+    transitionMap.set(key, existing);
+  }
+
+  const transitions: FrictionInsight[] = Array.from(transitionMap.entries())
+    .map(([key, data]) => {
+      const [from, to] = key.split(" → ");
+      const avgMin = (data.totalMs / data.count) / 60000;
+      return {
+        fromCategory: from,
+        toCategory: to,
+        avgTransitionMinutes: Math.round(avgMin * 10) / 10,
+        count: data.count,
+        isSlow: avgMin > 10,
+      };
+    })
+    .sort((a, b) => b.avgTransitionMinutes - a.avgTransitionMinutes)
+    .slice(0, limit);
+
+  const slowCount = transitions.filter(t => t.isSlow).length;
+  const suggestion = slowCount > 0
+    ? `${slowCount} tranzicija između predmeta traje >10 min. Grupiši srodne predmete u blokove za efikasniji tok učenja.`
+    : null;
+
+  return { transitions, suggestion };
+}
+
+// ═══════════════════════════════════════════════════════════
+// 5. Recovery Rate — lazy→diligent bounce-back speed
+// ═══════════════════════════════════════════════════════════
+
+export interface RecoveryStats {
+  avgRecoveryDays: number;
+  recoveryCount: number;
+  fastRecoveries: number; // recovered next day
+  slowRecoveries: number; // took 3+ days
+  recoveryIndex: number;  // 0-100
+}
+
+export function calcRecoveryRate(): RecoveryStats | null {
+  const log = loadDisciplineLog();
+  if (log.length < 5) return null;
+
+  const sorted = [...log].sort((a, b) => a.date.localeCompare(b.date));
+  const recoveries: number[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    if (sorted[i].status !== "lazy") continue;
+
+    // Find next "diligent" day after this lazy day
+    for (let j = i + 1; j < sorted.length; j++) {
+      if (sorted[j].status === "diligent") {
+        const lazyDate = new Date(sorted[i].date);
+        const diligentDate = new Date(sorted[j].date);
+        const days = differenceInDays(diligentDate, lazyDate);
+        if (days > 0 && days <= 30) {
+          recoveries.push(days);
+        }
+        break;
+      }
+    }
+  }
+
+  if (recoveries.length === 0) return null;
+
+  const avg = recoveries.reduce((s, d) => s + d, 0) / recoveries.length;
+  const fast = recoveries.filter(d => d <= 1).length;
+  const slow = recoveries.filter(d => d >= 3).length;
+
+  // Index: 100 = always recovers next day, 0 = never recovers
+  const index = Math.round(Math.max(0, Math.min(100, (1 - (avg - 1) / 6) * 100)));
+
+  return {
+    avgRecoveryDays: Math.round(avg * 10) / 10,
+    recoveryCount: recoveries.length,
+    fastRecoveries: fast,
+    slowRecoveries: slow,
+    recoveryIndex: index,
+  };
+}
