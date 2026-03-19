@@ -1,8 +1,15 @@
 import { Component, ReactNode } from "react";
+import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  /** Compact inline error for widgets/charts — doesn't take full height */
+  compact?: boolean;
+  /** Label shown in compact mode (e.g. "Grafikon aktivnosti") */
+  label?: string;
+  /** Called when user clicks "go home" — only in full mode */
+  onNavigateHome?: () => void;
 }
 
 interface State {
@@ -17,29 +24,77 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error(`[ErrorBoundary${this.props.label ? ` — ${this.props.label}` : ""}]`, error, info.componentStack);
+  }
+
   handleRetry = () => {
     this.setState({ hasError: false, error: null });
   };
 
   render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) return this.props.fallback;
+    if (!this.state.hasError) return this.props.children;
+    if (this.props.fallback) return this.props.fallback;
+
+    // Compact mode — inline card for widgets/charts
+    if (this.props.compact) {
       return (
-        <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 p-8">
-          <div className="text-4xl">⚠️</div>
-          <h2 className="text-xl font-serif">Nešto je pošlo po zlu</h2>
-          <p className="text-sm text-muted-foreground text-center max-w-md">
-            {this.state.error?.message || "Neočekivana greška"}
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <span className="text-sm font-medium text-destructive">
+              {this.props.label || "Komponenta"} — greška
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground line-clamp-2">
+            {this.state.error?.message || "Neočekivana greška pri renderovanju"}
           </p>
           <button
             onClick={this.handleRetry}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground text-xs hover:bg-secondary/80 transition-colors"
           >
+            <RefreshCw className="h-3 w-3" />
             Pokušaj ponovo
           </button>
         </div>
       );
     }
-    return this.props.children;
+
+    // Full mode — page-level error
+    return (
+      <div className="min-h-[300px] flex flex-col items-center justify-center gap-4 p-8">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+        </div>
+        <h2 className="text-xl font-serif">Nešto je pošlo po zlu</h2>
+        <p className="text-sm text-muted-foreground text-center max-w-md">
+          {this.state.error?.message || "Neočekivana greška"}
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={this.handleRetry}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90 transition-opacity"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Pokušaj ponovo
+          </button>
+          {this.props.onNavigateHome && (
+            <button
+              onClick={this.props.onNavigateHome}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border text-sm text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              <Home className="h-3.5 w-3.5" />
+              Početna
+            </button>
+          )}
+        </div>
+        <details className="mt-2 text-xs text-muted-foreground max-w-md w-full">
+          <summary className="cursor-pointer hover:text-foreground transition-colors">Tehnički detalji</summary>
+          <pre className="mt-2 p-3 rounded-lg bg-secondary text-[11px] overflow-auto max-h-[150px] whitespace-pre-wrap break-words">
+            {this.state.error?.stack || this.state.error?.message}
+          </pre>
+        </details>
+      </div>
+    );
   }
 }

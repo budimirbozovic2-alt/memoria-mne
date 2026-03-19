@@ -33,6 +33,16 @@ const LoadingFallback = () => (
   </div>
 );
 
+/** View-level ErrorBoundary with "go home" navigation */
+function ViewBoundary({ children, label }: { children: React.ReactNode; label: string }) {
+  const { setView } = useAppContext();
+  return (
+    <ErrorBoundary label={label} onNavigateHome={() => setView("dashboard")}>
+      {children}
+    </ErrorBoundary>
+  );
+}
+
 function ViewRouter() {
   const {
     view, setView,
@@ -49,7 +59,7 @@ function ViewRouter() {
       <AnimatePresence mode="wait">
         {view === "dashboard" && (
           <PageTransition viewKey="dash">
-            <ErrorBoundary>
+            <ViewBoundary label="Dashboard">
               {cards.length === 0 ? (
                 <EmptyState type="dashboard" onAction={() => setView("create")} />
               ) : (
@@ -65,12 +75,12 @@ function ViewRouter() {
                   onStartReview={() => setView("review")}
                 />
               )}
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "review" && (
           <PageTransition viewKey="review">
-            <ErrorBoundary>
+            <ViewBoundary label="Ponavljanje">
               {dueCards.length === 0 ? (
                 <EmptyState type="review" />
               ) : (
@@ -83,12 +93,12 @@ function ViewRouter() {
                   onBack={() => setView("dashboard")}
                 />
               )}
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "learn" && (
           <PageTransition viewKey="learn">
-            <ErrorBoundary>
+            <ViewBoundary label="Učenje">
               <LearnSession
                 cards={cards}
                 categories={categories}
@@ -98,12 +108,12 @@ function ViewRouter() {
                 onBack={() => setView("dashboard")}
                 dueCount={stats.due}
               />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {(view === "create" || view === "edit") && (
           <PageTransition viewKey="form">
-            <ErrorBoundary>
+            <ViewBoundary label="Forma za kartice">
               <CardForm
                 categories={categories}
                 subcategories={subcategories}
@@ -113,12 +123,12 @@ function ViewRouter() {
                 editCard={view === "edit" ? editingCard : null}
                 onUpdate={(id, u) => { updateCard(id, u); setView("cards"); setEditingCard(null); }}
               />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "categories" && (
           <PageTransition viewKey="categories">
-            <ErrorBoundary>
+            <ViewBoundary label="Kategorije">
               <CategoryManager
                 categories={categories}
                 subcategories={subcategories}
@@ -131,45 +141,45 @@ function ViewRouter() {
                 onDeleteSub={deleteSubcategory}
                 onClose={() => setView("dashboard")}
               />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "settings" && (
           <PageTransition viewKey="settings">
-            <ErrorBoundary>
+            <ViewBoundary label="Podešavanja">
               <SRSettingsPanel
                 settings={srSettings}
                 onUpdate={updateSRSettings}
                 onBack={() => setView("dashboard")}
                 onOpenMajorSystem={() => setView("major-system-settings")}
               />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "frequent-errors" && (
           <PageTransition viewKey="errors">
-            <ErrorBoundary>
+            <ViewBoundary label="Česte greške">
               <FrequentErrors cards={cards} onBack={() => setView("dashboard")} onClearErrorLog={clearErrorLog} />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "knowledge-map" && (
           <PageTransition viewKey="kmap">
-            <ErrorBoundary>
+            <ViewBoundary label="Mapa znanja">
               <KnowledgeMap cards={cards} categories={categories} subcategories={subcategories} onBack={() => setView("dashboard")} />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "mnemonic" && (
           <PageTransition viewKey="mnemonic">
-            <ErrorBoundary>
+            <ViewBoundary label="Memo radionica">
               <MnemonicModule onBack={() => setView("dashboard")} />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "metacognitive" && (
           <PageTransition viewKey="metacognitive">
-            <ErrorBoundary>
+            <ViewBoundary label="Metakognicija">
               <MetacognitiveCenter
                 cards={cards}
                 categories={categories}
@@ -178,12 +188,12 @@ function ViewRouter() {
                 settings={srSettings}
                 onSendToWorkshop={handleSendToWorkshop}
               />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "stats" && (
           <PageTransition viewKey="stats">
-            <ErrorBoundary>
+            <ViewBoundary label="Statistike">
               <MyStats
                 cards={cards}
                 categories={categories}
@@ -196,28 +206,28 @@ function ViewRouter() {
                 onShowPlanner={() => setView("planner")}
                 onSendToWorkshop={handleSendToWorkshop}
               />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "planner" && (
           <PageTransition viewKey="planner">
-            <ErrorBoundary>
+            <ViewBoundary label="Planer">
               <StrategicPlanner cards={cards} categories={categories} reviewLog={reviewLog} onBack={() => setView("dashboard")} />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "major-system-settings" && (
           <PageTransition viewKey="major-settings">
-            <ErrorBoundary>
+            <ViewBoundary label="Major System">
               <MajorSystemSettings onBack={() => setView("settings")} />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
         {view === "cards" && (
           <PageTransition viewKey="cards">
-            <ErrorBoundary>
+            <ViewBoundary label="Kartice">
               <CardsView />
-            </ErrorBoundary>
+            </ViewBoundary>
           </PageTransition>
         )}
       </AnimatePresence>
