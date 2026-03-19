@@ -68,7 +68,7 @@ export default function MetacognitiveCenter({ cards, categories, reviewLog, onBa
           <LatencyTab />
         </TabsContent>
         <TabsContent value="resistance">
-          <ResistanceTab cards={cards} categories={categories} reviewLog={reviewLog} />
+          <ResistanceTab cards={cards} categories={categories} reviewLog={reviewLog} weights={weights} />
         </TabsContent>
         <TabsContent value="efficiency">
           <EfficiencyTab />
