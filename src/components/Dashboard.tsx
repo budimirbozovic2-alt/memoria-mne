@@ -431,7 +431,11 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
               const hasSubData = subStats.length > 1;
 
               return (
-                <div key={cat} className="rounded-xl bg-card border overflow-hidden">
+                 <div key={cat} className={`rounded-xl bg-card border overflow-hidden ${
+                    s.total > 0 && s.due / s.total > 0.5 ? "border-l-4 border-l-destructive" :
+                    s.total > 0 && s.due / s.total > 0.25 ? "border-l-4 border-l-warning" :
+                    s.due === 0 && s.score >= 40 ? "border-l-4 border-l-success" : ""
+                  }`}>
                   <button
                     onClick={() => hasSubData && setExpandedCategory(isExpanded ? null : cat)}
                     className={`w-full p-4 space-y-2 text-left ${hasSubData ? "cursor-pointer hover:bg-secondary/30 transition-colors" : ""}`}
