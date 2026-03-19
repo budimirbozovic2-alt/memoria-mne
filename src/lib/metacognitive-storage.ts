@@ -216,12 +216,48 @@ export function loadSlippageLog(): SlippageEntry[] {
 // ─── Activity Time Tracking ─────────────────────────────
 const ACTIVITY_KEY = "sr-activity-log";
 
+export type ActivityType = "review" | "learn-active" | "learn-free" | "learn-chain" | "mnemonic-test" | "mnemonic-workshop" | "admin" | "analysis";
+
 export interface ActivityEntry {
   timestamp: number;
-  type: "review" | "learn-active" | "learn-free" | "learn-chain";
+  type: ActivityType;
   durationMs: number;
   category?: string;
 }
+
+// Mapping activity types to 4 time reservoirs
+export type TimeReservoir = "review" | "learning" | "creative" | "analysis";
+
+export function getReservoir(type: ActivityType): TimeReservoir {
+  switch (type) {
+    case "review":
+    case "mnemonic-test":
+      return "review";
+    case "learn-active":
+    case "learn-free":
+    case "learn-chain":
+      return "learning";
+    case "admin":
+    case "mnemonic-workshop":
+      return "creative";
+    case "analysis":
+      return "analysis";
+  }
+}
+
+export const RESERVOIR_LABELS: Record<TimeReservoir, string> = {
+  review: "Ponavljanje",
+  learning: "Učenje",
+  creative: "Kreativ/Admin",
+  analysis: "Analiza",
+};
+
+export const RESERVOIR_COLORS: Record<TimeReservoir, string> = {
+  review: "hsl(var(--primary))",
+  learning: "hsl(var(--success))",
+  creative: "hsl(var(--warning))",
+  analysis: "hsl(var(--muted-foreground))",
+};
 
 export function loadActivityLog(): ActivityEntry[] {
   try {
@@ -236,16 +272,71 @@ export function addActivityEntry(entry: ActivityEntry) {
   localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
 }
 
+export interface TimeDistribution {
+  review: number;   // ms
+  learning: number;
+  creative: number;
+  analysis: number;
+  totalMs: number;
+  cognitiveMs: number;  // review + learning
+  logisticMs: number;   // creative + analysis
+  cognitivePct: number;
+}
+
+export function getTimeDistribution(days: number = 1): TimeDistribution {
+  const log = loadActivityLog();
+  const cutoff = Date.now() - days * 86400000;
+  const recent = log.filter(e => e.timestamp >= cutoff);
+
+  const buckets: Record<TimeReservoir, number> = { review: 0, learning: 0, creative: 0, analysis: 0 };
+  recent.forEach(e => {
+    buckets[getReservoir(e.type)] += e.durationMs;
+  });
+
+  const cognitiveMs = buckets.review + buckets.learning;
+  const logisticMs = buckets.creative + buckets.analysis;
+  const totalMs = cognitiveMs + logisticMs;
+
+  return {
+    ...buckets,
+    totalMs,
+    cognitiveMs,
+    logisticMs,
+    cognitivePct: totalMs > 0 ? Math.round((cognitiveMs / totalMs) * 100) : 0,
+  };
+}
+
+export function getWeeklyTimeDistribution(): { date: string; review: number; learning: number; creative: number; analysis: number }[] {
+  const log = loadActivityLog();
+  const days: { date: string; review: number; learning: number; creative: number; analysis: number }[] = [];
+
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    const dateStr = d.toISOString().slice(0, 10);
+    const dayStart = new Date(dateStr).getTime();
+    const dayEnd = dayStart + 86400000;
+    const dayEntries = log.filter(e => e.timestamp >= dayStart && e.timestamp < dayEnd);
+
+    const buckets = { review: 0, learning: 0, creative: 0, analysis: 0 };
+    dayEntries.forEach(e => {
+      buckets[getReservoir(e.type)] += Math.round(e.durationMs / 60000); // minutes
+    });
+
+    days.push({ date: dateStr.slice(5), ...buckets });
+  }
+  return days;
+}
+
 export function getDeepWorkStats(days: number = 7) {
   const log = loadActivityLog();
   const cutoff = Date.now() - days * 86400000;
   const recent = log.filter(e => e.timestamp >= cutoff);
 
   const deepWorkMs = recent
-    .filter(e => e.type === "review" || e.type === "learn-active" || e.type === "learn-chain")
+    .filter(e => e.type === "review" || e.type === "learn-active" || e.type === "learn-chain" || e.type === "mnemonic-test")
     .reduce((s, e) => s + e.durationMs, 0);
   const shallowWorkMs = recent
-    .filter(e => e.type === "learn-free")
+    .filter(e => e.type === "learn-free" || e.type === "admin" || e.type === "analysis" || e.type === "mnemonic-workshop")
     .reduce((s, e) => s + e.durationMs, 0);
   const totalMs = deepWorkMs + shallowWorkMs;
 
