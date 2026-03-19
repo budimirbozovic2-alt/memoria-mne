@@ -20,7 +20,7 @@ import GlobalSearch from "@/components/GlobalSearch";
 import EmptyState from "@/components/EmptyState";
 import { Card } from "@/lib/spaced-repetition";
 import { createMnemonicCard, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
-import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus } from "lucide-react";
+import { Plus, BookOpen, Home, Moon, Sun, FolderOpen, GraduationCap, Download, Upload, FileText, Settings, Brain, Search, Flame, CheckSquare, X, LayoutGrid, Focus, RotateCcw } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
 type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings";
@@ -127,7 +127,8 @@ const Index = () => {
   const navItems = [
     { key: "dashboard" as View, icon: Home, label: "Početna" },
     { key: "learn" as View, icon: GraduationCap, label: "Uči" },
-    { key: "review" as View, icon: Brain, label: "Ponavljaj", badge: stats.due > 0 ? stats.due : undefined },
+    { key: "review" as View, icon: RotateCcw, label: "Ponavljaj", badge: stats.due > 0 ? stats.due : undefined },
+    { key: "mnemonic" as View, icon: Brain, label: "Memorizacija" },
     { key: "cards" as View, icon: BookOpen, label: "Kartice" },
     { key: "categories" as View, icon: FolderOpen, label: "Kategorije" },
   ];
@@ -190,7 +191,7 @@ const Index = () => {
               {cards.length === 0 ? (
                 <EmptyState type="dashboard" onAction={() => setView("create")} />
               ) : (
-                <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} onStartReview={() => setView("review")} onOpenMnemonic={() => setView("mnemonic")} />
+                <Dashboard stats={stats} categoryStats={categoryStats} categories={categories} subcategories={subcategories} cards={cards} reviewLog={reviewLog} srSettings={srSettings} onExport={() => setExportImportOpen(true)} onShowKnowledgeMap={() => setView("knowledge-map")} onStartReview={() => setView("review")} />
               )}
             </motion.div>
           )}
