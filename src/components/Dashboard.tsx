@@ -441,23 +441,48 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </motion.div>
       )}
 
-      {/* Planner Suggestion Widget */}
-      {plannerSuggestion && plannerSuggestion.suggestion && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
-          className={`flex items-start gap-3 p-4 rounded-xl border ${
-            plannerSuggestion.status.status === "green" ? "border-success/30 bg-success/5" :
-            plannerSuggestion.status.status === "yellow" ? "border-warning/30 bg-warning/5" :
-            plannerSuggestion.status.status === "red" ? "border-destructive/30 bg-destructive/5" :
-            "border-primary/20 bg-primary/5"
-          }`}>
-          <Lightbulb className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
-            plannerSuggestion.status.status === "green" ? "text-success" :
-            plannerSuggestion.status.status === "yellow" ? "text-warning" :
-            plannerSuggestion.status.status === "red" ? "text-destructive" : "text-primary"
-          }`} />
+      {/* Cognitive Debt Warning */}
+      {cognitiveDebt && (
+        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+          className="flex items-start gap-3 p-4 rounded-xl border border-warning/30 bg-warning/5">
+          <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium">Sugestija za danas</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{plannerSuggestion.suggestion.message}</p>
+            <p className="text-sm font-medium text-warning">Kognitivni dug</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{cognitiveDebt.message}</p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Daily Time Predictor + Planner Suggestion */}
+      {plannerData && plannerData.suggestion && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
+          className="rounded-xl bg-card border p-5 space-y-3">
+          {/* Time recommendation */}
+          {plannerData.timeRec && (
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                <Hourglass className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Preporuka za danas</p>
+                <p className="text-lg font-serif text-primary">{plannerData.timeRec.message}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Suggestion */}
+          <div className={`flex items-start gap-3 p-3 rounded-lg ${
+            plannerData.status.status === "green" ? "bg-success/5" :
+            plannerData.status.status === "yellow" ? "bg-warning/5" :
+            plannerData.status.status === "red" ? "bg-destructive/5" :
+            "bg-primary/5"
+          }`}>
+            <Lightbulb className={`h-4 w-4 flex-shrink-0 mt-0.5 ${
+              plannerData.status.status === "green" ? "text-success" :
+              plannerData.status.status === "yellow" ? "text-warning" :
+              plannerData.status.status === "red" ? "text-destructive" : "text-primary"
+            }`} />
+            <p className="text-xs text-muted-foreground">{plannerData.suggestion.message}</p>
           </div>
         </motion.div>
       )}
