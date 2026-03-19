@@ -96,6 +96,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const [totalGrades, setTotalGrades] = useState<number[]>([]);
   const [modulesCompleted, setModulesCompleted] = useState(0);
   const [chainResets, setChainResets] = useState(0);
+  const activityLoggedRef = useRef(false);
 
   useEffect(() => {
     saveLearnProgress(progress);
