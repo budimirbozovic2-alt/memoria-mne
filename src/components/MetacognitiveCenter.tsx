@@ -557,8 +557,13 @@ function ResistanceTab({ cards, categories, reviewLog, weights }: { cards: Card[
           : 100;
         const retrievabilityPenalty = Math.max(0, 100 - avgRetrievability);
 
+        const wTotal = weights.lapses + weights.latency + weights.forgetting;
+        const wL = wTotal > 0 ? weights.lapses / wTotal : 0.33;
+        const wLat = wTotal > 0 ? weights.latency / wTotal : 0.33;
+        const wF = wTotal > 0 ? weights.forgetting / wTotal : 0.34;
+
         const cognitiveLoad = Math.round(
-          lapseRate * 0.4 + latencyScore * 0.3 + retrievabilityPenalty * 0.3
+          lapseRate * wL + latencyScore * wLat + retrievabilityPenalty * wF
         );
 
         return {
