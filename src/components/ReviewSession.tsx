@@ -289,6 +289,28 @@ function ReviewCard({
 }) {
   const { toast } = useToast();
   const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);
+  const [answerRevealedAt, setAnswerRevealedAt] = useState<number | null>(null);
+  const [canGradeEasy, setCanGradeEasy] = useState(false);
+
+  // Reset timer when card/section changes or answer is hidden
+  useEffect(() => {
+    if (!showAnswer) {
+      setAnswerRevealedAt(null);
+      setCanGradeEasy(false);
+    }
+  }, [showAnswer, card.id, section.id]);
+
+  // 3-second timer for grade 4
+  useEffect(() => {
+    if (answerRevealedAt === null) return;
+    const timer = setTimeout(() => setCanGradeEasy(true), 3000);
+    return () => clearTimeout(timer);
+  }, [answerRevealedAt]);
+
+  const handleRevealAnswer = useCallback(() => {
+    setShowAnswer(true);
+    setAnswerRevealedAt(Date.now());
+  }, [setShowAnswer]);
 
   // Keyboard shortcuts: Space to reveal, 1-4 to grade, Z to undo
   useEffect(() => {
@@ -305,7 +327,7 @@ function ReviewCard({
       // 1-4 to grade (only when answer is shown)
       if (showAnswer && ["1", "2", "3", "4"].includes(e.key)) {
         const grade = parseInt(e.key);
-        if (grade === 4 && !canGradeEasy) return; // block grade 4 before 3 sec
+        if (grade === 4 && !canGradeEasy) return;
         e.preventDefault();
         lastGradeRef.current = { cardId: card.id, sectionId: section.id, grade };
         onGrade(grade);
