@@ -141,7 +141,7 @@ const Index = () => {
     { key: "learn" as View, icon: GraduationCap, label: "Uči" },
     { key: "review" as View, icon: RotateCcw, label: "Ponavljaj", badge: stats.due > 0 ? stats.due : undefined },
     { key: "mnemonic" as View, icon: Brain, label: "Memo" },
-    { key: "metacognitive" as View, icon: BarChart3, label: "Centar" },
+    { key: "stats" as View, icon: BarChart3, label: "Statistike" },
     { key: "cards" as View, icon: BookOpen, label: "Kartice" },
     { key: "categories" as View, icon: FolderOpen, label: "Kategorije" },
   ];
