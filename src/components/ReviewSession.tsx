@@ -487,10 +487,35 @@ function ReviewCard({
           )}
 
           {!showAnswer ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <p className="text-sm italic text-muted-foreground text-center">
                 Pokušaj odgovoriti na glas prije otkrivanja.
               </p>
+
+              {/* Confidence selector */}
+              <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground text-center">Koliko si siguran/na u odgovor?</p>
+                <div className="flex justify-center gap-1.5">
+                  {[1, 2, 3, 4, 5].map(level => (
+                    <button
+                      key={level}
+                      onClick={() => setConfidence(level)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                        confidence === level
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-secondary text-secondary-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground px-1">
+                  <span>Nimalo</span>
+                  <span>Potpuno</span>
+                </div>
+              </div>
+
               <Button onClick={handleRevealAnswer} className="w-full py-6 text-base" variant="outline">
                 <Eye className="h-4 w-4 mr-2" /> {isFlash ? "Prikaži odgovor" : "Prikaži odgovor za ovu cjelinu"}
               </Button>
