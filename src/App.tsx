@@ -38,7 +38,7 @@ const App = () => (
         <AppProvider>
           <ErrorBoundary>
             <MainLayout>
-              <Suspense fallback={<LoadingFallback />}>
+              <Suspense fallback={<PageSkeleton />}>
                 <Routes>
                   <Route path="/" element={<DashboardPage />} />
                   <Route path="/review" element={<ReviewPage />} />
