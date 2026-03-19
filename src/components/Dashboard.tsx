@@ -245,6 +245,12 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
 
   const cognitiveDebt = useMemo(() => getCognitiveDebt(dailyGoal), [dailyGoal]);
 
+  // Energy-Material Matcher
+  const energyRec = useMemo(() => calcEnergyRecommendation(), []);
+
+  // Strategic Reality Check
+  const strategicAlert = useMemo(() => calcStrategicRealityCheck(cards, reviewLog), [cards, reviewLog]);
+
   // Record discipline for yesterday (if not already done)
   useMemo(() => {
     const yesterday = new Date();
@@ -252,7 +258,6 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     const yKey = yesterday.toISOString().slice(0, 10);
     const log = loadDisciplineLog();
     if (log.find(e => e.date === yKey)) return;
-    // Count yesterday's reviews
     const yStart = new Date(yKey).getTime();
     const yEnd = yStart + 86400000;
     const yReviews = reviewLog.filter(e => e.timestamp >= yStart && e.timestamp < yEnd).length;
