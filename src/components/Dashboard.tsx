@@ -1,8 +1,9 @@
-import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Timer, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge } from "lucide-react";
+import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Timer, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge, Lightbulb } from "lucide-react";
 import { motion } from "framer-motion";
 import { Card, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS, getPendingFirstReviewCount } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
 import { loadDiary, loadActivityLog } from "@/lib/metacognitive-storage";
+import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getDailySuggestion } from "@/lib/planner-storage";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -226,6 +227,20 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   const backupOverdue = useMemo(() => isBackupOverdue(), []);
   const lastBackup = useMemo(() => getLastBackupTime(), []);
 
+  // Planner suggestion
+  const plannerSuggestion = useMemo(() => {
+    const planner = loadPlanner();
+    if (!planner.finalGoalDate) return null;
+    const totalSections = stats.totalSections;
+    const learnedSections = stats.learnedSections;
+    const velocity = calcVelocity(reviewLog, 7);
+    const remaining = totalSections - learnedSections;
+    const estimated = calcEstimatedFinish(remaining, velocity);
+    const status = getPlannerStatus(estimated, planner.finalGoalDate);
+    const suggestion = getDailySuggestion(totalSections, learnedSections, planner.finalGoalDate, velocity);
+    return { status, suggestion };
+  }, [stats, reviewLog]);
+
   return (
     <div className="space-y-8">
       {/* Hero */}
@@ -403,6 +418,27 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
           <div className="flex gap-4 justify-center text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5"><span className="w-3 h-1 rounded-full bg-primary" /> Stvarni % ponavljanja</span>
             <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 rounded-full bg-destructive" style={{ borderTop: "2px dashed" }} /> Idealni cilj</span>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Planner Suggestion Widget */}
+      {plannerSuggestion && plannerSuggestion.suggestion && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.38 }}
+          className={`flex items-start gap-3 p-4 rounded-xl border ${
+            plannerSuggestion.status.status === "green" ? "border-success/30 bg-success/5" :
+            plannerSuggestion.status.status === "yellow" ? "border-warning/30 bg-warning/5" :
+            plannerSuggestion.status.status === "red" ? "border-destructive/30 bg-destructive/5" :
+            "border-primary/20 bg-primary/5"
+          }`}>
+          <Lightbulb className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
+            plannerSuggestion.status.status === "green" ? "text-success" :
+            plannerSuggestion.status.status === "yellow" ? "text-warning" :
+            plannerSuggestion.status.status === "red" ? "text-destructive" : "text-primary"
+          }`} />
+          <div>
+            <p className="text-sm font-medium">Sugestija za danas</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{plannerSuggestion.suggestion.message}</p>
           </div>
         </motion.div>
       )}
