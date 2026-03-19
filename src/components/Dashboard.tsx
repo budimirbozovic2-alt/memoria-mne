@@ -24,6 +24,7 @@ interface Props {
   srSettings: SRSettings;
   onExport?: () => void;
   onShowKnowledgeMap?: () => void;
+  onStartReview?: () => void;
 }
 
 function ScoreBar({ score }: { score: number }) {
