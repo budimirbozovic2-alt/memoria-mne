@@ -114,6 +114,11 @@ export async function idbPutCard(card: Card): Promise<void> {
   await db.cards.put(card);
 }
 
+export async function idbBulkPutCards(cards: Card[]): Promise<void> {
+  if (cards.length === 0) return;
+  await db.cards.bulkPut(cards);
+}
+
 export async function idbDeleteCard(id: string): Promise<void> {
   await db.cards.delete(id);
 }

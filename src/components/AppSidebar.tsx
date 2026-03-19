@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { useAppContext } from "@/contexts/AppContext";
+import { useCardContext } from "@/contexts/AppContext";
 import {
   Home, GraduationCap, RotateCcw, Brain, BarChart3, Target,
   BookOpen, FolderOpen, Settings, Moon, Sun, Map, AlertTriangle,
@@ -44,7 +44,7 @@ export default function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { stats } = useAppContext();
+  const { stats } = useCardContext();
   const currentPath = location.pathname;
 
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));

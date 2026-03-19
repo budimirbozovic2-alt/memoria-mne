@@ -7,6 +7,7 @@ import { loadDiary, loadActivityLog, loadSlippageLog, getTimeDistribution } from
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getDailySuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, getDisciplineEmoji, getDisciplineLabel, loadDisciplineLog } from "@/lib/planner-storage";
 import { calcEnergyRecommendation, calcStrategicRealityCheck } from "@/lib/cognitive-analytics";
 import { useMemo, useState, useEffect } from "react";
+import { useDeferredCompute } from "@/hooks/useDeferredCompute";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
@@ -120,12 +121,11 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     return deficit > 20; // warning if actual review is 20%+ below target
   }, [focusRatio, actualRatio]);
 
-  // 14-day ratio history chart
-  const ratioHistory = useMemo(() => {
+  // 14-day ratio history chart (DEFERRED — heavy)
+  const ratioHistory = useDeferredCompute(() => {
     const now = new Date();
     const days = eachDayOfInterval({ start: subDays(now, 13), end: now });
 
-    // Build section first-seen map
     const sectionFirstSeen = new Map<string, number>();
     reviewLog.forEach(e => {
       const key = `${e.cardId}:${e.sectionId}`;
@@ -156,8 +156,8 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     });
   }, [reviewLog, focusRatio]);
 
-  // Diary goal text
-  const diaryGoal = useMemo(() => {
+  // Diary goal text (DEFERRED)
+  const diaryGoal = useDeferredCompute(() => {
     const diary = loadDiary();
     const today = new Date().toISOString().slice(0, 10);
     return diary.find(d => d.date === today)?.dailyGoal || null;
@@ -171,12 +171,12 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     return { reviewTarget, newTarget };
   }, [focusRatio, dailyGoal, stats.totalSections]);
 
-  const storageUsage = useMemo(() => getStorageUsage(), [cards, reviewLog]);
-  const backupOverdue = useMemo(() => isBackupOverdue(), []);
-  const lastBackup = useMemo(() => getLastBackupTime(), []);
+  const storageUsage = useDeferredCompute(() => getStorageUsage(), [cards, reviewLog]);
+  const backupOverdue = useDeferredCompute(() => isBackupOverdue(), []);
+  const lastBackup = useDeferredCompute(() => getLastBackupTime(), []);
 
-  // Planner suggestion + time predictor + cognitive debt
-  const plannerData = useMemo(() => {
+  // Planner suggestion + time predictor (DEFERRED — heavy)
+  const plannerData = useDeferredCompute(() => {
     const planner = loadPlanner();
     if (!planner.finalGoalDate) return null;
     const totalSections = stats.totalSections;
@@ -190,16 +190,16 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     return { status, suggestion, timeRec };
   }, [stats, reviewLog]);
 
-  const cognitiveDebt = useMemo(() => getCognitiveDebt(dailyGoal), [dailyGoal]);
+  const cognitiveDebt = useDeferredCompute(() => getCognitiveDebt(dailyGoal), [dailyGoal]);
 
-  // Time distribution for today
-  const todayTime = useMemo(() => getTimeDistribution(1), []);
+  // Time distribution for today (DEFERRED)
+  const todayTime = useDeferredCompute(() => getTimeDistribution(1), []);
 
-  // Energy-Material Matcher
-  const energyRec = useMemo(() => calcEnergyRecommendation(), []);
+  // Energy-Material Matcher (DEFERRED)
+  const energyRec = useDeferredCompute(() => calcEnergyRecommendation(), []);
 
-  // Strategic Reality Check
-  const strategicAlert = useMemo(() => calcStrategicRealityCheck(cards, reviewLog), [cards, reviewLog]);
+  // Strategic Reality Check (DEFERRED — heavy)
+  const strategicAlert = useDeferredCompute(() => calcStrategicRealityCheck(cards, reviewLog), [cards, reviewLog]);
 
   // Record discipline for yesterday (if not already done)
   useMemo(() => {
@@ -393,7 +393,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
       </motion.div>
 
       {/* Effective Learning Today Widget */}
-      {todayTime.totalMs > 60000 && (
+      {todayTime && todayTime.totalMs > 60000 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
           className="rounded-xl bg-card border p-5 space-y-3">
           <div className="flex items-center justify-between">
@@ -426,7 +426,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
       )}
 
       {/* Actual vs Ideal Ratio Chart (14 days) */}
-      {ratioHistory.some(d => d["Stvarni ponavljanje"] !== null) && (
+      {ratioHistory && ratioHistory.some(d => d["Stvarni ponavljanje"] !== null) && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
           className="rounded-xl bg-card border p-5 space-y-4">
           <div className="flex items-center gap-2">
@@ -509,7 +509,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
       </motion.div>
 
       {/* Backup / Storage Warnings */}
-      {(backupOverdue || storageUsage.percent > 70) && (
+      {(backupOverdue || (storageUsage && storageUsage.percent > 70)) && (
         <div className="space-y-3">
           {backupOverdue && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 p-4 rounded-xl border border-warning/30 bg-warning/5">
@@ -517,7 +517,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
               <div className="flex-1">
                 <p className="text-sm font-medium">Vrijeme je za backup</p>
                 <p className="text-xs text-muted-foreground">
-                  {lastBackup > 0 ? `Posljednji backup: ${new Date(lastBackup).toLocaleDateString("sr-Latn")}` : "Nikad niste napravili backup."}
+                  {lastBackup && lastBackup > 0 ? `Posljednji backup: ${new Date(lastBackup).toLocaleDateString("sr-Latn")}` : "Nikad niste napravili backup."}
                   {" "}Podaci su samo u ovom pretraživaču.
                 </p>
               </div>
@@ -528,7 +528,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
               )}
             </motion.div>
           )}
-          {storageUsage.percent > 70 && (
+          {storageUsage && storageUsage.percent > 70 && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex items-center gap-3 p-4 rounded-xl border ${storageUsage.percent > 90 ? "border-destructive/30 bg-destructive/5" : "border-warning/30 bg-warning/5"}`}>
               <HardDrive className={`h-5 w-5 flex-shrink-0 ${storageUsage.percent > 90 ? "text-destructive" : "text-warning"}`} />
               <div className="flex-1">

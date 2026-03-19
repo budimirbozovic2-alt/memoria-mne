@@ -4,6 +4,7 @@ import { ReviewLogEntry, setLastBackupTime } from "@/lib/storage";
 import {
   migrateFromLocalStorage,
   idbLoadCards, idbSaveCards,
+  idbPutCard, idbDeleteCard, idbBulkPutCards,
   idbLoadCategories, idbSaveCategories,
   idbLoadSubcategories, idbSaveSubcategories,
   idbLoadReviewLog, idbAddReviewLogEntry,
@@ -23,8 +24,46 @@ function mapToArray(map: CardMap): Card[] {
   return Object.values(map);
 }
 
-function persistCards(map: CardMap) {
-  idbSaveCards(mapToArray(map));
+// ─── Surgical persist helpers ───────────────────────────
+// Track which cards changed so we can persist only those
+type PersistAction =
+  | { type: "put"; card: Card }
+  | { type: "delete"; id: string }
+  | { type: "bulk"; cards: Card[] }
+  | { type: "full"; map: CardMap };
+
+const pendingActions: PersistAction[] = [];
+let flushTimer: number | null = null;
+
+function schedulePersist(action: PersistAction) {
+  pendingActions.push(action);
+  if (flushTimer !== null) return;
+  flushTimer = window.setTimeout(flushPersist, 16); // batch within a frame
+}
+
+async function flushPersist() {
+  flushTimer = null;
+  const actions = pendingActions.splice(0);
+  if (actions.length === 0) return;
+
+  // If any action is "full", just do full save
+  const fullAction = actions.find(a => a.type === "full");
+  if (fullAction && fullAction.type === "full") {
+    await idbSaveCards(mapToArray(fullAction.map));
+    return;
+  }
+
+  // Otherwise, surgical puts and deletes
+  const puts: Card[] = [];
+  const deletes: string[] = [];
+  for (const a of actions) {
+    if (a.type === "put") puts.push(a.card);
+    else if (a.type === "delete") deletes.push(a.id);
+    else if (a.type === "bulk") puts.push(...a.cards);
+  }
+
+  if (puts.length > 0) await idbBulkPutCards(puts);
+  for (const id of deletes) await idbDeleteCard(id);
 }
 
 export function useCards() {
@@ -62,23 +101,27 @@ export function useCards() {
   // ── Derived: Card[] for consumers (memoized from map) ──
   const cards = useMemo(() => mapToArray(cardMap), [cardMap]);
 
-  // ── Helpers: update map + persist async ──
-  const setCardMap = useCallback((updater: (prev: CardMap) => CardMap) => {
+  // ── Surgical single-card update (O(1) state + O(1) IDB) ──
+  const patchCard = useCallback((id: string, patcher: (card: Card) => Card) => {
     setCardMapState(prev => {
-      const next = updater(prev);
-      persistCards(next);
-      return next;
+      const card = prev[id];
+      if (!card) return prev;
+      const updated = patcher(card);
+      schedulePersist({ type: "put", card: updated });
+      return { ...prev, [id]: updated };
     });
   }, []);
 
-  // O(1) update a single card by ID
-  const patchCard = useCallback((id: string, patcher: (card: Card) => Card) => {
-    setCardMap(prev => {
-      const card = prev[id];
-      if (!card) return prev;
-      return { ...prev, [id]: patcher(card) };
+  // ── Bulk map update (for operations touching many cards) ──
+  const setCardMap = useCallback((updater: (prev: CardMap) => CardMap, persist: "surgical" | "full" = "full") => {
+    setCardMapState(prev => {
+      const next = updater(prev);
+      if (persist === "full") {
+        schedulePersist({ type: "full", map: next });
+      }
+      return next;
     });
-  }, [setCardMap]);
+  }, []);
 
   const setCategories = useCallback((updater: (prev: string[]) => string[]) => {
     setCategoriesState(prev => {
@@ -108,23 +151,29 @@ export function useCards() {
 
   const addCard = useCallback((question: string, sections: { title: string; content: string }[], category: string, subcategory?: string) => {
     const card = createCard(question, sections, category, subcategory);
-    setCardMap(prev => ({ ...prev, [card.id]: card }));
+    setCardMapState(prev => {
+      schedulePersist({ type: "put", card });
+      return { ...prev, [card.id]: card };
+    });
     if (!categories.includes(category)) {
       setCategories(prev => [...prev, category]);
     }
     return card;
-  }, [categories, setCardMap, setCategories]);
+  }, [categories, setCategories]);
 
   const addFlashCard = useCallback((question: string, answer: string, category: string, subcategory?: string) => {
     const card = createFlashCard(question, answer, category, subcategory);
-    setCardMap(prev => ({ ...prev, [card.id]: card }));
+    setCardMapState(prev => {
+      schedulePersist({ type: "put", card });
+      return { ...prev, [card.id]: card };
+    });
     if (!categories.includes(category)) {
       setCategories(prev => [...prev, category]);
     }
     return card;
-  }, [categories, setCardMap, setCategories]);
+  }, [categories, setCategories]);
 
-  // O(1) direct update
+  // O(1) direct update — surgical IDB write
   const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string }) => {
     patchCard(id, c => {
       const newCard = { ...c };
@@ -142,16 +191,17 @@ export function useCards() {
     });
   }, [patchCard]);
 
-  // O(1) delete
+  // O(1) delete — surgical IDB delete
   const deleteCard = useCallback((id: string) => {
-    setCardMap(prev => {
+    setCardMapState(prev => {
       const next = { ...prev };
       delete next[id];
+      schedulePersist({ type: "delete", id });
       return next;
     });
-  }, [setCardMap]);
+  }, []);
 
-  // O(1) review
+  // O(1) review — surgical IDB write
   const reviewSection = useCallback((cardId: string, sectionId: string, grade: number) => {
     patchCard(cardId, c => {
       const entry: ReviewLogEntry = { timestamp: Date.now(), cardId, sectionId, grade, category: c.category };
@@ -174,18 +224,22 @@ export function useCards() {
   }, [patchCard, setReviewLog]);
 
   const splitCard = useCallback((id: string) => {
-    setCardMap(prev => {
+    setCardMapState(prev => {
       const card = prev[id];
       if (!card || card.sections.length <= 1) return prev;
       const next = { ...prev };
       delete next[id];
+      schedulePersist({ type: "delete", id });
+      const newCards: Card[] = [];
       card.sections.forEach(section => {
         const newCard = { ...createCard(card.question, [{ title: section.title, content: section.content }], card.category, card.subcategory), sections: [{ ...section }] };
         next[newCard.id] = newCard;
+        newCards.push(newCard);
       });
+      schedulePersist({ type: "bulk", cards: newCards });
       return next;
     });
-  }, [setCardMap]);
+  }, []);
 
   const addCategory = useCallback((name: string) => {
     if (!categories.includes(name)) setCategories(prev => [...prev, name]);
@@ -200,7 +254,7 @@ export function useCards() {
         next[id] = c.category === oldName ? { ...c, category: newName } : c;
       }
       return next;
-    });
+    }, "full");
     setSubcategories(prev => {
       const next = { ...prev };
       if (next[oldName]) { next[newName] = next[oldName]; delete next[oldName]; }
@@ -216,7 +270,7 @@ export function useCards() {
         next[id] = c.category === name ? { ...c, category: "Opšte", subcategory: "" } : c;
       }
       return next;
-    });
+    }, "full");
     setSubcategories(prev => { const next = { ...prev }; delete next[name]; return next; });
   }, [setCategories, setCardMap, setSubcategories]);
 
@@ -240,7 +294,7 @@ export function useCards() {
         next[id] = c.category === category && c.subcategory === oldName ? { ...c, subcategory: newName } : c;
       }
       return next;
-    });
+    }, "full");
   }, [setSubcategories, setCardMap]);
 
   const deleteSubcategory = useCallback((category: string, subcategory: string) => {
@@ -251,25 +305,30 @@ export function useCards() {
         next[id] = c.category === category && c.subcategory === subcategory ? { ...c, subcategory: "" } : c;
       }
       return next;
-    });
+    }, "full");
   }, [setSubcategories, setCardMap]);
 
-  // O(1) markRead
+  // O(1) markRead — surgical
   const markRead = useCallback((id: string) => {
     patchCard(id, c => ({ ...c, readCount: (c.readCount || 0) + 1 }));
   }, [patchCard]);
 
   const bulkUpdateSubcategory = useCallback((ids: string[], subcategory: string) => {
-    setCardMap(prev => {
+    setCardMapState(prev => {
       const next = { ...prev };
+      const updated: Card[] = [];
       for (const id of ids) {
-        if (next[id]) next[id] = { ...next[id], subcategory };
+        if (next[id]) {
+          next[id] = { ...next[id], subcategory };
+          updated.push(next[id]);
+        }
       }
+      schedulePersist({ type: "bulk", cards: updated });
       return next;
     });
-  }, [setCardMap]);
+  }, []);
 
-  // O(1) toggleTag
+  // O(1) toggleTag — surgical
   const toggleTag = useCallback((cardId: string, tag: string) => {
     patchCard(cardId, c => {
       const tags = c.tags || [];
@@ -277,7 +336,7 @@ export function useCards() {
     });
   }, [patchCard]);
 
-  // O(1) logError
+  // O(1) logError — surgical
   const logError = useCallback((cardId: string, text: string) => {
     patchCard(cardId, c => {
       const errorLog = [...(c.errorLog || [])];
@@ -294,7 +353,7 @@ export function useCards() {
     });
   }, [patchCard]);
 
-  // O(1) clearErrorLog
+  // O(1) clearErrorLog — surgical
   const clearErrorLog = useCallback((cardId: string) => {
     patchCard(cardId, c => ({ ...c, errorLog: [] }));
   }, [patchCard]);
@@ -357,7 +416,7 @@ export function useCards() {
               importedCards.forEach(ic => { if (!next[ic.id]) next[ic.id] = ic; });
             }
             return next;
-          });
+          }, "full");
         }
         if (Array.isArray(parsed.categories)) {
           setCategories(prev => [...new Set([...prev, ...parsed.categories])]);
@@ -386,13 +445,14 @@ export function useCards() {
 
   const importCards = useCallback((newCards: { question: string; sections: { title: string; content: string }[] }[], category: string) => {
     const created = newCards.map(c => createCard(c.question, c.sections, category));
-    setCardMap(prev => {
+    setCardMapState(prev => {
       const next = { ...prev };
       created.forEach(c => { next[c.id] = c; });
+      schedulePersist({ type: "bulk", cards: created });
       return next;
     });
     if (!categories.includes(category)) setCategories(prev => [...prev, category]);
-  }, [categories, setCardMap, setCategories]);
+  }, [categories, setCategories]);
 
   // ── Derived data ──
   const cardCountByCategory = useMemo(() => {
