@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ReviewLogEntry } from "@/lib/storage";
-import { Card } from "@/lib/spaced-repetition";
+import { Card, getCardRetrievability } from "@/lib/spaced-repetition";
 import {
   loadDiary, addDiaryEntry, DiaryEntry, setLastAnalysisDate,
   loadCalibration, CalibrationEntry, getCalibrationStats,
