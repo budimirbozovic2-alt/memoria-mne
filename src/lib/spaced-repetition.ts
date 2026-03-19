@@ -139,14 +139,14 @@ export function calculateNextReview(section: Section, grade: number): Partial<Se
   } else {
     const { stability, difficulty } = section;
     switch (grade) {
-      case 1: // Again
+      case 1: // Again — critical zone, shortest interval
         newDifficulty = clampDifficulty(difficulty + 2);
-        newStability = Math.max(0.1, stability * 0.1);
+        newStability = Math.max(0.1, stability * 0.05);
         newLapses += 1;
         break;
-      case 2: // Hard
-        newDifficulty = clampDifficulty(difficulty + 1);
-        newStability = stability * 1.5 + 0.5;
+      case 2: // Hard — critical zone, short interval within 24h
+        newDifficulty = clampDifficulty(difficulty + 1.5);
+        newStability = Math.max(0.2, stability * 0.3);
         break;
       case 3: // Good
         newDifficulty = clampDifficulty(difficulty);
