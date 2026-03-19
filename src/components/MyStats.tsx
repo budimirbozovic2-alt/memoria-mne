@@ -165,6 +165,25 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
               );
             })()}
 
+            {/* Planner Widget */}
+            {onShowPlanner && (
+              <motion.button
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={onShowPlanner}
+                className="w-full rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors group text-left space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-primary" />
+                    <h3 className="font-serif text-lg">Strateški Planer</h3>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                </div>
+                <p className="text-xs text-muted-foreground">Poveži svoj plan sa stvarnim progresom, postavi cilj i prati brzinu učenja.</p>
+              </motion.button>
+            )}
+
             {/* Heatmap + Retention */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ActivityHeatmap reviewLog={reviewLog} />
