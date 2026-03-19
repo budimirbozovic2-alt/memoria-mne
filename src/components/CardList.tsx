@@ -237,9 +237,9 @@ export default function CardList({
 
   if (useVirtualization) {
     return (
-      <div ref={containerRef}>
+      <div ref={containerRef} style={{ height: Math.min(filtered.length * ROW_HEIGHT, 700) }}>
         <List
-          height={Math.min(filtered.length * ROW_HEIGHT, 700)}
+          defaultHeight={Math.min(filtered.length * ROW_HEIGHT, 700)}
           rowCount={filtered.length}
           rowHeight={ROW_HEIGHT}
           overscanCount={5}
@@ -256,6 +256,8 @@ export default function CardList({
             onEdit,
             onDelete,
           } as any}
+          style={{ height: "100%" }}
+        />
         />
       </div>
     );
