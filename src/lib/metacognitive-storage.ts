@@ -1,4 +1,5 @@
 import { ReviewLogEntry, loadReviewLog } from "./storage";
+import { db } from "./db";
 
 // ─── Diary ───────────────────────────────────────────────
 const DIARY_KEY = "sr-metacognitive-diary";
@@ -19,13 +20,16 @@ export function loadDiary(): DiaryEntry[] {
 }
 
 export function saveDiary(entries: DiaryEntry[]) {
-  localStorage.setItem(DIARY_KEY, JSON.stringify(entries));
+  try { localStorage.setItem(DIARY_KEY, JSON.stringify(entries)); } catch {}
+  // Async IDB backup
+  db.diary.clear().then(() => {
+    if (entries.length > 0) db.diary.bulkPut(entries).catch(() => {});
+  }).catch(() => {});
 }
 
 export function addDiaryEntry(entry: Omit<DiaryEntry, "id" | "createdAt">): DiaryEntry {
   const full: DiaryEntry = { ...entry, id: crypto.randomUUID(), createdAt: Date.now() };
   const diary = loadDiary();
-  // Replace if same date exists
   const idx = diary.findIndex(d => d.date === entry.date);
   if (idx >= 0) diary[idx] = full; else diary.push(full);
   saveDiary(diary);
@@ -39,8 +43,8 @@ export interface CalibrationEntry {
   timestamp: number;
   cardId: string;
   sectionId: string;
-  confidence: number; // 1-5
-  actualGrade: number; // 1-4
+  confidence: number;
+  actualGrade: number;
   category: string;
 }
 
@@ -52,7 +56,10 @@ export function loadCalibration(): CalibrationEntry[] {
 }
 
 export function saveCalibration(entries: CalibrationEntry[]) {
-  localStorage.setItem(CALIBRATION_KEY, JSON.stringify(entries));
+  try { localStorage.setItem(CALIBRATION_KEY, JSON.stringify(entries)); } catch {}
+  db.calibrationLog.clear().then(() => {
+    if (entries.length > 0) db.calibrationLog.bulkAdd(entries).catch(() => {});
+  }).catch(() => {});
 }
 
 export function addCalibrationEntry(entry: CalibrationEntry) {
@@ -80,7 +87,10 @@ export function loadLatency(): LatencyEntry[] {
 }
 
 export function saveLatency(entries: LatencyEntry[]) {
-  localStorage.setItem(LATENCY_KEY, JSON.stringify(entries));
+  try { localStorage.setItem(LATENCY_KEY, JSON.stringify(entries)); } catch {}
+  db.latencyLog.clear().then(() => {
+    if (entries.length > 0) db.latencyLog.bulkAdd(entries).catch(() => {});
+  }).catch(() => {});
 }
 
 export function addLatencyEntry(entry: LatencyEntry) {
@@ -98,13 +108,13 @@ export function getLastAnalysisDate(): string | null {
 
 export function setLastAnalysisDate(date: string) {
   localStorage.setItem(LAST_ANALYSIS_KEY, date);
+  db.settings.put({ key: "lastAnalysisDate", value: date }).catch(() => {});
 }
 
 export function isAnalysisNeededToday(): boolean {
   const today = new Date().toISOString().slice(0, 10);
   const last = getLastAnalysisDate();
   if (last === today) return false;
-  // Check if user reviewed anything today
   const log = loadReviewLog();
   const todayStart = new Date(today).getTime();
   return log.some(e => e.timestamp >= todayStart);
@@ -116,21 +126,15 @@ export function getTodayReviewStats(reviewLog: ReviewLogEntry[]) {
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayStart = new Date(todayStr).getTime();
   const todayEntries = reviewLog.filter(e => e.timestamp >= todayStart);
-
   const successes = todayEntries.filter(e => e.grade === 4);
   const lapses = todayEntries.filter(e => e.grade <= 2);
-
   return { successes, lapses, total: todayEntries.length };
 }
 
 export function getCalibrationStats(entries: CalibrationEntry[]) {
   if (entries.length === 0) return { overconfident: 0, underconfident: 0, calibrated: 0, total: 0, avgDelta: 0 };
-
-  let over = 0, under = 0, calibrated = 0;
-  let totalDelta = 0;
-
+  let over = 0, under = 0, calibrated = 0, totalDelta = 0;
   entries.forEach(e => {
-    // Map confidence 1-5 to comparable scale with grade 1-4
     const normalized = (e.confidence / 5) * 4;
     const delta = normalized - e.actualGrade;
     totalDelta += delta;
@@ -138,28 +142,14 @@ export function getCalibrationStats(entries: CalibrationEntry[]) {
     else if (delta < -0.5) under++;
     else calibrated++;
   });
-
-  return {
-    overconfident: over,
-    underconfident: under,
-    calibrated,
-    total: entries.length,
-    avgDelta: totalDelta / entries.length,
-  };
+  return { overconfident: over, underconfident: under, calibrated, total: entries.length, avgDelta: totalDelta / entries.length };
 }
 
 export function getLatencyStats(entries: LatencyEntry[]) {
   if (entries.length === 0) return { avg: 0, automated: 0, notAutomated: 0, total: 0 };
-
   const avgMs = entries.reduce((s, e) => s + e.latencyMs, 0) / entries.length;
   const automated = entries.filter(e => e.latencyMs <= 3000).length;
-
-  return {
-    avg: avgMs,
-    automated,
-    notAutomated: entries.length - automated,
-    total: entries.length,
-  };
+  return { avg: avgMs, automated, notAutomated: entries.length - automated, total: entries.length };
 }
 
 // ─── Slippage Tracking ──────────────────────────────────
@@ -167,23 +157,24 @@ const SLIPPAGE_KEY = "sr-slippage-log";
 const APP_ENTRY_KEY = "sr-app-entry-time";
 
 export interface SlippageEntry {
-  date: string; // YYYY-MM-DD
-  appEntryTime: number; // timestamp
-  firstActionTime: number | null; // timestamp
+  date: string;
+  appEntryTime: number;
+  firstActionTime: number | null;
   slippageMs: number | null;
 }
 
 export function recordAppEntry() {
   const today = new Date().toISOString().slice(0, 10);
   const existing = localStorage.getItem(APP_ENTRY_KEY);
-  // Only record first entry of the day
   if (existing) {
     try {
       const parsed = JSON.parse(existing);
       if (parsed.date === today) return;
     } catch {}
   }
-  localStorage.setItem(APP_ENTRY_KEY, JSON.stringify({ date: today, time: Date.now() }));
+  const entry = { date: today, time: Date.now() };
+  localStorage.setItem(APP_ENTRY_KEY, JSON.stringify(entry));
+  db.settings.put({ key: "appEntry", value: entry }).catch(() => {});
 }
 
 export function recordFirstAction() {
@@ -192,17 +183,18 @@ export function recordFirstAction() {
   try {
     const entry = JSON.parse(entryRaw);
     const today = new Date().toISOString().slice(0, 10);
-    if (entry.date !== today) return;
-    if (entry.actionRecorded) return;
+    if (entry.date !== today || entry.actionRecorded) return;
 
     const slippageMs = Date.now() - entry.time;
     entry.actionRecorded = true;
     localStorage.setItem(APP_ENTRY_KEY, JSON.stringify(entry));
+    db.settings.put({ key: "appEntry", value: entry }).catch(() => {});
 
-    // Save to log
+    const slippageEntry: SlippageEntry = { date: today, appEntryTime: entry.time, firstActionTime: Date.now(), slippageMs };
     const log = loadSlippageLog();
-    log.push({ date: today, appEntryTime: entry.time, firstActionTime: Date.now(), slippageMs });
-    localStorage.setItem(SLIPPAGE_KEY, JSON.stringify(log));
+    log.push(slippageEntry);
+    try { localStorage.setItem(SLIPPAGE_KEY, JSON.stringify(log)); } catch {}
+    db.slippageLog.add(slippageEntry).catch(() => {});
   } catch {}
 }
 
@@ -225,7 +217,6 @@ export interface ActivityEntry {
   category?: string;
 }
 
-// Mapping activity types to 4 time reservoirs
 export type TimeReservoir = "review" | "learning" | "creative" | "analysis";
 
 export function getReservoir(type: ActivityType): TimeReservoir {
@@ -269,17 +260,19 @@ export function loadActivityLog(): ActivityEntry[] {
 export function addActivityEntry(entry: ActivityEntry) {
   const log = loadActivityLog();
   log.push(entry);
-  localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log));
+  try { localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log)); } catch {}
+  // IDB backup
+  db.activityLog.add(entry).catch(() => {});
 }
 
 export interface TimeDistribution {
-  review: number;   // ms
+  review: number;
   learning: number;
   creative: number;
   analysis: number;
   totalMs: number;
-  cognitiveMs: number;  // review + learning
-  logisticMs: number;   // creative + analysis
+  cognitiveMs: number;
+  logisticMs: number;
   cognitivePct: number;
 }
 
@@ -289,19 +282,14 @@ export function getTimeDistribution(days: number = 1): TimeDistribution {
   const recent = log.filter(e => e.timestamp >= cutoff);
 
   const buckets: Record<TimeReservoir, number> = { review: 0, learning: 0, creative: 0, analysis: 0 };
-  recent.forEach(e => {
-    buckets[getReservoir(e.type)] += e.durationMs;
-  });
+  recent.forEach(e => { buckets[getReservoir(e.type)] += e.durationMs; });
 
   const cognitiveMs = buckets.review + buckets.learning;
   const logisticMs = buckets.creative + buckets.analysis;
   const totalMs = cognitiveMs + logisticMs;
 
   return {
-    ...buckets,
-    totalMs,
-    cognitiveMs,
-    logisticMs,
+    ...buckets, totalMs, cognitiveMs, logisticMs,
     cognitivePct: totalMs > 0 ? Math.round((cognitiveMs / totalMs) * 100) : 0,
   };
 }
@@ -318,10 +306,7 @@ export function getWeeklyTimeDistribution(): { date: string; review: number; lea
     const dayEntries = log.filter(e => e.timestamp >= dayStart && e.timestamp < dayEnd);
 
     const buckets = { review: 0, learning: 0, creative: 0, analysis: 0 };
-    dayEntries.forEach(e => {
-      buckets[getReservoir(e.type)] += Math.round(e.durationMs / 60000); // minutes
-    });
-
+    dayEntries.forEach(e => { buckets[getReservoir(e.type)] += Math.round(e.durationMs / 60000); });
     days.push({ date: dateStr.slice(5), ...buckets });
   }
   return days;
@@ -341,29 +326,22 @@ export function getDeepWorkStats(days: number = 7) {
   const totalMs = deepWorkMs + shallowWorkMs;
 
   return {
-    deepWorkMs,
-    shallowWorkMs,
-    totalMs,
+    deepWorkMs, shallowWorkMs, totalMs,
     deepWorkPercent: totalMs > 0 ? Math.round((deepWorkMs / totalMs) * 100) : 0,
     shallowWorkPercent: totalMs > 0 ? Math.round((shallowWorkMs / totalMs) * 100) : 0,
   };
 }
 
-// ─── Learning Velocity (for Predictive Analytics) ────────
+// ─── Learning Velocity ────────────────────────────────
 
 export function getLearningVelocity(reviewLog: ReviewLogEntry[], categories: string[]) {
-  // Calculate sections mastered per day per category over last 14 days
   const now = Date.now();
   const windowDays = 14;
   const cutoff = now - windowDays * 86400000;
   const recentReviews = reviewLog.filter(e => e.timestamp >= cutoff);
 
-  // Count unique section masteries (grade >= 3) per category
   const byCat: Record<string, { mastered: Set<string>; total: number; firstDate: number; lastDate: number }> = {};
-
-  categories.forEach(cat => {
-    byCat[cat] = { mastered: new Set(), total: 0, firstDate: now, lastDate: 0 };
-  });
+  categories.forEach(cat => { byCat[cat] = { mastered: new Set(), total: 0, firstDate: now, lastDate: 0 }; });
 
   recentReviews.forEach(e => {
     if (!byCat[e.category]) byCat[e.category] = { mastered: new Set(), total: 0, firstDate: now, lastDate: 0 };
@@ -375,7 +353,7 @@ export function getLearningVelocity(reviewLog: ReviewLogEntry[], categories: str
 
   return Object.entries(byCat).map(([cat, data]) => {
     const activeDays = Math.max(1, (data.lastDate - data.firstDate) / 86400000);
-    const velocity = data.mastered.size / activeDays; // sections per day
+    const velocity = data.mastered.size / activeDays;
     return { category: cat, velocity, masteredCount: data.mastered.size, totalReviews: data.total, activeDays: Math.round(activeDays) };
   });
 }

@@ -1,5 +1,6 @@
 import { Card } from "./spaced-repetition";
 import { ReviewLogEntry } from "./storage";
+import { db } from "./db";
 import { addDays, differenceInDays, startOfDay } from "date-fns";
 
 const PLANNER_KEY = "sr-planner-config";
@@ -10,7 +11,7 @@ export interface StudyDecade {
   name: string;
   durationDays: number;
   categories: string[];
-  startDate: string; // ISO date
+  startDate: string;
 }
 
 export interface PlannerConfig {
@@ -35,12 +36,11 @@ export function loadPlanner(): PlannerConfig {
 }
 
 export function savePlanner(config: PlannerConfig): void {
-  localStorage.setItem(PLANNER_KEY, JSON.stringify(config));
+  try { localStorage.setItem(PLANNER_KEY, JSON.stringify(config)); } catch {}
+  // IDB backup
+  db.settings.put({ key: "plannerConfig", value: config }).catch(() => {});
 }
 
-/**
- * Calculate velocity: average new sections learned per day over last N days.
- */
 export function calcVelocity(reviewLog: ReviewLogEntry[], days: number = 7): number {
   const now = Date.now();
   const cutoff = startOfDay(addDays(new Date(), -days)).getTime();
@@ -60,9 +60,6 @@ export function calcVelocity(reviewLog: ReviewLogEntry[], days: number = 7): num
   return days > 0 ? newInWindow / days : 0;
 }
 
-/**
- * Estimate finish date given remaining sections and velocity.
- */
 export function calcEstimatedFinish(remaining: number, velocity: number): Date | null {
   if (velocity <= 0 || remaining <= 0) return remaining <= 0 ? new Date() : null;
   const daysNeeded = Math.ceil(remaining / velocity);
@@ -71,9 +68,6 @@ export function calcEstimatedFinish(remaining: number, velocity: number): Date |
 
 export type PlannerStatus = "green" | "yellow" | "red" | "no-goal";
 
-/**
- * Compare estimated finish to goal date.
- */
 export function getPlannerStatus(estimatedFinish: Date | null, goalDateStr: string | null): { status: PlannerStatus; daysLate: number } {
   if (!goalDateStr || !estimatedFinish) return { status: "no-goal", daysLate: 0 };
   const goal = new Date(goalDateStr);
@@ -83,14 +77,8 @@ export function getPlannerStatus(estimatedFinish: Date | null, goalDateStr: stri
   return { status: "red", daysLate: diff };
 }
 
-/**
- * Suggested new cards for today to stay on track.
- */
 export function getDailySuggestion(
-  totalSections: number,
-  learnedSections: number,
-  goalDateStr: string | null,
-  velocity: number
+  totalSections: number, learnedSections: number, goalDateStr: string | null, velocity: number
 ): { suggestedToday: number; message: string } | null {
   if (!goalDateStr) return null;
   const goal = new Date(goalDateStr);
@@ -98,35 +86,23 @@ export function getDailySuggestion(
   if (remaining <= 0) return { suggestedToday: 0, message: "Sve cjeline su naučene! 🎉" };
   const daysLeft = Math.max(1, differenceInDays(goal, new Date()));
   const needed = Math.ceil(remaining / daysLeft);
-  return {
-    suggestedToday: needed,
-    message: `Obradi bar ${needed} novih cjelina danas da ostaneš na planu.`,
-  };
+  return { suggestedToday: needed, message: `Obradi bar ${needed} novih cjelina danas da ostaneš na planu.` };
 }
 
 // ─── Daily Time Predictor ────────────────────────────────
 
-/** Average minutes per section based on review log timing */
 export function calcAvgMinutesPerSection(reviewLog: ReviewLogEntry[]): number {
-  // Estimate: group reviews by day and count sections done per day
-  // Then use total active minutes from activity log or estimate ~3 min per review action
-  const AVG_MINUTES_PER_SECTION = 3; // conservative estimate
-  return AVG_MINUTES_PER_SECTION;
+  return 3;
 }
 
 export function calcDailyTimeRecommendation(
-  suggestedSections: number,
-  velocity: number,
-  dueCount: number,
-  avgMinPerSection: number = 3
+  suggestedSections: number, velocity: number, dueCount: number, avgMinPerSection: number = 3
 ): { totalMinutes: number; hours: number; minutes: number; message: string } {
   const totalSections = suggestedSections + dueCount;
   const totalMinutes = Math.round(totalSections * avgMinPerSection);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  const message = hours > 0
-    ? `${hours}h ${minutes}min efektivnog učenja`
-    : `${minutes} min efektivnog učenja`;
+  const message = hours > 0 ? `${hours}h ${minutes}min efektivnog učenja` : `${minutes} min efektivnog učenja`;
   return { totalMinutes, hours, minutes, message };
 }
 
@@ -135,9 +111,9 @@ export function calcDailyTimeRecommendation(
 export type DisciplineStatus = "diligent" | "neutral" | "lazy";
 
 export interface DisciplineEntry {
-  date: string; // YYYY-MM-DD
+  date: string;
   status: DisciplineStatus;
-  planCompletion: number; // 0-100%
+  planCompletion: number;
   slippageMs: number | null;
   reviewsDone: number;
   suggestedReviews: number;
@@ -151,57 +127,35 @@ export function loadDisciplineLog(): DisciplineEntry[] {
 }
 
 export function saveDisciplineLog(log: DisciplineEntry[]) {
-  localStorage.setItem(DISCIPLINE_KEY, JSON.stringify(log));
+  try { localStorage.setItem(DISCIPLINE_KEY, JSON.stringify(log)); } catch {}
+  db.disciplineLog.clear().then(() => {
+    if (log.length > 0) db.disciplineLog.bulkAdd(log).catch(() => {});
+  }).catch(() => {});
 }
 
-export function calcDisciplineStatus(
-  reviewsDone: number,
-  dailyGoal: number,
-  slippageMs: number | null
-): DisciplineStatus {
+export function calcDisciplineStatus(reviewsDone: number, dailyGoal: number, slippageMs: number | null): DisciplineStatus {
   if (dailyGoal === 0) return "neutral";
   const completion = (reviewsDone / dailyGoal) * 100;
-  const lowSlippage = slippageMs === null || slippageMs < 5 * 60 * 1000; // < 5 min
+  const lowSlippage = slippageMs === null || slippageMs < 5 * 60 * 1000;
   if (completion >= 90 && lowSlippage) return "diligent";
   if (completion >= 70) return "neutral";
   return "lazy";
 }
 
 export function getDisciplineEmoji(status: DisciplineStatus): string {
-  switch (status) {
-    case "diligent": return "🚀";
-    case "neutral": return "😐";
-    case "lazy": return "🐢";
-  }
+  switch (status) { case "diligent": return "🚀"; case "neutral": return "😐"; case "lazy": return "🐢"; }
 }
 
 export function getDisciplineLabel(status: DisciplineStatus): string {
-  switch (status) {
-    case "diligent": return "Vrijedan";
-    case "neutral": return "Neutralan";
-    case "lazy": return "Lijen";
-  }
+  switch (status) { case "diligent": return "Vrijedan"; case "neutral": return "Neutralan"; case "lazy": return "Lijen"; }
 }
 
-/**
- * Record discipline for a given day. Called when checking dashboard.
- */
 export function recordDayDiscipline(
-  date: string,
-  reviewsDone: number,
-  dailyGoal: number,
-  slippageMs: number | null
+  date: string, reviewsDone: number, dailyGoal: number, slippageMs: number | null
 ): DisciplineEntry {
   const status = calcDisciplineStatus(reviewsDone, dailyGoal, slippageMs);
   const completion = dailyGoal > 0 ? Math.round((reviewsDone / dailyGoal) * 100) : 0;
-  const entry: DisciplineEntry = {
-    date,
-    status,
-    planCompletion: completion,
-    slippageMs,
-    reviewsDone,
-    suggestedReviews: dailyGoal,
-  };
+  const entry: DisciplineEntry = { date, status, planCompletion: completion, slippageMs, reviewsDone, suggestedReviews: dailyGoal };
 
   const log = loadDisciplineLog();
   const idx = log.findIndex(e => e.date === date);
@@ -210,9 +164,6 @@ export function recordDayDiscipline(
   return entry;
 }
 
-/**
- * Get cognitive debt from yesterday if it was a "lazy" day.
- */
 export function getCognitiveDebt(dailyGoal: number): { hasDebt: boolean; debtCards: number; message: string } | null {
   const log = loadDisciplineLog();
   const yesterday = addDays(new Date(), -1).toISOString().slice(0, 10);
@@ -220,45 +171,25 @@ export function getCognitiveDebt(dailyGoal: number): { hasDebt: boolean; debtCar
   if (!entry || entry.status !== "lazy") return null;
   const debtCards = Math.max(0, entry.suggestedReviews - entry.reviewsDone);
   if (debtCards <= 0) return null;
-  return {
-    hasDebt: true,
-    debtCards,
-    message: `Dug iz prethodnog dana: ${debtCards} kartica. Danas je potreban pojačan napor.`,
-  };
+  return { hasDebt: true, debtCards, message: `Dug iz prethodnog dana: ${debtCards} kartica. Danas je potreban pojačan napor.` };
 }
 
-/**
- * Get discipline trend data for charting (% of diligent days).
- */
 export function getDisciplineTrend(days: number = 30): { date: string; diligentPct: number }[] {
   const log = loadDisciplineLog();
   if (log.length === 0) return [];
-
-  // Rolling 7-day window
   const sorted = [...log].sort((a, b) => a.date.localeCompare(b.date));
   const result: { date: string; diligentPct: number }[] = [];
-
   for (let i = 0; i < sorted.length; i++) {
     const windowStart = Math.max(0, i - 6);
     const window = sorted.slice(windowStart, i + 1);
     const diligent = window.filter(e => e.status === "diligent").length;
-    result.push({
-      date: sorted[i].date,
-      diligentPct: Math.round((diligent / window.length) * 100),
-    });
+    result.push({ date: sorted[i].date, diligentPct: Math.round((diligent / window.length) * 100) });
   }
-
   return result.slice(-days);
 }
 
-/**
- * Build cumulative progress data for charting.
- */
 export function buildProgressCurve(
-  reviewLog: ReviewLogEntry[],
-  totalSections: number,
-  goalDateStr: string | null,
-  planStartDate: number
+  reviewLog: ReviewLogEntry[], totalSections: number, goalDateStr: string | null, planStartDate: number
 ): { planned: { date: string; value: number }[]; actual: { date: string; value: number }[] } {
   const sectionFirstSeen = new Map<string, number>();
   reviewLog.forEach((e) => {
@@ -287,7 +218,6 @@ export function buildProgressCurve(
     const goal = new Date(goalDateStr);
     const totalDays = Math.max(1, differenceInDays(goal, start));
     const step = totalSections / totalDays;
-
     const interval = Math.max(1, Math.floor(totalDays / 60));
     for (let i = 0; i <= totalDays; i += interval) {
       const d = addDays(start, i);
