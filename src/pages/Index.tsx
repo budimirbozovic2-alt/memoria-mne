@@ -114,6 +114,30 @@ const Index = () => {
     if (view === "review" || view === "learn") recordFirstAction();
   }, [view]);
 
+  // Auto time tracking per view
+  useEffect(() => {
+    const viewToActivity: Partial<Record<View, ActivityType>> = {
+      review: "review",
+      learn: "learn-active",
+      mnemonic: "mnemonic-workshop",
+      create: "admin",
+      edit: "admin",
+      categories: "admin",
+      stats: "analysis",
+      metacognitive: "analysis",
+      planner: "analysis",
+    };
+    const actType = viewToActivity[view];
+    if (!actType) return;
+    const start = Date.now();
+    return () => {
+      const duration = Date.now() - start;
+      if (duration > 5000) { // only log if >5 seconds
+        addActivityEntry({ timestamp: start, type: actType, durationMs: duration });
+      }
+    };
+  }, [view]);
+
   // Ctrl+K global shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
