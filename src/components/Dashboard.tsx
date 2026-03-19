@@ -7,6 +7,7 @@ import { loadDiary, loadActivityLog, loadSlippageLog, getTimeDistribution } from
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getDailySuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, getDisciplineEmoji, getDisciplineLabel, loadDisciplineLog } from "@/lib/planner-storage";
 import { calcEnergyRecommendation, calcStrategicRealityCheck } from "@/lib/cognitive-analytics";
 import { useMemo, useState, useEffect } from "react";
+import { useDeferredCompute } from "@/hooks/useDeferredCompute";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
