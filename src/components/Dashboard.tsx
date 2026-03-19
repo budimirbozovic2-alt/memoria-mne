@@ -156,8 +156,8 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     });
   }, [reviewLog, focusRatio]);
 
-  // Diary goal text
-  const diaryGoal = useMemo(() => {
+  // Diary goal text (DEFERRED)
+  const diaryGoal = useDeferredCompute(() => {
     const diary = loadDiary();
     const today = new Date().toISOString().slice(0, 10);
     return diary.find(d => d.date === today)?.dailyGoal || null;
