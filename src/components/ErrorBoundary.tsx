@@ -1,6 +1,14 @@
 import { Component, ReactNode } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 
+interface CrashEntry {
+  timestamp: string;
+  label: string;
+  message: string;
+  stack: string;
+  componentStack: string;
+}
+
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
