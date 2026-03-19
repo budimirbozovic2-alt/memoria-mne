@@ -1,5 +1,6 @@
 import { useState, useMemo, memo, lazy, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ChartTooltip } from "@/components/ui/chart-tooltip";
 import { motion } from "framer-motion";
 import { ArrowLeft, LayoutGrid, TrendingUp, Brain, Layers, Target, Award, Microscope, ChevronRight } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -39,20 +40,6 @@ const MASTERY_COLORS = [
   "hsl(var(--primary))",
   "hsl(var(--success))",
 ];
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-lg border bg-card px-3 py-2 shadow-md text-sm">
-      <p className="font-medium text-card-foreground">{label}</p>
-      {payload.map((p: any, i: number) => (
-        <p key={i} className="text-muted-foreground">
-          {p.name}: <span className="font-medium text-card-foreground">{p.value}</span>
-        </p>
-      ))}
-    </div>
-  );
-};
 
 // ─── Memoized chart components ───────────────────────────
 
