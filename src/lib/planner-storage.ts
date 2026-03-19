@@ -3,6 +3,9 @@ import { ReviewLogEntry } from "./storage";
 import { db } from "./db";
 import { addDays, differenceInDays, startOfDay } from "date-fns";
 
+const PLANNER_KEY = "sr-planner-config";
+const DISCIPLINE_KEY = "sr-discipline-log";
+
 export interface StudyDecade {
   id: string;
   name: string;
@@ -23,25 +26,19 @@ const DEFAULT_CONFIG: PlannerConfig = {
   createdAt: Date.now(),
 };
 
-// Sync fallback for legacy callers that need immediate data
 export function loadPlanner(): PlannerConfig {
   try {
-    const data = localStorage.getItem("sr-planner-config");
+    const data = localStorage.getItem(PLANNER_KEY);
     return data ? { ...DEFAULT_CONFIG, ...JSON.parse(data) } : { ...DEFAULT_CONFIG, createdAt: Date.now() };
   } catch {
     return { ...DEFAULT_CONFIG, createdAt: Date.now() };
   }
 }
 
-export async function loadPlannerAsync(): Promise<PlannerConfig> {
-  const row = await db.settings.get("plannerConfig");
-  return row ? { ...DEFAULT_CONFIG, ...row.value } : loadPlanner();
-}
-
-export async function savePlanner(config: PlannerConfig): Promise<void> {
-  await db.settings.put({ key: "plannerConfig", value: config });
-  // Keep localStorage as fast cache
-  try { localStorage.setItem("sr-planner-config", JSON.stringify(config)); } catch {}
+export function savePlanner(config: PlannerConfig): void {
+  try { localStorage.setItem(PLANNER_KEY, JSON.stringify(config)); } catch {}
+  // IDB backup
+  db.settings.put({ key: "plannerConfig", value: config }).catch(() => {});
 }
 
 export function calcVelocity(reviewLog: ReviewLogEntry[], days: number = 7): number {
@@ -81,10 +78,7 @@ export function getPlannerStatus(estimatedFinish: Date | null, goalDateStr: stri
 }
 
 export function getDailySuggestion(
-  totalSections: number,
-  learnedSections: number,
-  goalDateStr: string | null,
-  velocity: number
+  totalSections: number, learnedSections: number, goalDateStr: string | null, velocity: number
 ): { suggestedToday: number; message: string } | null {
   if (!goalDateStr) return null;
   const goal = new Date(goalDateStr);
@@ -98,15 +92,11 @@ export function getDailySuggestion(
 // ─── Daily Time Predictor ────────────────────────────────
 
 export function calcAvgMinutesPerSection(reviewLog: ReviewLogEntry[]): number {
-  const AVG_MINUTES_PER_SECTION = 3;
-  return AVG_MINUTES_PER_SECTION;
+  return 3;
 }
 
 export function calcDailyTimeRecommendation(
-  suggestedSections: number,
-  velocity: number,
-  dueCount: number,
-  avgMinPerSection: number = 3
+  suggestedSections: number, velocity: number, dueCount: number, avgMinPerSection: number = 3
 ): { totalMinutes: number; hours: number; minutes: number; message: string } {
   const totalSections = suggestedSections + dueCount;
   const totalMinutes = Math.round(totalSections * avgMinPerSection);
@@ -129,13 +119,18 @@ export interface DisciplineEntry {
   suggestedReviews: number;
 }
 
-export async function loadDisciplineLog(): Promise<DisciplineEntry[]> {
-  return db.disciplineLog.toArray();
+export function loadDisciplineLog(): DisciplineEntry[] {
+  try {
+    const data = localStorage.getItem(DISCIPLINE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
 }
 
-export async function saveDisciplineLog(log: DisciplineEntry[]) {
-  await db.disciplineLog.clear();
-  if (log.length > 0) await db.disciplineLog.bulkAdd(log);
+export function saveDisciplineLog(log: DisciplineEntry[]) {
+  try { localStorage.setItem(DISCIPLINE_KEY, JSON.stringify(log)); } catch {}
+  db.disciplineLog.clear().then(() => {
+    if (log.length > 0) db.disciplineLog.bulkAdd(log).catch(() => {});
+  }).catch(() => {});
 }
 
 export function calcDisciplineStatus(reviewsDone: number, dailyGoal: number, slippageMs: number | null): DisciplineStatus {
@@ -155,22 +150,22 @@ export function getDisciplineLabel(status: DisciplineStatus): string {
   switch (status) { case "diligent": return "Vrijedan"; case "neutral": return "Neutralan"; case "lazy": return "Lijen"; }
 }
 
-export async function recordDayDiscipline(
+export function recordDayDiscipline(
   date: string, reviewsDone: number, dailyGoal: number, slippageMs: number | null
-): Promise<DisciplineEntry> {
+): DisciplineEntry {
   const status = calcDisciplineStatus(reviewsDone, dailyGoal, slippageMs);
   const completion = dailyGoal > 0 ? Math.round((reviewsDone / dailyGoal) * 100) : 0;
   const entry: DisciplineEntry = { date, status, planCompletion: completion, slippageMs, reviewsDone, suggestedReviews: dailyGoal };
 
-  const log = await loadDisciplineLog();
+  const log = loadDisciplineLog();
   const idx = log.findIndex(e => e.date === date);
   if (idx >= 0) log[idx] = entry; else log.push(entry);
-  await saveDisciplineLog(log);
+  saveDisciplineLog(log);
   return entry;
 }
 
-export async function getCognitiveDebt(dailyGoal: number): Promise<{ hasDebt: boolean; debtCards: number; message: string } | null> {
-  const log = await loadDisciplineLog();
+export function getCognitiveDebt(dailyGoal: number): { hasDebt: boolean; debtCards: number; message: string } | null {
+  const log = loadDisciplineLog();
   const yesterday = addDays(new Date(), -1).toISOString().slice(0, 10);
   const entry = log.find(e => e.date === yesterday);
   if (!entry || entry.status !== "lazy") return null;
@@ -179,8 +174,8 @@ export async function getCognitiveDebt(dailyGoal: number): Promise<{ hasDebt: bo
   return { hasDebt: true, debtCards, message: `Dug iz prethodnog dana: ${debtCards} kartica. Danas je potreban pojačan napor.` };
 }
 
-export async function getDisciplineTrend(days: number = 30): Promise<{ date: string; diligentPct: number }[]> {
-  const log = await loadDisciplineLog();
+export function getDisciplineTrend(days: number = 30): { date: string; diligentPct: number }[] {
+  const log = loadDisciplineLog();
   if (log.length === 0) return [];
   const sorted = [...log].sort((a, b) => a.date.localeCompare(b.date));
   const result: { date: string; diligentPct: number }[] = [];

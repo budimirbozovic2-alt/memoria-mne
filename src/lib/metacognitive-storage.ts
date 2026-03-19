@@ -1,7 +1,9 @@
-import { ReviewLogEntry } from "./storage";
+import { ReviewLogEntry, loadReviewLog } from "./storage";
 import { db } from "./db";
 
 // ─── Diary ───────────────────────────────────────────────
+const DIARY_KEY = "sr-metacognitive-diary";
+
 export interface DiaryEntry {
   id: string;
   date: string; // YYYY-MM-DD
@@ -11,51 +13,64 @@ export interface DiaryEntry {
 }
 
 export function loadDiary(): DiaryEntry[] {
-  // Sync fallback for legacy callers — prefer loadDiaryAsync
   try {
-    const data = localStorage.getItem("sr-metacognitive-diary");
+    const data = localStorage.getItem(DIARY_KEY);
     return data ? JSON.parse(data) : [];
   } catch { return []; }
 }
 
-export async function loadDiaryAsync(): Promise<DiaryEntry[]> {
-  const entries = await db.diary.toArray();
-  return entries.length > 0 ? entries : loadDiary();
+export function saveDiary(entries: DiaryEntry[]) {
+  try { localStorage.setItem(DIARY_KEY, JSON.stringify(entries)); } catch {}
+  // Async IDB backup
+  db.diary.clear().then(() => {
+    if (entries.length > 0) db.diary.bulkPut(entries).catch(() => {});
+  }).catch(() => {});
 }
 
-export async function saveDiary(entries: DiaryEntry[]) {
-  await db.diary.clear();
-  if (entries.length > 0) await db.diary.bulkPut(entries);
-}
-
-export async function addDiaryEntry(entry: Omit<DiaryEntry, "id" | "createdAt">): Promise<DiaryEntry> {
+export function addDiaryEntry(entry: Omit<DiaryEntry, "id" | "createdAt">): DiaryEntry {
   const full: DiaryEntry = { ...entry, id: crypto.randomUUID(), createdAt: Date.now() };
-  const diary = await loadDiaryAsync();
+  const diary = loadDiary();
   const idx = diary.findIndex(d => d.date === entry.date);
   if (idx >= 0) diary[idx] = full; else diary.push(full);
-  await saveDiary(diary);
+  saveDiary(diary);
   return full;
 }
 
 // ─── Calibration (confidence before reveal) ──────────────
+const CALIBRATION_KEY = "sr-calibration-log";
+
 export interface CalibrationEntry {
   timestamp: number;
   cardId: string;
   sectionId: string;
-  confidence: number; // 1-5
-  actualGrade: number; // 1-4
+  confidence: number;
+  actualGrade: number;
   category: string;
 }
 
-export async function loadCalibration(): Promise<CalibrationEntry[]> {
-  return db.calibrationLog.toArray();
+export function loadCalibration(): CalibrationEntry[] {
+  try {
+    const data = localStorage.getItem(CALIBRATION_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
 }
 
-export async function addCalibrationEntry(entry: CalibrationEntry) {
-  await db.calibrationLog.add(entry);
+export function saveCalibration(entries: CalibrationEntry[]) {
+  try { localStorage.setItem(CALIBRATION_KEY, JSON.stringify(entries)); } catch {}
+  db.calibrationLog.clear().then(() => {
+    if (entries.length > 0) db.calibrationLog.bulkAdd(entries).catch(() => {});
+  }).catch(() => {});
+}
+
+export function addCalibrationEntry(entry: CalibrationEntry) {
+  const log = loadCalibration();
+  log.push(entry);
+  saveCalibration(log);
 }
 
 // ─── Recall Latency ──────────────────────────────────────
+const LATENCY_KEY = "sr-recall-latency";
+
 export interface LatencyEntry {
   timestamp: number;
   cardId: string;
@@ -64,30 +79,45 @@ export interface LatencyEntry {
   category: string;
 }
 
-export async function loadLatency(): Promise<LatencyEntry[]> {
-  return db.latencyLog.toArray();
+export function loadLatency(): LatencyEntry[] {
+  try {
+    const data = localStorage.getItem(LATENCY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
 }
 
-export async function addLatencyEntry(entry: LatencyEntry) {
-  await db.latencyLog.add(entry);
+export function saveLatency(entries: LatencyEntry[]) {
+  try { localStorage.setItem(LATENCY_KEY, JSON.stringify(entries)); } catch {}
+  db.latencyLog.clear().then(() => {
+    if (entries.length > 0) db.latencyLog.bulkAdd(entries).catch(() => {});
+  }).catch(() => {});
+}
+
+export function addLatencyEntry(entry: LatencyEntry) {
+  const log = loadLatency();
+  log.push(entry);
+  saveLatency(log);
 }
 
 // ─── Self-analysis reminder ─────────────────────────────
-export async function getLastAnalysisDate(): Promise<string | null> {
-  const row = await db.settings.get("lastAnalysisDate");
-  return row ? row.value : null;
+const LAST_ANALYSIS_KEY = "sr-last-analysis-date";
+
+export function getLastAnalysisDate(): string | null {
+  return localStorage.getItem(LAST_ANALYSIS_KEY);
 }
 
-export async function setLastAnalysisDate(date: string) {
-  await db.settings.put({ key: "lastAnalysisDate", value: date });
+export function setLastAnalysisDate(date: string) {
+  localStorage.setItem(LAST_ANALYSIS_KEY, date);
+  db.settings.put({ key: "lastAnalysisDate", value: date }).catch(() => {});
 }
 
-export async function isAnalysisNeededToday(reviewLog: ReviewLogEntry[]): Promise<boolean> {
+export function isAnalysisNeededToday(): boolean {
   const today = new Date().toISOString().slice(0, 10);
-  const last = await getLastAnalysisDate();
+  const last = getLastAnalysisDate();
   if (last === today) return false;
+  const log = loadReviewLog();
   const todayStart = new Date(today).getTime();
-  return reviewLog.some(e => e.timestamp >= todayStart);
+  return log.some(e => e.timestamp >= todayStart);
 }
 
 // ─── Aggregation helpers ─────────────────────────────────
@@ -123,6 +153,9 @@ export function getLatencyStats(entries: LatencyEntry[]) {
 }
 
 // ─── Slippage Tracking ──────────────────────────────────
+const SLIPPAGE_KEY = "sr-slippage-log";
+const APP_ENTRY_KEY = "sr-app-entry-time";
+
 export interface SlippageEntry {
   date: string;
   appEntryTime: number;
@@ -131,10 +164,8 @@ export interface SlippageEntry {
 }
 
 export function recordAppEntry() {
-  // Still sync for quick mount-time call — uses localStorage as fast cache,
-  // IDB as persistent store
   const today = new Date().toISOString().slice(0, 10);
-  const existing = localStorage.getItem("sr-app-entry-time");
+  const existing = localStorage.getItem(APP_ENTRY_KEY);
   if (existing) {
     try {
       const parsed = JSON.parse(existing);
@@ -142,12 +173,12 @@ export function recordAppEntry() {
     } catch {}
   }
   const entry = { date: today, time: Date.now() };
-  localStorage.setItem("sr-app-entry-time", JSON.stringify(entry));
+  localStorage.setItem(APP_ENTRY_KEY, JSON.stringify(entry));
   db.settings.put({ key: "appEntry", value: entry }).catch(() => {});
 }
 
 export function recordFirstAction() {
-  const entryRaw = localStorage.getItem("sr-app-entry-time");
+  const entryRaw = localStorage.getItem(APP_ENTRY_KEY);
   if (!entryRaw) return;
   try {
     const entry = JSON.parse(entryRaw);
@@ -156,19 +187,26 @@ export function recordFirstAction() {
 
     const slippageMs = Date.now() - entry.time;
     entry.actionRecorded = true;
-    localStorage.setItem("sr-app-entry-time", JSON.stringify(entry));
+    localStorage.setItem(APP_ENTRY_KEY, JSON.stringify(entry));
     db.settings.put({ key: "appEntry", value: entry }).catch(() => {});
 
     const slippageEntry: SlippageEntry = { date: today, appEntryTime: entry.time, firstActionTime: Date.now(), slippageMs };
+    const log = loadSlippageLog();
+    log.push(slippageEntry);
+    try { localStorage.setItem(SLIPPAGE_KEY, JSON.stringify(log)); } catch {}
     db.slippageLog.add(slippageEntry).catch(() => {});
   } catch {}
 }
 
-export async function loadSlippageLog(): Promise<SlippageEntry[]> {
-  return db.slippageLog.toArray();
+export function loadSlippageLog(): SlippageEntry[] {
+  try {
+    const data = localStorage.getItem(SLIPPAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
 }
 
 // ─── Activity Time Tracking ─────────────────────────────
+const ACTIVITY_KEY = "sr-activity-log";
 
 export type ActivityType = "review" | "learn-active" | "learn-free" | "learn-chain" | "mnemonic-test" | "mnemonic-workshop" | "admin" | "analysis";
 
@@ -212,12 +250,18 @@ export const RESERVOIR_COLORS: Record<TimeReservoir, string> = {
   analysis: "hsl(var(--muted-foreground))",
 };
 
-export async function loadActivityLog(): Promise<ActivityEntry[]> {
-  return db.activityLog.toArray();
+export function loadActivityLog(): ActivityEntry[] {
+  try {
+    const data = localStorage.getItem(ACTIVITY_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch { return []; }
 }
 
 export function addActivityEntry(entry: ActivityEntry) {
-  // Fire-and-forget — used on unmount
+  const log = loadActivityLog();
+  log.push(entry);
+  try { localStorage.setItem(ACTIVITY_KEY, JSON.stringify(log)); } catch {}
+  // IDB backup
   db.activityLog.add(entry).catch(() => {});
 }
 
@@ -232,8 +276,8 @@ export interface TimeDistribution {
   cognitivePct: number;
 }
 
-export async function getTimeDistribution(days: number = 1): Promise<TimeDistribution> {
-  const log = await loadActivityLog();
+export function getTimeDistribution(days: number = 1): TimeDistribution {
+  const log = loadActivityLog();
   const cutoff = Date.now() - days * 86400000;
   const recent = log.filter(e => e.timestamp >= cutoff);
 
@@ -250,8 +294,8 @@ export async function getTimeDistribution(days: number = 1): Promise<TimeDistrib
   };
 }
 
-export async function getWeeklyTimeDistribution(): Promise<{ date: string; review: number; learning: number; creative: number; analysis: number }[]> {
-  const log = await loadActivityLog();
+export function getWeeklyTimeDistribution(): { date: string; review: number; learning: number; creative: number; analysis: number }[] {
+  const log = loadActivityLog();
   const days: { date: string; review: number; learning: number; creative: number; analysis: number }[] = [];
 
   for (let i = 6; i >= 0; i--) {
@@ -268,8 +312,8 @@ export async function getWeeklyTimeDistribution(): Promise<{ date: string; revie
   return days;
 }
 
-export async function getDeepWorkStats(days: number = 7) {
-  const log = await loadActivityLog();
+export function getDeepWorkStats(days: number = 7) {
+  const log = loadActivityLog();
   const cutoff = Date.now() - days * 86400000;
   const recent = log.filter(e => e.timestamp >= cutoff);
 
@@ -288,7 +332,7 @@ export async function getDeepWorkStats(days: number = 7) {
   };
 }
 
-// ─── Learning Velocity (for Predictive Analytics) ────────
+// ─── Learning Velocity ────────────────────────────────
 
 export function getLearningVelocity(reviewLog: ReviewLogEntry[], categories: string[]) {
   const now = Date.now();
