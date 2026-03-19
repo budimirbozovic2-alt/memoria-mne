@@ -81,6 +81,14 @@ const Index = () => {
     }
   }, [toggleTag, cards]);
 
+  // Record app entry for Slippage tracking
+  useEffect(() => { recordAppEntry(); }, []);
+
+  // Track first learning action (Slippage)
+  useEffect(() => {
+    if (view === "review" || view === "learn") recordFirstAction();
+  }, [view]);
+
   // Ctrl+K global shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
