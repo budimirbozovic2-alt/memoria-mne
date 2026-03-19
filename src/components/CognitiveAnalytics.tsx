@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Shield, Zap, ArrowRightLeft, HeartPulse, Brain, TrendingUp } from "lucide-react";
+import { AlertTriangle, Shield, Zap, ArrowRightLeft, HeartPulse, Brain, TrendingUp, Eye, Wrench } from "lucide-react";
 import { Card } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { Progress } from "@/components/ui/progress";
