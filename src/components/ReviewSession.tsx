@@ -359,7 +359,7 @@ function ReviewCard({
         if (grade === 4 && !canGradeEasy) return;
         e.preventDefault();
         lastGradeRef.current = { cardId: card.id, sectionId: section.id, grade };
-        onGrade(grade);
+        handleGradeWithCalibration(grade);
         return;
       }
 
