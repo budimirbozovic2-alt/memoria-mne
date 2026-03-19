@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, LayoutGrid, TrendingUp, Brain, Layers, BookOpen, Target, Clock, Flame, Activity, CalendarClock, ChevronRight, Award } from "lucide-react";
+import { ArrowLeft, LayoutGrid, TrendingUp, Brain, Layers, BookOpen, Target, Clock, Flame, Activity, CalendarClock, ChevronRight, Award, Microscope } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, getCardScore, getSectionScore, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
