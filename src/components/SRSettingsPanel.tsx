@@ -19,7 +19,7 @@ const FIELD_CONFIG = [
   { key: "dailyGoal" as const, label: "Dnevni cilj ponavljanja", description: "Broj ponavljanja koji želite završiti svaki dan", min: 5, max: 100, step: 5 },
 ];
 
-export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
+export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajorSystem }: Props) {
   const [local, setLocal] = useState<SRSettings>({ ...settings });
   const [tts, setTts] = useState<TTSSettings>(loadTTSSettings());
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
