@@ -1,5 +1,5 @@
 import { useLocation } from "react-router-dom";
-import { useAppContext } from "@/contexts/AppContext";
+import { useCardContext } from "@/contexts/AppContext";
 import {
   Home, GraduationCap, RotateCcw, Brain, BarChart3, Target,
   BookOpen, FolderOpen, Settings, Moon, Sun, Map, AlertTriangle,
