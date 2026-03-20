@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"; 
 import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Eye, ChevronRight, BookOpen, Shuffle, AlertTriangle, Volume2 } from "lucide-react";
+import { ArrowLeft, Eye, ChevronRight, BookOpen, Shuffle, AlertTriangle, Volume2, Info, X as XIcon } from "lucide-react";
 import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak, stopSpeaking } from "@/lib/tts";
@@ -94,24 +94,29 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     const filteredCount = filteredDueCards.length;
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10 relative">
+        {/* Info corner */}
+        <HowItWorksCorner />
+
         <div>
           <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
             <ArrowLeft className="h-4 w-4" /> Nazad
           </button>
-          <h2 className="text-3xl font-serif">Način ponavljanja</h2>
-          <p className="text-muted-foreground mt-2">{filteredCount} pitanja · {filteredSections} cjelina za ponavljanje</p>
+          <h2 className="text-3xl font-serif">Konsolidacija</h2>
+          <p className="text-muted-foreground mt-2">
+            {filteredCount} kartica · {filteredSections} {filteredSections === 1 ? "sekcija dospjela" : "sekcija dospjelo"} za učvršćivanje
+          </p>
         </div>
 
         {dueCategories.length >= 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Kategorija</label>
+            <label className="text-sm font-medium text-muted-foreground">Filtriraj po kategoriji</label>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setSelectedCategory(null)}
                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
               >
-                Sve
+                Sve kategorije
               </button>
               {dueCategories.map((c) => (
                 <button
@@ -124,7 +129,6 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
               ))}
             </div>
 
-            {/* Subcategory filter */}
             {selectedCategory && dueSubcategories.length > 0 && (
               <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1 mt-2">
                 <button
@@ -156,10 +160,10 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <BookOpen className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-medium">Redom po pitanjima</h3>
+              <h3 className="text-lg font-medium">Sekvencijalno</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Sve cjeline jednog pitanja izlaze redom. Idealno za vježbanje cijelih odgovora.
+              Sve dospjele sekcije jedne kartice redom, pa sljedeća kartica. Idealno za temeljno učvršćivanje cijelih eseja.
             </p>
           </button>
 
@@ -171,10 +175,10 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Shuffle className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-medium">Nasumično</h3>
+              <h3 className="text-lg font-medium">Interleaving (nasumično)</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Cjeline iz svih pitanja izlaze nasumičnim redoslijedom. Idealno za brzo ponavljanje.
+              Sekcije iz svih kartica izmiješane nasumično. Simulira ispitne uslove i jača dugoročno pamćenje.
             </p>
           </button>
         </div>
@@ -272,6 +276,58 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
 
 // === Shared Components ===
 
+function HowItWorksCorner() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="absolute top-0 right-0">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary"
+      >
+        <Info className="h-3.5 w-3.5" />
+        <span className="hidden sm:inline">Kako funkcioniše?</span>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.95 }}
+            className="absolute right-0 top-8 w-80 rounded-xl border bg-card p-4 shadow-lg z-10 space-y-2.5"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Kako radi Konsolidacija?</span>
+              <button onClick={() => setOpen(false)} className="p-0.5 rounded hover:bg-secondary text-muted-foreground">
+                <XIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-2 leading-relaxed">
+              <p>
+                <strong className="text-foreground">FSRS v5 algoritam</strong> prati stabilnost svake sekcije kartice. Kada vjerovatnoća prisjećanja padne ispod 95%, sekcija postaje „dospjela".
+              </p>
+              <p>
+                <strong className="text-foreground">Ocjenjivanje (1–4):</strong>
+              </p>
+              <ul className="space-y-1 pl-3">
+                <li><span className="font-mono text-destructive">1</span> — Potpuno nepoznato → ponovi za ~20 min</li>
+                <li><span className="font-mono text-warning">2</span> — Poznato bez detalja → max 24h</li>
+                <li><span className="font-mono text-primary">3</span> — Sa ključnim detaljima → interval raste</li>
+                <li><span className="font-mono text-success">4</span> — Savršeno (3s pauza) → maksimalan rast</li>
+              </ul>
+              <p>
+                <strong className="text-foreground">Kalibracija:</strong> Procjena sigurnosti (1–5) prije otkrivanja mjeri iluziju znanja.
+              </p>
+              <p>
+                <strong className="text-foreground">Prečice:</strong> <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">Space</kbd> otkriva, <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">1-4</kbd> ocjenjuje, <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">N</kbd> + selekcija bilježi grešku.
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 function FinishedScreen({ onBack }: { onBack: () => void }) {
   const needsAnalysis = isAnalysisNeededToday();
   const { toast } = useToast();
@@ -280,7 +336,7 @@ function FinishedScreen({ onBack }: { onBack: () => void }) {
     if (needsAnalysis) {
       toast({
         title: "📝 Dnevna samoanaliza",
-        description: "Posjetite Metakognitivni Centar i zabilježite šta je bilo dobro i šta mijenjate sutra.",
+        description: "Posjetite Dnevnik i zabilježite šta je bilo dobro i šta mijenjate sutra.",
         duration: 8000,
       });
     }
@@ -288,10 +344,10 @@ function FinishedScreen({ onBack }: { onBack: () => void }) {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-6 py-20">
-      <h2 className="text-4xl font-serif italic">Bravo!</h2>
-      <p className="text-muted-foreground text-lg">Završili ste sve kartice za danas.</p>
+      <h2 className="text-4xl font-serif italic">Sesija završena!</h2>
+      <p className="text-muted-foreground text-lg">Sve dospjele sekcije su konsolidovane. Odlično!</p>
       <Button onClick={onBack} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-        <BookOpen className="h-4 w-4 mr-2" /> Zaključi sesiju i sačuvaj napredak
+        <BookOpen className="h-4 w-4 mr-2" /> Zaključi i sačuvaj napredak
       </Button>
     </motion.div>
   );
@@ -546,7 +602,7 @@ function ReviewCard({
               </div>
 
               <div>
-                <p className="text-sm text-muted-foreground mb-3">Koliko ste znali?</p>
+                <p className="text-sm text-muted-foreground mb-3">Ocijeni kvalitet prisjećanja:</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {GRADES.map((g) => {
                     const isEasy = g.value === 4;
