@@ -201,6 +201,7 @@ export function useCards() {
       schedulePersist({ type: "delete", id });
       return next;
     });
+    toast.success("Kartica obrisana.");
   }, []);
 
   // O(1) review — surgical IDB write
