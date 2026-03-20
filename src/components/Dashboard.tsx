@@ -1,17 +1,18 @@
 import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Play, Target, Hand, TrendingUp, ShieldAlert, Gauge, Lightbulb, Hourglass, Brain, Zap } from "lucide-react";
-import PomodoroTimer from "@/components/PomodoroTimer";
 import { motion } from "framer-motion";
 import { Card, getCardRetrievability, SRSettings, DEFAULT_SR_SETTINGS, getPendingFirstReviewCount } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
 import { loadDiary, loadActivityLog, loadSlippageLog, getTimeDistribution } from "@/lib/metacognitive-storage";
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getDailySuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, getDisciplineEmoji, getDisciplineLabel, loadDisciplineLog } from "@/lib/planner-storage";
 import { calcEnergyRecommendation, calcStrategicRealityCheck } from "@/lib/cognitive-analytics";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, lazy, Suspense } from "react";
 import { useDeferredCompute } from "@/hooks/useDeferredCompute";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { format, subDays, startOfDay, eachDayOfInterval } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
+
+const DashboardChart = lazy(() => import("@/components/DashboardChart"));
 
 interface Props {
   stats: { due: number; total: number; totalSections: number; learnedSections: number };
