@@ -17,8 +17,7 @@ import { default as SettingsIcon } from "lucide-react/dist/esm/icons/settings";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { default as Search } from "lucide-react/dist/esm/icons/search";
 import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
-import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 
 interface Props {
@@ -44,24 +43,11 @@ export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, ze
   const { stats } = useCardContext();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [dbDropdownOpen, setDbDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const toggleDark = useCallback(() => {
     document.documentElement.classList.toggle("dark");
     setDark(d => !d);
   }, []);
-
-  useEffect(() => {
-    if (!dbDropdownOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDbDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [dbDropdownOpen]);
 
   const isDbActive = location.pathname === "/database" || location.pathname === "/cards" || location.pathname === "/categories";
 
@@ -89,48 +75,16 @@ export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, ze
             </NavLink>
           ))}
 
-          <div ref={dropdownRef} className="relative flex items-center">
-            <NavLink
-              to="/database"
-              className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-l-md text-xs font-medium transition-colors whitespace-nowrap hover:bg-secondary/60 ${
-                isDbActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-              activeClassName="bg-primary/10 text-primary"
-              onClick={() => setDbDropdownOpen(false)}
-            >
-              <DatabaseIcon className="h-3.5 w-3.5 flex-shrink-0" />
-              <span>Baza podataka</span>
-            </NavLink>
-            <button
-              onClick={() => setDbDropdownOpen(v => !v)}
-              aria-label="Otvori meni baze podataka"
-              className={`flex items-center justify-center px-2 py-1.5 rounded-r-md text-xs font-medium transition-colors border-l border-border/60 hover:bg-secondary/60 ${
-                isDbActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <ChevronDown className={`h-3 w-3 transition-transform ${dbDropdownOpen ? "rotate-180" : ""}`} />
-            </button>
-
-            {dbDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-48 rounded-lg border bg-card shadow-lg py-1 z-50">
-                <button
-                  onClick={() => { onOpenSearch?.(); setDbDropdownOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-                >
-                  <Search className="h-3.5 w-3.5" />
-                  Pretraži kartice
-                  <kbd className="ml-auto text-[9px] border rounded px-1 py-0.5 text-muted-foreground/60">⌘K</kbd>
-                </button>
-                <button
-                  onClick={() => { onOpenDocxImport?.(); setDbDropdownOpen(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  Uvezi iz DOCX
-                </button>
-              </div>
-            )}
-          </div>
+          <NavLink
+            to="/database"
+            className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap hover:bg-secondary/60 ${
+              isDbActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
+            }`}
+            activeClassName="bg-primary/10 text-primary"
+          >
+            <DatabaseIcon className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>Baza podataka</span>
+          </NavLink>
         </div>
 
         <div className="flex items-center gap-0.5 ml-2">
