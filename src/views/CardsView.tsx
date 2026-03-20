@@ -212,7 +212,7 @@ export default function CardsView() {
         filterSubcategory={filterSubcategory}
         filterType={filterType}
         filterTag={filterTag}
-        searchQuery={searchQuery}
+        searchQuery={debouncedSearch}
         onEdit={handleEdit}
         onDelete={deleteCard}
         onToggleTag={handleToggleTag}

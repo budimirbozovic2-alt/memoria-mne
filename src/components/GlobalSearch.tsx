@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Card } from "@/lib/spaced-repetition";
 import { default as Search } from "lucide-react/dist/esm/icons/search";
 import { default as X } from "lucide-react/dist/esm/icons/x";
