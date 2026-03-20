@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import { motion } from "framer-motion";
-import { Trash2, Pencil, Clock, BarChart3 } from "lucide-react";
+import { motion, Reorder, useDragControls } from "framer-motion";
+import { Trash2, Pencil, Clock, BarChart3, GripVertical } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
 import { default as Plus } from "lucide-react/dist/esm/icons/plus";
