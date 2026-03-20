@@ -1,4 +1,5 @@
 import { useRef, useCallback, useEffect } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Heading2 } from "lucide-react";
 import { default as Bold } from "lucide-react/dist/esm/icons/bold";
 import { default as Italic } from "lucide-react/dist/esm/icons/italic";
