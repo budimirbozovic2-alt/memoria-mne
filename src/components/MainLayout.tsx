@@ -1,13 +1,14 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import PomodoroTimer from "@/components/PomodoroTimer";
-import DocxImporter from "@/components/DocxImporter";
 import ZenMode from "@/components/ZenMode";
-import GlobalSearch from "@/components/GlobalSearch";
 import TopNav from "@/components/TopNav";
 import { Search, Focus, FileText } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
+
+const DocxImporter = lazy(() => import("@/components/DocxImporter"));
+const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const ctx = useAppContext();
