@@ -94,24 +94,29 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     const filteredCount = filteredDueCards.length;
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10 relative">
+        {/* Info corner */}
+        <HowItWorksCorner />
+
         <div>
           <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
             <ArrowLeft className="h-4 w-4" /> Nazad
           </button>
-          <h2 className="text-3xl font-serif">Način ponavljanja</h2>
-          <p className="text-muted-foreground mt-2">{filteredCount} pitanja · {filteredSections} cjelina za ponavljanje</p>
+          <h2 className="text-3xl font-serif">Konsolidacija</h2>
+          <p className="text-muted-foreground mt-2">
+            {filteredCount} kartica · {filteredSections} {filteredSections === 1 ? "sekcija dospjela" : "sekcija dospjelo"} za učvršćivanje
+          </p>
         </div>
 
         {dueCategories.length >= 1 && (
           <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Kategorija</label>
+            <label className="text-sm font-medium text-muted-foreground">Filtriraj po kategoriji</label>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setSelectedCategory(null)}
                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
               >
-                Sve
+                Sve kategorije
               </button>
               {dueCategories.map((c) => (
                 <button
@@ -124,7 +129,6 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
               ))}
             </div>
 
-            {/* Subcategory filter */}
             {selectedCategory && dueSubcategories.length > 0 && (
               <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1 mt-2">
                 <button
@@ -156,10 +160,10 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <BookOpen className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-medium">Redom po pitanjima</h3>
+              <h3 className="text-lg font-medium">Sekvencijalno</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Sve cjeline jednog pitanja izlaze redom. Idealno za vježbanje cijelih odgovora.
+              Sve dospjele sekcije jedne kartice redom, pa sljedeća kartica. Idealno za temeljno učvršćivanje cijelih eseja.
             </p>
           </button>
 
@@ -171,10 +175,10 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
               <div className="p-2 rounded-lg bg-primary/10 text-primary">
                 <Shuffle className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-medium">Nasumično</h3>
+              <h3 className="text-lg font-medium">Interleaving (nasumično)</h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              Cjeline iz svih pitanja izlaze nasumičnim redoslijedom. Idealno za brzo ponavljanje.
+              Sekcije iz svih kartica izmiješane nasumično. Simulira ispitne uslove i jača dugoročno pamćenje.
             </p>
           </button>
         </div>
