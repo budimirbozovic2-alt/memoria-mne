@@ -26,7 +26,7 @@ export default function MnemonicModule({ onBack }: Props) {
     gcTime: Infinity,
   });
 
-  const [subView, setSubView] = useState<"menu" | "workshop" | "test">("menu");
+  const [subView, setSubView] = useState<"menu" | "workshop" | "test" | "major">("menu");
 
   const setCards = useCallback((updater: (prev: MnemonicCard[]) => MnemonicCard[]) => {
     qc.setQueryData<MnemonicCard[]>(MNEMONIC_KEY, (old) => {
