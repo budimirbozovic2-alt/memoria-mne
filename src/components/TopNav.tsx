@@ -24,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 interface Props {
   onOpenSearch?: () => void;
   onOpenDocxImport?: () => void;
+  onToggleZen?: () => void;
+  zenActive?: boolean;
 }
 
 const NAV_ITEMS = [
