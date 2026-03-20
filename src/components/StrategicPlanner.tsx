@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import { motion } from "framer-motion";
-import { Trash2, Pencil, Clock, BarChart3 } from "lucide-react";
+import { motion, Reorder, useDragControls } from "framer-motion";
+import { Trash2, Pencil, Clock, BarChart3, GripVertical } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
 import { default as Plus } from "lucide-react/dist/esm/icons/plus";
@@ -98,6 +98,78 @@ function getCurrentDecade(decades: StudyDecade[]): StudyDecade | null {
     if (today >= start) return d;
   }
   return decades[0] || null;
+}
+// ─── Draggable Decade Item ───────────────────────────────
+interface DecadeItemProps {
+  decade: ReturnType<typeof calcDecadeProgress> & StudyDecade;
+  index: number;
+  isCurrent: boolean;
+  isEditing: boolean;
+  editName: string;
+  editDays: string;
+  setEditName: (v: string) => void;
+  setEditDays: (v: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+  onStartEdit: () => void;
+  onRemove: () => void;
+  decadeStart: string;
+}
+
+function DecadeItem({ decade: d, index: i, isCurrent, isEditing, editName, editDays, setEditName, setEditDays, onSaveEdit, onCancelEdit, onStartEdit, onRemove, decadeStart }: DecadeItemProps) {
+  const controls = useDragControls();
+
+  return (
+    <Reorder.Item
+      value={d}
+      dragListener={false}
+      dragControls={controls}
+      className={cn("p-3 rounded-lg border bg-secondary/30 space-y-2", isCurrent && "ring-1 ring-primary/50")}
+      whileDrag={{ scale: 1.02, boxShadow: "0 8px 25px -5px rgba(0,0,0,0.15)", zIndex: 50 }}
+    >
+      {isEditing ? (
+        <div className="flex items-center gap-2">
+          <Input value={editName} onChange={e => setEditName(e.target.value)} className="flex-1 h-8 text-sm" />
+          <Input type="number" value={editDays} onChange={e => setEditDays(e.target.value)} className="w-20 h-8 text-sm" min={1} />
+          <Button size="sm" variant="outline" className="h-8" onClick={onSaveEdit}>Sačuvaj</Button>
+          <Button size="sm" variant="ghost" className="h-8" onClick={onCancelEdit}>Otkaži</Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <button
+            onPointerDown={(e) => controls.start(e)}
+            className="cursor-grab active:cursor-grabbing touch-none p-0.5 text-muted-foreground hover:text-foreground"
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: DECADE_COLORS[i % DECADE_COLORS.length] }} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium truncate">{d.name}</p>
+              {isCurrent && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Aktivna</span>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {d.durationDays} dana • {decadeStart} → {decadeStart ? format(addDays(new Date(decadeStart), d.durationDays), "dd.MM") : ""}
+              {d.categories.length > 0 ? ` • ${d.categories.join(", ")}` : ""}
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onStartEdit}>
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRemove}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
+      {/* Per-decade progress bar */}
+      <div className="flex items-center gap-2">
+        <Progress value={d.pct} className="h-2 flex-1" />
+        <span className="text-xs text-muted-foreground tabular-nums w-16 text-right">{d.learned}/{d.total} ({d.pct}%)</span>
+      </div>
+    </Reorder.Item>
+  );
 }
 
 export default function StrategicPlanner({ cards, categories, reviewLog, onBack }: Props) {
@@ -346,7 +418,7 @@ export default function StrategicPlanner({ cards, categories, reviewLog, onBack 
               )}
             </div>
 
-            {/* Decades list with progress & editing */}
+            {/* Decades list with progress, editing & drag-and-drop */}
             {config.decades.length > 0 && (
               <div className="space-y-3">
                 {/* Timeline bar */}
@@ -367,45 +439,31 @@ export default function StrategicPlanner({ cards, categories, reviewLog, onBack 
                   </div>
                 )}
 
-                {decadeProgress.map((d, i) => (
-                  <div key={d.id} className={cn("p-3 rounded-lg border bg-secondary/30 space-y-2", currentDecade?.id === d.id && "ring-1 ring-primary/50")}>
-                    {editingDecadeId === d.id ? (
-                      <div className="flex items-center gap-2">
-                        <Input value={editName} onChange={e => setEditName(e.target.value)} className="flex-1 h-8 text-sm" />
-                        <Input type="number" value={editDays} onChange={e => setEditDays(e.target.value)} className="w-20 h-8 text-sm" min={1} />
-                        <Button size="sm" variant="outline" className="h-8" onClick={saveEditDecade}>Sačuvaj</Button>
-                        <Button size="sm" variant="ghost" className="h-8" onClick={() => setEditingDecadeId(null)}>Otkaži</Button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: DECADE_COLORS[i % DECADE_COLORS.length] }} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium truncate">{d.name}</p>
-                            {currentDecade?.id === d.id && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">Aktivna</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {d.durationDays} dana • {decadeStarts.get(d.id)} → {format(addDays(new Date(decadeStarts.get(d.id)!), d.durationDays), "dd.MM")}
-                            {d.categories.length > 0 ? ` • ${d.categories.join(", ")}` : ""}
-                          </p>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => startEditDecade(d)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeDecade(d.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                    {/* Per-decade progress bar */}
-                    <div className="flex items-center gap-2">
-                      <Progress value={d.pct} className="h-2 flex-1" />
-                      <span className="text-xs text-muted-foreground tabular-nums w-16 text-right">{d.learned}/{d.total} ({d.pct}%)</span>
-                    </div>
-                  </div>
-                ))}
+                <Reorder.Group
+                  axis="y"
+                  values={config.decades}
+                  onReorder={(newOrder) => save({ ...config, decades: newOrder })}
+                  className="space-y-2"
+                >
+                  {decadeProgress.map((d, i) => (
+                    <DecadeItem
+                      key={d.id}
+                      decade={d}
+                      index={i}
+                      isCurrent={currentDecade?.id === d.id}
+                      isEditing={editingDecadeId === d.id}
+                      editName={editName}
+                      editDays={editDays}
+                      setEditName={setEditName}
+                      setEditDays={setEditDays}
+                      onSaveEdit={saveEditDecade}
+                      onCancelEdit={() => setEditingDecadeId(null)}
+                      onStartEdit={() => startEditDecade(d)}
+                      onRemove={() => removeDecade(d.id)}
+                      decadeStart={decadeStarts.get(d.id) || ""}
+                    />
+                  ))}
+                </Reorder.Group>
               </div>
             )}
 
