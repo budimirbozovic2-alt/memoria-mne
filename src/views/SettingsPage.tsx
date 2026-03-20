@@ -11,7 +11,6 @@ export default function SettingsPage() {
         settings={srSettings}
         onUpdate={updateSRSettings}
         onBack={() => setView("dashboard")}
-        onOpenMajorSystem={() => setView("major-system-settings")}
       />
     </ErrorBoundary>
   );

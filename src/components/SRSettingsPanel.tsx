@@ -12,7 +12,6 @@ interface Props {
   settings: SRSettings;
   onUpdate: (settings: SRSettings) => void;
   onBack: () => void;
-  onOpenMajorSystem?: () => void;
 }
 
 const FIELD_CONFIG = [
@@ -20,7 +19,7 @@ const FIELD_CONFIG = [
   { key: "dailyGoal" as const, label: "Dnevni cilj ponavljanja", description: "Broj ponavljanja koji želite završiti svaki dan", min: 5, max: 100, step: 5 },
 ];
 
-export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajorSystem }: Props) {
+export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
   const [local, setLocal] = useState<SRSettings>({ ...settings });
   const [tts, setTts] = useState<TTSSettings>(loadTTSSettings());
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -237,19 +236,6 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajo
           </div>
         </div>
 
-        {/* Major System link */}
-        {onOpenMajorSystem && (
-          <button
-            onClick={onOpenMajorSystem}
-            className="w-full rounded-xl border bg-card p-4 hover:border-primary/40 transition-colors text-left flex items-center gap-3"
-          >
-            <Brain className="h-5 w-5 text-primary" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Mentalne tablice (Major sistem)</p>
-              <p className="text-xs text-muted-foreground">Prilagodi termine za brojeve 0–100</p>
-            </div>
-          </button>
-        )}
       </section>
 
       {/* Action buttons */}

@@ -4,11 +4,12 @@ import {
   MnemonicCard, loadMnemonicCards, saveMnemonicCards,
   addMnemonicTestEntry, getMnemonicStats,
 } from "@/lib/mnemonic-storage";
-import { ArrowLeft, Brain, Wrench, FlaskConical, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Brain, Wrench, FlaskConical, Sparkles, CheckCircle2, Hash } from "lucide-react";
 import { motion } from "framer-motion";
 import InfoPanel from "@/components/InfoPanel";
 import MnemonicWorkshop from "./MnemonicWorkshop";
 import MnemonicTest from "./MnemonicTest";
+import MajorSystemSettings from "./MajorSystemSettings";
 
 interface Props {
   onBack: () => void;
@@ -25,7 +26,7 @@ export default function MnemonicModule({ onBack }: Props) {
     gcTime: Infinity,
   });
 
-  const [subView, setSubView] = useState<"menu" | "workshop" | "test">("menu");
+  const [subView, setSubView] = useState<"menu" | "workshop" | "test" | "major">("menu");
 
   const setCards = useCallback((updater: (prev: MnemonicCard[]) => MnemonicCard[]) => {
     qc.setQueryData<MnemonicCard[]>(MNEMONIC_KEY, (old) => {
@@ -61,6 +62,10 @@ export default function MnemonicModule({ onBack }: Props) {
 
   if (subView === "test") {
     return <MnemonicTest cards={cards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
+  }
+
+  if (subView === "major") {
+    return <MajorSystemSettings onBack={() => setSubView("menu")} />;
   }
 
   return (
@@ -120,7 +125,7 @@ export default function MnemonicModule({ onBack }: Props) {
       )}
 
       {/* Menu options */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -141,6 +146,17 @@ export default function MnemonicModule({ onBack }: Props) {
           <FlaskConical className="h-8 w-8 text-primary" />
           <h3 className="text-lg font-serif">Testiranje mentalnih kuka</h3>
           <p className="text-sm text-muted-foreground">Testiraj koliko dobro pamtiš uz pomoć mentalnih slika.</p>
+        </motion.button>
+
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => setSubView("major")}
+          className="rounded-xl border bg-card p-6 text-left hover:border-primary/40 transition-colors space-y-3"
+        >
+          <Hash className="h-8 w-8 text-accent-foreground" />
+          <h3 className="text-lg font-serif">Mentalne tablice</h3>
+          <p className="text-sm text-muted-foreground">Prilagodi Major sistem termine za brojeve 0–100.</p>
         </motion.button>
       </div>
 
