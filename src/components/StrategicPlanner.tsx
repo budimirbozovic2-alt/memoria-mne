@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Target, Plus, Trash2, Calendar, Zap, TrendingUp, Lightbulb, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import InfoPanel from "@/components/InfoPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card as SRCard } from "@/lib/spaced-repetition";
