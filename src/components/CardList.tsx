@@ -1,8 +1,8 @@
 import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability } from "@/lib/spaced-repetition";
 import { format } from "date-fns";
 import { Edit2, Trash2, ChevronDown, ChevronRight, Zap, Brain, Flame } from "lucide-react";
-import { useState, useRef, useEffect, useMemo, CSSProperties } from "react";
-import { List } from "react-window";
+import { useState, useRef, useEffect, useMemo, useCallback, CSSProperties, memo } from "react";
+import { List, type RowComponentProps } from "react-window";
 
 interface Props {
   cards: Card[];
@@ -54,7 +54,10 @@ function SectionBar({ score }: { score: number }) {
   );
 }
 
-const ROW_HEIGHT = 100;
+const COLLAPSED_ROW_HEIGHT = 100;
+const EXPANDED_ROW_BASE = 160;
+const SECTION_HEIGHT = 80;
+const GAP = 12;
 const VIRTUALIZATION_THRESHOLD = 50;
 
 interface CardRowProps {
@@ -70,7 +73,7 @@ interface CardRowProps {
   onDelete: (id: string) => void;
 }
 
-function CardRowInner({ card, expanded, highlighted, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete }: CardRowProps) {
+const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete }: CardRowProps) {
   const score = getCardScore(card);
   const retention = getCardRetrievability(card);
   const isFlash = card.type === "flash";
@@ -157,10 +160,10 @@ function CardRowInner({ card, expanded, highlighted, selectionMode, selectedIds,
       )}
     </div>
   );
-}
+});
 
-// Row component for react-window virtualization
-interface VirtualRowProps {
+// Props passed via rowProps to every virtual row
+interface VirtualRowData {
   filteredCards: Card[];
   expandedId: string | null;
   scrollToCardId?: string | null;
@@ -173,13 +176,13 @@ interface VirtualRowProps {
   onDelete: (id: string) => void;
 }
 
-function VirtualRow({ index, style, ...rowProps }: { index: number; style: CSSProperties; ariaAttributes: any } & VirtualRowProps) {
-  const { filteredCards, expandedId, scrollToCardId, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete } = rowProps;
+function VirtualRow(props: RowComponentProps<VirtualRowData>) {
+  const { index, style, filteredCards, expandedId, scrollToCardId, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete } = props;
   const card = filteredCards[index];
   if (!card) return null;
 
   return (
-    <div style={{ ...style, paddingBottom: 12 }}>
+    <div style={{ ...style, paddingBottom: GAP }}>
       <CardRowInner
         card={card}
         expanded={expandedId === card.id}
@@ -202,18 +205,7 @@ export default function CardList({
   selectionMode, selectedIds, onToggleSelect,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const [containerWidth, setContainerWidth] = useState(800);
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const obs = new ResizeObserver(entries => {
-      const w = entries[0]?.contentRect.width;
-      if (w) setContainerWidth(w);
-    });
-    obs.observe(containerRef.current);
-    return () => obs.disconnect();
-  }, []);
+  const listRef = useRef<{ scrollToRow: (config: { index: number; align?: string }) => void } | null>(null);
 
   const filtered = useMemo(() => {
     let result = filterCategory ? cards.filter(c => c.category === filterCategory) : cards;
@@ -234,9 +226,23 @@ export default function CardList({
     return result;
   }, [cards, filterCategory, filterSubcategory, filterType, filterTag, searchQuery]);
 
+  // Scroll-to-card for both modes
   useEffect(() => {
-    if (scrollToCardId) onScrolledTo?.();
-  }, [scrollToCardId, onScrolledTo]);
+    if (!scrollToCardId) return;
+    const idx = filtered.findIndex(c => c.id === scrollToCardId);
+    if (idx >= 0 && listRef.current) {
+      listRef.current.scrollToRow({ index: idx, align: "center" });
+    }
+    onScrolledTo?.();
+  }, [scrollToCardId, filtered, onScrolledTo]);
+
+  // Dynamic row height based on expanded state
+  const getRowHeight = useCallback((index: number) => {
+    const card = filtered[index];
+    if (!card || expandedId !== card.id) return COLLAPSED_ROW_HEIGHT + GAP;
+    const sectionCount = card.type === "flash" ? 1 : card.sections.length;
+    return EXPANDED_ROW_BASE + sectionCount * SECTION_HEIGHT + GAP;
+  }, [filtered, expandedId]);
 
   const useVirtualization = filtered.length >= VIRTUALIZATION_THRESHOLD;
 
@@ -246,33 +252,32 @@ export default function CardList({
 
   if (useVirtualization) {
     return (
-      <div ref={containerRef} style={{ height: Math.min(filtered.length * ROW_HEIGHT, 700) }}>
-        <List
-          defaultHeight={Math.min(filtered.length * ROW_HEIGHT, 700)}
-          rowCount={filtered.length}
-          rowHeight={ROW_HEIGHT}
-          overscanCount={5}
-          rowComponent={VirtualRow}
-          rowProps={{
-            filteredCards: filtered,
-            expandedId,
-            scrollToCardId,
-            selectionMode,
-            selectedIds,
-            onToggleSelect,
-            onToggleTag,
-            onExpand: setExpandedId,
-            onEdit,
-            onDelete,
-          } as any}
-          style={{ height: "100%" }}
-        />
-      </div>
+      <List
+        defaultHeight={700}
+        rowCount={filtered.length}
+        rowHeight={getRowHeight}
+        overscanCount={8}
+        rowComponent={VirtualRow}
+        listRef={listRef as any}
+        rowProps={{
+          filteredCards: filtered,
+          expandedId,
+          scrollToCardId,
+          selectionMode,
+          selectedIds,
+          onToggleSelect,
+          onToggleTag,
+          onExpand: setExpandedId,
+          onEdit,
+          onDelete,
+        }}
+        style={{ height: Math.min(filtered.length * (COLLAPSED_ROW_HEIGHT + GAP), 700) }}
+      />
     );
   }
 
   return (
-    <div ref={containerRef} className="space-y-3">
+    <div className="space-y-3">
       {filtered.map(card => (
         <CardRowInner
           key={card.id}
