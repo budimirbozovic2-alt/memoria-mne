@@ -40,6 +40,13 @@ export default function DatabasePage() {
               </ul>
             </InfoPanel>
             <button
+              onClick={() => setDocxOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border hover:bg-secondary transition-colors text-muted-foreground"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              DOCX Import
+            </button>
+            <button
               onClick={() => setExportOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border hover:bg-secondary transition-colors text-muted-foreground"
             >
@@ -86,6 +93,24 @@ export default function DatabasePage() {
             cards={cards}
           />
         )}
+      </Suspense>
+      <Suspense fallback={null}>
+        <DocxImporter
+          open={docxOpen}
+          onClose={() => setDocxOpen(false)}
+          categories={categories}
+          onImport={(docxCards, cat, cardType) => {
+            if (cardType === "flash") {
+              docxCards.forEach(c => {
+                const answer = c.sections.map(s => s.content).join("\n");
+                addFlashCard(c.question, answer, cat);
+              });
+            } else {
+              importCards(docxCards, cat);
+            }
+            setDocxOpen(false);
+          }}
+        />
       </Suspense>
     </ErrorBoundary>
   );
