@@ -12,6 +12,7 @@ import { default as Moon } from "lucide-react/dist/esm/icons/moon";
 import { default as Sun } from "lucide-react/dist/esm/icons/sun";
 import { default as Menu } from "lucide-react/dist/esm/icons/menu";
 import { default as X } from "lucide-react/dist/esm/icons/x";
+import { default as Focus } from "lucide-react/dist/esm/icons/focus";
 import { default as SettingsIcon } from "lucide-react/dist/esm/icons/settings";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { default as Search } from "lucide-react/dist/esm/icons/search";
@@ -23,6 +24,8 @@ import { Badge } from "@/components/ui/badge";
 interface Props {
   onOpenSearch?: () => void;
   onOpenDocxImport?: () => void;
+  onToggleZen?: () => void;
+  zenActive?: boolean;
 }
 
 const NAV_ITEMS = [
@@ -36,7 +39,7 @@ const NAV_ITEMS = [
   { path: "/settings", icon: SettingsIcon, label: "Podešavanja" },
 ];
 
-export default function TopNav({ onOpenSearch, onOpenDocxImport }: Props) {
+export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, zenActive }: Props) {
   const location = useLocation();
   const { stats } = useCardContext();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -130,14 +133,22 @@ export default function TopNav({ onOpenSearch, onOpenDocxImport }: Props) {
           </div>
         </div>
 
-        <button onClick={toggleDark} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground ml-2" title="Tema">
-          {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
-        </button>
+        <div className="flex items-center gap-0.5 ml-2">
+          <button onClick={onToggleZen} className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${zenActive ? "text-primary bg-primary/10" : "text-muted-foreground"}`} title="Zen Mode">
+            <Focus className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={toggleDark} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" title="Tema">
+            {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+          </button>
+        </div>
       </div>
 
       <div className="md:hidden flex items-center h-11 px-3 justify-between">
         <span className="text-base font-serif italic text-primary select-none">Memoria</span>
         <div className="flex items-center gap-1">
+          <button onClick={onToggleZen} className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${zenActive ? "text-primary bg-primary/10" : "text-muted-foreground"}`} title="Zen Mode">
+            <Focus className="h-4 w-4" />
+          </button>
           <button onClick={toggleDark} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground">
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
