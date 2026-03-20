@@ -501,10 +501,6 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </motion.div>
       )}
 
-      {/* Pomodoro Timer */}
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-        <PomodoroTimer />
-      </motion.div>
 
       {/* Backup / Storage Warnings */}
       {(backupOverdue || (storageUsage && storageUsage.percent > 70)) && (
