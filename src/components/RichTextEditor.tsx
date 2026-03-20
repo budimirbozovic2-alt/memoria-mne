@@ -172,7 +172,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
     if (!editor) return;
 
     if (document.activeElement !== editor && editor.innerHTML !== value) {
-      editor.innerHTML = value;
+      editor.innerHTML = sanitizeHtml(value);
     }
 
     internalValue.current = value;

@@ -65,7 +65,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
           "p[style-name='List Paragraph'] => p.list-paragraph:fresh",
         ],
       });
-      setHtmlContent(result.value);
+      setHtmlContent(sanitizeHtml(result.value));
       setStep("configure");
     } catch {
       alert("Greška pri čitanju DOCX fajla.");

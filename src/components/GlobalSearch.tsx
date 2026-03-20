@@ -20,9 +20,10 @@ function stripHtml(html: string): string {
 }
 
 function highlightMatch(text: string, query: string): string {
-  if (!query) return text;
+  if (!query) return sanitizeHtml(text);
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.replace(new RegExp(`(${escaped})`, "gi"), '<mark class="bg-primary/30 text-foreground rounded-sm px-0.5">$1</mark>');
+  const clean = sanitizeHtml(text);
+  return clean.replace(new RegExp(`(${escaped})`, "gi"), '<mark class="bg-primary/30 text-foreground rounded-sm px-0.5">$1</mark>');
 }
 
 export default function GlobalSearch({ cards, open, onClose, onNavigateToCard }: Props) {

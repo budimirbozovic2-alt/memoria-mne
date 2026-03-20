@@ -116,7 +116,13 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
         errors.push("Fajl ne sadrži 'cards' niz.");
       }
 
-      const importedCards: any[] = parsed.cards || [];
+      const importedCards: any[] = (parsed.cards || []).map((c: any) => ({
+        ...c,
+        question: typeof c.question === "string" ? sanitizeHtml(c.question) : c.question,
+        sections: Array.isArray(c.sections)
+          ? c.sections.map((s: any) => ({ ...s, content: typeof s.content === "string" ? sanitizeHtml(s.content) : s.content }))
+          : c.sections,
+      }));
 
       // Validate individual cards (sample check)
       if (importedCards.length > 0) {
