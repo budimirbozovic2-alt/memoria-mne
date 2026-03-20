@@ -6,7 +6,7 @@ import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak, stopSpeaking } from "@/lib/tts";
 import { useToast } from "@/hooks/use-toast";
-import { addCalibrationEntry, addLatencyEntry, isAnalysisNeededToday, addActivityEntry } from "@/lib/metacognitive-storage";
+import { addCalibrationEntry, addLatencyEntry, addActivityEntry } from "@/lib/metacognitive-storage";
 
 type ReviewMode = "essay" | "random" | null;
 type ViewWidth = "compact" | "normal" | "wide" | "full";
@@ -329,19 +329,6 @@ function HowItWorksCorner() {
 }
 
 function FinishedScreen({ onBack }: { onBack: () => void }) {
-  const needsAnalysis = isAnalysisNeededToday();
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (needsAnalysis) {
-      toast({
-        title: "📝 Dnevna samoanaliza",
-        description: "Posjetite Dnevnik i zabilježite šta je bilo dobro i šta mijenjate sutra.",
-        duration: 8000,
-      });
-    }
-  }, [needsAnalysis]);
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-6 py-20">
       <h2 className="text-4xl font-serif italic">Sesija završena!</h2>
