@@ -496,6 +496,11 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
               <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0} className="flex-1">
                 <ArrowLeft className="h-4 w-4 mr-2" /> Prethodna
               </Button>
+              {onEdit && (
+                <Button variant="ghost" size="icon" onClick={() => onEdit(card)} title="Uredi karticu (E)" className="shrink-0">
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
               {!isRead ? (
                 <Button onClick={() => { handleMarkRead(); goNext(); }} className="flex-1">
                   <Check className="h-4 w-4 mr-2" /> Pročitano
