@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Upload, ArrowRight, Zap, BookOpen } from "lucide-react";
-import mammoth from "mammoth";
+// mammoth loaded dynamically to avoid 164KB eager bundle
 
 interface ParsedCard {
   question: string;
@@ -52,6 +52,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
     setFile(f);
     try {
       const arrayBuffer = await f.arrayBuffer();
+      const mammoth = (await import("mammoth")).default;
       const result = await mammoth.convertToHtml({
         arrayBuffer,
       }, {
