@@ -1,10 +1,8 @@
 import { ReactNode, useState, useEffect, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
-import PomodoroTimer from "@/components/PomodoroTimer";
 import ZenMode from "@/components/ZenMode";
 import TopNav from "@/components/TopNav";
-import { default as Focus } from "lucide-react/dist/esm/icons/focus";
 import { AnimatePresence } from "framer-motion";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
@@ -30,27 +28,14 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const isReviewOrLearn = pathname === "/review" || pathname === "/learn";
-
   return (
     <div className="min-h-screen flex flex-col w-full">
       <TopNav
         onOpenSearch={() => setGlobalSearchOpen(true)}
         onOpenDocxImport={() => setDocxOpen(true)}
+        onToggleZen={() => setZenMode(v => !v)}
+        zenActive={zenMode}
       />
-
-      {/* Utility strip — compact */}
-      <div className="border-b h-9 px-4 flex items-center justify-end gap-1.5 bg-background/60 backdrop-blur-sm">
-        <PomodoroTimer compact />
-        {isReviewOrLearn && (
-          <>
-            <div className="w-px h-4 bg-border mx-0.5" />
-            <button onClick={() => setZenMode(!zenMode)} className={`p-1 rounded-md hover:bg-secondary transition-colors ${zenMode ? "text-primary bg-primary/10" : "text-muted-foreground"}`} title="Zen Mode">
-              <Focus className="h-3.5 w-3.5" />
-            </button>
-          </>
-        )}
-      </div>
 
       {/* Main content */}
       <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full">
