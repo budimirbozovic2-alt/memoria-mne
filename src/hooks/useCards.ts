@@ -358,30 +358,89 @@ export function useCards() {
     patchCard(cardId, c => ({ ...c, errorLog: [] }));
   }, [patchCard]);
 
-  const downloadJson = useCallback((data: object, filename: string) => {
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
+  const downloadFile = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
   }, []);
 
-  const exportTemplate = useCallback(() => {
+  // Chunked JSON builder to avoid memory spikes on large datasets
+  const buildJsonChunked = useCallback(async (data: object, onProgress: (p: number, msg: string) => void): Promise<string> => {
+    onProgress(10, "Priprema podataka...");
+    await new Promise(r => setTimeout(r, 30));
+
+    const dataAny = data as any;
+    const cardsArr: any[] = dataAny.cards || [];
+    const CHUNK = 500;
+    const parts: string[] = [];
+
+    // Build cards array in chunks
+    for (let i = 0; i < cardsArr.length; i += CHUNK) {
+      const chunk = cardsArr.slice(i, i + CHUNK);
+      parts.push(...chunk.map((c: any) => JSON.stringify(c)));
+      const pct = 10 + Math.round((i / cardsArr.length) * 60);
+      onProgress(pct, `Serijalizacija kartica... ${Math.min(i + CHUNK, cardsArr.length)}/${cardsArr.length}`);
+      await new Promise(r => setTimeout(r, 10)); // yield to UI
+    }
+
+    onProgress(75, "Finalizacija JSON-a...");
+    await new Promise(r => setTimeout(r, 20));
+
+    const rest = { ...dataAny };
+    delete rest.cards;
+    const restJson = JSON.stringify(rest);
+    // Merge: {"cards":[...chunk1,chunk2...],"rest":"..."}
+    const cardsJson = `[${parts.join(",")}]`;
+    const json = `${restJson.slice(0, -1)},"cards":${cardsJson}}`;
+    return json;
+  }, []);
+
+  const exportTemplate = useCallback(async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
     const templateCards = cards.map(c => ({
       id: c.id, question: c.question,
       sections: c.sections.map(s => ({ title: s.title, content: s.content })),
       category: c.category, subcategory: c.subcategory || "", type: c.type, tags: c.tags || [],
     }));
-    downloadJson({ version: 2, type: "template", cards: templateCards, categories, subcategories },
-      `memoria-template-${new Date().toISOString().slice(0, 10)}.json`);
-  }, [cards, categories, subcategories, downloadJson]);
+    const data = { version: 2, type: "template", cards: templateCards, categories, subcategories };
+    const dateStr = new Date().toISOString().slice(0, 10);
 
-  const exportData = useCallback(() => {
-    downloadJson({ version: 2, type: "full", cards, categories, subcategories, reviewLog, srSettings },
-      `memoria-backup-${new Date().toISOString().slice(0, 10)}.json`);
+    const json = await buildJsonChunked(data, onProgress);
+
+    if (compress) {
+      onProgress(85, "Kompresija...");
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      zip.file(`memoria-template-${dateStr}.json`, json);
+      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+      onProgress(100, "Preuzimanje...");
+      downloadFile(blob, `memoria-template-${dateStr}.zip`);
+    } else {
+      onProgress(100, "Preuzimanje...");
+      downloadFile(new Blob([json], { type: "application/json" }), `memoria-template-${dateStr}.json`);
+    }
+  }, [cards, categories, subcategories, downloadFile, buildJsonChunked]);
+
+  const exportData = useCallback(async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
+    const data = { version: 2, type: "full", cards, categories, subcategories, reviewLog, srSettings };
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    const json = await buildJsonChunked(data, onProgress);
+
+    if (compress) {
+      onProgress(85, "Kompresija...");
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      zip.file(`memoria-backup-${dateStr}.json`, json);
+      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+      onProgress(100, "Preuzimanje...");
+      downloadFile(blob, `memoria-backup-${dateStr}.zip`);
+    } else {
+      onProgress(100, "Preuzimanje...");
+      downloadFile(new Blob([json], { type: "application/json" }), `memoria-backup-${dateStr}.json`);
+    }
     setLastBackupTime();
-  }, [cards, categories, subcategories, reviewLog, srSettings, downloadJson]);
+  }, [cards, categories, subcategories, reviewLog, srSettings, downloadFile, buildJsonChunked]);
 
   const importData = useCallback((file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {
     const reader = new FileReader();
