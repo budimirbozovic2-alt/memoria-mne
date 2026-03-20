@@ -52,6 +52,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
     setFile(f);
     try {
       const arrayBuffer = await f.arrayBuffer();
+      const mammoth = (await import("mammoth")).default;
       const result = await mammoth.convertToHtml({
         arrayBuffer,
       }, {
