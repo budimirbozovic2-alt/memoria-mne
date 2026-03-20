@@ -64,6 +64,10 @@ export default function MnemonicModule({ onBack }: Props) {
     return <MnemonicTest cards={cards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
   }
 
+  if (subView === "major") {
+    return <MajorSystemSettings onBack={() => setSubView("menu")} />;
+  }
+
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
