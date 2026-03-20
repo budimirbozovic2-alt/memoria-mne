@@ -190,6 +190,7 @@ export function useCards() {
       }
       return newCard;
     });
+    toast.success("Kartica ažurirana.");
   }, [patchCard]);
 
   // O(1) delete — surgical IDB delete
