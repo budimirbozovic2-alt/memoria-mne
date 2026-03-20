@@ -6,6 +6,7 @@ import { recordDayDiscipline, getDailySuggestion, calcVelocity, loadPlanner } fr
 import { default as ShieldAlert } from "lucide-react/dist/esm/icons/shield-alert";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link2, BarChart3, Volume2 } from "lucide-react";
+import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
@@ -36,7 +37,7 @@ import GradeButtons from "./learn/GradeButtons";
 import NavigationButtons from "./learn/NavigationButtons";
 import { LearnSessionProps, ViewWidth, viewWidthClasses } from "./learn/types";
 
-export default function LearnSession({ cards, categories, subcategories, onMarkRead, onReviewSection, onBack, dueCount = 0 }: LearnSessionProps) {
+export default function LearnSession({ cards, categories, subcategories, onMarkRead, onReviewSection, onBack, onEdit, dueCount = 0 }: LearnSessionProps) {
   // Setup state
   const [setupStep, setSetupStep] = useState<"mode" | "filter" | "ready">("mode");
   const [learnMode, setLearnMode] = useState<LearnMode>("free");
@@ -156,8 +157,21 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const goNext = useCallback(() => { if (currentIndex + 1 < sortedCards.length) goToCard(currentIndex + 1); }, [currentIndex, sortedCards.length, goToCard]);
   const goPrev = useCallback(() => { if (currentIndex > 0) goToCard(currentIndex - 1); }, [currentIndex, goToCard]);
 
-  // ═══════════════════════════════════════════════════════════════
-  // SETUP SCREENS
+  // Keyboard shortcut: "e" to edit current card in free mode
+  useEffect(() => {
+    if (!started || learnMode !== "free" || !card || !onEdit) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+        onEdit(card);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [started, learnMode, card, onEdit]);
+
+
   // ═══════════════════════════════════════════════════════════════
 
   if (!started) {
@@ -482,6 +496,11 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
               <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0} className="flex-1">
                 <ArrowLeft className="h-4 w-4 mr-2" /> Prethodna
               </Button>
+              {onEdit && (
+                <Button variant="ghost" size="icon" onClick={() => onEdit(card)} title="Uredi karticu (E)" className="shrink-0">
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
               {!isRead ? (
                 <Button onClick={() => { handleMarkRead(); goNext(); }} className="flex-1">
                   <Check className="h-4 w-4 mr-2" /> Pročitano
