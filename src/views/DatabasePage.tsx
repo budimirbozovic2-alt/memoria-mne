@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Database, FolderOpen, Download } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
+import InfoPanel from "@/components/InfoPanel";
 
 const CardsView = lazy(() => import("@/views/CardsView"));
 const CategoriesPage = lazy(() => import("@/views/CategoriesPage"));
@@ -22,13 +23,25 @@ export default function DatabasePage() {
             <Database className="h-5 w-5 text-primary" />
             <h1 className="text-2xl font-semibold">Baza podataka</h1>
           </div>
-          <button
-            onClick={() => setExportOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border hover:bg-secondary transition-colors text-muted-foreground"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export / Import
-          </button>
+          <div className="flex items-center gap-2">
+            <InfoPanel title="Kako radi Baza podataka?">
+              <p><strong className="text-foreground">Kartice</strong> — pregled, pretraga i filtriranje svih kartica. Podržava bulk operacije (označi više → dodijeli podkategoriju).</p>
+              <p><strong className="text-foreground">Kategorije</strong> — hijerarhijsko upravljanje kategorijama i podkategorijama. Svaka kategorija prikazuje broj kartica.</p>
+              <p><strong className="text-foreground">Export/Import</strong> — izvezi sve podatke kao JSON backup ili uvezi podatke iz drugog uređaja.</p>
+              <p><strong className="text-foreground">Tagovi:</strong></p>
+              <ul className="space-y-1 pl-3">
+                <li>🔥 „Često na ispitu" — prioritetne kartice</li>
+                <li>🧠 „Memorizacija" — šalje karticu u Mnemo radionicu</li>
+              </ul>
+            </InfoPanel>
+            <button
+              onClick={() => setExportOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium border hover:bg-secondary transition-colors text-muted-foreground"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export / Import
+            </button>
+          </div>
         </div>
 
         <Tabs defaultValue="cards" className="w-full">

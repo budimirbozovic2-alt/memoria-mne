@@ -223,8 +223,18 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
           <ArrowLeft className="h-4 w-4" /> Nazad
         </button>
-        <h2 className="text-3xl font-serif">Moje statistike</h2>
-        <p className="text-muted-foreground mt-1">Svi grafikoni, analitika i metakognitivni alati</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-serif">Moje statistike</h2>
+            <p className="text-muted-foreground mt-1">Svi grafikoni, analitika i metakognitivni alati</p>
+          </div>
+          <InfoPanel title="Kako radi Statistika?">
+            <p><strong className="text-foreground">Pregled</strong> — heatmapa aktivnosti, distribucija znanja po kategorijama, kriva zaboravljanja i trend discipline.</p>
+            <p><strong className="text-foreground">Analitika</strong> — dnevnik učenja, kalibracija (iluzija znanja), latencija prisjećanja, kognitivni otpor i efikasnost.</p>
+            <p><strong className="text-foreground">Kognicija</strong> — dublja analiza slabih tačaka, automatska detekcija kartica za mnemoničku obradu.</p>
+            <p>Svi podaci dolaze iz tvoje istorije ponavljanja i ocjena. Što više koristiš aplikaciju, to su podaci precizniji.</p>
+          </InfoPanel>
+        </div>
       </motion.div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
