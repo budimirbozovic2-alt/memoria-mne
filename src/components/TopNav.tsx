@@ -39,7 +39,7 @@ const NAV_ITEMS = [
   { path: "/settings", icon: SettingsIcon, label: "Podešavanja" },
 ];
 
-export default function TopNav({ onOpenSearch, onOpenDocxImport }: Props) {
+export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, zenActive }: Props) {
   const location = useLocation();
   const { stats } = useCardContext();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
