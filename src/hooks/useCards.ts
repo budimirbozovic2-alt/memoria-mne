@@ -442,8 +442,19 @@ export function useCards() {
     setLastBackupTime();
   }, [cards, categories, subcategories, reviewLog, srSettings, downloadFile, buildJsonChunked]);
 
-  const processImportJson = useCallback((jsonText: string, strategy: "keep" | "overwrite" | "skip" | "newer") => {
+  const importData = useCallback(async (file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {
     try {
+      let jsonText: string;
+      if (file.name.endsWith(".zip")) {
+        const JSZip = (await import("jszip")).default;
+        const zip = await JSZip.loadAsync(file);
+        const jsonFile = Object.keys(zip.files).find(n => n.endsWith(".json"));
+        if (!jsonFile) { alert("ZIP ne sadrži JSON fajl."); return; }
+        jsonText = await zip.files[jsonFile].async("string");
+      } else {
+        jsonText = await file.text();
+      }
+
       const parsed = JSON.parse(jsonText);
       if (Array.isArray(parsed.cards)) {
         const migrateImported = (c: any): Card => ({
@@ -497,24 +508,6 @@ export function useCards() {
       alert("Greška pri čitanju fajla. Provjerite format.");
     }
   }, [setCardMap, setCategories, setSubcategories, updateSRSettings]);
-
-  const importData = useCallback(async (file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {
-    try {
-      let jsonText: string;
-      if (file.name.endsWith(".zip")) {
-        const JSZip = (await import("jszip")).default;
-        const zip = await JSZip.loadAsync(file);
-        const jsonFile = Object.keys(zip.files).find(n => n.endsWith(".json"));
-        if (!jsonFile) { alert("ZIP ne sadrži JSON fajl."); return; }
-        jsonText = await zip.files[jsonFile].async("string");
-      } else {
-        jsonText = await file.text();
-      }
-      processImportJson(jsonText, strategy);
-    } catch {
-      alert("Greška pri čitanju fajla. Provjerite format.");
-    }
-  }, [processImportJson]);
 
   const importCards = useCallback((newCards: { question: string; sections: { title: string; content: string }[] }[], category: string) => {
     const created = newCards.map(c => createCard(c.question, c.sections, category));
