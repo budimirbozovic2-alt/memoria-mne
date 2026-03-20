@@ -236,19 +236,6 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
           </div>
         </div>
 
-        {/* Major System link */}
-        {onOpenMajorSystem && (
-          <button
-            onClick={onOpenMajorSystem}
-            className="w-full rounded-xl border bg-card p-4 hover:border-primary/40 transition-colors text-left flex items-center gap-3"
-          >
-            <Brain className="h-5 w-5 text-primary" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Mentalne tablice (Major sistem)</p>
-              <p className="text-xs text-muted-foreground">Prilagodi termine za brojeve 0–100</p>
-            </div>
-          </button>
-        )}
       </section>
 
       {/* Action buttons */}
