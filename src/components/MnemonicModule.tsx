@@ -6,6 +6,7 @@ import {
 } from "@/lib/mnemonic-storage";
 import { ArrowLeft, Brain, Wrench, FlaskConical, Sparkles, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
+import InfoPanel from "@/components/InfoPanel";
 import MnemonicWorkshop from "./MnemonicWorkshop";
 import MnemonicTest from "./MnemonicTest";
 
