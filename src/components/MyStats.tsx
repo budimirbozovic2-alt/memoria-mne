@@ -3,6 +3,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
 import { motion } from "framer-motion";
 import { ArrowLeft, LayoutGrid, TrendingUp, Brain, Layers, Target, Award, Microscope, ChevronRight } from "lucide-react";
+import InfoPanel from "@/components/InfoPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, getSectionScore, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
