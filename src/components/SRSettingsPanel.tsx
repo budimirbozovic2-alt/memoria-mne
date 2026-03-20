@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, RotateCcw, Volume2 } from "lucide-react";
+import { ArrowLeft, RotateCcw, Volume2, Settings, Brain, Flame, BookOpen } from "lucide-react";
+import InfoPanel from "@/components/InfoPanel";
 
 interface Props {
   settings: SRSettings;
@@ -62,18 +63,30 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajo
   const isDefault = JSON.stringify(local) === JSON.stringify(DEFAULT_SR_SETTINGS);
 
   return (
-    <div className="max-w-xl mx-auto space-y-8">
-      <div>
-        <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
-          <ArrowLeft className="h-4 w-4" /> Nazad
-        </button>
-        <h2 className="text-3xl font-serif">Podešavanja</h2>
-        <p className="text-muted-foreground mt-2">FSRS algoritam i glasovni čitač</p>
+    <div className="max-w-2xl mx-auto space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
+            <ArrowLeft className="h-4 w-4" /> Nazad
+          </button>
+          <h2 className="text-3xl font-serif">Podešavanja</h2>
+          <p className="text-muted-foreground mt-1">Algoritam ponavljanja, glasovni čitač i alati</p>
+        </div>
+        <InfoPanel title="O podešavanjima">
+          <p><strong className="text-foreground">FSRS v5</strong> — algoritam za optimalni raspored ponavljanja sa 95% stopom zadržavanja.</p>
+          <p><strong className="text-foreground">Leech prag</strong> — kartice koje padnu više od N puta se označavaju kao problematične.</p>
+          <p><strong className="text-foreground">Kognitivni otpor</strong> — težine za izračun kombinovanog skora otpora (lapsusi, latencija, zaboravljanje).</p>
+          <p><strong className="text-foreground">TTS</strong> — podesi brzinu i glas za funkciju čitanja naglas.</p>
+        </InfoPanel>
       </div>
 
-      {/* FSRS Settings */}
-      <div className="space-y-4">
-        <h3 className="font-serif text-lg">Ponavljanje (FSRS)</h3>
+      {/* Section 1: Ponavljanje */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <BookOpen className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Ponavljanje (FSRS)</h3>
+        </div>
         {FIELD_CONFIG.map(({ key, label, description, min, max, step }) => (
           <div key={key} className="rounded-xl border bg-card p-4 space-y-2">
             <div className="flex items-center justify-between">
@@ -94,13 +107,14 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajo
             )}
           </div>
         ))}
-      </div>
+      </section>
 
-      {/* Resistance Weights */}
-      <div className="space-y-4">
-        <h3 className="font-serif text-lg flex items-center gap-2">
-          <span>🔥</span> Težine kognitivnog otpora
-        </h3>
+      {/* Section 2: Kognitivni otpor */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <Flame className="h-4 w-4 text-warning" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Težine kognitivnog otpora</h3>
+        </div>
         <div className="rounded-xl border bg-card p-4 space-y-4">
           <p className="text-xs text-muted-foreground">Podesi koliko svaki faktor utiče na ukupni skor otpora. Vrijednosti se automatski normalizuju.</p>
           {([
@@ -136,15 +150,15 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajo
             <span>Normalizovano na 100%</span>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="space-y-4">
-        <h3 className="font-serif text-lg flex items-center gap-2">
-          <Volume2 className="h-4 w-4" /> Glasovni čitač (TTS)
-        </h3>
-
+      {/* Section 3: Glasovni čitač */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <Volume2 className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Glasovni čitač (TTS)</h3>
+        </div>
         <div className="rounded-xl border bg-card p-4 space-y-4">
-          {/* Speed */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">Brzina govora</label>
@@ -164,7 +178,6 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajo
             </div>
           </div>
 
-          {/* Voice Selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Glas</label>
             <Select
@@ -185,27 +198,62 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajo
             </Select>
           </div>
 
-          {/* Test button */}
           <Button variant="outline" size="sm" onClick={testVoice} className="gap-1.5">
             <Volume2 className="h-3.5 w-3.5" /> Testiraj glas
           </Button>
         </div>
-      </div>
+      </section>
 
-      {/* How FSRS works */}
-      <div className="rounded-xl border bg-card p-5 space-y-3">
-        <h3 className="font-serif text-lg">Kako FSRS radi</h3>
-        <div className="text-sm text-muted-foreground space-y-2">
-          <p><strong className="text-foreground">Opet (1):</strong> Stabilnost pada na 10%. Težina se povećava za 2.</p>
-          <p><strong className="text-foreground">Teško (2):</strong> Stabilnost × 1.5 + 0.5 dana. Težina +1.</p>
-          <p><strong className="text-foreground">Dobro (3):</strong> Stabilnost × 3.0 + 1.0 dana. Težina ostaje ista.</p>
-          <p><strong className="text-foreground">Lako (4):</strong> Stabilnost × 5.0 + 2.0 dana. Težina -1.</p>
-          <p className="pt-2"><strong className="text-foreground">Interval:</strong> Računa se za 95% stopu zadržavanja znanja.</p>
-          <p><strong className="text-foreground">Leech:</strong> Nakon {local.leechThreshold} padova, cjelina se označava kao problematična.</p>
+      {/* Section 4: Referenca */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <Settings className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Referenca</h3>
         </div>
-      </div>
 
-      <div className="flex gap-3">
+        <div className="rounded-xl border bg-card p-5 space-y-3">
+          <h4 className="text-sm font-medium">Kako FSRS računa intervale</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
+            <div className="rounded-lg bg-destructive/5 border border-destructive/10 p-3 space-y-1">
+              <p className="font-medium text-destructive">Opet (1)</p>
+              <p>Stabilnost pada na 10%. Težina +2.</p>
+            </div>
+            <div className="rounded-lg bg-warning/5 border border-warning/10 p-3 space-y-1">
+              <p className="font-medium text-warning">Teško (2)</p>
+              <p>Stabilnost ×1.5 + 0.5d. Težina +1.</p>
+            </div>
+            <div className="rounded-lg bg-primary/5 border border-primary/10 p-3 space-y-1">
+              <p className="font-medium text-primary">Dobro (3)</p>
+              <p>Stabilnost ×3.0 + 1.0d. Težina ista.</p>
+            </div>
+            <div className="rounded-lg bg-success/5 border border-success/10 p-3 space-y-1">
+              <p className="font-medium text-success">Lako (4)</p>
+              <p>Stabilnost ×5.0 + 2.0d. Težina -1.</p>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground pt-1 space-y-1">
+            <p><strong className="text-foreground">Interval:</strong> Računa se za 95% stopu zadržavanja.</p>
+            <p><strong className="text-foreground">Leech:</strong> Nakon {local.leechThreshold} padova, cjelina se označava kao problematična.</p>
+          </div>
+        </div>
+
+        {/* Major System link */}
+        {onOpenMajorSystem && (
+          <button
+            onClick={onOpenMajorSystem}
+            className="w-full rounded-xl border bg-card p-4 hover:border-primary/40 transition-colors text-left flex items-center gap-3"
+          >
+            <Brain className="h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Mentalne tablice (Major sistem)</p>
+              <p className="text-xs text-muted-foreground">Prilagodi termine za brojeve 0–100</p>
+            </div>
+          </button>
+        )}
+      </section>
+
+      {/* Action buttons */}
+      <div className="flex gap-3 pb-8">
         <Button onClick={handleSave} disabled={!hasChanges} className="flex-1">
           Sačuvaj izmjene
         </Button>
@@ -213,20 +261,6 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack, onOpenMajo
           <RotateCcw className="h-4 w-4 mr-2" /> Podrazumijevano
         </Button>
       </div>
-
-      {/* Major System link */}
-      {onOpenMajorSystem && (
-        <button
-          onClick={onOpenMajorSystem}
-          className="w-full rounded-xl border bg-card p-4 hover:border-primary/40 transition-colors text-left flex items-center gap-3"
-        >
-          <span className="text-xl">🧠</span>
-          <div className="flex-1">
-            <p className="text-sm font-medium">Mentalne tablice (Major sistem)</p>
-            <p className="text-xs text-muted-foreground">Prilagodi termine za brojeve 0–100</p>
-          </div>
-        </button>
-      )}
     </div>
   );
 }

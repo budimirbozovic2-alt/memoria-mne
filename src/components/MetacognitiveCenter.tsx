@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, BookOpen, Target, Clock, Brain, TrendingUp, AlertTriangle, CheckCircle, XCircle, Gauge, Flame, Zap, Activity, CalendarClock, Wrench } from "lucide-react";
+import InfoPanel from "@/components/InfoPanel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -43,9 +44,16 @@ export default function MetacognitiveCenter({ cards, categories, reviewLog, onBa
             <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
               <ArrowLeft className="h-4 w-4" /> Nazad
             </button>
-            <h2 className="text-3xl font-serif">Metakognitivni Centar</h2>
+            <h2 className="text-3xl font-serif">Dnevnik</h2>
             <p className="text-muted-foreground mt-1">Dnevnik, kalibracija i analitika učenja</p>
           </div>
+          <InfoPanel title="Kako radi Dnevnik?">
+            <p><strong className="text-foreground">Dnevnik</strong> — bilježi dnevne refleksije, postavlja ciljeve za sutra i prati dnevnu samoanalizu.</p>
+            <p><strong className="text-foreground">Kalibracija</strong> — upoređuje tvoju procjenu sigurnosti (1-5) sa stvarnom ocjenom da detektuje „iluziju znanja".</p>
+            <p><strong className="text-foreground">Latencija</strong> — mjeri vrijeme od prikaza pitanja do otkrivanja odgovora. Prag za automatizovano znanje: &lt;3 sekunde.</p>
+            <p><strong className="text-foreground">Otpor</strong> — kombinovani skor lapsusa, latencije i zaboravljanja koji identifikuje najteže kartice.</p>
+            <p><strong className="text-foreground">Efikasnost</strong> — koliko % vremena provodiš na kognitivni rad vs. logistiku.</p>
+          </InfoPanel>
         </div>
       )}
 

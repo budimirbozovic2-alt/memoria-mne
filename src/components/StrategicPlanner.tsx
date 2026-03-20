@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Target, Plus, Trash2, Calendar, Zap, TrendingUp, Lightbulb, CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import InfoPanel from "@/components/InfoPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card as SRCard } from "@/lib/spaced-repetition";
@@ -143,8 +144,23 @@ export default function StrategicPlanner({ cards, categories, reviewLog, onBack 
         <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
           <ArrowLeft className="h-4 w-4" /> Nazad
         </button>
-        <h2 className="text-3xl font-serif">Strateški planer</h2>
-        <p className="text-muted-foreground mt-1">Poveži svoj plan sa stvarnim progresom</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-serif">Strateški planer</h2>
+            <p className="text-muted-foreground mt-1">Poveži svoj plan sa stvarnim progresom</p>
+          </div>
+          <InfoPanel title="Kako radi Strateški planer?">
+            <p><strong className="text-foreground">Konačni cilj</strong> — postavi datum ispita. Sistem prati da li si na putu da stigneš.</p>
+            <p><strong className="text-foreground">Dekade</strong> — podijeli učenje u faze (npr. „Anatomija fokus — 30 dana"). Svaka dekada se vezuje za kategorije.</p>
+            <p><strong className="text-foreground">Reality Check</strong> — na osnovu tvoje brzine učenja (sekcija/dan) sistem predviđa datum završetka i upozorava ako kasniš.</p>
+            <p><strong className="text-foreground">Statusi:</strong></p>
+            <ul className="space-y-1 pl-3">
+              <li>🟢 Na pravom putu</li>
+              <li>🟡 Malo kasniš — potrebno ubrzanje</li>
+              <li>🔴 Značajno kašnjenje</li>
+            </ul>
+          </InfoPanel>
+        </div>
       </motion.div>
 
       {/* ─── Section A: Planer ─── */}

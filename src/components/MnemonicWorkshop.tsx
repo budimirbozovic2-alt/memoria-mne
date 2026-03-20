@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { MnemonicCard, MnemonicStatus, HookType, loadMajorSystem, resolveNumber, extractNumbers, detectEnumerationItems } from "@/lib/mnemonic-storage";
 import { ArrowLeft, Brain, Film, Type, ChevronDown, ChevronRight, Sparkles, CheckCircle2, Wrench, Hash, MapPin, FolderOpen, Clock, List, MoreHorizontal } from "lucide-react";
+import InfoPanel from "@/components/InfoPanel";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -55,14 +56,27 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onBack }: Props)
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
-          <ArrowLeft className="h-4 w-4" /> Nazad
-        </button>
-        <h2 className="text-3xl font-serif flex items-center gap-3">
-          <Wrench className="h-7 w-7 text-primary" /> Radionica mentalnih kuka
-        </h2>
-        <p className="text-muted-foreground mt-1">Kreiraj mentalni video i akronim za svaku karticu.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
+            <ArrowLeft className="h-4 w-4" /> Nazad
+          </button>
+          <h2 className="text-3xl font-serif flex items-center gap-3">
+            <Wrench className="h-7 w-7 text-primary" /> Radionica mentalnih kuka
+          </h2>
+          <p className="text-muted-foreground mt-1">Kreiraj mentalni video i akronim za svaku karticu.</p>
+        </div>
+        <InfoPanel title="Kako radi Mnemo radionica?">
+          <p><strong className="text-foreground">Mentalne kuke</strong> — za svaku karticu kreiraš vizuelnu asocijaciju (mentalni video) ili akronim koji pomaže pamćenju.</p>
+          <p><strong className="text-foreground">Status:</strong></p>
+          <ul className="space-y-1 pl-3">
+            <li>✨ <strong>Nova</strong> — čeka obradu</li>
+            <li>🔧 <strong>U radionici</strong> — kuka u izradi</li>
+            <li>✅ <strong>Spremna</strong> — kuka završena i spremna za testiranje</li>
+          </ul>
+          <p><strong className="text-foreground">Major sistem</strong> — brojevi se automatski pretvaraju u riječi pomoću fonetskog koda (0=S, 1=T, 2=N...).</p>
+          <p>Označi kartice tagom „Memorizacija" u Bazi podataka da se pojave ovdje.</p>
+        </InfoPanel>
       </div>
 
       <div className="flex flex-col md:flex-row gap-6">
