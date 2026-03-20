@@ -438,9 +438,11 @@ export function useCards() {
       const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
       onProgress(100, "Preuzimanje...");
       downloadFile(blob, `memoria-backup-${dateStr}.zip`);
+      toast.success("Pun backup uspješno exportovan.");
     } else {
       onProgress(100, "Preuzimanje...");
       downloadFile(new Blob([json], { type: "application/json" }), `memoria-backup-${dateStr}.json`);
+      toast.success("Pun backup uspješno exportovan.");
     }
     setLastBackupTime();
   }, [cards, categories, subcategories, reviewLog, srSettings, downloadFile, buildJsonChunked]);
