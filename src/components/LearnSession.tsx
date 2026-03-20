@@ -157,8 +157,21 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const goNext = useCallback(() => { if (currentIndex + 1 < sortedCards.length) goToCard(currentIndex + 1); }, [currentIndex, sortedCards.length, goToCard]);
   const goPrev = useCallback(() => { if (currentIndex > 0) goToCard(currentIndex - 1); }, [currentIndex, goToCard]);
 
-  // ═══════════════════════════════════════════════════════════════
-  // SETUP SCREENS
+  // Keyboard shortcut: "e" to edit current card in free mode
+  useEffect(() => {
+    if (!started || learnMode !== "free" || !card || !onEdit) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "e" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        const tag = (e.target as HTMLElement)?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || (e.target as HTMLElement)?.isContentEditable) return;
+        onEdit(card);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [started, learnMode, card, onEdit]);
+
+
   // ═══════════════════════════════════════════════════════════════
 
   if (!started) {
