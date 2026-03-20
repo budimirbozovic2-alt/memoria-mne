@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Card } from "@/lib/spaced-repetition";
 import { default as Search } from "lucide-react/dist/esm/icons/search";
