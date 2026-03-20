@@ -248,10 +248,28 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
         return;
       }
     }
-    // Plain text paste
+    // Plain text paste — use Selection API fallback for reliability
     e.preventDefault();
     const text = e.clipboardData.getData("text/plain");
-    document.execCommand("insertText", false, text);
+    if (!text) return;
+
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      const range = sel.getRangeAt(0);
+      range.deleteContents();
+      const textNode = document.createTextNode(text);
+      range.insertNode(textNode);
+      // Move cursor after inserted text
+      range.setStartAfter(textNode);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+
+    if (editorRef.current) {
+      internalValue.current = editorRef.current.innerHTML;
+      onChange(editorRef.current.innerHTML);
+    }
   };
 
   const isEmpty = !value || value === "<br>" || value.replace(/<[^>]*>/g, "").trim() === "";
