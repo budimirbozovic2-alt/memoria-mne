@@ -7,7 +7,7 @@ import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as DatabaseIcon } from "lucide-react/dist/esm/icons/database";
+import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
 import { default as Moon } from "lucide-react/dist/esm/icons/moon";
 import { default as Sun } from "lucide-react/dist/esm/icons/sun";
 import { default as Menu } from "lucide-react/dist/esm/icons/menu";
@@ -15,10 +15,11 @@ import { default as X } from "lucide-react/dist/esm/icons/x";
 import { default as Focus } from "lucide-react/dist/esm/icons/focus";
 import { default as SettingsIcon } from "lucide-react/dist/esm/icons/settings";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
-import { default as Search } from "lucide-react/dist/esm/icons/search";
-import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
-import { useState, useCallback } from "react";
+import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
+import { default as DatabaseIcon } from "lucide-react/dist/esm/icons/database";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 
 interface Props {
   onOpenSearch?: () => void;
@@ -27,37 +28,64 @@ interface Props {
   zenActive?: boolean;
 }
 
-const NAV_ITEMS = [
+const PRIMARY_NAV = [
   { path: "/", icon: Home, label: "Dashboard" },
   { path: "/learn", icon: GraduationCap, label: "Učenje" },
   { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
-  { path: "/stats", icon: BarChart3, label: "Statistika" },
-  { path: "/metacognitive", icon: BookOpen, label: "Dnevnik" },
-  { path: "/mnemonic", icon: Brain, label: "Mnemo radionica" },
-  { path: "/planner", icon: Target, label: "Strateški planer" },
-  { path: "/settings", icon: SettingsIcon, label: "Podešavanja" },
 ];
 
-export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, zenActive }: Props) {
+const LAB_ITEMS = [
+  { path: "/stats", icon: BarChart3, label: "Statistika", desc: "Pregled napretka i analitika" },
+  { path: "/metacognitive", icon: BookOpen, label: "Dnevnik", desc: "Metakognitivne refleksije" },
+  { path: "/mnemonic", icon: Brain, label: "Mnemo radionica", desc: "Tehnike pamćenja" },
+  { path: "/planner", icon: Target, label: "Strateški planer", desc: "Planiranje učenja" },
+  { path: "/database", icon: DatabaseIcon, label: "Kartice", desc: "Pregledaj i uređuj kartice" },
+  { path: "/categories", icon: FolderOpen, label: "Kategorije", desc: "Organizuj po temama" },
+];
+
+const LAB_PATHS = LAB_ITEMS.map(i => i.path);
+
+export default function TopNav({ onToggleZen, zenActive }: Props) {
   const location = useLocation();
   const { stats } = useCardContext();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [labOpen, setLabOpen] = useState(false);
+  const labRef = useRef<HTMLDivElement>(null);
 
   const toggleDark = useCallback(() => {
     document.documentElement.classList.toggle("dark");
     setDark(d => !d);
   }, []);
 
-  const isDbActive = location.pathname === "/database" || location.pathname === "/cards" || location.pathname === "/categories";
+  // Close mega menu on click outside
+  useEffect(() => {
+    if (!labOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (labRef.current && !labRef.current.contains(e.target as Node)) {
+        setLabOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [labOpen]);
+
+  // Close mega menu on route change
+  useEffect(() => {
+    setLabOpen(false);
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  const isLabActive = LAB_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + "/"));
 
   return (
     <nav className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md">
+      {/* Desktop */}
       <div className="hidden md:flex items-center h-11 px-4 gap-1 max-w-7xl mx-auto">
         <span className="text-base font-serif italic text-primary mr-4 select-none tracking-tight">Memoria</span>
 
-        <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto scrollbar-none">
-          {NAV_ITEMS.map(({ path, icon: Icon, label, badge }) => (
+        <div className="flex items-center gap-0.5 flex-1 min-w-0">
+          {PRIMARY_NAV.map(({ path, icon: Icon, label, badge }) => (
             <NavLink
               key={path}
               to={path}
@@ -75,15 +103,62 @@ export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, ze
             </NavLink>
           ))}
 
+          {/* Laboratorija mega menu trigger */}
+          <div ref={labRef} className="relative">
+            <button
+              onClick={() => setLabOpen(v => !v)}
+              className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap hover:bg-secondary/60 ${
+                isLabActive || labOpen
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FlaskConical className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>Laboratorija</span>
+            </button>
+
+            {/* Mega menu panel */}
+            {labOpen && (
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[420px] rounded-xl border bg-popover p-4 shadow-xl animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-200">
+                <div className="grid grid-cols-2 gap-1">
+                  {LAB_ITEMS.map(({ path, icon: Icon, label, desc }) => {
+                    const active = location.pathname === path;
+                    return (
+                      <Link
+                        key={path}
+                        to={path}
+                        className={`flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-secondary/60 group ${
+                          active ? "bg-primary/10" : ""
+                        }`}
+                      >
+                        <div className={`mt-0.5 rounded-md p-1.5 transition-colors ${
+                          active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                        }`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className={`font-medium leading-tight ${active ? "text-primary" : "text-foreground"}`}>
+                            {label}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                            {desc}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
           <NavLink
-            to="/database"
-            className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap hover:bg-secondary/60 ${
-              isDbActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
-            }`}
+            to="/settings"
+            className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground hover:bg-secondary/60"
             activeClassName="bg-primary/10 text-primary"
           >
-            <DatabaseIcon className="h-3.5 w-3.5 flex-shrink-0" />
-            <span>Baza podataka</span>
+            <SettingsIcon className="h-3.5 w-3.5 flex-shrink-0" />
+            <span>Podešavanja</span>
           </NavLink>
         </div>
 
@@ -97,6 +172,7 @@ export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, ze
         </div>
       </div>
 
+      {/* Mobile */}
       <div className="md:hidden flex items-center h-11 px-3 justify-between">
         <span className="text-base font-serif italic text-primary select-none">Memoria</span>
         <div className="flex items-center gap-1">
@@ -114,7 +190,7 @@ export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, ze
 
       {mobileOpen && (
         <div className="md:hidden border-t bg-background px-3 py-2 space-y-0.5">
-          {NAV_ITEMS.map(({ path, icon: Icon, label, badge }) => (
+          {PRIMARY_NAV.map(({ path, icon: Icon, label, badge }) => (
             <NavLink
               key={path}
               to={path}
@@ -132,29 +208,33 @@ export default function TopNav({ onOpenSearch, onOpenDocxImport, onToggleZen, ze
               )}
             </NavLink>
           ))}
+
+          {/* Laboratorija group */}
+          <div className="pt-1.5 pb-0.5">
+            <span className="px-3 text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Laboratorija</span>
+          </div>
+          {LAB_ITEMS.map(({ path, icon: Icon, label }) => (
+            <NavLink
+              key={path}
+              to={path}
+              className="flex items-center gap-2.5 px-3 py-2 pl-6 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+              activeClassName="bg-primary/10 text-primary font-medium"
+              onClick={() => setMobileOpen(false)}
+            >
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+
           <NavLink
-            to="/database"
+            to="/settings"
             className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
             activeClassName="bg-primary/10 text-primary font-medium"
             onClick={() => setMobileOpen(false)}
           >
-            <DatabaseIcon className="h-4 w-4 flex-shrink-0" />
-            <span>Baza podataka</span>
+            <SettingsIcon className="h-4 w-4 flex-shrink-0" />
+            <span>Podešavanja</span>
           </NavLink>
-          <button
-            onClick={() => { onOpenSearch?.(); setMobileOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors pl-10"
-          >
-            <Search className="h-4 w-4 flex-shrink-0" />
-            <span>Pretraži kartice</span>
-          </button>
-          <button
-            onClick={() => { onOpenDocxImport?.(); setMobileOpen(false); }}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors pl-10"
-          >
-            <FileText className="h-4 w-4 flex-shrink-0" />
-            <span>Uvezi iz DOCX</span>
-          </button>
         </div>
       )}
     </nav>
