@@ -15,6 +15,8 @@ import { default as X } from "lucide-react/dist/esm/icons/x";
 import { default as Focus } from "lucide-react/dist/esm/icons/focus";
 import { default as SettingsIcon } from "lucide-react/dist/esm/icons/settings";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
+import { default as Search } from "lucide-react/dist/esm/icons/search";
+import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
 import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 
