@@ -4,11 +4,12 @@ import {
   MnemonicCard, loadMnemonicCards, saveMnemonicCards,
   addMnemonicTestEntry, getMnemonicStats,
 } from "@/lib/mnemonic-storage";
-import { ArrowLeft, Brain, Wrench, FlaskConical, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Brain, Wrench, FlaskConical, Sparkles, CheckCircle2, Hash } from "lucide-react";
 import { motion } from "framer-motion";
 import InfoPanel from "@/components/InfoPanel";
 import MnemonicWorkshop from "./MnemonicWorkshop";
 import MnemonicTest from "./MnemonicTest";
+import MajorSystemSettings from "./MajorSystemSettings";
 
 interface Props {
   onBack: () => void;
