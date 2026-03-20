@@ -12,7 +12,6 @@ interface Props {
   settings: SRSettings;
   onUpdate: (settings: SRSettings) => void;
   onBack: () => void;
-  onOpenMajorSystem?: () => void;
 }
 
 const FIELD_CONFIG = [
