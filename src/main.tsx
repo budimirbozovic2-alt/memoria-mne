@@ -31,8 +31,10 @@ if (window.electronAPI) {
     } catch (_) {}
   });
 
-  // Cleanup on page unload to prevent memory leaks
-  window.addEventListener("beforeunload", () => cleanup());
+  // Cleanup on page unload — use both 'beforeunload' and 'unload' for reliability
+  const doCleanup = () => cleanup();
+  window.addEventListener("beforeunload", doCleanup);
+  window.addEventListener("unload", doCleanup);
 }
 
 if ("serviceWorker" in navigator) {
