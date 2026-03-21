@@ -390,7 +390,7 @@ function AuditorDetailPanel({ card, onClose }: { card: Card; onClose: () => void
           </div>
           {errorLog.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
+              <CheckCircle className="h-4 w-4 text-success" />
               Nema zabilježenih grešaka
             </div>
           ) : (
