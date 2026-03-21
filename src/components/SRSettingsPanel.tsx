@@ -388,6 +388,9 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
             </CollapsibleContent>
           </Collapsible>
         </div>
+      </section>
+
+      {/* Action buttons */}
       <div className="flex gap-3 pb-8">
         <Button onClick={handleSave} disabled={!hasChanges} className="flex-1">
           Sačuvaj izmjene
