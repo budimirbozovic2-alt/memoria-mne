@@ -167,7 +167,8 @@ export function calculateNextReview(section: Section, grade: number): Partial<Se
     }
   }
 
-  const interval = Math.max(calculateInterval(newStability), 1 / (24 * 60)); // minimum 1 minute
+  const targetRetention = loadAppSettings().targetRetention;
+  const interval = Math.max(calculateInterval(newStability, targetRetention), 1 / (24 * 60)); // minimum 1 minute
 
   // Critical zone: grades 1-2 get priority short intervals (max 24h for grade 2, max 20min for grade 1)
   let finalNextReview = Date.now() + interval * 24 * 60 * 60 * 1000;
