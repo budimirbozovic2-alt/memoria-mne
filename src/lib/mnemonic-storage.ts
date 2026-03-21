@@ -92,6 +92,7 @@ export function loadMnemonicCards(): MnemonicCard[] {
   return cards.map(c => ({
     ...c,
     hookType: c.hookType || "ostalo",
+    hookMode: c.hookMode || (c.mnemonicVideo ? "video" : "acronym"),
     tags: c.tags || [],
   }));
 }
