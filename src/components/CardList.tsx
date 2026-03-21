@@ -4,8 +4,8 @@ import { Edit2, Trash2 } from "lucide-react";
 import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Flame } from "lucide-react/dist/esm/icons/flame";
+import TextSelectionTooltip from "@/components/TextSelectionTooltip";
 import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
 import { useState, useRef, useEffect, useMemo, useCallback, CSSProperties, memo } from "react";
 import { List, type RowComponentProps } from "react-window";
@@ -123,9 +123,6 @@ const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, s
             <button onClick={() => onToggleTag(card.id, "često-na-ispitu")} className={`p-2 rounded-lg transition-colors ${isFrequent ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`} title={isFrequent ? "Često na ispitu (klikni da ukloniš)" : "Označi kao često na ispitu"}>
               <Flame className="h-4 w-4" />
             </button>
-            <button onClick={() => onToggleTag(card.id, "memorizacija")} className={`p-2 rounded-lg transition-colors ${cardTags.includes("memorizacija") ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`} title={cardTags.includes("memorizacija") ? "Memorizacija (klikni da ukloniš)" : "Dodaj u Memorizaciju"}>
-              <Brain className="h-4 w-4" />
-            </button>
             <button onClick={() => onExpand(expanded ? null : card.id)} className="p-2 hover:bg-secondary rounded-lg">
               {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
             </button>
@@ -140,6 +137,7 @@ const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, s
       </div>
 
       {expanded && (
+        <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags}>
         <div className="px-5 pb-5 space-y-3 border-t pt-4 max-h-[60vh] overflow-y-auto">
           {isFlash ? (
             <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: card.sections[0]?.content || "" }} />
@@ -165,6 +163,7 @@ const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, s
             })
           )}
         </div>
+        </TextSelectionTooltip>
       )}
     </div>
   );

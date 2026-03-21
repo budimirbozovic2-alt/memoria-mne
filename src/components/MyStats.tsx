@@ -40,7 +40,6 @@ interface Props {
   onBack: () => void;
   onShowKnowledgeMap?: () => void;
   onShowPlanner?: () => void;
-  onSendToWorkshop?: (cardId: string) => void;
 }
 
 const MASTERY_COLORS = [
@@ -176,7 +175,7 @@ import { TabSkeleton } from "@/components/ui/page-skeleton";
 
 // ─── Main component ──────────────────────────────────────
 
-export default function MyStats({ cards, categories, subcategories, categoryStats, reviewLog, srSettings, onBack, onShowKnowledgeMap, onShowPlanner, onSendToWorkshop }: Props) {
+export default function MyStats({ cards, categories, subcategories, categoryStats, reviewLog, srSettings, onBack, onShowKnowledgeMap, onShowPlanner }: Props) {
   const [activeTab, setActiveTab] = useState<"overview" | "metacognitive" | "cognitive">("overview");
 
   const activityData = useMemo(() => {
@@ -346,7 +345,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         <TabsContent value="metacognitive">
           <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Metakognicija">
-              <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded onSendToWorkshop={onSendToWorkshop} />
+              <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded />
             </ErrorBoundary>
           </Suspense>
         </TabsContent>
@@ -355,7 +354,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
           <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Kognicija">
               <div className="mt-4">
-                <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} onSendToWorkshop={onSendToWorkshop} />
+                <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} />
               </div>
             </ErrorBoundary>
           </Suspense>

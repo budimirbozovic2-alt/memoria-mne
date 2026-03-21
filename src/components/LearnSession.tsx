@@ -28,6 +28,7 @@ import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak } from "@/lib/tts";
 import LearnOnboarding, { hasSeenOnboarding } from "@/components/LearnOnboarding";
+import TextSelectionTooltip from "@/components/TextSelectionTooltip";
 
 // Sub-components
 import SessionHeader from "./learn/SessionHeader";
@@ -457,6 +458,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
         <AnimatePresence mode="wait">
           <motion.div key={card.id} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.3 }} className="space-y-4">
             {isFlash ? (
+              <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags}>
               <div className="rounded-xl border bg-card overflow-hidden">
                 <button onClick={() => toggleSection(0)} className="w-full flex items-center gap-2 p-4 text-left hover:bg-secondary/30 transition-colors">
                   <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSections.has(0) ? "rotate-90" : ""}`} />
@@ -468,7 +470,9 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   </motion.div>
                 )}
               </div>
+              </TextSelectionTooltip>
             ) : (
+              <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags}>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">{card.sections.length} cjelina</span>
@@ -490,6 +494,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   </div>
                 ))}
               </div>
+              </TextSelectionTooltip>
             )}
 
             <div className="flex items-center gap-3 pt-2">
@@ -567,6 +572,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
 
             {arPhase === "preview" && !isCompleted && (
               <>
+                <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags}>
                 <div className="space-y-3">
                   <span className="text-sm text-muted-foreground">{sections.length} modula — pročitaj pažljivo</span>
                   {sections.map((section) => (
@@ -576,6 +582,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                     </div>
                   ))}
                 </div>
+                </TextSelectionTooltip>
                 <Button onClick={startDrill} className="w-full py-5">
                   <Check className="h-4 w-4 mr-2" /> Pročitano — počni drill
                 </Button>

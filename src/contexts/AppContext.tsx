@@ -2,7 +2,6 @@ import { createContext, useContext, useCallback, useMemo, useState, useEffect, u
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCards } from "@/hooks/useCards";
 import { Card } from "@/lib/spaced-repetition";
-import { createMnemonicCard, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
 import { recordAppEntry, recordFirstAction, addActivityEntry, ActivityType } from "@/lib/metacognitive-storage";
 import { addPomodoroEntry } from "@/lib/storage";
 
@@ -60,7 +59,6 @@ interface UIContextValue {
   editingCard: Card | null;
   setEditingCard: (c: Card | null) => void;
   handleToggleTag: (cardId: string, tag: string) => void;
-  handleSendToWorkshop: (cardId: string) => void;
   pomodoro: PomodoroState;
   pomodoroToggle: () => void;
   pomodoroReset: () => void;
@@ -173,52 +171,13 @@ function UIProvider({ children }: { children: ReactNode }) {
   // Mnemonic cloning
   const handleToggleTag = useCallback((cardId: string, tag: string) => {
     toggleTag(cardId, tag);
-    if (tag === "memorizacija") {
-      const card = cards.find(c => c.id === cardId);
-      if (card && !(card.tags || []).includes("memorizacija")) {
-        const mnemonicCards = loadMnemonicCards();
-        const alreadyCloned = mnemonicCards.some(mc => mc.originalCardId === cardId);
-        if (!alreadyCloned) {
-          const clone = createMnemonicCard(
-            cardId, card.question,
-            card.sections.map(s => ({ title: s.title, content: s.content })),
-            card.category, card.subcategory,
-            (card.tags || []).filter(t => t !== "memorizacija"),
-          );
-          saveMnemonicCards([...mnemonicCards, clone]);
-        }
-      } else if (card && (card.tags || []).includes("memorizacija")) {
-        const mnemonicCards = loadMnemonicCards();
-        saveMnemonicCards(mnemonicCards.filter(mc => mc.originalCardId !== cardId));
-      }
-    }
-  }, [toggleTag, cards]);
-
-  const handleSendToWorkshop = useCallback((cardId: string) => {
-    const card = cards.find(c => c.id === cardId);
-    if (!card) return;
-    if (!(card.tags || []).includes("memorizacija")) {
-      toggleTag(cardId, "memorizacija");
-      const mnemonicCards = loadMnemonicCards();
-      const alreadyCloned = mnemonicCards.some(mc => mc.originalCardId === cardId);
-      if (!alreadyCloned) {
-        const clone = createMnemonicCard(
-          cardId, card.question,
-          card.sections.map(s => ({ title: s.title, content: s.content })),
-          card.category, card.subcategory,
-          (card.tags || []).filter(t => t !== "memorizacija"),
-        );
-        saveMnemonicCards([...mnemonicCards, clone]);
-      }
-    }
-    setView("mnemonic");
-  }, [cards, toggleTag, setView]);
+  }, [toggleTag]);
 
   const value = useMemo<UIContextValue>(() => ({
     view, setView, editingCard, setEditingCard,
-    handleToggleTag, handleSendToWorkshop,
+    handleToggleTag,
     pomodoro: pom.state, pomodoroToggle: pom.toggle, pomodoroReset: pom.reset,
-  }), [view, setView, editingCard, handleToggleTag, handleSendToWorkshop, pom]);
+  }), [view, setView, editingCard, handleToggleTag, pom]);
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 }

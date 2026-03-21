@@ -3,7 +3,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MyStats from "@/components/MyStats";
 
 export default function StatsPage() {
-  const { cards, categories, subcategories, categoryStats, reviewLog, srSettings, setView, handleSendToWorkshop } = useAppContext();
+  const { cards, categories, subcategories, categoryStats, reviewLog, srSettings, setView } = useAppContext();
 
   return (
     <ErrorBoundary label="Statistike" onNavigateHome={() => setView("dashboard")}>
@@ -17,7 +17,6 @@ export default function StatsPage() {
         onBack={() => setView("dashboard")}
         onShowKnowledgeMap={() => setView("knowledge-map")}
         onShowPlanner={() => setView("planner")}
-        onSendToWorkshop={handleSendToWorkshop}
       />
     </ErrorBoundary>
   );

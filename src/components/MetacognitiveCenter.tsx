@@ -45,10 +45,9 @@ interface Props {
   onBack: () => void;
   settings?: SRSettings;
   embedded?: boolean;
-  onSendToWorkshop?: (cardId: string) => void;
 }
 
-export default function MetacognitiveCenter({ cards, categories, reviewLog, onBack, settings, embedded, onSendToWorkshop }: Props) {
+export default function MetacognitiveCenter({ cards, categories, reviewLog, onBack, settings, embedded }: Props) {
   const weights = settings?.resistanceWeights ?? DEFAULT_SR_SETTINGS.resistanceWeights;
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto space-y-6">
@@ -86,7 +85,7 @@ export default function MetacognitiveCenter({ cards, categories, reviewLog, onBa
         </div>
 
         <TabsContent value="diary">
-          <DiaryTab cards={cards} reviewLog={reviewLog} onSendToWorkshop={onSendToWorkshop} />
+          <DiaryTab cards={cards} reviewLog={reviewLog} />
         </TabsContent>
         <TabsContent value="calibration">
           <CalibrationTab />
@@ -112,7 +111,7 @@ export default function MetacognitiveCenter({ cards, categories, reviewLog, onBa
 // DIARY TAB
 // ═══════════════════════════════════════════════════════════
 
-function DiaryTab({ cards, reviewLog, onSendToWorkshop }: { cards: Card[]; reviewLog: ReviewLogEntry[]; onSendToWorkshop?: (cardId: string) => void }) {
+function DiaryTab({ cards, reviewLog }: { cards: Card[]; reviewLog: ReviewLogEntry[] }) {
   const [diary, setDiary] = useState<DiaryEntry[]>(() => loadDiary());
   const [dailyGoal, setDailyGoal] = useState("");
   const [selfAnalysis, setSelfAnalysis] = useState("");
@@ -230,16 +229,6 @@ function DiaryTab({ cards, reviewLog, onSendToWorkshop }: { cards: Card[]; revie
                     <p className="text-sm truncate">{card?.question || "Nepoznata kartica"}</p>
                     <p className="text-xs text-muted-foreground">{l.category}</p>
                   </div>
-                  {onSendToWorkshop && card && (
-                    <button
-                      onClick={() => onSendToWorkshop(card.id)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0"
-                      title="Pošalji u Radionicu kuka"
-                    >
-                      <Wrench className="h-3 w-3" />
-                      <span className="hidden sm:inline">Radionica</span>
-                    </button>
-                  )}
                 </div>
               );
             })}

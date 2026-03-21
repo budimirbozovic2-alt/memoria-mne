@@ -26,10 +26,9 @@ interface Props {
   cards: Card[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
-  onSendToWorkshop?: (cardId: string) => void;
 }
 
-export default function CognitiveAnalytics({ cards, categories, reviewLog, onSendToWorkshop }: Props) {
+export default function CognitiveAnalytics({ cards, categories, reviewLog }: Props) {
   return (
     <div className="space-y-6">
       {/* 1. Interference Index */}
@@ -266,14 +265,6 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, onSen
                   <p className="text-xs font-medium truncate">{hook.question}</p>
                   <p className="text-[10px] text-muted-foreground">{hook.category} • {(hook.avgLatencyMs / 1000).toFixed(1)}s prosjek</p>
                 </div>
-                {onSendToWorkshop && (
-                  <button
-                    onClick={() => onSendToWorkshop(hook.originalCardId)}
-                    className="ml-2 flex-shrink-0 text-[10px] px-2 py-1 rounded-md bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
-                  >
-                    Radionica →
-                  </button>
-                )}
               </div>
             ))}
           </div>
