@@ -27,6 +27,10 @@ const SessionComplete = React.memo(function SessionComplete({
   learnMode, sessionStartTime, totalGrades, modulesCompleted, chainResets,
   readCardsCount, completedCardsCount, chainCompletedCardsCount, onBack,
 }: Props) {
+  useEffect(() => {
+    import("@/lib/sounds").then(m => m.playSessionComplete());
+  }, []);
+
   const elapsed = Date.now() - sessionStartTime;
   const minutes = Math.floor(elapsed / 60000);
   const seconds = Math.floor((elapsed % 60000) / 1000);
