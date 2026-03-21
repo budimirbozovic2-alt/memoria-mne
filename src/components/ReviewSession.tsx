@@ -453,6 +453,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
       onGrade={handleRandomGrade}
       onLogError={onLogError}
       onBack={() => setMode(null)}
+      onPause={handlePauseSession}
       progress={randomIndex}
       total={randomItems.length}
       sectionIndex={0}
