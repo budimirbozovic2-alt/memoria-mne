@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Volume2 } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
@@ -12,6 +13,8 @@ import { default as Settings } from "lucide-react/dist/esm/icons/settings";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Flame } from "lucide-react/dist/esm/icons/flame";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
+import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
+import { default as GraduationCap } from "lucide-react/dist/esm/icons/graduation-cap";
 import InfoPanel from "@/components/InfoPanel";
 
 interface Props {
