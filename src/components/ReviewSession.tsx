@@ -1,12 +1,11 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"; 
-import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS, SectionState } from "@/lib/spaced-repetition";
+import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS, SectionState, getRetrievability } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2 } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Shuffle } from "lucide-react/dist/esm/icons/shuffle";
 import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
 import { default as Info } from "lucide-react/dist/esm/icons/info";
 import { default as XIcon } from "lucide-react/dist/esm/icons/x";
@@ -14,6 +13,8 @@ import { default as Flame } from "lucide-react/dist/esm/icons/flame";
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
 import { default as Pause } from "lucide-react/dist/esm/icons/pause";
 import { default as Play } from "lucide-react/dist/esm/icons/play";
+import { default as Target } from "lucide-react/dist/esm/icons/target";
+import { default as Shield } from "lucide-react/dist/esm/icons/shield";
 import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak, stopSpeaking } from "@/lib/tts";
@@ -28,7 +29,7 @@ const REVIEW_SHORTCUTS = [
   { keys: "N", description: "Zabilježi grešku" },
 ];
 
-type ReviewMode = "essay" | "random" | "difficult" | null;
+type ReviewMode = "stabilization" | "critical" | "hardest" | null;
 type ViewWidth = "compact" | "normal" | "wide" | "full";
 
 const viewWidthClasses: Record<ViewWidth, string> = {
@@ -52,6 +53,7 @@ interface DueItem {
 
 interface Props {
   dueCards: Card[];
+  allCards: Card[];
   subcategories: Record<string, string[]>;
   srSettings: SRSettings;
   onReviewSection: (cardId: string, sectionId: string, grade: number) => void;
@@ -59,7 +61,7 @@ interface Props {
   onBack: () => void;
 }
 
-export default function ReviewSession({ dueCards, subcategories, srSettings, onReviewSection, onLogError, onBack }: Props) {
+export default function ReviewSession({ dueCards, allCards, subcategories, srSettings, onReviewSection, onLogError, onBack }: Props) {
   const [mode, setMode] = useState<ReviewMode>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
@@ -81,24 +83,84 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     let filtered = dueCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
     return filtered;
   }, [dueCards, selectedCategory, selectedSubcategory, filterExamFrequent]);
 
-  // Difficult cards: only sections that are leech or have high difficulty
-  const difficultItems = useMemo<DueItem[]>(() => {
+  // Apply same category/tag filters to allCards
+  const filteredAllCards = useMemo(() => {
+    let filtered = allCards;
+    if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
+    if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    return filtered;
+  }, [allCards, selectedCategory, selectedSubcategory, filterExamFrequent]);
+
+  // === MODE 1: Fokusirano Utvrđivanje (Stabilizacija) ===
+  // Learning/Relearning sections with stability < 5, sorted by lowest stability
+  const stabilizationItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
     filteredDueCards.forEach((card) => {
       getDueSections(card).forEach((section) => {
-        if (isLeech(section, srSettings) || section.difficulty >= 7 || (section.lapses || 0) >= 3) {
+        if (
+          (section.state === SectionState.Learning || section.state === SectionState.Relearning) &&
+          section.stability < 5
+        ) {
           items.push({ card, section });
         }
       });
     });
-    // Sort by difficulty descending
-    items.sort((a, b) => (b.section.difficulty + (b.section.lapses || 0) * 2) - (a.section.difficulty + (a.section.lapses || 0) * 2));
+    items.sort((a, b) => a.section.stability - b.section.stability);
     return items;
-  }, [filteredDueCards, srSettings]);
+  }, [filteredDueCards]);
+
+  // === MODE 2: Kritični Pregled (Zadržavanje) ===
+  // Sections with retrievability between 80-85% (sweet spot)
+  const criticalItems = useMemo<DueItem[]>(() => {
+    const items: DueItem[] = [];
+    filteredAllCards.forEach((card) => {
+      card.sections.forEach((section) => {
+        if (section.state === SectionState.New) return;
+        const r = getRetrievability(section);
+        if (r >= 80 && r <= 85) {
+          items.push({ card, section });
+        }
+      });
+    });
+    // Sort by retrievability ascending (closest to forgetting first)
+    items.sort((a, b) => getRetrievability(a.section) - getRetrievability(b.section));
+    return items;
+  }, [filteredAllCards]);
+
+  // === MODE 3: Najteža Pitanja ===
+  // All leech sections + top remaining by difficulty (D>7), capped at 50
+  const hardestItems = useMemo<DueItem[]>(() => {
+    const leechItems: DueItem[] = [];
+    const highDiffItems: DueItem[] = [];
+
+    filteredAllCards.forEach((card) => {
+      card.sections.forEach((section) => {
+        if (section.state === SectionState.New) return;
+        if (isLeech(section, srSettings)) {
+          leechItems.push({ card, section });
+        } else if (section.difficulty > 7) {
+          highDiffItems.push({ card, section });
+        }
+      });
+    });
+
+    // Sort high-diff by difficulty descending
+    highDiffItems.sort((a, b) => b.section.difficulty - a.section.difficulty);
+
+    // Combine: all leeches first, then fill up to 50 with high difficulty
+    const combined = [...leechItems];
+    const remaining = 50 - combined.length;
+    if (remaining > 0) {
+      combined.push(...highDiffItems.slice(0, remaining));
+    }
+
+    return combined.slice(0, 50);
+  }, [filteredAllCards, srSettings]);
 
   // Count exam-frequent cards in due set
   const examFrequentCount = useMemo(() => {
@@ -125,7 +187,6 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        // Only restore if less than 2 hours old
         if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
           setSavedSession(parsed);
         } else {
@@ -137,7 +198,12 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
 
   const resumeSession = useCallback(() => {
     if (!savedSession) return;
-    setMode(savedSession.mode);
+    // Map old mode names to new ones for backward compatibility
+    let resumeMode = savedSession.mode;
+    if (resumeMode === "essay") resumeMode = "stabilization";
+    if (resumeMode === "random") resumeMode = "critical";
+    if (resumeMode === "difficult") resumeMode = "hardest";
+    setMode(resumeMode);
     setSelectedCategory(savedSession.selectedCategory);
     setSelectedSubcategory(savedSession.selectedSubcategory);
     setFilterExamFrequent(savedSession.filterExamFrequent || false);
@@ -159,20 +225,6 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     return Array.from(subs).sort();
   }, [dueCards, selectedCategory]);
 
-  const randomItems = useMemo<DueItem[]>(() => {
-    const items: DueItem[] = [];
-    filteredDueCards.forEach((card) => {
-      getDueSections(card).forEach((section) => {
-        items.push({ card, section });
-      });
-    });
-    for (let i = items.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [items[i], items[j]] = [items[j], items[i]];
-    }
-    return items;
-  }, [filteredDueCards]);
-
   // Log activity when session finishes
   useEffect(() => {
     if (finished) {
@@ -184,6 +236,12 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
   useEffect(() => {
     if (finished) clearSavedSession();
   }, [finished, clearSavedSession]);
+
+  const modeLabels: Record<string, string> = {
+    stabilization: "Fokusirano Utvrđivanje",
+    critical: "Kritični Pregled",
+    hardest: "Najteža Pitanja",
+  };
 
   if (mode === null) {
     const filteredCount = filteredDueCards.length;
@@ -210,7 +268,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
             <div className="flex-1">
               <p className="text-sm font-medium">Sačuvana sesija</p>
               <p className="text-xs text-muted-foreground">
-                Mod: {savedSession.mode === "essay" ? "Sekvencijalno" : savedSession.mode === "random" ? "Interleaving" : "Teške kartice"}
+                Mod: {modeLabels[savedSession.mode] || savedSession.mode}
                 {savedSession.selectedCategory && ` · ${savedSession.selectedCategory}`}
               </p>
             </div>
@@ -310,53 +368,74 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
           )}
         </div>
 
+        {/* Mode selection */}
         <div className="grid gap-4">
+          {/* Mode 1: Fokusirano Utvrđivanje */}
           <button
-            onClick={() => { setMode("essay"); clearSavedSession(); }}
-            className="rounded-xl border bg-card p-6 text-left hover:border-primary transition-colors group"
+            onClick={() => { if (stabilizationItems.length > 0) { setMode("stabilization"); clearSavedSession(); } }}
+            disabled={stabilizationItems.length === 0}
+            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${stabilizationItems.length > 0 ? "hover:border-primary" : "opacity-50 cursor-not-allowed"}`}
           >
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                <BookOpen className="h-5 w-5" />
+              <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
+                <Target className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-medium">FSRS sistem</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Kartica po kartica — sve dospjele sekcije jedne kartice se testiraju redom prije prelaska na sljedeću. Za fokusirano učvršćivanje cjeline.
-            </p>
-          </button>
-
-          <button
-            onClick={() => { setMode("random"); clearSavedSession(); }}
-            className="rounded-xl border bg-card p-6 text-left hover:border-primary transition-colors group"
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                <Shuffle className="h-5 w-5" />
+              <div className="flex-1">
+                <h3 className="text-lg font-medium">Fokusirano Utvrđivanje</h3>
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Stabilizacija</span>
               </div>
-              <h3 className="text-lg font-medium">Izmiješano</h3>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Sve dospjele sekcije iz svih kartica izmiješane nasumično. Trenira prisjećanje bez konteksta — bliže ispitnim uslovima.
-            </p>
-          </button>
-
-          <button
-            onClick={() => { if (difficultItems.length > 0) { setMode("difficult"); clearSavedSession(); } }}
-            disabled={difficultItems.length === 0}
-            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${difficultItems.length > 0 ? "hover:border-destructive" : "opacity-50 cursor-not-allowed"}`}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
-                <Zap className="h-5 w-5" />
-              </div>
-              <h3 className="text-lg font-medium">Samo teške kartice</h3>
-              <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full ml-auto">
-                {difficultItems.length} {difficultItems.length === 1 ? "sekcija" : "sekcija"}
+              <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
+                {stabilizationItems.length} {stabilizationItems.length === 1 ? "sekcija" : "sekcija"}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Fokus na problematične sekcije: leech kartice, visoka težina (≥7) ili ≥3 pada. Intenzivni drill za najslabije tačke.
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Cilja nove eseje i one koje si skoro pogriješio. Ključno za brzo prebacivanje svježih informacija iz kratkoročne u dugoročnu memoriju.
+            </p>
+          </button>
+
+          {/* Mode 2: Kritični Pregled */}
+          <button
+            onClick={() => { if (criticalItems.length > 0) { setMode("critical"); clearSavedSession(); } }}
+            disabled={criticalItems.length === 0}
+            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${criticalItems.length > 0 ? "hover:border-warning" : "opacity-50 cursor-not-allowed"}`}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 rounded-lg bg-warning/10 text-warning">
+                <Shield className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium">Kritični Pregled</h3>
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Zadržavanje</span>
+              </div>
+              <span className="text-xs bg-warning/10 text-warning px-2.5 py-1 rounded-full font-medium">
+                {criticalItems.length} {criticalItems.length === 1 ? "sekcija" : "sekcija"}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Hvata kartice u idealnom trenutku zaborava (R ≈ 80–85%). Najbrži način da održiš sve eseje u glavi uz minimalan utrošak vremena.
+            </p>
+          </button>
+
+          {/* Mode 3: Najteža Pitanja */}
+          <button
+            onClick={() => { if (hardestItems.length > 0) { setMode("hardest"); clearSavedSession(); } }}
+            disabled={hardestItems.length === 0}
+            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${hardestItems.length > 0 ? "hover:border-destructive" : "opacity-50 cursor-not-allowed"}`}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2.5 rounded-lg bg-destructive/10 text-destructive">
+                <Zap className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium">Najteža Pitanja</h3>
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Okršaj</span>
+              </div>
+              <span className="text-xs bg-destructive/10 text-destructive px-2.5 py-1 rounded-full font-medium">
+                {hardestItems.length} {hardestItems.length === 1 ? "sekcija" : "sekcija"}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Direktan okršaj sa do 50 statistički najzahtjevnijih eseja. Uključuje tvoje "Leech" kartice (padovi ≥5×) i one sa najvećim indeksom težine.
             </p>
           </button>
         </div>
@@ -364,105 +443,23 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     );
   }
 
-  // === ESSAY MODE ===
-  if (mode === "essay") {
-    const card = filteredDueCards[cardIndex];
-    const dueSections = card ? getDueSections(card) : [];
-    const section = dueSections[sectionIndex];
-
-    const handleGrade = (grade: number) => {
-      if (!card || !section) return;
-      onReviewSection(card.id, section.id, grade);
-
-      if (sectionIndex + 1 < dueSections.length) {
-        setSectionIndex((i) => i + 1);
-        setShowAnswer(false);
-      } else if (cardIndex + 1 < filteredDueCards.length) {
-        setCardIndex((i) => i + 1);
-        setSectionIndex(0);
-        setShowAnswer(false);
-      } else {
-        setFinished(true);
-      }
-    };
-
-    if (finished || !card || !section) {
-      return <FinishedScreen onBack={onBack} />;
+  // Get items for current mode
+  const getCurrentItems = (): DueItem[] => {
+    switch (mode) {
+      case "stabilization": return stabilizationItems;
+      case "critical": return criticalItems;
+      case "hardest": return hardestItems;
+      default: return [];
     }
+  };
 
-    const totalDueSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
-    const completedSections = filteredDueCards.slice(0, cardIndex).reduce((sum, c) => sum + getDueSections(c).length, 0) + sectionIndex;
+  const items = getCurrentItems();
+  const currentItem = items[randomIndex];
 
-    return (
-      <ReviewCard
-        card={card}
-        section={section}
-        showAnswer={showAnswer}
-        setShowAnswer={setShowAnswer}
-        onGrade={handleGrade}
-        onLogError={onLogError}
-        onBack={() => setMode(null)}
-        onPause={handlePauseSession}
-        progress={completedSections}
-        total={totalDueSections}
-        sectionIndex={sectionIndex}
-        totalSectionsInCard={dueSections.length}
-        srSettings={srSettings}
-        viewWidth={viewWidth}
-        onViewWidthChange={setViewWidth}
-      />
-    );
-  }
-
-  // === DIFFICULT MODE ===
-  if (mode === "difficult") {
-    const currentDifficult = difficultItems[randomIndex];
-
-    const handleDifficultGrade = (grade: number) => {
-      if (!currentDifficult) return;
-      onReviewSection(currentDifficult.card.id, currentDifficult.section.id, grade);
-      if (randomIndex + 1 < difficultItems.length) {
-        setRandomIndex((i) => i + 1);
-        setShowAnswer(false);
-      } else {
-        setFinished(true);
-      }
-    };
-
-    if (finished || !currentDifficult) {
-      return <FinishedScreen onBack={onBack} />;
-    }
-
-    return (
-      <ReviewCard
-        card={currentDifficult.card}
-        section={currentDifficult.section}
-        showAnswer={showAnswer}
-        setShowAnswer={setShowAnswer}
-        onGrade={handleDifficultGrade}
-        onLogError={onLogError}
-        onBack={() => setMode(null)}
-        onPause={handlePauseSession}
-        progress={randomIndex}
-        total={difficultItems.length}
-        sectionIndex={0}
-        totalSectionsInCard={1}
-        srSettings={srSettings}
-        viewWidth={viewWidth}
-        onViewWidthChange={setViewWidth}
-        isDifficultMode
-      />
-    );
-  }
-
-  // === RANDOM MODE ===
-  const currentItem = randomItems[randomIndex];
-
-  const handleRandomGrade = (grade: number) => {
+  const handleGrade = (grade: number) => {
     if (!currentItem) return;
     onReviewSection(currentItem.card.id, currentItem.section.id, grade);
-
-    if (randomIndex + 1 < randomItems.length) {
+    if (randomIndex + 1 < items.length) {
       setRandomIndex((i) => i + 1);
       setShowAnswer(false);
     } else {
@@ -474,23 +471,30 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     return <FinishedScreen onBack={onBack} />;
   }
 
+  const modeBadge = mode === "stabilization"
+    ? { label: "Stabilizacija", className: "bg-primary/10 text-primary" }
+    : mode === "critical"
+    ? { label: "Zadržavanje", className: "bg-warning/10 text-warning" }
+    : { label: "Najteže", className: "bg-destructive/10 text-destructive" };
+
   return (
     <ReviewCard
       card={currentItem.card}
       section={currentItem.section}
       showAnswer={showAnswer}
       setShowAnswer={setShowAnswer}
-      onGrade={handleRandomGrade}
+      onGrade={handleGrade}
       onLogError={onLogError}
       onBack={() => setMode(null)}
       onPause={handlePauseSession}
       progress={randomIndex}
-      total={randomItems.length}
+      total={items.length}
       sectionIndex={0}
       totalSectionsInCard={1}
       srSettings={srSettings}
       viewWidth={viewWidth}
       onViewWidthChange={setViewWidth}
+      modeBadge={modeBadge}
     />
   );
 }
@@ -524,7 +528,13 @@ function HowItWorksCorner() {
             </div>
             <div className="text-xs text-muted-foreground space-y-2 leading-relaxed">
               <p>
-                <strong className="text-foreground">FSRS v5 algoritam</strong> prati stabilnost svake sekcije kartice. Kada vjerovatnoća prisjećanja padne ispod 95%, sekcija postaje „dospjela".
+                <strong className="text-foreground">Fokusirano Utvrđivanje</strong> — cilja svježe i pogrešne kartice (Learning/Relearning, S&lt;5d). Prebacuje ih iz kratkoročne u dugoročnu memoriju.
+              </p>
+              <p>
+                <strong className="text-foreground">Kritični Pregled</strong> — hvata kartice kad im je vjerovatnoća prisjećanja 80–85%. Idealan trenutak za minimalan utrošak vremena.
+              </p>
+              <p>
+                <strong className="text-foreground">Najteža Pitanja</strong> — top 50 najtežih: Leech kartice (≥5 padova) + visoka težina (D&gt;7).
               </p>
               <p>
                 <strong className="text-foreground">Ocjenjivanje (1–4):</strong>
@@ -535,9 +545,6 @@ function HowItWorksCorner() {
                 <li><span className="font-mono text-primary">3</span> — Sa ključnim detaljima → interval raste</li>
                 <li><span className="font-mono text-success">4</span> — Savršeno (3s pauza) → maksimalan rast</li>
               </ul>
-              <p>
-                <strong className="text-foreground">Kalibracija:</strong> Procjena sigurnosti (1–5) prije otkrivanja mjeri iluziju znanja.
-              </p>
               <p>
                 <strong className="text-foreground">Prečice:</strong> <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">Space</kbd> otkriva, <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">1-4</kbd> ocjenjuje, <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">N</kbd> + selekcija bilježi grešku.
               </p>
@@ -563,7 +570,7 @@ function FinishedScreen({ onBack }: { onBack: () => void }) {
 
 function ReviewCard({
   card, section, showAnswer, setShowAnswer, onGrade, onLogError, onBack, onPause,
-  progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange, isDifficultMode,
+  progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange, modeBadge,
 }: {
   card: Card; section: Section; showAnswer: boolean;
   setShowAnswer: (v: boolean) => void; onGrade: (g: number) => void;
@@ -572,7 +579,7 @@ function ReviewCard({
   sectionIndex: number; totalSectionsInCard: number;
   srSettings: SRSettings;
   viewWidth: ViewWidth; onViewWidthChange: (w: ViewWidth) => void;
-  isDifficultMode?: boolean;
+  modeBadge?: { label: string; className: string };
 }) {
   const { toast } = useToast();
   const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);
@@ -599,7 +606,6 @@ function ReviewCard({
   }, [answerRevealedAt]);
 
   const handleRevealAnswer = useCallback(() => {
-    // Record latency
     const latencyMs = Date.now() - questionShownAt.current;
     addLatencyEntry({ timestamp: Date.now(), cardId: card.id, sectionId: section.id, latencyMs, category: card.category });
     setShowAnswer(true);
@@ -614,19 +620,17 @@ function ReviewCard({
     onGrade(grade);
   }, [confidence, card.id, section.id, card.category, onGrade]);
 
-  // Keyboard shortcuts: Space to reveal, 1-4 to grade, Z to undo
+  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      // Space to reveal answer
       if (e.key === " " && !showAnswer) {
         e.preventDefault();
         handleRevealAnswer();
         return;
       }
 
-      // 1-4 to grade (only when answer is shown)
       if (showAnswer && ["1", "2", "3", "4"].includes(e.key)) {
         const grade = parseInt(e.key);
         if (grade === 4 && !canGradeEasy) return;
@@ -636,7 +640,6 @@ function ReviewCard({
         return;
       }
 
-      // N-key error capture
       if (showAnswer && (e.key === "n" || e.key === "N")) {
         const selection = window.getSelection()?.toString().trim();
         if (!selection || selection.length < 2) return;
@@ -647,6 +650,7 @@ function ReviewCard({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [showAnswer, card.id, section.id, handleGradeWithCalibration, onLogError, toast, handleRevealAnswer, canGradeEasy]);
+
   const gradeColorMap: Record<string, string> = {
     destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
     warning: "bg-warning text-warning-foreground hover:bg-warning/90",
@@ -673,9 +677,9 @@ function ReviewCard({
           )}
         </div>
         <div className="flex items-center gap-3">
-          {isDifficultMode && (
-            <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Zap className="h-3 w-3" /> Teške
+          {modeBadge && (
+            <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${modeBadge.className}`}>
+              {modeBadge.label}
             </span>
           )}
           <div className="hidden md:flex items-center gap-1 bg-secondary rounded-lg p-1">
