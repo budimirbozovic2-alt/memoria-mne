@@ -6,6 +6,7 @@ import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-rig
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Flame } from "lucide-react/dist/esm/icons/flame";
+import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
 import { useState, useRef, useEffect, useMemo, useCallback, CSSProperties, memo } from "react";
 import { List, type RowComponentProps } from "react-window";
 
@@ -24,6 +25,8 @@ interface Props {
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
+  reorderMode?: boolean;
+  onReorder?: (orderedIds: string[]) => void;
 }
 
 function ScoreBadge({ score }: { score: number }) {
