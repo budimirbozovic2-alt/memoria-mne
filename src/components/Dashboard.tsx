@@ -279,24 +279,25 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         <p className="text-xs text-muted-foreground tabular-nums">{examProgressPct}% savladano</p>
       </motion.div>}
 
-      {/* 2. Core Stats — dva brojača bez dugmadi */}
-      <div className="grid grid-cols-2 gap-4">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-          className="rounded-xl bg-card border p-5 space-y-2">
-          <Clock className="h-5 w-5 text-primary mb-1" />
-          <p className="text-4xl font-serif">{stats.due}</p>
-          <p className="text-sm text-muted-foreground">Za ponavljanje</p>
-          {pendingFirstReview > 0 && <p className="text-xs text-primary">+ {pendingFirstReview} čeka prvo pon.</p>}
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
-          className="rounded-xl bg-card border p-5 space-y-2">
-          <BookOpen className="h-5 w-5 text-success mb-1" />
-          <p className="text-4xl font-serif">{stats.learnedSections}</p>
-          <p className="text-sm text-muted-foreground">Naučene cjeline</p>
-          <p className="text-xs text-muted-foreground">od {stats.totalSections} ukupno</p>
-        </motion.div>
-      </div>
+      {/* 2. Core Stats */}
+      {wc.showCoreStats && (
+        <div className="grid grid-cols-2 gap-4">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+            className="rounded-xl bg-card border p-5 space-y-2">
+            <Clock className="h-5 w-5 text-primary mb-1" />
+            <p className="text-4xl font-serif">{stats.due}</p>
+            <p className="text-sm text-muted-foreground">Za ponavljanje</p>
+            {pendingFirstReview > 0 && <p className="text-xs text-primary">+ {pendingFirstReview} čeka prvo pon.</p>}
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+            className="rounded-xl bg-card border p-5 space-y-2">
+            <BookOpen className="h-5 w-5 text-success mb-1" />
+            <p className="text-4xl font-serif">{stats.learnedSections}</p>
+            <p className="text-sm text-muted-foreground">Naučene cjeline</p>
+            <p className="text-xs text-muted-foreground">od {stats.totalSections} ukupno</p>
+          </motion.div>
+        </div>
+      )}
 
       {/* 3. Dnevni Briefing (Insight Box) */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
