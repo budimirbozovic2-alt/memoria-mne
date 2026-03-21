@@ -54,6 +54,7 @@ export default function ReviewPage() {
       ) : (
         <ReviewSession
           dueCards={dueCards}
+          allCards={cards}
           subcategories={subcategories}
           srSettings={srSettings}
           onReviewSection={handleReviewSection}
