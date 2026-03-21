@@ -154,26 +154,29 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
                 </div>
 
                 {editMode ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-[11px] text-muted-foreground">Pitanje</label>
-                      <input
-                        value={editQuestion}
-                        onChange={e => setEditQuestion(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-                    {editSections.map((s, i) => (
-                      <div key={i}>
-                        <label className="text-[11px] text-muted-foreground">{s.title}</label>
-                        <textarea
-                          value={s.content.replace(/<[^>]*>/g, "")}
-                          onChange={e => updateSectionContent(i, e.target.value)}
-                          className="w-full min-h-[60px] px-3 py-2 rounded-lg border bg-background text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+                  <Suspense fallback={<div className="h-20 animate-pulse bg-secondary rounded-lg" />}>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] text-muted-foreground">Pitanje</label>
+                        <input
+                          value={editQuestion}
+                          onChange={e => setEditQuestion(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         />
                       </div>
-                    ))}
-                  </div>
+                      {editSections.map((s, i) => (
+                        <div key={i}>
+                          <label className="text-[11px] text-muted-foreground">{s.title}</label>
+                          <RichTextEditor
+                            value={s.content}
+                            onChange={val => updateSectionContent(i, val)}
+                            placeholder="Unesite sadržaj..."
+                            minimal
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </Suspense>
                 ) : (
                   card.sections.map((s, i) => (
                     <div key={i} className="rounded-lg bg-secondary/30 p-3">
