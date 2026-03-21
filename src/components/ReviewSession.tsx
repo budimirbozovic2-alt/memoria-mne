@@ -180,6 +180,11 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     }
   }, [finished]);
 
+  // Clear saved session when session finishes
+  useEffect(() => {
+    if (finished) clearSavedSession();
+  }, [finished, clearSavedSession]);
+
   if (mode === null) {
     const filteredCount = filteredDueCards.length;
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
@@ -198,52 +203,86 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
           </p>
         </div>
 
-        {dueCategories.length >= 1 && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Filtriraj po kategoriji</label>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-              >
-                Sve kategorije
-              </button>
-              {dueCategories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-                >
-                  {c}
-                </button>
-              ))}
+        {/* Resume saved session */}
+        {savedSession && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-3">
+            <Play className="h-5 w-5 text-primary shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Sačuvana sesija</p>
+              <p className="text-xs text-muted-foreground">
+                Mod: {savedSession.mode === "essay" ? "Sekvencijalno" : savedSession.mode === "random" ? "Interleaving" : "Teške kartice"}
+                {savedSession.selectedCategory && ` · ${savedSession.selectedCategory}`}
+              </p>
             </div>
+            <Button size="sm" onClick={resumeSession} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Play className="h-3.5 w-3.5 mr-1" /> Nastavi
+            </Button>
+            <button onClick={() => { setSavedSession(null); clearSavedSession(); }} className="text-muted-foreground hover:text-foreground p-1">
+              <XIcon className="h-3.5 w-3.5" />
+            </button>
+          </motion.div>
+        )}
 
-            {selectedCategory && dueSubcategories.length > 0 && (
-              <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1 mt-2">
+        {/* Filters */}
+        <div className="space-y-3">
+          {dueCategories.length >= 1 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Filtriraj po kategoriji</label>
+              <div className="flex gap-2 flex-wrap">
                 <button
-                  onClick={() => setSelectedSubcategory(null)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                  onClick={() => setSelectedCategory(null)}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
                 >
-                  Sve podkat.
+                  Sve kategorije
                 </button>
-                {dueSubcategories.map((sc) => (
+                {dueCategories.map((c) => (
                   <button
-                    key={sc}
-                    onClick={() => setSelectedSubcategory(sc)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                    key={c}
+                    onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
                   >
-                    {sc}
+                    {c}
                   </button>
                 ))}
-              </ScrollableRow>
-            )}
-          </div>
-        )}
+              </div>
+
+              {selectedCategory && dueSubcategories.length > 0 && (
+                <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1 mt-2">
+                  <button
+                    onClick={() => setSelectedSubcategory(null)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                  >
+                    Sve podkat.
+                  </button>
+                  {dueSubcategories.map((sc) => (
+                    <button
+                      key={sc}
+                      onClick={() => setSelectedSubcategory(sc)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                    >
+                      {sc}
+                    </button>
+                  ))}
+                </ScrollableRow>
+              )}
+            </div>
+          )}
+
+          {/* Exam-frequent filter */}
+          {examFrequentCount > 0 && (
+            <button
+              onClick={() => setFilterExamFrequent(!filterExamFrequent)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${filterExamFrequent ? "bg-destructive/15 text-destructive border border-destructive/30" : "bg-secondary text-secondary-foreground hover:bg-accent"}`}
+            >
+              <Flame className="h-3.5 w-3.5" />
+              Često na ispitu ({examFrequentCount})
+            </button>
+          )}
+        </div>
 
         <div className="grid gap-4">
           <button
-            onClick={() => setMode("essay")}
+            onClick={() => { setMode("essay"); clearSavedSession(); }}
             className="rounded-xl border bg-card p-6 text-left hover:border-primary transition-colors group"
           >
             <div className="flex items-center gap-3 mb-3">
@@ -258,7 +297,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
           </button>
 
           <button
-            onClick={() => setMode("random")}
+            onClick={() => { setMode("random"); clearSavedSession(); }}
             className="rounded-xl border bg-card p-6 text-left hover:border-primary transition-colors group"
           >
             <div className="flex items-center gap-3 mb-3">
@@ -269,6 +308,25 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
             </div>
             <p className="text-sm text-muted-foreground">
               Sekcije iz svih kartica izmiješane nasumično. Simulira ispitne uslove i jača dugoročno pamćenje.
+            </p>
+          </button>
+
+          <button
+            onClick={() => { if (difficultItems.length > 0) { setMode("difficult"); clearSavedSession(); } }}
+            disabled={difficultItems.length === 0}
+            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${difficultItems.length > 0 ? "hover:border-destructive" : "opacity-50 cursor-not-allowed"}`}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
+                <Zap className="h-5 w-5" />
+              </div>
+              <h3 className="text-lg font-medium">Samo teške kartice</h3>
+              <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full ml-auto">
+                {difficultItems.length} {difficultItems.length === 1 ? "sekcija" : "sekcija"}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Fokus na problematične sekcije: leech kartice, visoka težina (≥7) ili ≥3 pada. Intenzivni drill za najslabije tačke.
             </p>
           </button>
         </div>
