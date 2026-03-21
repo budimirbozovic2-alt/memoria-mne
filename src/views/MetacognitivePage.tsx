@@ -3,7 +3,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MetacognitiveCenter from "@/components/MetacognitiveCenter";
 
 export default function MetacognitivePage() {
-  const { cards, categories, reviewLog, srSettings, setView, handleSendToWorkshop } = useAppContext();
+  const { cards, categories, reviewLog, srSettings, setView } = useAppContext();
 
   return (
     <ErrorBoundary label="Metakognicija" onNavigateHome={() => setView("dashboard")}>
@@ -13,7 +13,6 @@ export default function MetacognitivePage() {
         reviewLog={reviewLog}
         onBack={() => setView("stats")}
         settings={srSettings}
-        onSendToWorkshop={handleSendToWorkshop}
       />
     </ErrorBoundary>
   );
