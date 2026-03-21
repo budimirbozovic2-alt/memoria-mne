@@ -93,6 +93,8 @@ function getEnergyLabel(level: "high" | "moderate" | "low"): string {
 }
 
 export default function Dashboard({ stats, categoryStats, categories, subcategories, cards, reviewLog, srSettings, onExport }: Props) {
+  const appSettings = useMemo(() => loadAppSettings(), []);
+  const wc = appSettings.dashboardWidgets;
   const todayKey = getDayKey(Date.now());
   const todayReviews = useMemo(() => reviewLog.filter(e => getDayKey(e.timestamp) === todayKey).length, [reviewLog, todayKey]);
   const dailyGoal = srSettings.dailyGoal;
