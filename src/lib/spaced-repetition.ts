@@ -1,4 +1,5 @@
 // FSRS v5 Algorithm with per-section tracking, state machine, leech detection
+import { loadAppSettings } from "./app-settings";
 
 export enum SectionState {
   New = 0,
