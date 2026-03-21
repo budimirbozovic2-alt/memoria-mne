@@ -90,12 +90,16 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
             <ArrowLeft className="h-4 w-4" /> Nazad
           </button>
           <h2 className="text-3xl font-serif">Podešavanja</h2>
-          <p className="text-muted-foreground mt-1">Algoritam ponavljanja, glasovni čitač i alati</p>
+          <p className="text-muted-foreground mt-1">Algoritam, retencija, dashboard, backup i zvuk</p>
         </div>
         <InfoPanel title="O podešavanjima">
-          <p><strong className="text-foreground">FSRS v5</strong> — algoritam za optimalni raspored ponavljanja sa 95% stopom zadržavanja.</p>
+          <p><strong className="text-foreground">FSRS v5</strong> — algoritam za optimalni raspored ponavljanja.</p>
+          <p><strong className="text-foreground">Ciljna retencija</strong> — podesi stopu zadržavanja (85-99%). Viša = češće ponavljanje.</p>
           <p><strong className="text-foreground">Leech prag</strong> — kartice koje padnu više od N puta se označavaju kao problematične.</p>
-          <p><strong className="text-foreground">Kognitivni otpor</strong> — težine za izračun kombinovanog skora otpora (lapsusi, latencija, zaboravljanje).</p>
+          <p><strong className="text-foreground">Kognitivni otpor</strong> — težine za izračun kombinovanog skora otpora.</p>
+          <p><strong className="text-foreground">Dashboard</strong> — prilagodi koje widgete vidiš na pregledu.</p>
+          <p><strong className="text-foreground">Backup</strong> — podesi interval za automatski podsjetnik.</p>
+          <p><strong className="text-foreground">Zvučni efekti</strong> — tonovi pri ocjenjivanju i završetku sesije.</p>
           <p><strong className="text-foreground">TTS</strong> — podesi brzinu i glas za funkciju čitanja naglas.</p>
         </InfoPanel>
       </div>
