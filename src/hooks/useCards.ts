@@ -186,8 +186,9 @@ export function useCards() {
     idbSaveSettings("srSettings", settings);
   }, []);
 
-  const addCard = useCallback((question: string, sections: { title: string; content: string }[], category: string, subcategory?: string) => {
+  const addCard = useCallback((question: string, sections: { title: string; content: string }[], category: string, subcategory?: string, chapter?: string) => {
     const card = createCard(question, sections, category, subcategory);
+    if (chapter) card.chapter = chapter;
     setCardMapState(prev => {
       schedulePersist({ type: "put", card });
       return { ...prev, [card.id]: card };
@@ -211,12 +212,13 @@ export function useCards() {
   }, [categories, setCategories]);
 
   // O(1) direct update — surgical IDB write
-  const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string }) => {
+  const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string; chapter?: string }) => {
     patchCard(id, c => {
       const newCard = { ...c };
       if (updates.question) newCard.question = updates.question;
       if (updates.category) newCard.category = updates.category;
       if (updates.subcategory !== undefined) newCard.subcategory = updates.subcategory;
+      if (updates.chapter !== undefined) newCard.chapter = updates.chapter;
       if (updates.sections) {
         newCard.sections = updates.sections.map(s => {
           const existing = c.sections.find(es => es.title === s.title);
@@ -473,7 +475,7 @@ export function useCards() {
     const templateCards = cards.map(c => ({
       id: c.id, question: c.question,
       sections: c.sections.map(s => ({ title: s.title, content: s.content })),
-      category: c.category, subcategory: c.subcategory || "", type: c.type, tags: c.tags || [],
+      category: c.category, subcategory: c.subcategory || "", chapter: c.chapter || "", type: c.type, tags: c.tags || [],
     }));
     const data = { version: 2, type: "template", cards: templateCards, categories, subcategories };
     const dateStr = new Date().toISOString().slice(0, 10);

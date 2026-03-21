@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,11 +19,11 @@ interface SectionInput {
 interface Props {
   categories: string[];
   subcategories: Record<string, string[]>;
-  onSave: (question: string, sections: SectionInput[], category: string, subcategory?: string) => void;
+  onSave: (question: string, sections: SectionInput[], category: string, subcategory?: string, chapter?: string) => void;
   onSaveFlash: (question: string, answer: string, category: string, subcategory?: string) => void;
   onCancel: () => void;
   editCard?: Card | null;
-  onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; category?: string; subcategory?: string }) => void;
+  onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; category?: string; subcategory?: string; chapter?: string }) => void;
 }
 
 type FormWidth = "compact" | "normal" | "wide" | "full";
@@ -84,13 +84,15 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
   );
   const [category, setCategory] = useState(editCard?.category ?? categories[0] ?? "Opšte");
   const [subcategory, setSubcategory] = useState(editCard?.subcategory ?? "");
+  const [chapter, setChapter] = useState(editCard?.chapter ?? "");
   const [newCategory, setNewCategory] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
   const [newSubcategory, setNewSubcategory] = useState("");
   const [showNewSub, setShowNewSub] = useState(false);
+  const [newChapter, setNewChapter] = useState("");
+  const [showNewChapter, setShowNewChapter] = useState(false);
   const [formWidth, setFormWidth] = useState<FormWidth>("wide");
   const [cuttingIndex, setCuttingIndex] = useState<number | null>(null);
-  
 
   const availableSubs = subcategories[category] || [];
 
@@ -130,10 +132,23 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
 
   const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
 
+  // Get existing chapters for current category+subcategory
+  const availableChapters = useMemo(() => {
+    // Get from localStorage (stored by MentalSkeleton)
+    const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory;
+    const cat = showNewCat && newCategory.trim() ? newCategory.trim() : category;
+    if (!sub) return [];
+    const key = `memoria-chapters-${cat}-${sub}`;
+    try {
+      return JSON.parse(localStorage.getItem(key) || "[]") as string[];
+    } catch { return []; }
+  }, [category, subcategory, showNewCat, newCategory, showNewSub, newSubcategory]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cat = showNewCat && newCategory.trim() ? newCategory.trim() : category;
     const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory;
+    const ch = showNewChapter && newChapter.trim() ? newChapter.trim() : chapter;
 
     if (cardType === "flash") {
       if (!stripHtml(question) || !stripHtml(flashAnswer)) return;
@@ -143,6 +158,7 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
           sections: [{ title: "Odgovor", content: flashAnswer }],
           category: cat,
           subcategory: sub,
+          chapter: ch,
         });
       } else {
         onSaveFlash(question, flashAnswer, cat, sub);
@@ -150,9 +166,9 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
     } else {
       if (!stripHtml(question) || sections.some((s) => !stripHtml(s.content))) return;
       if (editCard && onUpdate) {
-        onUpdate(editCard.id, { question, sections, category: cat, subcategory: sub });
+        onUpdate(editCard.id, { question, sections, category: cat, subcategory: sub, chapter: ch });
       } else {
-        onSave(question, sections, cat, sub);
+        onSave(question, sections, cat, sub, ch);
       }
     }
   };
@@ -354,6 +370,42 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
         )}
       </div>
 
+      {/* Chapter (only for essay cards with subcategory) */}
+      {cardType === "essay" && (subcategory || (showNewSub && newSubcategory.trim())) && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-muted-foreground">Glava (opciono)</label>
+          {!showNewChapter ? (
+            <div className="flex gap-2">
+              <Select value={chapter || "__none__"} onValueChange={(v) => setChapter(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="bg-card">
+                  <SelectValue placeholder="Bez glave" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Bez glave</SelectItem>
+                  {availableChapters.map((ch) => (
+                    <SelectItem key={ch} value={ch}>{ch}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="icon" onClick={() => setShowNewChapter(true)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                value={newChapter}
+                onChange={(e) => setNewChapter(e.target.value)}
+                placeholder="Nova glava (npr. Glava 1)..."
+                className="bg-card"
+              />
+              <Button type="button" variant="outline" size="icon" onClick={() => { setShowNewChapter(false); if (newChapter.trim()) setChapter(newChapter.trim()); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
       <Button type="submit" className="w-full">
         {editCard ? "Sačuvaj izmjene" : cardType === "flash" ? "Dodaj blic pitanje" : "Dodaj karticu"}
       </Button>

@@ -82,11 +82,36 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack 
         const catCards = filteredCards.filter((c) => c.category === cat);
         if (catCards.length === 0) return null;
         const subs = subcategories[cat] || [];
-        const groups: { name: string; cards: { card: Card; level: number }[] }[] = [];
+        const groups: { name: string; chapter?: string; cards: { card: Card; level: number }[] }[] = [];
 
         subs.forEach((sub) => {
           const subCards = catCards.filter((c) => c.subcategory === sub);
-          if (subCards.length > 0) {
+          if (subCards.length === 0) return;
+
+          // Group by chapter within subcategory
+          const chapterMap = new Map<string, Card[]>();
+          const noChapter: Card[] = [];
+          subCards.forEach(c => {
+            if (c.chapter && c.chapter !== "") {
+              const arr = chapterMap.get(c.chapter) || [];
+              arr.push(c);
+              chapterMap.set(c.chapter, arr);
+            } else {
+              noChapter.push(c);
+            }
+          });
+
+          if (chapterMap.size > 0) {
+            // Has chapters — show subcategory > chapter hierarchy
+            Array.from(chapterMap.entries())
+              .sort(([a], [b]) => a.localeCompare(b))
+              .forEach(([ch, chCards]) => {
+                groups.push({ name: `${sub} › ${ch}`, chapter: ch, cards: chCards.map(c => ({ card: c, level: getCardMasteryLevel(c) })) });
+              });
+            if (noChapter.length > 0) {
+              groups.push({ name: `${sub} › Ostalo`, cards: noChapter.map(c => ({ card: c, level: getCardMasteryLevel(c) })) });
+            }
+          } else {
             groups.push({ name: sub, cards: subCards.map((c) => ({ card: c, level: getCardMasteryLevel(c) })) });
           }
         });

@@ -14,6 +14,7 @@ interface Props {
   cards: Card[];
   filterCategory: string | null;
   filterSubcategory?: string | null;
+  filterChapter?: string | null;
   filterType?: "all" | "essay" | "flash";
   filterTag?: string | null;
   searchQuery?: string;
@@ -109,6 +110,7 @@ const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, s
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-xs uppercase tracking-widest text-muted-foreground">{card.category}</span>
               {card.subcategory && <span className="text-xs text-muted-foreground">› {card.subcategory}</span>}
+              {card.chapter && <span className="text-xs text-muted-foreground/70">› {card.chapter}</span>}
               <ScoreBadge score={score} />
               <RetentionBadge retention={retention} />
               {isFlash ? (
@@ -207,7 +209,7 @@ function VirtualRow(props: RowComponentProps<VirtualRowData>) {
 }
 
 export default function CardList({
-  cards, filterCategory, filterSubcategory, filterType = "all", filterTag, searchQuery = "",
+  cards, filterCategory, filterSubcategory, filterChapter, filterType = "all", filterTag, searchQuery = "",
   onEdit, onDelete, onToggleTag, scrollToCardId, onScrolledTo,
   selectionMode, selectedIds, onToggleSelect,
   reorderMode, onReorder,
@@ -220,6 +222,7 @@ export default function CardList({
   const filtered = useMemo(() => {
     let result = filterCategory ? cards.filter(c => c.category === filterCategory) : cards;
     if (filterSubcategory) result = result.filter(c => c.subcategory === filterSubcategory);
+    if (filterChapter) result = result.filter(c => c.chapter === filterChapter);
     if (filterType !== "all") result = result.filter(c => (c.type || "essay") === filterType);
     if (filterTag) result = result.filter(c => (c.tags || []).includes(filterTag));
     if (searchQuery.trim()) {
@@ -241,7 +244,7 @@ export default function CardList({
       return a.createdAt - b.createdAt;
     });
     return result;
-  }, [cards, filterCategory, filterSubcategory, filterType, filterTag, searchQuery]);
+  }, [cards, filterCategory, filterSubcategory, filterChapter, filterType, filterTag, searchQuery]);
 
   // Scroll-to-card for both modes
   useEffect(() => {

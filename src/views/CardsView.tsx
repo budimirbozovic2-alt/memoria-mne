@@ -27,6 +27,7 @@ export default function CardsView() {
 
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterSubcategory, setFilterSubcategory] = useState<string | null>(null);
+  const [filterChapter, setFilterChapter] = useState<string | null>(null);
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
   const [filterTag, setFilterTag] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -228,7 +229,7 @@ export default function CardsView() {
         <div className="space-y-2.5">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Kategorija</span>
           <ScrollableRow>
-            <button onClick={() => { setFilterCategory(null); setFilterSubcategory(null); if (reorderMode) setReorderMode(false); }} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!filterCategory ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+            <button onClick={() => { setFilterCategory(null); setFilterSubcategory(null); setFilterChapter(null); if (reorderMode) setReorderMode(false); }} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!filterCategory ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
               Sve
             </button>
             {categories.map(c => {
@@ -236,7 +237,7 @@ export default function CardsView() {
               return (
                 <button
                   key={c}
-                  onClick={() => { setFilterCategory(c); setFilterSubcategory(null); }}
+                  onClick={() => { setFilterCategory(c); setFilterSubcategory(null); setFilterChapter(null); }}
                   className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${filterCategory === c ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
                 >
                   {c}
@@ -260,6 +261,26 @@ export default function CardsView() {
               ))}
             </ScrollableRow>
           )}
+
+          {filterSubcategory && (() => {
+            const chaptersInFilter = Array.from(new Set(
+              cards.filter(c => c.category === filterCategory && c.subcategory === filterSubcategory && c.chapter)
+                .map(c => c.chapter!)
+            )).sort();
+            if (chaptersInFilter.length === 0) return null;
+            return (
+              <ScrollableRow className="pl-6 border-l-2 border-primary/10 ml-1">
+                <button onClick={() => setFilterChapter(null)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${!filterChapter ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                  Sve glave
+                </button>
+                {chaptersInFilter.map(ch => (
+                  <button key={ch} onClick={() => setFilterChapter(ch)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${filterChapter === ch ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                    {ch}
+                  </button>
+                ))}
+              </ScrollableRow>
+            );
+          })()}
         </div>
       </div>
 
@@ -267,6 +288,7 @@ export default function CardsView() {
         cards={cards}
         filterCategory={filterCategory}
         filterSubcategory={filterSubcategory}
+        filterChapter={filterChapter}
         filterType={filterType}
         filterTag={filterTag}
         searchQuery={debouncedSearch}

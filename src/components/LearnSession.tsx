@@ -44,6 +44,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const [learnMode, setLearnMode] = useState<LearnMode>("free");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">("order");
   const [started, setStarted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -95,6 +96,9 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
     if (selectedSubcategory) {
       filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
     }
+    if (selectedChapter) {
+      filtered = filtered.filter((c) => c.chapter === selectedChapter);
+    }
     if (learnMode === "chain") {
       filtered = filtered.filter((c) => c.type === "essay" && c.sections.length >= 3);
     }
@@ -105,9 +109,15 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
         return filtered.sort((a, b) => (a.readCount || 0) - (b.readCount || 0));
       case "order":
       default:
-        return filtered.sort((a, b) => a.createdAt - b.createdAt);
+        return filtered.sort((a, b) => {
+          // Sort by chapterOrder within same chapter
+          if (a.chapter && b.chapter && a.chapter === b.chapter) {
+            return (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0);
+          }
+          return a.createdAt - b.createdAt;
+        });
     }
-  }, [cards, selectedCategory, selectedSubcategory, sortMode, learnMode]);
+  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode]);
 
   const card = sortedCards[currentIndex];
 
@@ -357,6 +367,31 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
             </ScrollableRow>
           </div>
         )}
+
+        {selectedSubcategory && (() => {
+          const chaptersInSub = Array.from(new Set(
+            cards.filter(c => c.category === selectedCategory && c.subcategory === selectedSubcategory && c.chapter)
+              .map(c => c.chapter!)
+          )).sort();
+          if (chaptersInSub.length === 0) return null;
+          return (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Glava</label>
+              <ScrollableRow>
+                <button onClick={() => setSelectedChapter(null)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedChapter ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                  Sve glave
+                </button>
+                {chaptersInSub.map((ch) => (
+                  <button key={ch} onClick={() => setSelectedChapter(ch)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedChapter === ch ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                    {ch}
+                  </button>
+                ))}
+              </ScrollableRow>
+            </div>
+          );
+        })()}
 
         <div className="space-y-2">
           <label className="text-sm font-medium text-muted-foreground">Redoslijed</label>
