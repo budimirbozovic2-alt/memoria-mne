@@ -1,4 +1,4 @@
-import { useState, useMemo, memo, useCallback } from "react";
+import { useState, useMemo, memo, useCallback, lazy, Suspense } from "react";
 import { MnemonicCard, MnemonicStatus, HookType, loadMajorSystem, resolveNumber, extractNumbers, detectEnumerationItems } from "@/lib/mnemonic-storage";
 import { CheckCircle2 } from "lucide-react";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
@@ -19,6 +19,8 @@ import { default as X } from "lucide-react/dist/esm/icons/x";
 import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+
+const RichTextEditor = lazy(() => import("@/components/RichTextEditor"));
 
 const STATUS_CONFIG: Record<MnemonicStatus, { label: string; icon: typeof Brain; color: string }> = {
   "new": { label: "Nova", icon: Sparkles, color: "text-muted-foreground" },
@@ -152,26 +154,29 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
                 </div>
 
                 {editMode ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-[11px] text-muted-foreground">Pitanje</label>
-                      <input
-                        value={editQuestion}
-                        onChange={e => setEditQuestion(e.target.value)}
-                        className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      />
-                    </div>
-                    {editSections.map((s, i) => (
-                      <div key={i}>
-                        <label className="text-[11px] text-muted-foreground">{s.title}</label>
-                        <textarea
-                          value={s.content.replace(/<[^>]*>/g, "")}
-                          onChange={e => updateSectionContent(i, e.target.value)}
-                          className="w-full min-h-[60px] px-3 py-2 rounded-lg border bg-background text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+                  <Suspense fallback={<div className="h-20 animate-pulse bg-secondary rounded-lg" />}>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[11px] text-muted-foreground">Pitanje</label>
+                        <input
+                          value={editQuestion}
+                          onChange={e => setEditQuestion(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                         />
                       </div>
-                    ))}
-                  </div>
+                      {editSections.map((s, i) => (
+                        <div key={i}>
+                          <label className="text-[11px] text-muted-foreground">{s.title}</label>
+                          <RichTextEditor
+                            value={s.content}
+                            onChange={val => updateSectionContent(i, val)}
+                            placeholder="Unesite sadržaj..."
+                            minimal
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </Suspense>
                 ) : (
                   card.sections.map((s, i) => (
                     <div key={i} className="rounded-lg bg-secondary/30 p-3">
