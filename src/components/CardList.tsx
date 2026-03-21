@@ -347,7 +347,7 @@ export default function CardList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" onDragOver={reorderMode ? handleContainerDragOver : undefined}>
       {filtered.map((card, index) => (
         <div
           key={card.id}
