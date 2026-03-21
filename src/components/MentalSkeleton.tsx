@@ -614,18 +614,39 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     toast.success(`Glava "${name}" obrisana, kartice vraćene u neraspoređene`);
   };
 
-  // Get all chapter names including empty ones from localStorage
+  // Fix #7: Load stored chapters from IDB instead of localStorage
+  useEffect(() => {
+    const key = `chapters-${category}-${subcategory}`;
+    import("@/lib/db").then(({ idbLoadSettings }) => {
+      idbLoadSettings<string[]>(key, []).then(setStoredChapters);
+    });
+    // Also migrate from old localStorage key if exists
+    const oldKey = `memoria-chapters-${category}-${subcategory}`;
+    const old = localStorage.getItem(oldKey);
+    if (old) {
+      try {
+        const parsed = JSON.parse(old) as string[];
+        if (parsed.length > 0) {
+          const key2 = `chapters-${category}-${subcategory}`;
+          import("@/lib/db").then(({ idbSaveSettings }) => {
+            idbSaveSettings(key2, parsed);
+          });
+          setStoredChapters(parsed);
+          localStorage.removeItem(oldKey);
+        }
+      } catch {}
+    }
+  }, [category, subcategory]);
+
   const allChapters = useMemo(() => {
-    const key = `memoria-chapters-${category}-${subcategory}`;
-    const stored = JSON.parse(localStorage.getItem(key) || "[]") as string[];
-    const merged = new Set([...chapters, ...stored]);
+    const merged = new Set([...chapters, ...storedChapters]);
     return Array.from(merged).sort((a, b) => {
       const numA = extractChapterNum(a);
       const numB = extractChapterNum(b);
       if (numA !== null && numB !== null) return numA - numB;
       return a.localeCompare(b);
     });
-  }, [chapters, category, subcategory]);
+  }, [chapters, storedChapters]);
 
   // Legend counts
   const levelCounts = useMemo(() => {
