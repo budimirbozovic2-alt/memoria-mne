@@ -51,9 +51,9 @@ const slides = [
   },
   {
     icon: Brain,
-    iconColor: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+    iconColor: "bg-warning/15 text-warning",
     level: "Srednji",
-    levelColor: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+    levelColor: "bg-warning/15 text-warning",
     title: "Aktivno prisjećanje",
     subtitle: "Pregledaj, a zatim reprodukuj iz sjećanja.",
     bullets: [

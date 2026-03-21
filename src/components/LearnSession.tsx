@@ -786,8 +786,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
             )}
 
             {isChainCompleted && (
-              <div className="rounded-xl border bg-emerald-700/10 border-emerald-700/30 p-8 text-center space-y-3">
-                <Link2 className="h-8 w-8 text-emerald-700 dark:text-emerald-500 mx-auto" />
+              <div className="rounded-xl border bg-success/10 border-success/30 p-8 text-center space-y-3">
+                <Link2 className="h-8 w-8 text-success mx-auto" />
                 <p className="font-serif text-lg">Lanac završen!</p>
                 <p className="text-sm text-muted-foreground">Svi moduli su savršeno reprodukovani u nizu.</p>
               </div>
