@@ -130,7 +130,7 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack,
 
         return { category: cat, groups, totalCards: catCards.length };
       })
-      .filter(Boolean) as { category: string; groups: { name: string; cards: { card: Card; level: number }[] }[]; totalCards: number }[];
+      .filter(Boolean) as { category: string; groups: { name: string; chapter?: string; cards: { card: Card; level: number }[] }[]; totalCards: number }[];
   }, [filteredCards, categories, subcategories]);
 
   const levelCounts = useMemo(() => {
