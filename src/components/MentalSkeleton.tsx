@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, SectionState, calculateNextReview } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { motion, AnimatePresence } from "framer-motion";
