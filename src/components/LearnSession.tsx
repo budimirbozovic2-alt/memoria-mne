@@ -267,7 +267,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
           </div>
 
           <div className="grid gap-4">
-            {modes.map(({ key, label, level, levelColor, desc, icon: Icon }) => {
+            {modes.map(({ key, label, level, levelColor, desc, tip, icon: Icon }) => {
               const disabled = key === "chain" && chainCount === 0;
               return (
                 <button key={key}
@@ -285,6 +285,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                       <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${levelColor}`}>{level}</span>
                     </div>
                     <p className="text-sm text-muted-foreground">{desc}</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1.5 leading-relaxed">{tip}</p>
                     {key === "chain" && (
                       <p className="text-xs text-muted-foreground mt-1">
                         {chainCount > 0 ? `${chainCount} pitanja dostupno` : "Potrebna esejska pitanja sa ≥3 modula"}
