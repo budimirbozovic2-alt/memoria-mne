@@ -22,7 +22,7 @@ const CARDS_SHORTCUTS = [
 export default function CardsView() {
   const {
     cards, categories, subcategories,
-    deleteCard, handleToggleTag, bulkUpdateSubcategory, reorderCards,
+    deleteCard, handleToggleTag, bulkUpdateSubcategory, bulkUpdateChapter, reorderCards,
     setView, setEditingCard,
   } = useAppContext();
 
