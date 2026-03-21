@@ -141,6 +141,22 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack,
 
   const total = filteredCards.length;
 
+  // Drill-down into MentalSkeleton for a specific subcategory
+  if (drillDown && onUpdateChapters && onReviewSection) {
+    return (
+      <Suspense fallback={<TabSkeleton />}>
+        <MentalSkeleton
+          cards={cards}
+          category={drillDown.category}
+          subcategory={drillDown.subcategory}
+          onBack={() => setDrillDown(null)}
+          onUpdateChapters={onUpdateChapters}
+          onReviewSection={onReviewSection}
+        />
+      </Suspense>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
