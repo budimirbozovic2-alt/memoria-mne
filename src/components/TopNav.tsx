@@ -112,7 +112,7 @@ export default function TopNav({ onToggleZen, zenActive }: Props) {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <FlaskConical className="h-3.5 w-3.5 flex-shrink-0" />
+              <FlaskConical className="h-4 w-4 flex-shrink-0" />
               <span>Laboratorija</span>
             </button>
 
