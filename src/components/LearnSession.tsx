@@ -595,7 +595,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                 <div className="flex items-center gap-2">
                   {sections.map((_, i) => (
                     <div key={i} className={`h-2 flex-1 rounded-full transition-colors ${
-                      i < drillIndex ? "bg-emerald-500" : i === drillIndex ? "bg-primary" : "bg-secondary"
+                      i < drillIndex ? "bg-success" : i === drillIndex ? "bg-primary" : "bg-secondary"
                     }`} />
                   ))}
                 </div>
