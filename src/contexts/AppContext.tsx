@@ -60,7 +60,6 @@ interface UIContextValue {
   editingCard: Card | null;
   setEditingCard: (c: Card | null) => void;
   handleToggleTag: (cardId: string, tag: string) => void;
-  handleSendToWorkshop: (cardId: string) => void;
   pomodoro: PomodoroState;
   pomodoroToggle: () => void;
   pomodoroReset: () => void;
