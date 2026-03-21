@@ -13,10 +13,11 @@ import { default as TrendingUp } from "lucide-react/dist/esm/icons/trending-up";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { motion } from "framer-motion";
 import { Card as SRCard, SRSettings, getPendingFirstReviewCount, getSectionScore } from "@/lib/spaced-repetition";
-import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
+import { ReviewLogEntry, getStorageUsage, getLastBackupTime } from "@/lib/storage";
 import { loadDiary, loadSlippageLog } from "@/lib/metacognitive-storage";
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, loadDisciplineLog } from "@/lib/planner-storage";
 import { calcEnergyRecommendation } from "@/lib/cognitive-analytics";
+import { loadAppSettings } from "@/lib/app-settings";
 import { useMemo } from "react";
 import { useDeferredCompute } from "@/hooks/useDeferredCompute";
 import { Progress } from "@/components/ui/progress";
@@ -92,6 +93,8 @@ function getEnergyLabel(level: "high" | "moderate" | "low"): string {
 }
 
 export default function Dashboard({ stats, categoryStats, categories, subcategories, cards, reviewLog, srSettings, onExport }: Props) {
+  const appSettings = useMemo(() => loadAppSettings(), []);
+  const wc = appSettings.dashboardWidgets;
   const todayKey = getDayKey(Date.now());
   const todayReviews = useMemo(() => reviewLog.filter(e => getDayKey(e.timestamp) === todayKey).length, [reviewLog, todayKey]);
   const dailyGoal = srSettings.dailyGoal;
@@ -124,7 +127,12 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   }, [focusRatio, dailyGoal, stats.totalSections]);
 
   const storageUsage = useDeferredCompute(() => getStorageUsage(), [cards, reviewLog]);
-  const backupOverdue = useDeferredCompute(() => isBackupOverdue(), []);
+  const backupOverdue = useDeferredCompute(() => {
+    if (appSettings.autoBackupDays <= 0) return false;
+    const last = getLastBackupTime();
+    if (!last || last === 0) return false;
+    return Date.now() - last > appSettings.autoBackupDays * 24 * 60 * 60 * 1000;
+  }, [appSettings]);
   const lastBackup = useDeferredCompute(() => getLastBackupTime(), []);
 
   const plannerData = useDeferredCompute(() => {
@@ -258,7 +266,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   return (
     <div className="space-y-6">
       {/* 1. Exam Progress Bar */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+      {wc.showExamProgress && <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
         className="rounded-xl bg-card border p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -274,29 +282,30 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </div>
         <Progress value={examProgressPct} className="h-3" />
         <p className="text-xs text-muted-foreground tabular-nums">{examProgressPct}% savladano</p>
-      </motion.div>
+      </motion.div>}
 
-      {/* 2. Core Stats — dva brojača bez dugmadi */}
-      <div className="grid grid-cols-2 gap-4">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
-          className="rounded-xl bg-card border p-5 space-y-2">
-          <Clock className="h-5 w-5 text-primary mb-1" />
-          <p className="text-4xl font-serif">{stats.due}</p>
-          <p className="text-sm text-muted-foreground">Za ponavljanje</p>
-          {pendingFirstReview > 0 && <p className="text-xs text-primary">+ {pendingFirstReview} čeka prvo pon.</p>}
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
-          className="rounded-xl bg-card border p-5 space-y-2">
-          <BookOpen className="h-5 w-5 text-success mb-1" />
-          <p className="text-4xl font-serif">{stats.learnedSections}</p>
-          <p className="text-sm text-muted-foreground">Naučene cjeline</p>
-          <p className="text-xs text-muted-foreground">od {stats.totalSections} ukupno</p>
-        </motion.div>
-      </div>
+      {/* 2. Core Stats */}
+      {wc.showCoreStats && (
+        <div className="grid grid-cols-2 gap-4">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }}
+            className="rounded-xl bg-card border p-5 space-y-2">
+            <Clock className="h-5 w-5 text-primary mb-1" />
+            <p className="text-4xl font-serif">{stats.due}</p>
+            <p className="text-sm text-muted-foreground">Za ponavljanje</p>
+            {pendingFirstReview > 0 && <p className="text-xs text-primary">+ {pendingFirstReview} čeka prvo pon.</p>}
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}
+            className="rounded-xl bg-card border p-5 space-y-2">
+            <BookOpen className="h-5 w-5 text-success mb-1" />
+            <p className="text-4xl font-serif">{stats.learnedSections}</p>
+            <p className="text-sm text-muted-foreground">Naučene cjeline</p>
+            <p className="text-xs text-muted-foreground">od {stats.totalSections} ukupno</p>
+          </motion.div>
+        </div>
+      )}
 
       {/* 3. Dnevni Briefing (Insight Box) */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+      {wc.showBriefing && <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="rounded-xl bg-card border p-5 space-y-4">
         <div className="flex items-center gap-2">
           <Brain className="h-4 w-4 text-primary" />
@@ -336,10 +345,10 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
           <Progress value={goalProgress} className="h-2" />
           {goalProgress >= 100 && <p className="text-xs text-success font-medium">✓ Cilj ostvaren! 🎉</p>}
         </div>
-      </motion.div>
+      </motion.div>}
 
       {/* 4. Idealni Fokus */}
-      {stats.totalSections > 0 && (
+      {wc.showIdealFocus && stats.totalSections > 0 && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}
           className="rounded-xl bg-card border p-5 space-y-4">
           <div className="flex items-center justify-between">
@@ -397,64 +406,65 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
       )}
 
       {/* 5. Velocity + Najslabije kategorije */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Velocity Trend */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
-          className="rounded-xl bg-card border p-5 space-y-2">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-medium">Brzina učenja</h3>
-          </div>
-          {velocityData ? (
-            <>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-semibold tabular-nums">{velocityData.velocity}</p>
-                <span className="text-sm text-muted-foreground">sekcija/dan</span>
+      {(wc.showVelocity || wc.showWeakCategories) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {wc.showVelocity && (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
+              className="rounded-xl bg-card border p-5 space-y-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-medium">Brzina učenja</h3>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {velocityData.trend === "up" ? "📈 Raste u odnosu na prošlu sedmicu" :
-                 velocityData.trend === "down" ? "📉 Pada u odnosu na prošlu sedmicu" :
-                 "➡️ Stabilan tempo"}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">Učitavanje...</p>
+              {velocityData ? (
+                <>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-semibold tabular-nums">{velocityData.velocity}</p>
+                    <span className="text-sm text-muted-foreground">sekcija/dan</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {velocityData.trend === "up" ? "📈 Raste u odnosu na prošlu sedmicu" :
+                     velocityData.trend === "down" ? "📉 Pada u odnosu na prošlu sedmicu" :
+                     "➡️ Stabilan tempo"}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Učitavanje...</p>
+              )}
+            </motion.div>
           )}
-        </motion.div>
-
-        {/* Top 3 najslabije kategorije */}
-        {weakestCategories.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
-            className="rounded-xl bg-card border p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-medium">Najslabije kategorije</h3>
-            </div>
-            <div className="space-y-2">
-              {weakestCategories.map((cat, i) => (
-                <div key={cat.name} className="flex items-center gap-3">
-                  <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-medium truncate">{cat.name}</span>
-                      <span className="text-xs text-muted-foreground tabular-nums">{cat.score}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${cat.score < 30 ? "bg-destructive" : cat.score < 60 ? "bg-warning" : "bg-primary"}`}
-                        style={{ width: `${cat.score}%` }}
-                      />
+          {wc.showWeakCategories && weakestCategories.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
+              className="rounded-xl bg-card border p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-medium">Najslabije kategorije</h3>
+              </div>
+              <div className="space-y-2">
+                {weakestCategories.map((cat, i) => (
+                  <div key={cat.name} className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium truncate">{cat.name}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{cat.score}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${cat.score < 30 ? "bg-destructive" : cat.score < 60 ? "bg-warning" : "bg-primary"}`}
+                          style={{ width: `${cat.score}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
 
 
-      {statusIcons.length > 0 && (
+      {wc.showStatusIcons && statusIcons.length > 0 && (
         <TooltipProvider delayDuration={200}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}
             className="flex items-center gap-2 flex-wrap">

@@ -557,6 +557,9 @@ function HowItWorksCorner() {
 }
 
 function FinishedScreen({ onBack }: { onBack: () => void }) {
+  useEffect(() => {
+    import("@/lib/sounds").then(m => m.playSessionComplete());
+  }, []);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-6 py-20">
       <h2 className="text-4xl font-serif italic">Sesija završena!</h2>
@@ -617,6 +620,8 @@ function ReviewCard({
     if (confidence !== null) {
       addCalibrationEntry({ timestamp: Date.now(), cardId: card.id, sectionId: section.id, confidence, actualGrade: grade, category: card.category });
     }
+    // Play sound effect
+    import("@/lib/sounds").then(m => m.playGradeSound(grade));
     onGrade(grade);
   }, [confidence, card.id, section.id, card.category, onGrade]);
 

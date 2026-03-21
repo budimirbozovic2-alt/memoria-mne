@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { TTSSettings, DEFAULT_TTS_SETTINGS, loadTTSSettings, saveTTSSettings, getAvailableVoices, speak, stopSpeaking } from "@/lib/tts";
+import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings } from "@/lib/app-settings";
+import { playGradeGood } from "@/lib/sounds";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Volume2 } from "lucide-react";
@@ -15,6 +18,9 @@ import { default as Flame } from "lucide-react/dist/esm/icons/flame";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
 import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
 import { default as GraduationCap } from "lucide-react/dist/esm/icons/graduation-cap";
+import { default as LayoutDashboard } from "lucide-react/dist/esm/icons/layout-dashboard";
+import { default as Shield } from "lucide-react/dist/esm/icons/shield";
+import { default as BellRing } from "lucide-react/dist/esm/icons/bell-ring";
 import InfoPanel from "@/components/InfoPanel";
 
 interface Props {
@@ -31,6 +37,7 @@ const FIELD_CONFIG = [
 export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
   const [local, setLocal] = useState<SRSettings>({ ...settings });
   const [tts, setTts] = useState<TTSSettings>(loadTTSSettings());
+  const [app, setApp] = useState<AppSettings>(loadAppSettings());
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
@@ -56,10 +63,12 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
   const handleSave = () => {
     onUpdate(local);
     saveTTSSettings(tts);
+    saveAppSettings(app);
   };
 
   const handleReset = () => {
     setLocal({ ...DEFAULT_SR_SETTINGS });
+    setApp({ ...DEFAULT_APP_SETTINGS });
   };
 
   const testVoice = () => {
@@ -67,8 +76,10 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
   };
 
   const hasChanges = JSON.stringify(local) !== JSON.stringify(settings) ||
-    JSON.stringify(tts) !== JSON.stringify(loadTTSSettings());
-  const isDefault = JSON.stringify(local) === JSON.stringify(DEFAULT_SR_SETTINGS);
+    JSON.stringify(tts) !== JSON.stringify(loadTTSSettings()) ||
+    JSON.stringify(app) !== JSON.stringify(loadAppSettings());
+  const isDefault = JSON.stringify(local) === JSON.stringify(DEFAULT_SR_SETTINGS) &&
+    JSON.stringify(app) === JSON.stringify(DEFAULT_APP_SETTINGS);
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -79,12 +90,16 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
             <ArrowLeft className="h-4 w-4" /> Nazad
           </button>
           <h2 className="text-3xl font-serif">Podešavanja</h2>
-          <p className="text-muted-foreground mt-1">Algoritam ponavljanja, glasovni čitač i alati</p>
+          <p className="text-muted-foreground mt-1">Algoritam, retencija, dashboard, backup i zvuk</p>
         </div>
         <InfoPanel title="O podešavanjima">
-          <p><strong className="text-foreground">FSRS v5</strong> — algoritam za optimalni raspored ponavljanja sa 95% stopom zadržavanja.</p>
+          <p><strong className="text-foreground">FSRS v5</strong> — algoritam za optimalni raspored ponavljanja.</p>
+          <p><strong className="text-foreground">Ciljna retencija</strong> — podesi stopu zadržavanja (85-99%). Viša = češće ponavljanje.</p>
           <p><strong className="text-foreground">Leech prag</strong> — kartice koje padnu više od N puta se označavaju kao problematične.</p>
-          <p><strong className="text-foreground">Kognitivni otpor</strong> — težine za izračun kombinovanog skora otpora (lapsusi, latencija, zaboravljanje).</p>
+          <p><strong className="text-foreground">Kognitivni otpor</strong> — težine za izračun kombinovanog skora otpora.</p>
+          <p><strong className="text-foreground">Dashboard</strong> — prilagodi koje widgete vidiš na pregledu.</p>
+          <p><strong className="text-foreground">Backup</strong> — podesi interval za automatski podsjetnik.</p>
+          <p><strong className="text-foreground">Zvučni efekti</strong> — tonovi pri ocjenjivanju i završetku sesije.</p>
           <p><strong className="text-foreground">TTS</strong> — podesi brzinu i glas za funkciju čitanja naglas.</p>
         </InfoPanel>
       </div>
@@ -390,7 +405,124 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
         </div>
       </section>
 
-      {/* Action buttons */}
+      {/* Section: Ciljna retencija */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <Brain className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Ciljna retencija</h3>
+        </div>
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Stopa zadržavanja</label>
+            <span className="text-sm font-medium tabular-nums">{Math.round(app.targetRetention * 100)}%</span>
+          </div>
+          <Slider
+            value={[app.targetRetention * 100]}
+            min={85}
+            max={99}
+            step={1}
+            onValueChange={(v) => setApp(prev => ({ ...prev, targetRetention: v[0] / 100 }))}
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>85% (brže napredovanje)</span>
+            <span>99% (maksimalno pamćenje)</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Viša retencija = kraći intervali = više ponavljanja. Podrazumijevano: 95%.
+            {app.targetRetention !== 0.95 && <span className="text-primary ml-1">Promijenjeno sa 95%.</span>}
+          </p>
+        </div>
+      </section>
+
+      {/* Section: Dashboard konfiguracija */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <LayoutDashboard className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Dashboard widgeti</h3>
+        </div>
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <p className="text-xs text-muted-foreground">Odaberi koje widgete želiš vidjeti na Dashboard-u.</p>
+          {([
+            { key: "showExamProgress" as const, label: "Napredak do cilja" },
+            { key: "showCoreStats" as const, label: "Brojači (Due / Naučeno)" },
+            { key: "showBriefing" as const, label: "Dnevni briefing" },
+            { key: "showIdealFocus" as const, label: "Idealni fokus" },
+            { key: "showVelocity" as const, label: "Brzina učenja" },
+            { key: "showWeakCategories" as const, label: "Najslabije kategorije" },
+            { key: "showStatusIcons" as const, label: "Status ikone (upozorenja)" },
+          ]).map(({ key, label }) => (
+            <div key={key} className="flex items-center justify-between py-1">
+              <label className="text-sm">{label}</label>
+              <Switch
+                checked={app.dashboardWidgets[key]}
+                onCheckedChange={(v) => setApp(prev => ({
+                  ...prev,
+                  dashboardWidgets: { ...prev.dashboardWidgets, [key]: v }
+                }))}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Section: Auto-backup */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <Shield className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Automatski backup</h3>
+        </div>
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Podsjetnik svakih</label>
+            <Select
+              value={String(app.autoBackupDays)}
+              onValueChange={(v) => setApp(prev => ({ ...prev, autoBackupDays: parseInt(v) }))}
+            >
+              <SelectTrigger className="w-32 bg-background">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Isključeno</SelectItem>
+                <SelectItem value="3">3 dana</SelectItem>
+                <SelectItem value="7">7 dana</SelectItem>
+                <SelectItem value="14">14 dana</SelectItem>
+                <SelectItem value="30">30 dana</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Dashboard će prikazati upozorenje ako backup nije napravljen u zadanih {app.autoBackupDays || "—"} dana.
+          </p>
+        </div>
+      </section>
+
+      {/* Section: Zvučni efekti */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <BellRing className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Zvučni efekti</h3>
+        </div>
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-sm font-medium">Zvuk pri ocjenjivanju</label>
+              <p className="text-xs text-muted-foreground">Različiti tonovi za Opet, Teško, Dobro i Lako</p>
+            </div>
+            <Switch
+              checked={app.soundEffects}
+              onCheckedChange={(v) => {
+                setApp(prev => ({ ...prev, soundEffects: v }));
+                if (v) {
+                  // Immediately save so test works
+                  saveAppSettings({ ...app, soundEffects: true });
+                  setTimeout(() => playGradeGood(), 100);
+                }
+              }}
+            />
+          </div>
+        </div>
+      </section>
+
       <div className="flex gap-3 pb-8">
         <Button onClick={handleSave} disabled={!hasChanges} className="flex-1">
           Sačuvaj izmjene
