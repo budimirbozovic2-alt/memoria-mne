@@ -81,8 +81,77 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     let filtered = dueCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
     return filtered;
-  }, [dueCards, selectedCategory, selectedSubcategory]);
+  }, [dueCards, selectedCategory, selectedSubcategory, filterExamFrequent]);
+
+  // Difficult cards: only sections that are leech or have high difficulty
+  const difficultItems = useMemo<DueItem[]>(() => {
+    const items: DueItem[] = [];
+    filteredDueCards.forEach((card) => {
+      getDueSections(card).forEach((section) => {
+        if (isLeech(section, srSettings) || section.difficulty >= 7 || (section.lapses || 0) >= 3) {
+          items.push({ card, section });
+        }
+      });
+    });
+    // Sort by difficulty descending
+    items.sort((a, b) => (b.section.difficulty + (b.section.lapses || 0) * 2) - (a.section.difficulty + (a.section.lapses || 0) * 2));
+    return items;
+  }, [filteredDueCards, srSettings]);
+
+  // Count exam-frequent cards in due set
+  const examFrequentCount = useMemo(() => {
+    return dueCards.filter(c => c.tags?.includes("često-na-ispitu")).length;
+  }, [dueCards]);
+
+  // Session pause/resume
+  const SESSION_KEY = "sr-review-session";
+
+  const saveSessionState = useCallback(() => {
+    if (mode === null || finished) return;
+    const state = { mode, selectedCategory, selectedSubcategory, filterExamFrequent, cardIndex, sectionIndex, randomIndex, timestamp: Date.now() };
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch (_) {}
+  }, [mode, selectedCategory, selectedSubcategory, filterExamFrequent, cardIndex, sectionIndex, randomIndex, finished]);
+
+  const clearSavedSession = useCallback(() => {
+    try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+  }, []);
+
+  // Check for saved session on mount
+  const [savedSession, setSavedSession] = useState<any>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Only restore if less than 2 hours old
+        if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
+          setSavedSession(parsed);
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+        }
+      }
+    } catch (_) {}
+  }, []);
+
+  const resumeSession = useCallback(() => {
+    if (!savedSession) return;
+    setMode(savedSession.mode);
+    setSelectedCategory(savedSession.selectedCategory);
+    setSelectedSubcategory(savedSession.selectedSubcategory);
+    setFilterExamFrequent(savedSession.filterExamFrequent || false);
+    setCardIndex(savedSession.cardIndex || 0);
+    setSectionIndex(savedSession.sectionIndex || 0);
+    setRandomIndex(savedSession.randomIndex || 0);
+    setSavedSession(null);
+    clearSavedSession();
+  }, [savedSession, clearSavedSession]);
+
+  const handlePauseSession = useCallback(() => {
+    saveSessionState();
+    onBack();
+  }, [saveSessionState, onBack]);
 
   const dueSubcategories = useMemo(() => {
     if (!selectedCategory) return [];
