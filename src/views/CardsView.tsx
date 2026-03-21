@@ -95,6 +95,7 @@ export default function CardsView() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-serif">Kartice</h2>
+        <ShortcutsHint shortcuts={CARDS_SHORTCUTS} />
         <div className="flex items-center gap-2">
           <button
             onClick={toggleReorderMode}
