@@ -615,6 +615,71 @@ export default function StrategicPlanner({ cards, categories, reviewLog, onBack 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
           className="space-y-5">
 
+          {/* Rocket Streak Widget */}
+          {(() => {
+            let streak = 0;
+            const sorted = [...disciplineLog].sort((a, b) => b.date.localeCompare(a.date));
+            for (const entry of sorted) {
+              if (entry.status === "diligent") streak++;
+              else break;
+            }
+            const bestStreak = (() => {
+              let best = 0, cur = 0;
+              const asc = [...disciplineLog].sort((a, b) => a.date.localeCompare(b.date));
+              for (const e of asc) {
+                if (e.status === "diligent") { cur++; best = Math.max(best, cur); }
+                else cur = 0;
+              }
+              return best;
+            })();
+
+            if (disciplineLog.length === 0) return null;
+
+            return (
+              <div className={cn(
+                "rounded-xl border p-5 space-y-3",
+                streak >= 7 ? "bg-success/10 border-success/30" :
+                streak >= 3 ? "bg-primary/10 border-primary/30" :
+                "bg-card"
+              )}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">🔥</span>
+                    <div>
+                      <h3 className="font-serif text-lg">Rocket Streak</h3>
+                      <p className="text-xs text-muted-foreground">Uzastopni 🚀 dani</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={cn(
+                      "text-4xl font-bold tabular-nums",
+                      streak >= 7 ? "text-success" : streak >= 3 ? "text-primary" : "text-foreground"
+                    )}>
+                      {streak}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">dana zaredom</p>
+                  </div>
+                </div>
+                {bestStreak > streak && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
+                    <span>🏆</span>
+                    <span>Najbolji streak: <span className="font-bold text-foreground">{bestStreak}</span> dana</span>
+                  </div>
+                )}
+                {streak > 0 && (
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: Math.min(streak, 30) }).map((_, i) => (
+                      <div key={i} className={cn(
+                        "h-2 flex-1 rounded-full",
+                        streak >= 7 ? "bg-success" : "bg-primary"
+                      )} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Recent discipline entries */}
           <div className="rounded-xl bg-card border p-5 space-y-4">
             <div className="flex items-center gap-2">
