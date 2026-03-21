@@ -118,6 +118,7 @@ export function createMnemonicCardFromSelection(
     subcategory,
     tags: tags || [],
     hookType: detectHookType([{ content: selectedText }]),
+    hookMode: "video",
     mnemonicVideo: "",
     acronym: "",
     mnemonicStatus: "new",
