@@ -261,7 +261,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   return (
     <div className="space-y-6">
       {/* 1. Exam Progress Bar */}
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+      {wc.showExamProgress && <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
         className="rounded-xl bg-card border p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
