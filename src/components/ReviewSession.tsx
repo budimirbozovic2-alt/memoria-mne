@@ -632,10 +632,22 @@ function ReviewCard({
   return (
     <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
-          <ArrowLeft className="h-4 w-4" /> Nazad
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <ArrowLeft className="h-4 w-4" /> Nazad
+          </button>
+          {onPause && (
+            <button onClick={onPause} className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded-md hover:bg-secondary text-xs" title="Pauziraj sesiju i nastavi kasnije">
+              <Pause className="h-3.5 w-3.5" /> Pauza
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-3">
+          {isDifficultMode && (
+            <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Zap className="h-3 w-3" /> Teške
+            </span>
+          )}
           <div className="hidden md:flex items-center gap-1 bg-secondary rounded-lg p-1">
             {(Object.keys(viewWidthClasses) as ViewWidth[]).map((w) => (
               <button
