@@ -132,10 +132,23 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
 
   const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
 
+  // Get existing chapters for current category+subcategory
+  const availableChapters = useMemo(() => {
+    // Get from localStorage (stored by MentalSkeleton)
+    const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory;
+    const cat = showNewCat && newCategory.trim() ? newCategory.trim() : category;
+    if (!sub) return [];
+    const key = `memoria-chapters-${cat}-${sub}`;
+    try {
+      return JSON.parse(localStorage.getItem(key) || "[]") as string[];
+    } catch { return []; }
+  }, [category, subcategory, showNewCat, newCategory, showNewSub, newSubcategory]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cat = showNewCat && newCategory.trim() ? newCategory.trim() : category;
     const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory;
+    const ch = showNewChapter && newChapter.trim() ? newChapter.trim() : chapter;
 
     if (cardType === "flash") {
       if (!stripHtml(question) || !stripHtml(flashAnswer)) return;
@@ -145,6 +158,7 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
           sections: [{ title: "Odgovor", content: flashAnswer }],
           category: cat,
           subcategory: sub,
+          chapter: ch,
         });
       } else {
         onSaveFlash(question, flashAnswer, cat, sub);
@@ -152,9 +166,9 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
     } else {
       if (!stripHtml(question) || sections.some((s) => !stripHtml(s.content))) return;
       if (editCard && onUpdate) {
-        onUpdate(editCard.id, { question, sections, category: cat, subcategory: sub });
+        onUpdate(editCard.id, { question, sections, category: cat, subcategory: sub, chapter: ch });
       } else {
-        onSave(question, sections, cat, sub);
+        onSave(question, sections, cat, sub, ch);
       }
     }
   };
