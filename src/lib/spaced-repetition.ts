@@ -125,7 +125,7 @@ function nextState(currentState: SectionState, grade: number): SectionState {
   }
 }
 
-export function calculateNextReview(section: Section, grade: number): Partial<Section> {
+export function calculateNextReview(section: Section, grade: number, targetRetention?: number): Partial<Section> {
   let newStability: number;
   let newDifficulty: number;
   let newLapses = section.lapses || 0;
@@ -167,8 +167,9 @@ export function calculateNextReview(section: Section, grade: number): Partial<Se
     }
   }
 
-  const targetRetention = loadAppSettings().targetRetention;
-  const interval = Math.max(calculateInterval(newStability, targetRetention), 1 / (24 * 60)); // minimum 1 minute
+  // Use passed retention or load from settings (cached by caller for batch operations)
+  const retention = targetRetention ?? loadAppSettings().targetRetention;
+  const interval = Math.max(calculateInterval(newStability, retention), 1 / (24 * 60)); // minimum 1 minute
 
   // Critical zone: grades 1-2 get priority short intervals (max 24h for grade 2, max 20min for grade 1)
   let finalNextReview = Date.now() + interval * 24 * 60 * 60 * 1000;

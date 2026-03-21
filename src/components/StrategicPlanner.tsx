@@ -365,7 +365,7 @@ export default function StrategicPlanner({ cards, categories, reviewLog, onBack 
                 <PopoverContent className="w-auto p-0" align="start">
                   <CalendarUI
                     mode="single" selected={goalDate} onSelect={setFinalGoal}
-                    disabled={(date) => date < new Date()} initialFocus
+                    disabled={(date) => date < startOfDay(new Date())} initialFocus
                     className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>

@@ -152,6 +152,10 @@ function createWindow(splash) {
   win.webContents.on('render-process-gone', (_event, details) => {
     logCrash('render-process-gone', JSON.stringify(details));
     if (!win.isDestroyed()) {
+      // Reset the ready flag so new window can register renderer-ready
+      appReady = false;
+      // Remove old listener to prevent leak
+      ipcMain.removeAllListeners('renderer-ready');
       win.destroy();
       const newSplash = createSplashWindow();
       createWindow(newSplash);
@@ -163,7 +167,7 @@ function createWindow(splash) {
   });
 
   win.webContents.on('responsive', () => {
-    logCrash('responsive', 'Window became responsive again');
+    // Window recovered from unresponsive state
   });
 
   // Save window state on move/resize (debounced)
