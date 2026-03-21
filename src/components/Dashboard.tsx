@@ -340,7 +340,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
           <Progress value={goalProgress} className="h-2" />
           {goalProgress >= 100 && <p className="text-xs text-success font-medium">✓ Cilj ostvaren! 🎉</p>}
         </div>
-      </motion.div>
+      </motion.div>}
 
       {/* 4. Idealni Fokus */}
       {stats.totalSections > 0 && (
