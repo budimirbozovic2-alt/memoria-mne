@@ -16,8 +16,6 @@ import { Card as SRCard, SRSettings, getPendingFirstReviewCount, getSectionScore
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
 import { loadDiary, loadSlippageLog } from "@/lib/metacognitive-storage";
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, loadDisciplineLog } from "@/lib/planner-storage";
-import { loadDiary, loadSlippageLog } from "@/lib/metacognitive-storage";
-import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, loadDisciplineLog } from "@/lib/planner-storage";
 import { calcEnergyRecommendation } from "@/lib/cognitive-analytics";
 import { useMemo } from "react";
 import { useDeferredCompute } from "@/hooks/useDeferredCompute";
