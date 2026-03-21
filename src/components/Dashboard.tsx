@@ -127,7 +127,12 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   }, [focusRatio, dailyGoal, stats.totalSections]);
 
   const storageUsage = useDeferredCompute(() => getStorageUsage(), [cards, reviewLog]);
-  const backupOverdue = useDeferredCompute(() => isBackupOverdue(), []);
+  const backupOverdue = useDeferredCompute(() => {
+    if (appSettings.autoBackupDays <= 0) return false;
+    const last = getLastBackupTime();
+    if (!last || last === 0) return false;
+    return Date.now() - last > appSettings.autoBackupDays * 24 * 60 * 60 * 1000;
+  }, [appSettings]);
   const lastBackup = useDeferredCompute(() => getLastBackupTime(), []);
 
   const plannerData = useDeferredCompute(() => {
