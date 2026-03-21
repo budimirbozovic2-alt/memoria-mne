@@ -58,6 +58,7 @@ interface Props {
   cards: Card[];
   onBack: () => void;
   onClearErrorLog: (cardId: string) => void;
+  embedded?: boolean;
 }
 
 function StatusBadge({ status }: { status: ErrorStatus }) {
