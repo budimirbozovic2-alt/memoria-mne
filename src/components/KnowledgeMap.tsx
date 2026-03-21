@@ -60,10 +60,11 @@ export function getMasteryColor(level: number): string {
   return MASTERY_LEVELS[level]?.color || MASTERY_LEVELS[0].color;
 }
 
-export default function KnowledgeMap({ cards, categories, subcategories, onBack }: Props) {
+export default function KnowledgeMap({ cards, categories, subcategories, onBack, onUpdateChapters, onReviewSection }: Props) {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(() => new Set(categories));
   const [searchQuery, setSearchQuery] = useState("");
+  const [drillDown, setDrillDown] = useState<{ category: string; subcategory: string } | null>(null);
 
   const toggleCat = (cat: string) => {
     setExpandedCats((prev) => {
