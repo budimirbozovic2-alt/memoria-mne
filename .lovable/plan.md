@@ -1,44 +1,44 @@
 
 
-## Redizajn navigacije — "Laboratorija" mega menu
+## Označavanje teksta za Mnemo radionicu
 
-### Trenutno stanje
-Nav bar ima 8 stavki + Baza podataka = 9 linkova, što je prenatrpano.
+### Šta se mijenja
+Umjesto označavanja cijele kartice ikonom mozga, korisnik će moći da **selektuje dio teksta** unutar sekcije kartice (tokom učenja ili u bazi) i jednim klikom ga pošalje u Mnemo radionicu. Samo selektovani tekst se klonira kao nova mnemotehnička kartica.
 
-### Novi layout
+### Kako će to izgledati
+1. Korisnik označi (selektuje) dio teksta mišem u sekciji kartice
+2. Pojavi se mali **floating tooltip** iznad selekcije sa ikonom mozga i tekstom "Mnemo kuka"
+3. Klik na tooltip kreira mnemotehničku karticu sa selektovanim tekstom kao jedinom sekcijom
+4. Toast potvrda: "Dodano u Mnemo radionicu"
 
-**Glavni nav linkovi (5):**
-1. Dashboard (/)
-2. Učenje (/learn)
-3. Konsolidacija (/review) — sa badge-om
-4. **Laboratorija** — mega menu dugme (nije link)
-5. Podešavanja (/settings)
+### Tehnički plan
 
-**Laboratorija mega menu panel** (otvara se klikom):
-Široki dropdown panel sa ikonama i opisima, organizovan u grid (2-3 kolone):
-- Statistika (/stats) — BarChart3
-- Dnevnik (/metacognitive) — BookOpen
-- Mnemo radionica (/mnemonic) — Brain
-- Strateški planer (/planner) — Target
-- Kartice (/cards → /database) — BookOpen/Database
-- Kategorije (/categories → /database) — FolderOpen
+**1. `src/lib/mnemonic-storage.ts`** — nova helper funkcija:
+- `createMnemonicCardFromSelection(cardId, question, selectedText, category, subcategory, tags)` — kreira MnemonicCard gdje je `sections` samo `[{ title: "Isječak", content: selectedText }]`
 
-Panel se zatvara klikom van njega ili na neku stavku.
+**2. `src/components/TextSelectionTooltip.tsx`** — novi komponent:
+- Sluša `mouseup` event na parent kontejneru
+- Provjerava `window.getSelection()` — ako ima selektovani tekst (>5 karaktera), prikazuje apsolutno pozicionirani tooltip na poziciji selekcije
+- Tooltip sadrži dugme sa Brain ikonom
+- Klik poziva callback `onAddToMnemonic(selectedText: string)`
+- Tooltip se sklanja na `mousedown` ili kad selekcija nestane
 
-### Tehnički detalji
+**3. `src/components/LearnSession.tsx`** — integracija:
+- Wrap sekcija sadržaja u kontejner koji koristi `TextSelectionTooltip`
+- Callback `onAddToMnemonic` kreira mnemo karticu iz selekcije koristeći podatke trenutne kartice (question, category, itd.)
+- Radi u svim režimima (slobodno, aktivno, lanac)
 
-**Fajl: `src/components/TopNav.tsx`**
-- Razdvojiti `NAV_ITEMS` na `PRIMARY_NAV` (4 direktna linka) i `LAB_ITEMS` (6 stavki u mega meniju)
-- Dodati state `labOpen` za toggle panela
-- Laboratorija dugme sa ikonom `FlaskConical` ili `Beaker`
-- Mega panel: apsolutno pozicioniran, grid layout 2x3, svaka stavka ima ikonu + naziv + kratki opis
-- Click-outside zatvara panel (useRef + useEffect)
-- Ako je korisnik na nekoj od lab ruta, Laboratorija dugme ima active stil
-- Podešavanja ostaje kao direktan link u nav baru
+**4. `src/components/CardList.tsx`** — integracija u bazu podataka:
+- Isti tooltip na expandiranom sadržaju kartice (ako postoji prikaz sekcija)
+- Alternativno: dodati u detail/preview prikaz kartice
 
-**Mobilni meni:**
-- Isti flat layout kao dosad, samo sa grupom "Laboratorija" koja prikazuje sve pod-stavke uvučeno
+**5. `src/contexts/AppContext.tsx`** — nova funkcija:
+- `addToMnemonicWorkshop(cardId, question, selectedHtml, category, subcategory, tags)` — dostupna globalno
+- Ukloniti stari `handleSendToWorkshop` ako više nije potreban
 
-**Fajl: `src/components/AppSidebar.tsx`**
-- Ažurirati da prati istu strukturu (PRIMARY + Laboratorija grupa + Podešavanja)
+**6. Uklanjanje starog pristupa:**
+- Ukloniti Brain ikonu iz `CardList.tsx` tag dugmadi
+- Ukloniti `memorizacija` tag iz `CARD_TAGS` u `spaced-repetition.ts`
+- Očistiti `handleToggleTag` logiku za memorizacija u `AppContext.tsx`
+- Ažurirati InfoPanel tekstove u `MnemonicModule.tsx` i `MnemonicWorkshop.tsx`
 
