@@ -288,6 +288,7 @@ export default function CardsView() {
         cards={cards}
         filterCategory={filterCategory}
         filterSubcategory={filterSubcategory}
+        filterChapter={filterChapter}
         filterType={filterType}
         filterTag={filterTag}
         searchQuery={debouncedSearch}
