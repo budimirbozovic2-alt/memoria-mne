@@ -174,6 +174,19 @@ export async function migrateFromLocalStorage(): Promise<void> {
   }
 }
 
+// Fix #3: Non-blocking localStorage sync helper
+function deferredLocalStorageSync(key: string, data: () => string) {
+  if ("requestIdleCallback" in window) {
+    (window as any).requestIdleCallback(() => {
+      try { localStorage.setItem(key, data()); } catch {}
+    }, { timeout: 5000 });
+  } else {
+    setTimeout(() => {
+      try { localStorage.setItem(key, data()); } catch {}
+    }, 200);
+  }
+}
+
 // ─── Async storage API ──────────────────────────────────
 
 export async function idbLoadCards(): Promise<Card[]> {
@@ -185,10 +198,8 @@ export async function idbSaveCards(cards: Card[]): Promise<void> {
     await db.cards.clear();
     await db.cards.bulkPut(cards);
   });
-  // Keep localStorage in sync for Electron auto-backup
-  try {
-    localStorage.setItem("sr-essay-cards", JSON.stringify(cards));
-  } catch { /* quota exceeded is OK — IndexedDB is primary now */ }
+  // Keep localStorage in sync for Electron auto-backup (non-blocking)
+  deferredLocalStorageSync("sr-essay-cards", () => JSON.stringify(cards));
 }
 
 export async function idbPutCard(card: Card): Promise<void> {
