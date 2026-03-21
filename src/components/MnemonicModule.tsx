@@ -46,6 +46,10 @@ export default function MnemonicModule({ onBack }: Props) {
     setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
   }, [setCards]);
 
+  const deleteCard = useCallback((id: string) => {
+    setCards(prev => prev.filter(c => c.id !== id));
+  }, [setCards]);
+
   const recordResult = useCallback((cardId: string, success: boolean) => {
     setCards(prev => prev.map(c => {
       if (c.id !== cardId) return c;
@@ -63,7 +67,7 @@ export default function MnemonicModule({ onBack }: Props) {
   const stats = useMemo(() => getMnemonicStats(cards), [cards]);
 
   if (subView === "workshop") {
-    return <MnemonicWorkshop cards={cards} onUpdateCard={updateCard} onBack={() => setSubView("menu")} />;
+    return <MnemonicWorkshop cards={cards} onUpdateCard={updateCard} onDeleteCard={deleteCard} onBack={() => setSubView("menu")} />;
   }
 
   if (subView === "test") {

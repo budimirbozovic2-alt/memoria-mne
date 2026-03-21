@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface Props {
   cards: MnemonicCard[];
   onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
+  onDeleteCard: (id: string) => void;
   onBack: () => void;
 }
 
@@ -26,7 +27,7 @@ const STATUS_FILTERS: { value: MnemonicStatus | "all"; label: string; icon: type
   { value: "ready", label: "Spremne", icon: CheckCircle2 },
 ];
 
-export default function MnemonicWorkshop({ cards, onUpdateCard, onBack }: Props) {
+export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, onBack }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<MnemonicStatus | "all">("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -249,6 +250,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onBack }: Props)
               isExpanded={expandedId === card.id}
               onToggle={() => handleToggle(card.id)}
               onUpdateCard={onUpdateCard}
+              onDeleteCard={onDeleteCard}
               majorSystem={majorSystem}
             />
           ))}

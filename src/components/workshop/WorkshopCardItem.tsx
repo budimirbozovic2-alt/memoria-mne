@@ -16,7 +16,9 @@ import { default as MoreHorizontal } from "lucide-react/dist/esm/icons/more-hori
 import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
 import { default as Save } from "lucide-react/dist/esm/icons/save";
 import { default as X } from "lucide-react/dist/esm/icons/x";
+import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const STATUS_CONFIG: Record<MnemonicStatus, { label: string; icon: typeof Brain; color: string }> = {
   "new": { label: "Nova", icon: Sparkles, color: "text-muted-foreground" },
@@ -35,11 +37,13 @@ interface Props {
   isExpanded: boolean;
   onToggle: () => void;
   onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
+  onDeleteCard: (id: string) => void;
   majorSystem: Record<number, string>;
 }
 
-function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, majorSystem }: Props) {
+function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDeleteCard, majorSystem }: Props) {
   const [editMode, setEditMode] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [editQuestion, setEditQuestion] = useState("");
   const [editSections, setEditSections] = useState<{ title: string; content: string }[]>([]);
 
@@ -66,6 +70,11 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, major
   const cancelEdit = useCallback(() => {
     setEditMode(false);
   }, []);
+
+  const handleDelete = useCallback(() => {
+    onDeleteCard(card.id);
+    toast.success("Mnemo kartica obrisana.");
+  }, [card.id, onDeleteCard]);
 
   const updateSectionContent = useCallback((idx: number, content: string) => {
     setEditSections(prev => prev.map((s, i) => i === idx ? { ...s, content } : s));
@@ -296,11 +305,28 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, major
                 </div>
               </div>
 
-              {card.testCount > 0 && (
-                <p className="text-xs text-muted-foreground text-right">
-                  {card.successCount}/{card.testCount} tačno ({Math.round(card.successCount / card.testCount * 100)}%)
-                </p>
-              )}
+              {/* Delete + stats */}
+              <div className="flex items-center justify-between pt-1 border-t border-dashed">
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" /> Obriši
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-destructive">Obrisati?</span>
+                    <button onClick={handleDelete} className="text-xs font-medium text-destructive hover:text-destructive/80">Da</button>
+                    <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted-foreground hover:text-foreground">Ne</button>
+                  </div>
+                )}
+                {card.testCount > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {card.successCount}/{card.testCount} tačno ({Math.round(card.successCount / card.testCount * 100)}%)
+                  </p>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
