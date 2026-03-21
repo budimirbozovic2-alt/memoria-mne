@@ -2,6 +2,7 @@
 
 export type MnemonicStatus = "new" | "in-workshop" | "ready";
 export type HookType = "rokovi" | "nabrajanja" | "ostalo";
+export type HookMode = "video" | "acronym";
 
 export interface MnemonicCard {
   id: string;
