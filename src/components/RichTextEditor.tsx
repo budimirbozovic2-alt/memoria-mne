@@ -222,7 +222,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
       // Try markdown auto-formatting
       tryMarkdownAutoFormat(editorRef.current);
       internalValue.current = editorRef.current.innerHTML;
-      onChange(editorRef.current.innerHTML);
+      onChange(sanitizeHtml(editorRef.current.innerHTML));
     }
   };
 
