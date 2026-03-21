@@ -203,7 +203,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
       parentEl.replaceWith(text);
       if (editorRef.current) {
         internalValue.current = editorRef.current.innerHTML;
-        onChange(editorRef.current.innerHTML);
+        onChange(sanitizeHtml(editorRef.current.innerHTML));
       }
     } else {
       editorRef.current?.focus();
