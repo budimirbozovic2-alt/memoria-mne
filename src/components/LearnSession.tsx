@@ -179,8 +179,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
     if (setupStep === "mode") {
       const chainCount = cards.filter((c) => c.type === "essay" && c.sections.length >= 3).length;
       const modes: { key: LearnMode; label: string; level: string; levelColor: string; desc: string; tip: string; icon: typeof BookOpen }[] = [
-        { key: "free", label: "Slobodno učenje", level: "Lak", levelColor: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400", desc: "Prolazi kroz materijal svojim tempom. Čitaj i označavaj pročitano.", tip: "Idealno za prvi susret sa gradivom — bez pritiska ocjenjivanja. Kartica se označava kao pročitana i postaje dostupna za ponavljanje.", icon: BookOpen },
-        { key: "active-recall", label: "Aktivno prisjećanje", level: "Srednji", levelColor: "bg-amber-500/15 text-amber-600 dark:text-amber-400", desc: "Pregledaj pa reprodukuj. Ocijeni svoje znanje za svaki modul.", tip: "Naučno najefektivniji metod učenja. Pokušaj odgovoriti prije otkrivanja — ocjena direktno utiče na FSRS algoritam i buduće intervale ponavljanja.", icon: Brain },
+        { key: "free", label: "Slobodno učenje", level: "Lak", levelColor: "bg-success/15 text-success", desc: "Prolazi kroz materijal svojim tempom. Čitaj i označavaj pročitano.", tip: "Idealno za prvi susret sa gradivom — bez pritiska ocjenjivanja. Kartica se označava kao pročitana i postaje dostupna za ponavljanje.", icon: BookOpen },
+        { key: "active-recall", label: "Aktivno prisjećanje", level: "Srednji", levelColor: "bg-warning/15 text-warning", desc: "Pregledaj pa reprodukuj. Ocijeni svoje znanje za svaki modul.", tip: "Naučno najefektivniji metod učenja. Pokušaj odgovoriti prije otkrivanja — ocjena direktno utiče na FSRS algoritam i buduće intervale ponavljanja.", icon: Brain },
         { key: "chain", label: "Metod lanca", level: "Teški", levelColor: "bg-destructive/15 text-destructive", desc: "Snowball tehnika: ponovi cijeli lanac modula bez greške.", tip: "Kumulativno ponavljanje: svaki novi modul zahtijeva reprodukciju svih prethodnih. Gradi čvrste veze između koncepata — savršeno za složene teme.", icon: Link2 },
       ];
 
@@ -595,7 +595,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                 <div className="flex items-center gap-2">
                   {sections.map((_, i) => (
                     <div key={i} className={`h-2 flex-1 rounded-full transition-colors ${
-                      i < drillIndex ? "bg-emerald-500" : i === drillIndex ? "bg-primary" : "bg-secondary"
+                      i < drillIndex ? "bg-success" : i === drillIndex ? "bg-primary" : "bg-secondary"
                     }`} />
                   ))}
                 </div>
@@ -623,8 +623,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
             )}
 
             {isCompleted && (
-              <div className="rounded-xl border bg-emerald-500/10 border-emerald-500/30 p-8 text-center space-y-3">
-                <Check className="h-8 w-8 text-emerald-500 mx-auto" />
+              <div className="rounded-xl border bg-success/10 border-success/30 p-8 text-center space-y-3">
+                <Check className="h-8 w-8 text-success mx-auto" />
                 <p className="font-serif text-lg">Pitanje savladano!</p>
                 <p className="text-sm text-muted-foreground">Svi moduli su uspješno reprodukovani.</p>
               </div>
@@ -723,8 +723,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                 <div className="flex items-center gap-2">
                   {sections.map((_, i) => (
                     <div key={i} className={`h-2 flex-1 rounded-full transition-colors ${
-                      i < chainIndex ? "bg-emerald-700 dark:bg-emerald-600"
-                        : i === chainIndex ? (chainPhase === "learn" ? "bg-primary" : "bg-amber-500")
+                      i < chainIndex ? "bg-success"
+                        : i === chainIndex ? (chainPhase === "learn" ? "bg-primary" : "bg-warning")
                         : "bg-secondary"
                     }`} />
                   ))}
@@ -754,8 +754,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   </>
                 ) : (
                   <>
-                    <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-4 py-3 text-center">
-                      <p className="text-sm font-medium text-amber-600 dark:text-amber-400 flex items-center justify-center gap-2">
+                    <div className="rounded-lg bg-warning/10 border border-warning/30 px-4 py-3 text-center">
+                      <p className="text-sm font-medium text-warning flex items-center justify-center gap-2">
                         <RotateCcw className="h-4 w-4" />
                         Ponavljanje lanca: modul {chainReviewIndex + 1} od {chainIndex + 1}
                       </p>
@@ -786,8 +786,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
             )}
 
             {isChainCompleted && (
-              <div className="rounded-xl border bg-emerald-700/10 border-emerald-700/30 p-8 text-center space-y-3">
-                <Link2 className="h-8 w-8 text-emerald-700 dark:text-emerald-500 mx-auto" />
+              <div className="rounded-xl border bg-success/10 border-success/30 p-8 text-center space-y-3">
+                <Link2 className="h-8 w-8 text-success mx-auto" />
                 <p className="font-serif text-lg">Lanac završen!</p>
                 <p className="text-sm text-muted-foreground">Svi moduli su savršeno reprodukovani u nizu.</p>
               </div>

@@ -19,10 +19,10 @@ function formatDate(key: string): string {
 
 const INTENSITY_CLASSES = [
   "bg-muted",
-  "bg-emerald-200 dark:bg-emerald-900",
-  "bg-emerald-400 dark:bg-emerald-700",
-  "bg-emerald-500 dark:bg-emerald-500",
-  "bg-emerald-700 dark:bg-emerald-400",
+  "bg-primary/20",
+  "bg-primary/40",
+  "bg-primary/60",
+  "bg-primary/80",
 ];
 
 export default function ActivityHeatmap({ reviewLog }: Props) {

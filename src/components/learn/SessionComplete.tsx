@@ -81,7 +81,7 @@ const SessionComplete = React.memo(function SessionComplete({
               return (
                 <div key={g} className="flex flex-col items-center gap-1">
                   <div
-                    className={`w-8 rounded-t-md transition-all ${g === 1 ? "bg-destructive/70" : g === 2 ? "bg-orange-400/70" : g === 3 ? "bg-primary/70" : "bg-emerald-500/70"}`}
+                    className={`w-8 rounded-t-md transition-all ${g === 1 ? "bg-destructive/70" : g === 2 ? "bg-warning/70" : g === 3 ? "bg-primary/70" : "bg-success/70"}`}
                     style={{ height: `${Math.max(4, pct * 0.6)}px` }}
                   />
                   <span className="text-[10px] text-muted-foreground">{GRADE_LABELS[g]}</span>
