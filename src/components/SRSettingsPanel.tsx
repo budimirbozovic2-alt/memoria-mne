@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Volume2 } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
@@ -12,6 +13,8 @@ import { default as Settings } from "lucide-react/dist/esm/icons/settings";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Flame } from "lucide-react/dist/esm/icons/flame";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
+import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
+import { default as GraduationCap } from "lucide-react/dist/esm/icons/graduation-cap";
 import InfoPanel from "@/components/InfoPanel";
 
 interface Props {
@@ -242,6 +245,149 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
           </div>
         </div>
 
+      </section>
+
+      {/* Section 5: FSRS Vodič */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2 pb-2 border-b">
+          <GraduationCap className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Kako radi FSRS — vodič</h3>
+        </div>
+
+        <div className="rounded-xl border bg-card p-5 space-y-5 text-sm text-muted-foreground">
+          <div className="space-y-2">
+            <h4 className="text-base font-medium text-foreground">📖 Šta je FSRS?</h4>
+            <p>
+              FSRS (<em>Free Spaced Repetition Scheduler</em>) je algoritam koji odlučuje <strong className="text-foreground">kada</strong> treba da ponoviš neku cjelinu.
+              Cilj je jednostavan: ponavljaj <em>tačno prije nego što zaboraviš</em>, ni prerano (gubljenje vremena) ni prekasno (zaboravljeno).
+            </p>
+          </div>
+
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-foreground hover:text-primary transition-colors group">
+              <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+              🧱 Stabilnost (Stability)
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2 pl-6 space-y-2">
+              <p>
+                Stabilnost je broj koji predstavlja <strong className="text-foreground">koliko dugo možeš zadržati informaciju u sjećanju</strong>.
+                Mjeri se u danima.
+              </p>
+              <p>
+                Ako je stabilnost = 10, to znači da ćeš nakon 10 dana imati ~90% šanse da se prisjetiš.
+                Što je stabilnost veća, to duže pamtiš — i sistem ti daje duže pauze između ponavljanja.
+              </p>
+              <div className="rounded-lg bg-muted/50 p-3 text-xs space-y-1">
+                <p>🟢 Ocjena <strong className="text-foreground">"Dobro"</strong> ili <strong className="text-foreground">"Lako"</strong> → stabilnost raste (intervali se produžavaju)</p>
+                <p>🔴 Ocjena <strong className="text-foreground">"Opet"</strong> → stabilnost drastično pada (vraćaš se skoro na početak)</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-foreground hover:text-primary transition-colors group">
+              <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+              ⚖️ Težina (Difficulty)
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2 pl-6 space-y-2">
+              <p>
+                Težina je broj od <strong className="text-foreground">1 do 10</strong> koji pokazuje koliko ti je neka cjelina teška.
+                Sistem je automatski podešava na osnovu tvojih ocjena.
+              </p>
+              <p>
+                Ako stalno grešiš na istoj cjelini, težina raste — sistem shvata da ti je to teže i daje kraće intervale.
+                Ako odgovaraš tačno, težina se smanjuje.
+              </p>
+              <div className="rounded-lg bg-muted/50 p-3 text-xs space-y-1">
+                <p><strong className="text-foreground">"Opet"</strong> → težina +2 (mnogo teže)</p>
+                <p><strong className="text-foreground">"Teško"</strong> → težina +1.5</p>
+                <p><strong className="text-foreground">"Dobro"</strong> → bez promjene</p>
+                <p><strong className="text-foreground">"Lako"</strong> → težina -1 (lakše)</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-foreground hover:text-primary transition-colors group">
+              <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+              📊 Retencija (Retrievability)
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2 pl-6 space-y-2">
+              <p>
+                Retencija je <strong className="text-foreground">vjerovatnoća da se sjećaš nečega u ovom trenutku</strong>, izražena u procentima (0–100%).
+              </p>
+              <p>
+                Odmah nakon ponavljanja, retencija je ~100%. Kako dani prolaze, ona polako opada po krivulji zaboravljanja.
+                Sistem je podešen da ti zakaže ponavljanje <strong className="text-foreground">prije nego retencija padne ispod 95%</strong>.
+              </p>
+              <div className="rounded-lg bg-muted/50 p-3 text-xs">
+                <p>Formula: <code className="bg-background px-1.5 py-0.5 rounded text-foreground">R = e^(-protekli_dani / stabilnost)</code></p>
+                <p className="mt-1 opacity-75">Primjer: stabilnost 10d, prošlo 5 dana → R ≈ 61%. Ako je prošao samo 1 dan → R ≈ 90%.</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-foreground hover:text-primary transition-colors group">
+              <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+              🎯 Kako ocjene utiču na intervale
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2 pl-6 space-y-2">
+              <p>Svaka ocjena direktno mijenja stabilnost i težinu, a time i sljedeći interval:</p>
+              <div className="space-y-2">
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-xs space-y-1">
+                  <p className="font-medium text-destructive">❌ Opet (1) — "Nemam pojma"</p>
+                  <p>Stabilnost pada na 5% prethodne. Interval: <strong>20 minuta</strong>. Bilježi se kao lapsus.</p>
+                </div>
+                <div className="rounded-lg border border-warning/20 bg-warning/5 p-3 text-xs space-y-1">
+                  <p className="font-medium text-warning">⚠️ Teško (2) — "Promašio sam ključne detalje"</p>
+                  <p>Stabilnost pada na 30%. Interval: <strong>max 24 sata</strong>. Za situacije kad znaš odgovor ali grešiš detalje.</p>
+                </div>
+                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs space-y-1">
+                  <p className="font-medium text-primary">✅ Dobro (3) — "Znam odgovor + detalje"</p>
+                  <p>Stabilnost × 3.0 + 1 dan. Standardna ocjena — koristite kad ste sigurni u odgovor.</p>
+                </div>
+                <div className="rounded-lg border border-success/20 bg-success/5 p-3 text-xs space-y-1">
+                  <p className="font-medium text-success">🚀 Lako (4) — "Znao sam bez oklijevanja"</p>
+                  <p>Stabilnost × 5.0 + 2 dana. Najbrži rast intervala — koristite samo kad je instant recall.</p>
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-foreground hover:text-primary transition-colors group">
+              <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+              🚨 Leech (problematične cjeline)
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2 pl-6 space-y-2">
+              <p>
+                Ako na istoj cjelini pritisneš <strong className="text-foreground">"Opet"</strong> više od {local.leechThreshold} puta,
+                sistem je označava kao <em>leech</em> — problematičnu cjelinu koja "upija" tvoje vrijeme.
+              </p>
+              <p>
+                To je signal da treba promijeniti pristup: preformuliši pitanje, dodaj mnemonik, 
+                razbi cjelinu na manje dijelove, ili koristi mod <strong className="text-foreground">"Samo teške kartice"</strong> u Konsolidaciji.
+              </p>
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left font-medium text-foreground hover:text-primary transition-colors group">
+              <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+              💡 Praktični savjeti
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2 pl-6 space-y-2">
+              <ul className="space-y-1.5 list-disc list-inside">
+                <li>Koristi <strong className="text-foreground">"Dobro"</strong> kao podrazumijevanu ocjenu — to je najčešći slučaj</li>
+                <li><strong className="text-foreground">"Lako"</strong> koristi samo kad je prisjećanje trenutno — inače precjenjuješ stabilnost</li>
+                <li>Bolje je pritisnuti <strong className="text-foreground">"Teško"</strong> nego <strong className="text-foreground">"Dobro"</strong> ako si u dilemi — kraći interval je sigurniji</li>
+                <li>Redovnost je ključna: 20 kartica dnevno je bolje od 100 kartica jednom sedmično</li>
+                <li>Nove kartice prolaze "pravilo 20 minuta" — prvi test je nakon 15–20 min da se utvrdi kratkoročno pamćenje</li>
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
+        </div>
       </section>
 
       {/* Action buttons */}
