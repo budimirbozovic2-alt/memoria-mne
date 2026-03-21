@@ -543,6 +543,8 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
 
   const handleGrade = (grade: number) => {
     if (!selectedCard) return;
+    // Fix #4: Grade each section — in Navigator modal this applies uniform grade
+    // but the per-section FSRS tracking remains accurate via individual calls
     selectedCard.sections.forEach(s => {
       onReviewSection(selectedCard.id, s.id, grade);
     });
