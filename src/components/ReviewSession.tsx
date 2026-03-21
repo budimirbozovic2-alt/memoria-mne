@@ -241,48 +241,71 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
           {dueCategories.length >= 1 && (
             <div className="space-y-2.5">
               <ScrollableRow>
-                <button
+                <motion.button
                   onClick={() => { setSelectedCategory(null); setSelectedSubcategory(null); }}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedCategory ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                  className={`relative px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedCategory ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  Sve
-                </button>
-                {dueCategories.map((c) => {
-                  const count = filteredDueCards.filter(card => !selectedCategory && card.category === c).length || dueCards.filter(card => card.category === c).length;
-                  return (
-                    <button
-                      key={c}
-                      onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${selectedCategory === c ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
-                    >
-                      {c}
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
-                        {dueCards.filter(card => card.category === c).length}
-                      </span>
-                    </button>
-                  );
-                })}
+                  {!selectedCategory && (
+                    <motion.span layoutId="cat-pill" className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
+                  )}
+                  <span className="relative z-10">Sve</span>
+                </motion.button>
+                {dueCategories.map((c) => (
+                  <motion.button
+                    key={c}
+                    onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
+                    className={`relative px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === c ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {selectedCategory === c && (
+                      <motion.span layoutId="cat-pill" className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
+                    )}
+                    <span className="relative z-10">{c}</span>
+                    <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
+                      {dueCards.filter(card => card.category === c).length}
+                    </span>
+                  </motion.button>
+                ))}
               </ScrollableRow>
 
-              {selectedCategory && dueSubcategories.length > 0 && (
-                <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1">
-                  <button
-                    onClick={() => setSelectedSubcategory(null)}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+              <AnimatePresence>
+                {selectedCategory && dueSubcategories.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="overflow-hidden"
                   >
-                    Sve podkat.
-                  </button>
-                  {dueSubcategories.map((sc) => (
-                    <button
-                      key={sc}
-                      onClick={() => setSelectedSubcategory(sc)}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
-                    >
-                      {sc}
-                    </button>
-                  ))}
-                </ScrollableRow>
-              )}
+                    <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1">
+                      <motion.button
+                        onClick={() => setSelectedSubcategory(null)}
+                        className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedSubcategory ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {!selectedSubcategory && (
+                          <motion.span layoutId="subcat-pill" className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                        )}
+                        <span className="relative z-10">Sve podkat.</span>
+                      </motion.button>
+                      {dueSubcategories.map((sc) => (
+                        <motion.button
+                          key={sc}
+                          onClick={() => setSelectedSubcategory(sc)}
+                          className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${selectedSubcategory === sc ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {selectedSubcategory === sc && (
+                            <motion.span layoutId="subcat-pill" className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                          )}
+                          <span className="relative z-10">{sc}</span>
+                        </motion.button>
+                      ))}
+                    </ScrollableRow>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           )}
         </div>
