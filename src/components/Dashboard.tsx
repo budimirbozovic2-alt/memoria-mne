@@ -17,6 +17,7 @@ import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } f
 import { loadDiary, loadSlippageLog } from "@/lib/metacognitive-storage";
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, loadDisciplineLog } from "@/lib/planner-storage";
 import { calcEnergyRecommendation } from "@/lib/cognitive-analytics";
+import { loadAppSettings } from "@/lib/app-settings";
 import { useMemo } from "react";
 import { useDeferredCompute } from "@/hooks/useDeferredCompute";
 import { Progress } from "@/components/ui/progress";
