@@ -229,16 +229,6 @@ function DiaryTab({ cards, reviewLog }: { cards: Card[]; reviewLog: ReviewLogEnt
                     <p className="text-sm truncate">{card?.question || "Nepoznata kartica"}</p>
                     <p className="text-xs text-muted-foreground">{l.category}</p>
                   </div>
-                  {onSendToWorkshop && card && (
-                    <button
-                      onClick={() => onSendToWorkshop(card.id)}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0"
-                      title="Pošalji u Radionicu kuka"
-                    >
-                      <Wrench className="h-3 w-3" />
-                      <span className="hidden sm:inline">Radionica</span>
-                    </button>
-                  )}
                 </div>
               );
             })}
