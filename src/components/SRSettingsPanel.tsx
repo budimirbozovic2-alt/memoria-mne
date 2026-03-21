@@ -37,6 +37,7 @@ const FIELD_CONFIG = [
 export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
   const [local, setLocal] = useState<SRSettings>({ ...settings });
   const [tts, setTts] = useState<TTSSettings>(loadTTSSettings());
+  const [app, setApp] = useState<AppSettings>(loadAppSettings());
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
   useEffect(() => {
