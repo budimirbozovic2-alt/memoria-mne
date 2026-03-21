@@ -61,10 +61,25 @@ export default function CardsView() {
     setBulkSubcategory("");
   };
 
+  const handleBulkChapterApply = () => {
+    if (selectedIds.size === 0 || !filterCategory) return;
+    const ch = newBulkChapter.trim() || bulkChapter;
+    if (!ch) return;
+    const updates = Array.from(selectedIds).map((id, i) => ({ id, chapter: ch, chapterOrder: i }));
+    bulkUpdateChapter(updates);
+    toast.success(`${selectedIds.size} kartica dodijeljeno u "${ch}"`);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setBulkChapter("");
+    setNewBulkChapter("");
+  };
+
   const exitSelectionMode = () => {
     setSelectionMode(false);
     setSelectedIds(new Set());
     setBulkSubcategory("");
+    setBulkChapter("");
+    setNewBulkChapter("");
   };
 
   const handleReorder = (orderedIds: string[]) => {
