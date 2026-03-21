@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"; 
-import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
+import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS, SectionState } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2 } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
