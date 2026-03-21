@@ -66,8 +66,25 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, on
         c.sections.some(s => s.content.toLowerCase().includes(q))
       );
     }
-    return result;
-  }, [cards, filterStatus, selectedCategory, selectedSubcategory, debouncedSearch]);
+    // Sort
+    const statusOrder: Record<MnemonicStatus, number> = { "new": 0, "in-workshop": 1, "ready": 2 };
+    const sorted = [...result].sort((a, b) => {
+      switch (sortBy) {
+        case "status":
+          return statusOrder[a.mnemonicStatus] - statusOrder[b.mnemonicStatus];
+        case "category":
+          return a.category.localeCompare(b.category) || (a.subcategory || "").localeCompare(b.subcategory || "");
+        case "success": {
+          const aRate = a.testCount > 0 ? a.successCount / a.testCount : -1;
+          const bRate = b.testCount > 0 ? b.successCount / b.testCount : -1;
+          return aRate - bRate; // worst first
+        }
+        default:
+          return b.createdAt - a.createdAt; // newest first
+      }
+    });
+    return sorted;
+  }, [cards, filterStatus, selectedCategory, selectedSubcategory, debouncedSearch, sortBy]);
 
   const subcategories = useMemo(
     () => selectedCategory ? [...(categoryTree[selectedCategory] || [])].sort() : [],
