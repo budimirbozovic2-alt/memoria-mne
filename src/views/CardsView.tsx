@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AnimatePresence, motion } from "framer-motion";
@@ -29,7 +29,11 @@ export default function CardsView() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkSubcategory, setBulkSubcategory] = useState("");
-  const [scrollToCardId, setScrollToCardId] = useState<string | null>(null);
+  const [scrollToCardId, setScrollToCardId] = useState<string | null>(() => {
+    const id = sessionStorage.getItem("sr-scroll-to-card");
+    if (id) sessionStorage.removeItem("sr-scroll-to-card");
+    return id;
+  });
   const [reorderMode, setReorderMode] = useState(false);
 
   const toggleSelect = (id: string) => {
@@ -77,6 +81,7 @@ export default function CardsView() {
   const availableSubcategories = filterCategory ? (subcategories[filterCategory] || []) : [];
 
   const handleEdit = (card: Card) => {
+    sessionStorage.setItem("sr-scroll-to-card", card.id);
     setEditingCard(card);
     setView("edit");
   };
