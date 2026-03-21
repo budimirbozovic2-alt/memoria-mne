@@ -195,10 +195,10 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
                     }`}
                   >
                     <div
-                      className="w-5 h-5 rounded-full flex-shrink-0 ring-2 ring-offset-2 ring-offset-card"
+                      className={`w-5 h-5 rounded-full flex-shrink-0 ring-2 ring-offset-2 ring-offset-card ${isActive ? "ring-current" : "ring-transparent"}`}
                       style={{
                         backgroundColor: theme.preview,
-                        ringColor: isActive ? theme.preview : "transparent",
+                        color: theme.preview,
                       }}
                     />
                     <span className="text-xs font-medium">{theme.label}</span>
