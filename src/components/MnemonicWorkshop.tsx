@@ -261,7 +261,23 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, on
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">{filtered.length} {filtered.length === 1 ? "kartica" : "kartica"}</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">{filtered.length} kartica</p>
+            <div className="flex items-center gap-1.5">
+              <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+              {(["newest", "status", "category", "success"] as const).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setSortBy(s)}
+                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
+                    sortBy === s ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {s === "newest" ? "Najnovije" : s === "status" ? "Status" : s === "category" ? "Kategorija" : "Uspješnost"}
+                </button>
+              ))}
+            </div>
+          </div>
           {filtered.map(card => (
             <WorkshopCardItem
               key={card.id}
