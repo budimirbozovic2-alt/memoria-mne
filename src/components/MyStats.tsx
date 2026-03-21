@@ -7,28 +7,30 @@ import { default as LayoutGrid } from "lucide-react/dist/esm/icons/layout-grid";
 import { default as TrendingUp } from "lucide-react/dist/esm/icons/trending-up";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Layers } from "lucide-react/dist/esm/icons/layers";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as Award } from "lucide-react/dist/esm/icons/award";
-import { default as Microscope } from "lucide-react/dist/esm/icons/microscope";
+import { default as Clock } from "lucide-react/dist/esm/icons/clock";
+import { default as Flame } from "lucide-react/dist/esm/icons/flame";
+import { default as CalendarClock } from "lucide-react/dist/esm/icons/calendar-clock";
+import { default as Activity } from "lucide-react/dist/esm/icons/activity";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
 import InfoPanel from "@/components/InfoPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, getSectionScore, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { ReviewLogEntry } from "@/lib/storage";
-import { getDisciplineTrend } from "@/lib/planner-storage";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  AreaChart, Area, PieChart, Pie, Cell,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, BarChart, Bar,
 } from "recharts";
 import { format, subDays, startOfDay, eachDayOfInterval } from "date-fns";
 import ActivityHeatmap from "./ActivityHeatmap";
 import RetentionChart from "./RetentionChart";
 import ForgettingCurve from "./ForgettingCurve";
 
-// Lazy-load heavy tab content
-const MetacognitiveCenter = lazy(() => import("./MetacognitiveCenter"));
-const CognitiveAnalytics = lazy(() => import("./CognitiveAnalytics"));
+// Lazy-load extracted tab components
+const LatencyTab = lazy(() => import("./stats/LatencyTab"));
+const ResistanceTab = lazy(() => import("./stats/ResistanceTab"));
+const PredictionTab = lazy(() => import("./stats/PredictionTab"));
+const EfficiencyTab = lazy(() => import("./stats/EfficiencyTab"));
 
 interface Props {
   cards: Card[];
@@ -141,42 +143,13 @@ const CategoryBarChart = memo(function CategoryBarChart({ data }: { data: any[] 
   );
 });
 
-const DisciplineChart = memo(function DisciplineChart({ data }: { data: any[] }) {
-  if (data.length <= 2) return null;
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="rounded-xl bg-card border p-5 space-y-4">
-      <div className="flex items-center gap-2">
-        <Award className="h-4 w-4 text-primary" />
-        <h3 className="font-serif text-lg">Trend discipline</h3>
-      </div>
-      <p className="text-xs text-muted-foreground">Postotak "vrijednih" (🚀) dana u klizećem 7-dnevnom prozoru</p>
-      <div className="h-[180px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data}>
-            <defs>
-              <linearGradient id="gradDiscipline" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => v.slice(5)} />
-            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} domain={[0, 100]} unit="%" />
-            <Tooltip content={<ChartTooltip />} />
-            <Area type="monotone" dataKey="diligentPct" name="Vrijedni dani %" stroke="hsl(var(--success))" fill="url(#gradDiscipline)" strokeWidth={2} />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </motion.div>
-  );
-});
-
 import { TabSkeleton } from "@/components/ui/page-skeleton";
-
 
 // ─── Main component ──────────────────────────────────────
 
 export default function MyStats({ cards, categories, subcategories, categoryStats, reviewLog, srSettings, onBack, onShowKnowledgeMap, onShowPlanner }: Props) {
-  const [activeTab, setActiveTab] = useState<"overview" | "metacognitive" | "cognitive">("overview");
+  const [activeTab, setActiveTab] = useState<string>("overview");
+  const weights = srSettings?.resistanceWeights ?? DEFAULT_SR_SETTINGS.resistanceWeights;
 
   const activityData = useMemo(() => {
     const now = new Date();
@@ -220,8 +193,6 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
       }));
   }, [categories, categoryStats]);
 
-  const disciplineTrend = useMemo(() => getDisciplineTrend(30), []);
-
   const hasData = cards.length > 0;
 
   return (
@@ -232,30 +203,41 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         </button>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-3xl font-serif">Moje statistike</h2>
-            <p className="text-muted-foreground mt-1">Svi grafikoni, analitika i metakognitivni alati</p>
+            <h2 className="text-3xl font-serif">Laboratorija znanja</h2>
+            <p className="text-muted-foreground mt-1">FSRS analitika, grafikoni i kvantitativni podaci</p>
           </div>
-          <InfoPanel title="Kako radi Statistika?">
-            <p><strong className="text-foreground">Pregled</strong> — heatmapa aktivnosti, distribucija znanja po kategorijama, kriva zaboravljanja i trend discipline.</p>
-            <p><strong className="text-foreground">Analitika</strong> — dnevnik učenja, kalibracija (iluzija znanja), latencija prisjećanja, kognitivni otpor i efikasnost.</p>
-            <p><strong className="text-foreground">Kognicija</strong> — dublja analiza slabih tačaka, automatska detekcija kartica za mnemoničku obradu.</p>
-            <p>Svi podaci dolaze iz tvoje istorije ponavljanja i ocjena. Što više koristiš aplikaciju, to su podaci precizniji.</p>
+          <InfoPanel title="Kako rade Statistike?">
+            <p><strong className="text-foreground">Pregled</strong> — heatmapa aktivnosti, distribucija znanja po kategorijama, kriva zaboravljanja.</p>
+            <p><strong className="text-foreground">Latencija</strong> — vrijeme do otkrivanja odgovora. Prag za automatizovano znanje: &lt;3 sekunde.</p>
+            <p><strong className="text-foreground">Otpor</strong> — kombinovani skor lapsusa, latencije i zaboravljanja koji identifikuje najteže predmete.</p>
+            <p><strong className="text-foreground">Predikcija</strong> — predikcija budućeg opterećenja i brzine savladavanja po predmetima.</p>
+            <p><strong className="text-foreground">Efikasnost</strong> — koliko % vremena provodiš na kognitivni rad vs. logistiku.</p>
           </InfoPanel>
         </div>
       </motion.div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-        <TabsList className="w-full grid grid-cols-3">
-          <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm">
-            <TrendingUp className="h-3.5 w-3.5" /> Pregled
-          </TabsTrigger>
-          <TabsTrigger value="metacognitive" className="gap-1.5 text-xs sm:text-sm">
-            <Brain className="h-3.5 w-3.5" /> Analitika
-          </TabsTrigger>
-          <TabsTrigger value="cognitive" className="gap-1.5 text-xs sm:text-sm">
-            <Microscope className="h-3.5 w-3.5" /> Kognicija
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="space-y-1">
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="overview" className="gap-1.5 text-xs sm:text-sm">
+              <TrendingUp className="h-3.5 w-3.5" /> Pregled
+            </TabsTrigger>
+            <TabsTrigger value="latency" className="gap-1.5 text-xs sm:text-sm">
+              <Clock className="h-3.5 w-3.5" /> Latencija
+            </TabsTrigger>
+            <TabsTrigger value="resistance" className="gap-1.5 text-xs sm:text-sm">
+              <Flame className="h-3.5 w-3.5" /> Otpor
+            </TabsTrigger>
+          </TabsList>
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="prediction" className="gap-1.5 text-xs sm:text-sm">
+              <CalendarClock className="h-3.5 w-3.5" /> Predikcija
+            </TabsTrigger>
+            <TabsTrigger value="efficiency" className="gap-1.5 text-xs sm:text-sm">
+              <Activity className="h-3.5 w-3.5" /> Efikasnost
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview">
           <div className="space-y-6 mt-4">
@@ -305,7 +287,6 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
               );
             })()}
 
-
             {/* Heatmap + Retention */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ErrorBoundary compact label="Heatmap aktivnosti">
@@ -334,28 +315,37 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
             <ErrorBoundary compact label="Kriva zaboravljanja">
               <ForgettingCurve cards={cards} categories={categories} />
             </ErrorBoundary>
-
-            {/* Discipline Trend */}
-            <ErrorBoundary compact label="Trend discipline">
-              <DisciplineChart data={disciplineTrend} />
-            </ErrorBoundary>
           </div>
         </TabsContent>
 
-        <TabsContent value="metacognitive">
+        <TabsContent value="latency">
           <Suspense fallback={<TabSkeleton />}>
-            <ErrorBoundary label="Metakognicija">
-              <MetacognitiveCenter cards={cards} categories={categories} reviewLog={reviewLog} onBack={onBack} settings={srSettings} embedded />
+            <ErrorBoundary label="Latencija">
+              <LatencyTab />
             </ErrorBoundary>
           </Suspense>
         </TabsContent>
 
-        <TabsContent value="cognitive">
+        <TabsContent value="resistance">
           <Suspense fallback={<TabSkeleton />}>
-            <ErrorBoundary label="Kognicija">
-              <div className="mt-4">
-                <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} />
-              </div>
+            <ErrorBoundary label="Otpor">
+              <ResistanceTab cards={cards} categories={categories} reviewLog={reviewLog} weights={weights} />
+            </ErrorBoundary>
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="prediction">
+          <Suspense fallback={<TabSkeleton />}>
+            <ErrorBoundary label="Predikcija">
+              <PredictionTab cards={cards} categories={categories} reviewLog={reviewLog} />
+            </ErrorBoundary>
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="efficiency">
+          <Suspense fallback={<TabSkeleton />}>
+            <ErrorBoundary label="Efikasnost">
+              <EfficiencyTab />
             </ErrorBoundary>
           </Suspense>
         </TabsContent>
