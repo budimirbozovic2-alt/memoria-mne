@@ -37,6 +37,7 @@ const PRIMARY_NAV = [
 
 const LAB_ITEMS = [
   { path: "/stats", icon: BarChart3, label: "Statistika", desc: "Pregled napretka i analitika" },
+  { path: "/knowledge-map", icon: Map, label: "Mapa znanja", desc: "Vizuelna mapa savladanosti" },
   { path: "/metacognitive", icon: BookOpen, label: "Dnevnik", desc: "Metakognitivne refleksije" },
   { path: "/mnemonic", icon: Brain, label: "Mnemo radionica", desc: "Tehnike pamćenja" },
   { path: "/planner", icon: Target, label: "Strateški planer", desc: "Planiranje učenja" },
