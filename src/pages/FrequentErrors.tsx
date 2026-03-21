@@ -183,6 +183,7 @@ export default function FrequentErrors({ cards, onBack, onClearErrorLog, embedde
                   ? "Još nema zabilježenih grešaka."
                   : `${criticalAndRecovering.length} aktivn${criticalAndRecovering.length === 1 ? "a" : "e"} · ${mastered.length} savladan${mastered.length === 1 ? "a" : "e"}`}
               </p>
+            </div>
           </div>
         </div>
       )}
@@ -196,7 +197,7 @@ export default function FrequentErrors({ cards, onBack, onClearErrorLog, embedde
             {`${criticalAndRecovering.length} aktivn${criticalAndRecovering.length === 1 ? "a" : "e"} · ${mastered.length} savladan${mastered.length === 1 ? "a" : "e"}`}
           </p>
         </div>
-      )
+      )}
 
       {/* Legend */}
       {totalErrors > 0 && (
