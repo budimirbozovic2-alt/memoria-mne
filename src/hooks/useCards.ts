@@ -117,6 +117,11 @@ export function useCards() {
 
       splashProgress(100, "Spremno!");
       setReady(true);
+
+      // Signal Electron main process that app is ready
+      if (window.electronAPI?.notifyReady) {
+        window.electronAPI.notifyReady();
+      }
     })();
   }, []);
 
