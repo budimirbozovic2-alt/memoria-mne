@@ -11,7 +11,12 @@ import { default as ArrowUpDown } from "lucide-react/dist/esm/icons/arrow-up-dow
 import { Card } from "@/lib/spaced-repetition";
 import ScrollableRow from "@/components/ScrollableRow";
 import CardList from "@/components/CardList";
+import ShortcutsHint from "@/components/ShortcutsHint";
 import { toast } from "sonner";
+
+const CARDS_SHORTCUTS = [
+  { keys: "Ctrl+K", description: "Globalna pretraga" },
+];
 
 export default function CardsView() {
   const {
