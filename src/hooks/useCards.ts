@@ -211,12 +211,13 @@ export function useCards() {
   }, [categories, setCategories]);
 
   // O(1) direct update — surgical IDB write
-  const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string }) => {
+  const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string; chapter?: string }) => {
     patchCard(id, c => {
       const newCard = { ...c };
       if (updates.question) newCard.question = updates.question;
       if (updates.category) newCard.category = updates.category;
       if (updates.subcategory !== undefined) newCard.subcategory = updates.subcategory;
+      if (updates.chapter !== undefined) newCard.chapter = updates.chapter;
       if (updates.sections) {
         newCard.sections = updates.sections.map(s => {
           const existing = c.sections.find(es => es.title === s.title);
