@@ -163,6 +163,23 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
   const examProgressPct = stats.totalSections > 0 ? Math.round((stats.learnedSections / stats.totalSections) * 100) : 0;
   const energyLevel = getEnergyLevel();
 
+  // Velocity trend (7-day)
+  const velocityData = useDeferredCompute(() => {
+    const velocity = calcVelocity(reviewLog, 7);
+    const velocityPrev = calcVelocity(reviewLog, 14) - velocity; // rough prev week
+    const trend = velocity > velocityPrev ? "up" : velocity < velocityPrev ? "down" : "flat";
+    return { velocity: Math.round(velocity * 10) / 10, trend };
+  }, [reviewLog]);
+
+  // Top 3 weakest categories
+  const weakestCategories = useMemo(() => {
+    return categories
+      .filter(cat => categoryStats[cat]?.total > 0)
+      .map(cat => ({ name: cat, score: categoryStats[cat].score, total: categoryStats[cat].total }))
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 3);
+  }, [categories, categoryStats]);
+
   // Build brief text
   const briefText = useMemo(() => {
     const parts: string[] = [];
