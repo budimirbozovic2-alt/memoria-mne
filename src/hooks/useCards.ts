@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Card, createCard, createFlashCard, createSection, calculateNextReview, getDueCards, getStats, getCategoryStats, SRSettings, DEFAULT_SR_SETTINGS, ErrorLogEntry } from "@/lib/spaced-repetition";
+import { loadAppSettings } from "@/lib/app-settings";
 import { ReviewLogEntry, setLastBackupTime } from "@/lib/storage";
 import {
   migrateFromLocalStorage,
