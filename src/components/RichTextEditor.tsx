@@ -182,7 +182,7 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
     document.execCommand(command, false, val);
     if (editorRef.current) {
       internalValue.current = editorRef.current.innerHTML;
-      onChange(editorRef.current.innerHTML);
+      onChange(sanitizeHtml(editorRef.current.innerHTML));
     }
   }, [onChange]);
 
