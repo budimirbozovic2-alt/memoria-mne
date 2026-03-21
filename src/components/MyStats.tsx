@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, getSectionScore, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { ReviewLogEntry } from "@/lib/storage";
+import { getTimeDistribution } from "@/lib/metacognitive-storage";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar,
@@ -27,6 +28,9 @@ import ActivityHeatmap from "./ActivityHeatmap";
 import RetentionChart from "./RetentionChart";
 import ForgettingCurve from "./ForgettingCurve";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
+import { useDeferredCompute } from "@/hooks/useDeferredCompute";
+
+const DashboardChart = lazy(() => import("@/components/DashboardChart"));
 
 // Lazy-load extracted tab components
 const LatencyTab = lazy(() => import("./stats/LatencyTab"));
