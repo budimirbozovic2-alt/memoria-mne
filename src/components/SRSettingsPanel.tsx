@@ -68,6 +68,7 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
 
   const handleReset = () => {
     setLocal({ ...DEFAULT_SR_SETTINGS });
+    setApp({ ...DEFAULT_APP_SETTINGS });
   };
 
   const testVoice = () => {
