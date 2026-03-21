@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
