@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
@@ -9,14 +9,20 @@ import { default as Clock } from "lucide-react/dist/esm/icons/clock";
 import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
 import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
 import { default as Search } from "lucide-react/dist/esm/icons/search";
+import { default as Layers } from "lucide-react/dist/esm/icons/layers";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { TabSkeleton } from "@/components/ui/page-skeleton";
+
+const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
 
 interface Props {
   cards: Card[];
   categories: string[];
   subcategories: Record<string, string[]>;
   onBack: () => void;
+  onUpdateChapters?: (updates: { id: string; chapter: string; chapterOrder: number }[]) => void;
+  onReviewSection?: (cardId: string, sectionId: string, grade: number) => void;
 }
 
 export interface MasteryLevel {
@@ -54,10 +60,11 @@ export function getMasteryColor(level: number): string {
   return MASTERY_LEVELS[level]?.color || MASTERY_LEVELS[0].color;
 }
 
-export default function KnowledgeMap({ cards, categories, subcategories, onBack }: Props) {
+export default function KnowledgeMap({ cards, categories, subcategories, onBack, onUpdateChapters, onReviewSection }: Props) {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(() => new Set(categories));
   const [searchQuery, setSearchQuery] = useState("");
+  const [drillDown, setDrillDown] = useState<{ category: string; subcategory: string } | null>(null);
 
   const toggleCat = (cat: string) => {
     setExpandedCats((prev) => {
@@ -123,7 +130,7 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack 
 
         return { category: cat, groups, totalCards: catCards.length };
       })
-      .filter(Boolean) as { category: string; groups: { name: string; cards: { card: Card; level: number }[] }[]; totalCards: number }[];
+      .filter(Boolean) as { category: string; groups: { name: string; chapter?: string; cards: { card: Card; level: number }[] }[]; totalCards: number }[];
   }, [filteredCards, categories, subcategories]);
 
   const levelCounts = useMemo(() => {
@@ -133,6 +140,22 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack 
   }, [filteredCards]);
 
   const total = filteredCards.length;
+
+  // Drill-down into MentalSkeleton for a specific subcategory
+  if (drillDown && onUpdateChapters && onReviewSection) {
+    return (
+      <Suspense fallback={<TabSkeleton />}>
+        <MentalSkeleton
+          cards={cards}
+          category={drillDown.category}
+          subcategory={drillDown.subcategory}
+          onBack={() => setDrillDown(null)}
+          onUpdateChapters={onUpdateChapters}
+          onReviewSection={onReviewSection}
+        />
+      </Suspense>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -207,9 +230,27 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack 
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <div className="pl-6 pr-2 py-3 space-y-4">
-                  {groups.map(({ name, cards: groupCards }) => (
+                  {groups.map(({ name, chapter, cards: groupCards }) => {
+                    // Extract pure subcategory for drill-down (before " › ")
+                    const pureSub = name.includes(" › ") ? name.split(" › ")[0] : name;
+                    const canDrillDown = !!pureSub && pureSub !== "Ostalo" && onUpdateChapters && onReviewSection;
+                    return (
                     <div key={name} className="space-y-2">
-                      {name && <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{name}</p>}
+                      {name && (
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{name}</p>
+                          {canDrillDown && !chapter && (
+                            <button
+                              onClick={() => setDrillDown({ category, subcategory: pureSub })}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium text-primary/70 hover:text-primary hover:bg-primary/5 transition-colors"
+                              title="Otvori detaljni prikaz sa glavama"
+                            >
+                              <Layers className="h-3 w-3" />
+                              Detalji
+                            </button>
+                          )}
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-1.5">
                         {groupCards.map(({ card, level }) => (
                           <Tooltip key={card.id}>
@@ -234,7 +275,8 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack 
                         ))}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CollapsibleContent>
             </Collapsible>
