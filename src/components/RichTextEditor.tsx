@@ -275,36 +275,38 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
   const isEmpty = !value || value === "<br>" || value.replace(/<[^>]*>/g, "").trim() === "";
 
   const toolbarButtons = [
-    { icon: Bold, title: "Bolduj (Ctrl+B)", action: handleBtn("bold") },
-    { icon: Italic, title: "Kurziv (Ctrl+I)", action: handleBtn("italic") },
-    { icon: Underline, title: "Podvučeno (Ctrl+U)", action: handleBtn("underline") },
-    { icon: Heading2, title: "Naslov", action: handleHeading },
-    { icon: List, title: "Lista", action: handleBtn("insertUnorderedList") },
-    { icon: ListOrdered, title: "Numerisana lista", action: handleBtn("insertOrderedList") },
-    { icon: Paintbrush, title: "Crvena boja", action: handleRed, hoverClass: "hover:text-destructive" },
+    { icon: Bold, title: "Bolduj (Ctrl+B)", action: handleBtn("bold"), minimalShow: true },
+    { icon: Italic, title: "Kurziv (Ctrl+I)", action: handleBtn("italic"), minimalShow: true },
+    { icon: Underline, title: "Podvučeno (Ctrl+U)", action: handleBtn("underline"), minimalShow: false },
+    { icon: Heading2, title: "Naslov", action: handleHeading, minimalShow: false },
+    { icon: List, title: "Lista", action: handleBtn("insertUnorderedList"), minimalShow: true },
+    { icon: ListOrdered, title: "Numerisana lista", action: handleBtn("insertOrderedList"), minimalShow: true },
+    { icon: Paintbrush, title: "Crvena boja", action: handleRed, hoverClass: "hover:text-destructive", minimalShow: false },
   ];
+
+  const visibleButtons = minimal ? toolbarButtons.filter(b => b.minimalShow) : toolbarButtons;
 
   return (
     <div className="space-y-1.5">
-      {!minimal && (
-        <div className="flex items-center gap-0.5 px-1 flex-wrap">
-          {toolbarButtons.map(({ icon: Icon, title, action, hoverClass }) => (
-            <button
-              key={title}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={action}
-              className={`p-1.5 rounded-md hover:bg-secondary text-muted-foreground ${hoverClass || "hover:text-foreground"} transition-colors`}
-              title={title}
-            >
-              <Icon className="h-3.5 w-3.5" />
-            </button>
-          ))}
+      <div className="flex items-center gap-0.5 px-1 flex-wrap">
+        {visibleButtons.map(({ icon: Icon, title, action, hoverClass }) => (
+          <button
+            key={title}
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={action}
+            className={`p-1.5 rounded-md hover:bg-secondary text-muted-foreground ${hoverClass || "hover:text-foreground"} transition-colors`}
+            title={title}
+          >
+            <Icon className="h-3.5 w-3.5" />
+          </button>
+        ))}
+        {!minimal && (
           <span className="ml-auto text-[10px] text-muted-foreground/50 select-none">
             MD: **bold** *italic* __underline__ - lista 1. num # naslov
           </span>
-        </div>
-      )}
+        )}
+      </div>
       <div className="relative">
         <div
           ref={editorRef}
