@@ -46,6 +46,10 @@ export default function MnemonicModule({ onBack }: Props) {
     setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
   }, [setCards]);
 
+  const deleteCard = useCallback((id: string) => {
+    setCards(prev => prev.filter(c => c.id !== id));
+  }, [setCards]);
+
   const recordResult = useCallback((cardId: string, success: boolean) => {
     setCards(prev => prev.map(c => {
       if (c.id !== cardId) return c;
