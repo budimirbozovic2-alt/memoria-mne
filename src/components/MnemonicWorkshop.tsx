@@ -34,6 +34,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, on
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "status" | "category" | "success">("newest");
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const majorSystem = useMemo(() => loadMajorSystem(), []);
