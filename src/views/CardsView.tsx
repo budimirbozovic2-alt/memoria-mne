@@ -261,6 +261,26 @@ export default function CardsView() {
               ))}
             </ScrollableRow>
           )}
+
+          {filterSubcategory && (() => {
+            const chaptersInFilter = Array.from(new Set(
+              cards.filter(c => c.category === filterCategory && c.subcategory === filterSubcategory && c.chapter)
+                .map(c => c.chapter!)
+            )).sort();
+            if (chaptersInFilter.length === 0) return null;
+            return (
+              <ScrollableRow className="pl-6 border-l-2 border-primary/10 ml-1">
+                <button onClick={() => setFilterChapter(null)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${!filterChapter ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                  Sve glave
+                </button>
+                {chaptersInFilter.map(ch => (
+                  <button key={ch} onClick={() => setFilterChapter(ch)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${filterChapter === ch ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                    {ch}
+                  </button>
+                ))}
+              </ScrollableRow>
+            );
+          })()}
         </div>
       </div>
 
