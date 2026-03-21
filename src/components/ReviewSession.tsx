@@ -557,6 +557,9 @@ function HowItWorksCorner() {
 }
 
 function FinishedScreen({ onBack }: { onBack: () => void }) {
+  React.useEffect(() => {
+    import("@/lib/sounds").then(m => m.playSessionComplete());
+  }, []);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-6 py-20">
       <h2 className="text-4xl font-serif italic">Sesija završena!</h2>
