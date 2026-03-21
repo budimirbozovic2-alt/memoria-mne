@@ -572,6 +572,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
 
             {arPhase === "preview" && !isCompleted && (
               <>
+                <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags}>
                 <div className="space-y-3">
                   <span className="text-sm text-muted-foreground">{sections.length} modula — pročitaj pažljivo</span>
                   {sections.map((section) => (
@@ -581,6 +582,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                     </div>
                   ))}
                 </div>
+                </TextSelectionTooltip>
                 <Button onClick={startDrill} className="w-full py-5">
                   <Check className="h-4 w-4 mr-2" /> Pročitano — počni drill
                 </Button>
