@@ -28,6 +28,7 @@ import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak } from "@/lib/tts";
 import LearnOnboarding, { hasSeenOnboarding } from "@/components/LearnOnboarding";
+import TextSelectionTooltip from "@/components/TextSelectionTooltip";
 
 // Sub-components
 import SessionHeader from "./learn/SessionHeader";
