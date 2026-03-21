@@ -20,6 +20,8 @@ import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
+const RichTextEditor = lazy(() => import("@/components/RichTextEditor"));
+
 const STATUS_CONFIG: Record<MnemonicStatus, { label: string; icon: typeof Brain; color: string }> = {
   "new": { label: "Nova", icon: Sparkles, color: "text-muted-foreground" },
   "in-workshop": { label: "U radionici", icon: Wrench, color: "text-warning" },
