@@ -66,6 +66,8 @@ const SessionHeader = React.memo(function SessionHeader({
           <span className="text-sm text-muted-foreground">
             {currentIndex + 1} / {totalCards}
           </span>
+          <ShortcutsHint shortcuts={learnMode === "free" ? LEARN_SHORTCUTS : learnMode === "active-recall" ? AR_SHORTCUTS : CHAIN_SHORTCUTS} />
+          </span>
         </div>
       </div>
 
