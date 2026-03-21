@@ -26,10 +26,9 @@ interface Props {
   cards: Card[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
-  onSendToWorkshop?: (cardId: string) => void;
 }
 
-export default function CognitiveAnalytics({ cards, categories, reviewLog, onSendToWorkshop }: Props) {
+export default function CognitiveAnalytics({ cards, categories, reviewLog }: Props) {
   return (
     <div className="space-y-6">
       {/* 1. Interference Index */}
