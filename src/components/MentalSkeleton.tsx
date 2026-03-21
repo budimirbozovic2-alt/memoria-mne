@@ -503,7 +503,10 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
         onUpdateChapters(updates);
       }
     } else {
-      // Move to different chapter
+      // Move to different chapter (Fix #2: null-check for race condition)
+      const movedCard = subCards.find(c => c.id === active.id);
+      if (!movedCard) return; // guard against stale state
+
       const targetChapter = overChapter === UNASSIGNED_CHAPTER ? "" : overChapter;
       const targetCards = [...(cardsByChapter[overChapter] || [])].sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
       const overIndex = targetCards.findIndex(c => c.id === over.id);
@@ -512,7 +515,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
       // Update moved card
       const updates: { id: string; chapter: string; chapterOrder: number }[] = [];
       // Insert into target
-      targetCards.splice(insertIndex, 0, subCards.find(c => c.id === active.id)!);
+      targetCards.splice(insertIndex, 0, movedCard);
       targetCards.forEach((c, i) => {
         updates.push({ id: c.id, chapter: targetChapter, chapterOrder: i });
       });
