@@ -111,7 +111,7 @@ function replaceTextRange(node: Node, start: number, end: number, html: string, 
   const after = text.slice(end);
 
   const span = document.createElement("span");
-  span.innerHTML = (before ? before : "") + html + (after ? after : "");
+  span.innerHTML = sanitizeHtml((before || "") + html + (after || ""));
 
   const parent = node.parentNode;
   if (!parent) return;
