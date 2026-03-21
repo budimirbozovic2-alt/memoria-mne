@@ -476,7 +476,7 @@ function ReviewCard({
           <span className="text-sm text-muted-foreground">
             {progress + 1} / {total}
           </span>
-          <ShortcutsHint shortcuts={REVIEW_SHORTCUTS}
+          <ShortcutsHint shortcuts={REVIEW_SHORTCUTS} />
         </div>
       </div>
 
