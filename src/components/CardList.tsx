@@ -14,6 +14,7 @@ interface Props {
   cards: Card[];
   filterCategory: string | null;
   filterSubcategory?: string | null;
+  filterChapter?: string | null;
   filterType?: "all" | "essay" | "flash";
   filterTag?: string | null;
   searchQuery?: string;
