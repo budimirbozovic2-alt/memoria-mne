@@ -32,6 +32,7 @@ const PRIMARY_NAV = [
   { path: "/", icon: Home, label: "Dashboard" },
   { path: "/learn", icon: GraduationCap, label: "Učenje" },
   { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
+  { path: "/database", icon: DatabaseIcon, label: "Baza podataka" },
 ];
 
 const LAB_ITEMS = [
@@ -39,8 +40,6 @@ const LAB_ITEMS = [
   { path: "/metacognitive", icon: BookOpen, label: "Dnevnik", desc: "Metakognitivne refleksije" },
   { path: "/mnemonic", icon: Brain, label: "Mnemo radionica", desc: "Tehnike pamćenja" },
   { path: "/planner", icon: Target, label: "Strateški planer", desc: "Planiranje učenja" },
-  { path: "/database", icon: DatabaseIcon, label: "Kartice", desc: "Pregledaj i uređuj kartice" },
-  { path: "/categories", icon: FolderOpen, label: "Kategorije", desc: "Organizuj po temama" },
 ];
 
 const LAB_PATHS = LAB_ITEMS.map(i => i.path);
