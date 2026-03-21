@@ -29,14 +29,12 @@ export default function CardsView() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkSubcategory, setBulkSubcategory] = useState("");
-  const [scrollToCardId, setScrollToCardId] = useState<string | null>(null);
+  const [scrollToCardId, setScrollToCardId] = useState<string | null>(() => {
+    const id = sessionStorage.getItem("sr-scroll-to-card");
+    if (id) sessionStorage.removeItem("sr-scroll-to-card");
+    return id;
+  });
   const [reorderMode, setReorderMode] = useState(false);
-
-  // After editing, scroll back to the edited card
-  const lastEditedRef = sessionStorage.getItem("sr-last-edited-card");
-  if (lastEditedRef && !scrollToCardId) {
-    // Use setTimeout to set after mount
-  }
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
