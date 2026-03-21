@@ -6,6 +6,22 @@ const isDev = !app.isPackaged;
 const configPath = path.join(app.getPath('userData'), 'window-state.json');
 const crashLogPath = path.join(app.getPath('userData'), 'crash.log');
 
+// ── Resolve paths correctly for both dev and packaged builds ──
+function getDistPath(...segments) {
+  if (isDev) {
+    return path.join(__dirname, ...segments);
+  }
+  // In packaged app, __dirname points to app.asar root
+  return path.join(__dirname, 'dist', ...segments);
+}
+
+function getPublicPath(...segments) {
+  if (isDev) {
+    return path.join(__dirname, 'public', ...segments);
+  }
+  return path.join(__dirname, 'dist', ...segments);
+}
+
 // ── Global Error Handler ──
 function logCrash(label, err) {
   const timestamp = new Date().toISOString();
@@ -51,17 +67,19 @@ function createSplashWindow() {
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    icon: path.join(__dirname, isDev ? 'public/favicon.ico' : 'dist/favicon.ico'),
+    icon: getPublicPath('favicon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
     },
   });
-  splash.loadFile(path.join(__dirname, isDev ? 'public/splash.html' : 'dist/splash.html'));
+  splash.loadFile(getPublicPath('splash.html'));
+  splash.on('closed', () => {}); // prevent crash if destroyed early
   return splash;
 }
 
 let mainWindow = null;
+let appReady = false;
 
 // ── Main Window ──
 function createWindow(splash) {
@@ -75,12 +93,12 @@ function createWindow(splash) {
     minWidth: 900,
     minHeight: 670,
     show: false,
-    icon: path.join(__dirname, isDev ? 'public/favicon.ico' : 'dist/favicon.ico'),
+    icon: getPublicPath('favicon.ico'),
+    backgroundColor: '#1a1209', // match splash bg to prevent white flash
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.cjs'),
-      // Sandbox disabled to allow preload access — contextIsolation still protects
       sandbox: false,
     },
   });
@@ -101,11 +119,52 @@ function createWindow(splash) {
     });
   }
 
+  // ── Load content ──
   if (isDev) {
     win.loadURL('http://localhost:8080');
   } else {
-    win.loadFile(path.join(__dirname, 'dist/index.html'));
+    // Use absolute file:// URL to prevent path resolution issues in asar
+    const indexPath = getDistPath('index.html');
+    win.loadFile(indexPath).catch((err) => {
+      logCrash('loadFile-failed', err);
+      // Fallback: try URL-based loading
+      const fallbackUrl = `file://${indexPath.replace(/\\/g, '/')}`;
+      win.loadURL(fallbackUrl).catch((err2) => logCrash('loadURL-fallback-failed', err2));
+    });
   }
+
+  // ── Handle load failures (white screen prevention) ──
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    logCrash('did-fail-load', `${errorCode}: ${errorDescription} @ ${validatedURL}`);
+    // Retry once after short delay
+    setTimeout(() => {
+      if (!win.isDestroyed()) {
+        if (isDev) {
+          win.loadURL('http://localhost:8080');
+        } else {
+          win.loadFile(getDistPath('index.html')).catch(() => {});
+        }
+      }
+    }, 2000);
+  });
+
+  // ── Renderer crash recovery ──
+  win.webContents.on('render-process-gone', (_event, details) => {
+    logCrash('render-process-gone', JSON.stringify(details));
+    if (!win.isDestroyed()) {
+      win.destroy();
+      const newSplash = createSplashWindow();
+      createWindow(newSplash);
+    }
+  });
+
+  win.webContents.on('unresponsive', () => {
+    logCrash('unresponsive', 'Window became unresponsive');
+  });
+
+  win.webContents.on('responsive', () => {
+    logCrash('responsive', 'Window became responsive again');
+  });
 
   // Save window state on move/resize (debounced)
   let saveTimeout = null;
@@ -116,12 +175,29 @@ function createWindow(splash) {
   win.on('resize', debouncedSave);
   win.on('move', debouncedSave);
 
-  // Show window once ready (splash covers loading)
+  // Show window when renderer signals ready (or fallback timeout)
+  const showWindow = () => {
+    if (appReady) return;
+    appReady = true;
+    if (!splash.isDestroyed()) splash.destroy();
+    if (!win.isDestroyed()) win.show();
+  };
+
+  // Renderer signals it's ready via IPC
+  ipcMain.once('renderer-ready', showWindow);
+
+  // Fallback: show after max 8 seconds regardless
+  const fallbackTimer = setTimeout(showWindow, 8000);
+
   win.once('ready-to-show', () => {
+    // Give renderer 500ms minimum to paint after DOM ready
     setTimeout(() => {
-      if (!splash.isDestroyed()) splash.destroy();
-      win.show();
-    }, 1800);
+      if (!appReady) {
+        // Still waiting for renderer-ready, set a shorter fallback
+        clearTimeout(fallbackTimer);
+        setTimeout(showWindow, 3000);
+      }
+    }, 500);
   });
 }
 
@@ -164,23 +240,10 @@ function writeBackup(jsonString) {
   }
 }
 
-// Auto-backup via executeJavaScript — reads both localStorage and triggers IDB export
+// Auto-backup via IPC — renderer sends data when requested
 function performAutoBackup() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-
-  // Ask renderer to prepare backup data (reads from IndexedDB via IPC)
-  mainWindow.webContents.executeJavaScript(`
-    (function() {
-      try {
-        var keys = ['sr-essay-cards', 'sr-essay-categories', 'sr-essay-subcategories', 'sr-review-log', 'sr-settings'];
-        var data = {};
-        keys.forEach(function(k) { var v = localStorage.getItem(k); if (v) data[k] = JSON.parse(v); });
-        return JSON.stringify(data, null, 2);
-      } catch(e) { return null; }
-    })()
-  `).then(result => {
-    if (result) writeBackup(result);
-  }).catch(() => {});
+  mainWindow.webContents.send('backup-requested');
 }
 
 // ── IPC Handlers ──
@@ -195,58 +258,6 @@ ipcMain.handle('get-app-version', () => {
   return app.getVersion();
 });
 
-// ── DB Integrity Check ──
-function checkDatabaseIntegrity() {
-  // Verify localStorage backup exists and is valid JSON
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-
-  mainWindow.webContents.executeJavaScript(`
-    (function() {
-      try {
-        var cardsRaw = localStorage.getItem('sr-essay-cards');
-        if (!cardsRaw) return JSON.stringify({ status: 'empty' });
-        var cards = JSON.parse(cardsRaw);
-        if (!Array.isArray(cards)) return JSON.stringify({ status: 'corrupt', error: 'cards is not an array' });
-        var invalid = cards.filter(function(c) { return !c.id || !c.question; }).length;
-        return JSON.stringify({ status: 'ok', total: cards.length, invalid: invalid });
-      } catch(e) {
-        return JSON.stringify({ status: 'corrupt', error: e.message });
-      }
-    })()
-  `).then(result => {
-    try {
-      const report = JSON.parse(result);
-      const logLine = '[' + new Date().toISOString() + '] DB Integrity: ' + JSON.stringify(report) + '\\n';
-      fs.appendFileSync(path.join(app.getPath('userData'), 'integrity.log'), logLine);
-
-      if (report.status === 'corrupt') {
-        // Attempt recovery from latest backup
-        const backupFiles = fs.readdirSync(BACKUP_DIR)
-          .filter(f => f.startsWith('Memoria_AutoBackup_') && f.endsWith('.json'))
-          .map(f => ({ name: f, time: fs.statSync(path.join(BACKUP_DIR, f)).mtimeMs }))
-          .sort((a, b) => b.time - a.time);
-
-        if (backupFiles.length > 0) {
-          const latestBackup = fs.readFileSync(path.join(BACKUP_DIR, backupFiles[0].name), 'utf-8');
-          const parsed = JSON.parse(latestBackup);
-
-          // Restore to localStorage
-          mainWindow.webContents.executeJavaScript(`
-            (function() {
-              var data = ${JSON.stringify(parsed)};
-              Object.keys(data).forEach(function(k) {
-                localStorage.setItem(k, JSON.stringify(data[k]));
-              });
-              location.reload();
-            })()
-          `).catch(() => {});
-          logCrash('integrity-recovery', 'Restored from backup: ' + backupFiles[0].name);
-        }
-      }
-    } catch (_) {}
-  }).catch(() => {});
-}
-
 let backupInterval = null;
 
 app.whenReady().then(() => {
@@ -254,9 +265,8 @@ app.whenReady().then(() => {
   createWindow(splash);
 
   if (!isDev) {
-    // First backup + integrity check after 2 minutes
+    // Start auto-backup after 2 minutes
     setTimeout(() => {
-      checkDatabaseIntegrity();
       performAutoBackup();
       backupInterval = setInterval(performAutoBackup, BACKUP_INTERVAL_MS);
     }, 2 * 60 * 1000);

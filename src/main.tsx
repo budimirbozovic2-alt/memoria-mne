@@ -4,13 +4,16 @@ import "./index.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Fade out in-app splash
+// Fade out in-app splash once React renders (actual data-ready handled by useCards)
 requestAnimationFrame(() => {
-  const splash = document.getElementById("app-splash");
-  if (splash) {
-    splash.style.opacity = "0";
-    setTimeout(() => splash.remove(), 400);
-  }
+  // Short delay to let first paint happen
+  setTimeout(() => {
+    const splash = document.getElementById("app-splash");
+    if (splash) {
+      splash.style.opacity = "0";
+      setTimeout(() => splash.remove(), 400);
+    }
+  }, 300);
 });
 
 // ── Electron IPC: listen for backup-requested before quit ──
