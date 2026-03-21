@@ -370,6 +370,42 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
         )}
       </div>
 
+      {/* Chapter (only for essay cards with subcategory) */}
+      {cardType === "essay" && (subcategory || (showNewSub && newSubcategory.trim())) && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-muted-foreground">Glava (opciono)</label>
+          {!showNewChapter ? (
+            <div className="flex gap-2">
+              <Select value={chapter || "__none__"} onValueChange={(v) => setChapter(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="bg-card">
+                  <SelectValue placeholder="Bez glave" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">Bez glave</SelectItem>
+                  {availableChapters.map((ch) => (
+                    <SelectItem key={ch} value={ch}>{ch}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button type="button" variant="outline" size="icon" onClick={() => setShowNewChapter(true)}>
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <Input
+                value={newChapter}
+                onChange={(e) => setNewChapter(e.target.value)}
+                placeholder="Nova glava (npr. Glava 1)..."
+                className="bg-card"
+              />
+              <Button type="button" variant="outline" size="icon" onClick={() => { setShowNewChapter(false); if (newChapter.trim()) setChapter(newChapter.trim()); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
       <Button type="submit" className="w-full">
         {editCard ? "Sačuvaj izmjene" : cardType === "flash" ? "Dodaj blic pitanje" : "Dodaj karticu"}
       </Button>
