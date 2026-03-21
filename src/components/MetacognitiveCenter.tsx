@@ -106,6 +106,11 @@ export default function MetacognitiveCenter({ cards, categories, reviewLog, onBa
         <TabsContent value="prediction">
           <PredictionTab cards={cards} categories={categories} reviewLog={reviewLog} />
         </TabsContent>
+        <TabsContent value="errors">
+          <Suspense fallback={<div className="py-8 text-center text-muted-foreground text-sm">Učitavanje…</div>}>
+            <FrequentErrors cards={cards} onBack={() => {}} onClearErrorLog={onClearErrorLog || (() => {})} embedded />
+          </Suspense>
+        </TabsContent>
       </Tabs>
     </motion.div>
   );
