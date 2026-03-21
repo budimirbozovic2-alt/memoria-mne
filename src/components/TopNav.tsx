@@ -166,7 +166,7 @@ export default function TopNav({ onToggleZen, zenActive }: Props) {
             <Focus className="h-4 w-4" />
           </button>
           <button onClick={toggleDark} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" title="Tema">
-            {dark ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
         </div>
       </div>
