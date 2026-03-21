@@ -277,7 +277,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </div>
         <Progress value={examProgressPct} className="h-3" />
         <p className="text-xs text-muted-foreground tabular-nums">{examProgressPct}% savladano</p>
-      </motion.div>
+      </motion.div>}
 
       {/* 2. Core Stats — dva brojača bez dugmadi */}
       <div className="grid grid-cols-2 gap-4">
