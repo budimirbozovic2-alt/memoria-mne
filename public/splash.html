@@ -32,7 +32,7 @@
       justify-content: center;
       font-size: 36px;
       box-shadow: 0 8px 32px rgba(232, 138, 26, 0.35);
-      animation: pulse 1.8s ease-in-out infinite;
+      animation: pulse 1.8s ease-in-out infinite, glow 1.8s ease-in-out infinite;
     }
     h1 {
       font-size: 22px;
@@ -69,7 +69,11 @@
     }
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
+      50% { transform: scale(1.08); }
+    }
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 8px 32px rgba(232,138,26,0.35); }
+      50% { box-shadow: 0 12px 40px rgba(232,138,26,0.5); }
     }
     @keyframes load {
       0% { transform: translateX(-100%); }
