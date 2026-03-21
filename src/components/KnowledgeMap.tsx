@@ -275,7 +275,8 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack,
                         ))}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CollapsibleContent>
             </Collapsible>
