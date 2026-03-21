@@ -305,11 +305,28 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
                 </div>
               </div>
 
-              {card.testCount > 0 && (
-                <p className="text-xs text-muted-foreground text-right">
-                  {card.successCount}/{card.testCount} tačno ({Math.round(card.successCount / card.testCount * 100)}%)
-                </p>
-              )}
+              {/* Delete + stats */}
+              <div className="flex items-center justify-between pt-1 border-t border-dashed">
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" /> Obriši
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-destructive">Obrisati?</span>
+                    <button onClick={handleDelete} className="text-xs font-medium text-destructive hover:text-destructive/80">Da</button>
+                    <button onClick={() => setConfirmDelete(false)} className="text-xs text-muted-foreground hover:text-foreground">Ne</button>
+                  </div>
+                )}
+                {card.testCount > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {card.successCount}/{card.testCount} tačno ({Math.round(card.successCount / card.testCount * 100)}%)
+                  </p>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
