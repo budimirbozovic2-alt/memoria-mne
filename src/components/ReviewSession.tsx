@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"; 
-import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
+import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS, SectionState } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { Volume2 } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
@@ -10,6 +10,10 @@ import { default as Shuffle } from "lucide-react/dist/esm/icons/shuffle";
 import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
 import { default as Info } from "lucide-react/dist/esm/icons/info";
 import { default as XIcon } from "lucide-react/dist/esm/icons/x";
+import { default as Flame } from "lucide-react/dist/esm/icons/flame";
+import { default as Zap } from "lucide-react/dist/esm/icons/zap";
+import { default as Pause } from "lucide-react/dist/esm/icons/pause";
+import { default as Play } from "lucide-react/dist/esm/icons/play";
 import ScrollableRow from "@/components/ScrollableRow";
 import { Button } from "@/components/ui/button";
 import { speak, stopSpeaking } from "@/lib/tts";
@@ -24,7 +28,7 @@ const REVIEW_SHORTCUTS = [
   { keys: "N", description: "Zabilježi grešku" },
 ];
 
-type ReviewMode = "essay" | "random" | null;
+type ReviewMode = "essay" | "random" | "difficult" | null;
 type ViewWidth = "compact" | "normal" | "wide" | "full";
 
 const viewWidthClasses: Record<ViewWidth, string> = {
@@ -59,6 +63,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
   const [mode, setMode] = useState<ReviewMode>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [filterExamFrequent, setFilterExamFrequent] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);
   const [sectionIndex, setSectionIndex] = useState(0);
   const [randomIndex, setRandomIndex] = useState(0);
@@ -76,8 +81,77 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     let filtered = dueCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
     return filtered;
-  }, [dueCards, selectedCategory, selectedSubcategory]);
+  }, [dueCards, selectedCategory, selectedSubcategory, filterExamFrequent]);
+
+  // Difficult cards: only sections that are leech or have high difficulty
+  const difficultItems = useMemo<DueItem[]>(() => {
+    const items: DueItem[] = [];
+    filteredDueCards.forEach((card) => {
+      getDueSections(card).forEach((section) => {
+        if (isLeech(section, srSettings) || section.difficulty >= 7 || (section.lapses || 0) >= 3) {
+          items.push({ card, section });
+        }
+      });
+    });
+    // Sort by difficulty descending
+    items.sort((a, b) => (b.section.difficulty + (b.section.lapses || 0) * 2) - (a.section.difficulty + (a.section.lapses || 0) * 2));
+    return items;
+  }, [filteredDueCards, srSettings]);
+
+  // Count exam-frequent cards in due set
+  const examFrequentCount = useMemo(() => {
+    return dueCards.filter(c => c.tags?.includes("često-na-ispitu")).length;
+  }, [dueCards]);
+
+  // Session pause/resume
+  const SESSION_KEY = "sr-review-session";
+
+  const saveSessionState = useCallback(() => {
+    if (mode === null || finished) return;
+    const state = { mode, selectedCategory, selectedSubcategory, filterExamFrequent, cardIndex, sectionIndex, randomIndex, timestamp: Date.now() };
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch (_) {}
+  }, [mode, selectedCategory, selectedSubcategory, filterExamFrequent, cardIndex, sectionIndex, randomIndex, finished]);
+
+  const clearSavedSession = useCallback(() => {
+    try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+  }, []);
+
+  // Check for saved session on mount
+  const [savedSession, setSavedSession] = useState<any>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        // Only restore if less than 2 hours old
+        if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
+          setSavedSession(parsed);
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+        }
+      }
+    } catch (_) {}
+  }, []);
+
+  const resumeSession = useCallback(() => {
+    if (!savedSession) return;
+    setMode(savedSession.mode);
+    setSelectedCategory(savedSession.selectedCategory);
+    setSelectedSubcategory(savedSession.selectedSubcategory);
+    setFilterExamFrequent(savedSession.filterExamFrequent || false);
+    setCardIndex(savedSession.cardIndex || 0);
+    setSectionIndex(savedSession.sectionIndex || 0);
+    setRandomIndex(savedSession.randomIndex || 0);
+    setSavedSession(null);
+    clearSavedSession();
+  }, [savedSession, clearSavedSession]);
+
+  const handlePauseSession = useCallback(() => {
+    saveSessionState();
+    onBack();
+  }, [saveSessionState, onBack]);
 
   const dueSubcategories = useMemo(() => {
     if (!selectedCategory) return [];
@@ -106,6 +180,11 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
     }
   }, [finished]);
 
+  // Clear saved session when session finishes
+  useEffect(() => {
+    if (finished) clearSavedSession();
+  }, [finished, clearSavedSession]);
+
   if (mode === null) {
     const filteredCount = filteredDueCards.length;
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
@@ -124,52 +203,86 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
           </p>
         </div>
 
-        {dueCategories.length >= 1 && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Filtriraj po kategoriji</label>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={() => setSelectedCategory(null)}
-                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-              >
-                Sve kategorije
-              </button>
-              {dueCategories.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-                >
-                  {c}
-                </button>
-              ))}
+        {/* Resume saved session */}
+        {savedSession && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-3">
+            <Play className="h-5 w-5 text-primary shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Sačuvana sesija</p>
+              <p className="text-xs text-muted-foreground">
+                Mod: {savedSession.mode === "essay" ? "Sekvencijalno" : savedSession.mode === "random" ? "Interleaving" : "Teške kartice"}
+                {savedSession.selectedCategory && ` · ${savedSession.selectedCategory}`}
+              </p>
             </div>
+            <Button size="sm" onClick={resumeSession} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Play className="h-3.5 w-3.5 mr-1" /> Nastavi
+            </Button>
+            <button onClick={() => { setSavedSession(null); clearSavedSession(); }} className="text-muted-foreground hover:text-foreground p-1">
+              <XIcon className="h-3.5 w-3.5" />
+            </button>
+          </motion.div>
+        )}
 
-            {selectedCategory && dueSubcategories.length > 0 && (
-              <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1 mt-2">
+        {/* Filters */}
+        <div className="space-y-3">
+          {dueCategories.length >= 1 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Filtriraj po kategoriji</label>
+              <div className="flex gap-2 flex-wrap">
                 <button
-                  onClick={() => setSelectedSubcategory(null)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                  onClick={() => setSelectedCategory(null)}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
                 >
-                  Sve podkat.
+                  Sve kategorije
                 </button>
-                {dueSubcategories.map((sc) => (
+                {dueCategories.map((c) => (
                   <button
-                    key={sc}
-                    onClick={() => setSelectedSubcategory(sc)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                    key={c}
+                    onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
                   >
-                    {sc}
+                    {c}
                   </button>
                 ))}
-              </ScrollableRow>
-            )}
-          </div>
-        )}
+              </div>
+
+              {selectedCategory && dueSubcategories.length > 0 && (
+                <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1 mt-2">
+                  <button
+                    onClick={() => setSelectedSubcategory(null)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                  >
+                    Sve podkat.
+                  </button>
+                  {dueSubcategories.map((sc) => (
+                    <button
+                      key={sc}
+                      onClick={() => setSelectedSubcategory(sc)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                    >
+                      {sc}
+                    </button>
+                  ))}
+                </ScrollableRow>
+              )}
+            </div>
+          )}
+
+          {/* Exam-frequent filter */}
+          {examFrequentCount > 0 && (
+            <button
+              onClick={() => setFilterExamFrequent(!filterExamFrequent)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${filterExamFrequent ? "bg-destructive/15 text-destructive border border-destructive/30" : "bg-secondary text-secondary-foreground hover:bg-accent"}`}
+            >
+              <Flame className="h-3.5 w-3.5" />
+              Često na ispitu ({examFrequentCount})
+            </button>
+          )}
+        </div>
 
         <div className="grid gap-4">
           <button
-            onClick={() => setMode("essay")}
+            onClick={() => { setMode("essay"); clearSavedSession(); }}
             className="rounded-xl border bg-card p-6 text-left hover:border-primary transition-colors group"
           >
             <div className="flex items-center gap-3 mb-3">
@@ -184,7 +297,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
           </button>
 
           <button
-            onClick={() => setMode("random")}
+            onClick={() => { setMode("random"); clearSavedSession(); }}
             className="rounded-xl border bg-card p-6 text-left hover:border-primary transition-colors group"
           >
             <div className="flex items-center gap-3 mb-3">
@@ -195,6 +308,25 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
             </div>
             <p className="text-sm text-muted-foreground">
               Sekcije iz svih kartica izmiješane nasumično. Simulira ispitne uslove i jača dugoročno pamćenje.
+            </p>
+          </button>
+
+          <button
+            onClick={() => { if (difficultItems.length > 0) { setMode("difficult"); clearSavedSession(); } }}
+            disabled={difficultItems.length === 0}
+            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${difficultItems.length > 0 ? "hover:border-destructive" : "opacity-50 cursor-not-allowed"}`}
+          >
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
+                <Zap className="h-5 w-5" />
+              </div>
+              <h3 className="text-lg font-medium">Samo teške kartice</h3>
+              <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full ml-auto">
+                {difficultItems.length} {difficultItems.length === 1 ? "sekcija" : "sekcija"}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Fokus na problematične sekcije: leech kartice, visoka težina (≥7) ili ≥3 pada. Intenzivni drill za najslabije tačke.
             </p>
           </button>
         </div>
@@ -240,6 +372,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
         onGrade={handleGrade}
         onLogError={onLogError}
         onBack={() => setMode(null)}
+        onPause={handlePauseSession}
         progress={completedSections}
         total={totalDueSections}
         sectionIndex={sectionIndex}
@@ -247,6 +380,47 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
         srSettings={srSettings}
         viewWidth={viewWidth}
         onViewWidthChange={setViewWidth}
+      />
+    );
+  }
+
+  // === DIFFICULT MODE ===
+  if (mode === "difficult") {
+    const currentDifficult = difficultItems[randomIndex];
+
+    const handleDifficultGrade = (grade: number) => {
+      if (!currentDifficult) return;
+      onReviewSection(currentDifficult.card.id, currentDifficult.section.id, grade);
+      if (randomIndex + 1 < difficultItems.length) {
+        setRandomIndex((i) => i + 1);
+        setShowAnswer(false);
+      } else {
+        setFinished(true);
+      }
+    };
+
+    if (finished || !currentDifficult) {
+      return <FinishedScreen onBack={onBack} />;
+    }
+
+    return (
+      <ReviewCard
+        card={currentDifficult.card}
+        section={currentDifficult.section}
+        showAnswer={showAnswer}
+        setShowAnswer={setShowAnswer}
+        onGrade={handleDifficultGrade}
+        onLogError={onLogError}
+        onBack={() => setMode(null)}
+        onPause={handlePauseSession}
+        progress={randomIndex}
+        total={difficultItems.length}
+        sectionIndex={0}
+        totalSectionsInCard={1}
+        srSettings={srSettings}
+        viewWidth={viewWidth}
+        onViewWidthChange={setViewWidth}
+        isDifficultMode
       />
     );
   }
@@ -279,6 +453,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
       onGrade={handleRandomGrade}
       onLogError={onLogError}
       onBack={() => setMode(null)}
+      onPause={handlePauseSession}
       progress={randomIndex}
       total={randomItems.length}
       sectionIndex={0}
@@ -357,16 +532,17 @@ function FinishedScreen({ onBack }: { onBack: () => void }) {
 }
 
 function ReviewCard({
-  card, section, showAnswer, setShowAnswer, onGrade, onLogError, onBack,
-  progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange,
+  card, section, showAnswer, setShowAnswer, onGrade, onLogError, onBack, onPause,
+  progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange, isDifficultMode,
 }: {
   card: Card; section: Section; showAnswer: boolean;
   setShowAnswer: (v: boolean) => void; onGrade: (g: number) => void;
   onLogError: (cardId: string, text: string) => void;
-  onBack: () => void; progress: number; total: number;
+  onBack: () => void; onPause?: () => void; progress: number; total: number;
   sectionIndex: number; totalSectionsInCard: number;
   srSettings: SRSettings;
   viewWidth: ViewWidth; onViewWidthChange: (w: ViewWidth) => void;
+  isDifficultMode?: boolean;
 }) {
   const { toast } = useToast();
   const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);
@@ -456,10 +632,22 @@ function ReviewCard({
   return (
     <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
-          <ArrowLeft className="h-4 w-4" /> Nazad
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <ArrowLeft className="h-4 w-4" /> Nazad
+          </button>
+          {onPause && (
+            <button onClick={onPause} className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded-md hover:bg-secondary text-xs" title="Pauziraj sesiju i nastavi kasnije">
+              <Pause className="h-3.5 w-3.5" /> Pauza
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-3">
+          {isDifficultMode && (
+            <span className="text-xs bg-destructive/10 text-destructive px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Zap className="h-3 w-3" /> Teške
+            </span>
+          )}
           <div className="hidden md:flex items-center gap-1 bg-secondary rounded-lg p-1">
             {(Object.keys(viewWidthClasses) as ViewWidth[]).map((w) => (
               <button
