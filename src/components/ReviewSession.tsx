@@ -224,33 +224,51 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
         )}
 
         {/* Filters */}
-        <div className="space-y-3">
+        <div className="rounded-xl border bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Kategorija</span>
+            {examFrequentCount > 0 && (
+              <button
+                onClick={() => setFilterExamFrequent(!filterExamFrequent)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${filterExamFrequent ? "bg-destructive/15 text-destructive border border-destructive/30" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+              >
+                <Flame className="h-3 w-3" />
+                Često na ispitu ({examFrequentCount})
+              </button>
+            )}
+          </div>
+
           {dueCategories.length >= 1 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">Filtriraj po kategoriji</label>
-              <div className="flex gap-2 flex-wrap">
+            <div className="space-y-2.5">
+              <ScrollableRow>
                 <button
-                  onClick={() => setSelectedCategory(null)}
-                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
+                  onClick={() => { setSelectedCategory(null); setSelectedSubcategory(null); }}
+                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedCategory ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
                 >
-                  Sve kategorije
+                  Sve
                 </button>
-                {dueCategories.map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
-                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${selectedCategory === c ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
+                {dueCategories.map((c) => {
+                  const count = filteredDueCards.filter(card => !selectedCategory && card.category === c).length || dueCards.filter(card => card.category === c).length;
+                  return (
+                    <button
+                      key={c}
+                      onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${selectedCategory === c ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                    >
+                      {c}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
+                        {dueCards.filter(card => card.category === c).length}
+                      </span>
+                    </button>
+                  );
+                })}
+              </ScrollableRow>
 
               {selectedCategory && dueSubcategories.length > 0 && (
-                <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1 mt-2">
+                <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1">
                   <button
                     onClick={() => setSelectedSubcategory(null)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selectedSubcategory ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
                   >
                     Sve podkat.
                   </button>
@@ -258,7 +276,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
                     <button
                       key={sc}
                       onClick={() => setSelectedSubcategory(sc)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${selectedSubcategory === sc ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
                     >
                       {sc}
                     </button>
@@ -266,17 +284,6 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
                 </ScrollableRow>
               )}
             </div>
-          )}
-
-          {/* Exam-frequent filter */}
-          {examFrequentCount > 0 && (
-            <button
-              onClick={() => setFilterExamFrequent(!filterExamFrequent)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${filterExamFrequent ? "bg-destructive/15 text-destructive border border-destructive/30" : "bg-secondary text-secondary-foreground hover:bg-accent"}`}
-            >
-              <Flame className="h-3.5 w-3.5" />
-              Često na ispitu ({examFrequentCount})
-            </button>
           )}
         </div>
 
