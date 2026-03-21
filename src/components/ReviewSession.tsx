@@ -372,6 +372,7 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
         onGrade={handleGrade}
         onLogError={onLogError}
         onBack={() => setMode(null)}
+        onPause={handlePauseSession}
         progress={completedSections}
         total={totalDueSections}
         sectionIndex={sectionIndex}
@@ -379,6 +380,47 @@ export default function ReviewSession({ dueCards, subcategories, srSettings, onR
         srSettings={srSettings}
         viewWidth={viewWidth}
         onViewWidthChange={setViewWidth}
+      />
+    );
+  }
+
+  // === DIFFICULT MODE ===
+  if (mode === "difficult") {
+    const currentDifficult = difficultItems[randomIndex];
+
+    const handleDifficultGrade = (grade: number) => {
+      if (!currentDifficult) return;
+      onReviewSection(currentDifficult.card.id, currentDifficult.section.id, grade);
+      if (randomIndex + 1 < difficultItems.length) {
+        setRandomIndex((i) => i + 1);
+        setShowAnswer(false);
+      } else {
+        setFinished(true);
+      }
+    };
+
+    if (finished || !currentDifficult) {
+      return <FinishedScreen onBack={onBack} />;
+    }
+
+    return (
+      <ReviewCard
+        card={currentDifficult.card}
+        section={currentDifficult.section}
+        showAnswer={showAnswer}
+        setShowAnswer={setShowAnswer}
+        onGrade={handleDifficultGrade}
+        onLogError={onLogError}
+        onBack={() => setMode(null)}
+        onPause={handlePauseSession}
+        progress={randomIndex}
+        total={difficultItems.length}
+        sectionIndex={0}
+        totalSectionsInCard={1}
+        srSettings={srSettings}
+        viewWidth={viewWidth}
+        onViewWidthChange={setViewWidth}
+        isDifficultMode
       />
     );
   }
