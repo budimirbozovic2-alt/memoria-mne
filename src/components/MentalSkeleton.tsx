@@ -795,6 +795,3 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     </div>
   );
 }
-
-// Re-export for external use
-export { getMasteryColor } from "@/components/KnowledgeMap";
