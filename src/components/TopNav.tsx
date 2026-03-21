@@ -151,6 +151,15 @@ export default function TopNav({ onToggleZen, zenActive }: Props) {
           </div>
 
           <NavLink
+            to="/database"
+            className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            activeClassName="bg-primary/10 text-primary"
+          >
+            <DatabaseIcon className="h-4 w-4 flex-shrink-0" />
+            <span>Baza podataka</span>
+          </NavLink>
+
+          <NavLink
             to="/settings"
             className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground hover:bg-secondary/60"
             activeClassName="bg-primary/10 text-primary"
