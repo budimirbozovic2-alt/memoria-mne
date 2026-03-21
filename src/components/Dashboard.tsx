@@ -9,8 +9,10 @@ import { default as Gauge } from "lucide-react/dist/esm/icons/gauge";
 import { default as Lightbulb } from "lucide-react/dist/esm/icons/lightbulb";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Trophy } from "lucide-react/dist/esm/icons/trophy";
+import { default as TrendingUp } from "lucide-react/dist/esm/icons/trending-up";
+import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { motion } from "framer-motion";
-import { Card as SRCard, SRSettings, getPendingFirstReviewCount } from "@/lib/spaced-repetition";
+import { Card as SRCard, SRSettings, getPendingFirstReviewCount, getSectionScore } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, isBackupOverdue, getLastBackupTime } from "@/lib/storage";
 import { loadDiary, loadSlippageLog } from "@/lib/metacognitive-storage";
 import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, loadDisciplineLog } from "@/lib/planner-storage";
@@ -160,6 +162,23 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
 
   const examProgressPct = stats.totalSections > 0 ? Math.round((stats.learnedSections / stats.totalSections) * 100) : 0;
   const energyLevel = getEnergyLevel();
+
+  // Velocity trend (7-day)
+  const velocityData = useDeferredCompute(() => {
+    const velocity = calcVelocity(reviewLog, 7);
+    const velocityPrev = calcVelocity(reviewLog, 14) - velocity; // rough prev week
+    const trend = velocity > velocityPrev ? "up" : velocity < velocityPrev ? "down" : "flat";
+    return { velocity: Math.round(velocity * 10) / 10, trend };
+  }, [reviewLog]);
+
+  // Top 3 weakest categories
+  const weakestCategories = useMemo(() => {
+    return categories
+      .filter(cat => categoryStats[cat]?.total > 0)
+      .map(cat => ({ name: cat, score: categoryStats[cat].score, total: categoryStats[cat].total }))
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 3);
+  }, [categories, categoryStats]);
 
   // Build brief text
   const briefText = useMemo(() => {
@@ -377,7 +396,64 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </motion.div>
       )}
 
-      {/* 5. Status Icons Row */}
+      {/* 5. Velocity + Najslabije kategorije */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Velocity Trend */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
+          className="rounded-xl bg-card border p-5 space-y-2">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-medium">Brzina učenja</h3>
+          </div>
+          {velocityData ? (
+            <>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-semibold tabular-nums">{velocityData.velocity}</p>
+                <span className="text-sm text-muted-foreground">sekcija/dan</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {velocityData.trend === "up" ? "📈 Raste u odnosu na prošlu sedmicu" :
+                 velocityData.trend === "down" ? "📉 Pada u odnosu na prošlu sedmicu" :
+                 "➡️ Stabilan tempo"}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Učitavanje...</p>
+          )}
+        </motion.div>
+
+        {/* Top 3 najslabije kategorije */}
+        {weakestCategories.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
+            className="rounded-xl bg-card border p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-medium">Najslabije kategorije</h3>
+            </div>
+            <div className="space-y-2">
+              {weakestCategories.map((cat, i) => (
+                <div key={cat.name} className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium truncate">{cat.name}</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">{cat.score}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${cat.score < 30 ? "bg-destructive" : cat.score < 60 ? "bg-warning" : "bg-primary"}`}
+                        style={{ width: `${cat.score}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+
       {statusIcons.length > 0 && (
         <TooltipProvider delayDuration={200}>
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}
