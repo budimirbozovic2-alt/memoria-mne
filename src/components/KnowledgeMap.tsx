@@ -78,7 +78,7 @@ export default function KnowledgeMap({ cards, categories, subcategories, onBack,
     exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
   };
 
-  const transition = { type: "tween", duration: 0.25, ease: "easeInOut" };
+  const transition = { type: "tween" as const, duration: 0.25, ease: "easeInOut" as const };
 
   // ── Step 3: Detail view via MentalSkeleton ──
   if (view.step === "detail" && onUpdateChapters && onReviewSection) {
