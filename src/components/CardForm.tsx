@@ -84,13 +84,15 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
   );
   const [category, setCategory] = useState(editCard?.category ?? categories[0] ?? "Opšte");
   const [subcategory, setSubcategory] = useState(editCard?.subcategory ?? "");
+  const [chapter, setChapter] = useState(editCard?.chapter ?? "");
   const [newCategory, setNewCategory] = useState("");
   const [showNewCat, setShowNewCat] = useState(false);
   const [newSubcategory, setNewSubcategory] = useState("");
   const [showNewSub, setShowNewSub] = useState(false);
+  const [newChapter, setNewChapter] = useState("");
+  const [showNewChapter, setShowNewChapter] = useState(false);
   const [formWidth, setFormWidth] = useState<FormWidth>("wide");
   const [cuttingIndex, setCuttingIndex] = useState<number | null>(null);
-  
 
   const availableSubs = subcategories[category] || [];
 
