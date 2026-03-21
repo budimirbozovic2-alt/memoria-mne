@@ -156,7 +156,7 @@ export default function TopNav({ onToggleZen, zenActive }: Props) {
             className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground hover:bg-secondary/60"
             activeClassName="bg-primary/10 text-primary"
           >
-            <SettingsIcon className="h-3.5 w-3.5 flex-shrink-0" />
+            <SettingsIcon className="h-4 w-4 flex-shrink-0" />
             <span>Podešavanja</span>
           </NavLink>
         </div>
