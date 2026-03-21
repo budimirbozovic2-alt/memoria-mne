@@ -166,24 +166,25 @@ export default function FrequentErrors({ cards, onBack, onClearErrorLog, embedde
   }, [cards]);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
-      <div>
-        <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
-          <ArrowLeft className="h-4 w-4" /> Nazad
-        </button>
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-destructive/10">
-            <AlertCircle className="h-6 w-6 text-destructive" />
+    <div className={embedded ? "space-y-6" : "max-w-3xl mx-auto space-y-8"}>
+      {!embedded && (
+        <div>
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
+            <ArrowLeft className="h-4 w-4" /> Nazad
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-destructive/10">
+              <AlertCircle className="h-6 w-6 text-destructive" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-serif">Najčešće greške</h1>
+              <p className="text-muted-foreground text-sm mt-1">
+                {totalErrors === 0
+                  ? "Još nema zabilježenih grešaka."
+                  : `${criticalAndRecovering.length} aktivn${criticalAndRecovering.length === 1 ? "a" : "e"} · ${mastered.length} savladan${mastered.length === 1 ? "a" : "e"}`}
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-serif">Najčešće greške</h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              {totalErrors === 0
-                ? "Još nema zabilježenih grešaka."
-                : `${criticalAndRecovering.length} aktivn${criticalAndRecovering.length === 1 ? "a" : "e"} · ${mastered.length} savladan${mastered.length === 1 ? "a" : "e"}`}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Legend */}
