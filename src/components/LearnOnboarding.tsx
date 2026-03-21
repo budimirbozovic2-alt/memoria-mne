@@ -37,9 +37,9 @@ const slides = [
   },
   {
     icon: BookOpen,
-    iconColor: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    iconColor: "bg-success/15 text-success",
     level: "Lak",
-    levelColor: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+    levelColor: "bg-success/15 text-success",
     title: "Slobodno učenje",
     subtitle: "Upoznaj se sa materijalom bez pritiska.",
     bullets: [
