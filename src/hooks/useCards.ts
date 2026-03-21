@@ -37,6 +37,19 @@ type PersistAction =
 const pendingActions: PersistAction[] = [];
 let flushTimer: number | null = null;
 
+// Fix #3: Non-blocking localStorage sync via requestIdleCallback
+function asyncLocalStorageSync(key: string, data: () => string) {
+  if ("requestIdleCallback" in window) {
+    (window as any).requestIdleCallback(() => {
+      try { localStorage.setItem(key, data()); } catch {}
+    }, { timeout: 5000 });
+  } else {
+    setTimeout(() => {
+      try { localStorage.setItem(key, data()); } catch {}
+    }, 100);
+  }
+}
+
 function schedulePersist(action: PersistAction) {
   pendingActions.push(action);
   if (flushTimer !== null) return;
