@@ -156,6 +156,48 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
   const [activeTab, setActiveTab] = useState<string>("overview");
   const weights = srSettings?.resistanceWeights ?? DEFAULT_SR_SETTINGS.resistanceWeights;
 
+  // Focus ratio for ratio chart
+  const focusRatio = useMemo(() => {
+    if (srSettings.dailyGoal === 0) return { progress: 0, targetReviewPct: 5 };
+    const progress = srSettings.dailyGoal > 0 && cards.length > 0
+      ? Math.round((cards.reduce((s, c) => s + c.sections.filter(sec => sec.lastReviewed).length, 0) /
+        Math.max(1, cards.reduce((s, c) => s + c.sections.length, 0))) * 100)
+      : 0;
+    return { progress, targetReviewPct: Math.max(5, progress) };
+  }, [cards, srSettings]);
+
+  // 14-day ratio history (deferred)
+  const ratioHistory = useDeferredCompute(() => {
+    const now = new Date();
+    const days = eachDayOfInterval({ start: subDays(now, 13), end: now });
+    const sectionFirstSeen = new Map<string, number>();
+    reviewLog.forEach(e => {
+      const key = `${e.cardId}:${e.sectionId}`;
+      const prev = sectionFirstSeen.get(key);
+      if (!prev || e.timestamp < prev) sectionFirstSeen.set(key, e.timestamp);
+    });
+    return days.map(day => {
+      const dayStart = startOfDay(day).getTime();
+      const dayEnd = dayStart + 86400000;
+      const dayEntries = reviewLog.filter(r => r.timestamp >= dayStart && r.timestamp < dayEnd);
+      let review = 0, newL = 0;
+      dayEntries.forEach(e => {
+        const key = `${e.cardId}:${e.sectionId}`;
+        const firstSeen = sectionFirstSeen.get(key) || e.timestamp;
+        if (firstSeen < dayStart) review++; else newL++;
+      });
+      const total = review + newL;
+      return {
+        name: format(day, "dd.MM"),
+        "Stvarni ponavljanje": total > 0 ? Math.round((review / total) * 100) : null,
+        "Idealni cilj": focusRatio.targetReviewPct,
+      };
+    });
+  }, [reviewLog, focusRatio]);
+
+  // Effective learning time distribution (deferred)
+  const todayTime = useDeferredCompute(() => getTimeDistribution(1), []);
+
   const activityData = useMemo(() => {
     const now = new Date();
     const start = subDays(now, 13);
