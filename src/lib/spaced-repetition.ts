@@ -85,10 +85,11 @@ export const DEFAULT_SR_SETTINGS: SRSettings = {
   resistanceWeights: { lapses: 40, latency: 30, forgetting: 30 },
 };
 
-// FSRS interval calculation targeting 95% retention
-export function calculateInterval(stability: number): number {
+// FSRS interval calculation — retention is loaded from app settings
+export function calculateInterval(stability: number, targetRetention?: number): number {
   if (stability <= 0) return 0;
-  return stability * (Math.log(0.95) / Math.log(0.9));
+  const r = targetRetention ?? 0.95;
+  return stability * (Math.log(r) / Math.log(0.9));
 }
 
 // Initial values for new cards (first review)
