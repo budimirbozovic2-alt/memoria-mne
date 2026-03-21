@@ -250,6 +250,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, on
               isExpanded={expandedId === card.id}
               onToggle={() => handleToggle(card.id)}
               onUpdateCard={onUpdateCard}
+              onDeleteCard={onDeleteCard}
               majorSystem={majorSystem}
             />
           ))}

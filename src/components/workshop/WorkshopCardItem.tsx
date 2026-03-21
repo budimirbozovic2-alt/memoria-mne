@@ -16,7 +16,9 @@ import { default as MoreHorizontal } from "lucide-react/dist/esm/icons/more-hori
 import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
 import { default as Save } from "lucide-react/dist/esm/icons/save";
 import { default as X } from "lucide-react/dist/esm/icons/x";
+import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 const STATUS_CONFIG: Record<MnemonicStatus, { label: string; icon: typeof Brain; color: string }> = {
   "new": { label: "Nova", icon: Sparkles, color: "text-muted-foreground" },
@@ -35,11 +37,13 @@ interface Props {
   isExpanded: boolean;
   onToggle: () => void;
   onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
+  onDeleteCard: (id: string) => void;
   majorSystem: Record<number, string>;
 }
 
-function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, majorSystem }: Props) {
+function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDeleteCard, majorSystem }: Props) {
   const [editMode, setEditMode] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [editQuestion, setEditQuestion] = useState("");
   const [editSections, setEditSections] = useState<{ title: string; content: string }[]>([]);
 
