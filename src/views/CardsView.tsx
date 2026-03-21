@@ -38,6 +38,7 @@ export default function CardsView() {
   const [bulkSubcategory, setBulkSubcategory] = useState("");
   const [bulkChapter, setBulkChapter] = useState("");
   const [newBulkChapter, setNewBulkChapter] = useState("");
+  const [scrollToCardId, setScrollToCardId] = useState<string | null>(() => {
     const id = sessionStorage.getItem("sr-scroll-to-card");
     if (id) sessionStorage.removeItem("sr-scroll-to-card");
     return id;
