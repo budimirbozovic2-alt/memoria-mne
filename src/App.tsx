@@ -33,41 +33,43 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <HashRouter>
-        <AppProvider>
-          <SessionProvider>
-            <ErrorBoundary>
-              <MainLayout>
-                <Suspense fallback={<PageSkeleton />}>
-                  <Routes>
-                    <Route path="/" element={<DashboardPage />} />
-                    <Route path="/review" element={<ReviewPage />} />
-                    <Route path="/learn" element={<LearnPage />} />
-                    <Route path="/create" element={<CreatePage />} />
-                    <Route path="/edit" element={<EditPage />} />
-                    <Route path="/settings" element={<SettingsPage />} />
-                    <Route path="/stats" element={<StatsPage />} />
-                    <Route path="/mnemonic" element={<MnemonicPage />} />
-                    <Route path="/planner" element={<PlannerPage />} />
-                    <Route path="/knowledge-map" element={<KnowledgeMapPage />} />
-                    <Route path="/metacognitive" element={<MetacognitivePage />} />
-                    <Route path="/frequent-errors" element={<FrequentErrorsPage />} />
-                    <Route path="/major-system-settings" element={<MajorSystemPage />} />
-                    <Route path="/database" element={<DatabasePage />} />
-                    {/* Legacy redirects */}
-                    <Route path="/cards" element={<DatabasePage />} />
-                    <Route path="/categories" element={<DatabasePage />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </MainLayout>
-              <ProcessingOverlay />
-            </ErrorBoundary>
-          </SessionProvider>
-        </AppProvider>
-      </HashRouter>
+      <div>
+        <Toaster />
+        <Sonner />
+        <HashRouter>
+          <AppProvider>
+            <SessionProvider>
+              <ErrorBoundary>
+                <MainLayout>
+                  <Suspense fallback={<PageSkeleton />}>
+                    <Routes>
+                      <Route path="/" element={<DashboardPage />} />
+                      <Route path="/review" element={<ReviewPage />} />
+                      <Route path="/learn" element={<LearnPage />} />
+                      <Route path="/create" element={<CreatePage />} />
+                      <Route path="/edit" element={<EditPage />} />
+                      <Route path="/settings" element={<SettingsPage />} />
+                      <Route path="/stats" element={<StatsPage />} />
+                      <Route path="/mnemonic" element={<MnemonicPage />} />
+                      <Route path="/planner" element={<PlannerPage />} />
+                      <Route path="/knowledge-map" element={<KnowledgeMapPage />} />
+                      <Route path="/metacognitive" element={<MetacognitivePage />} />
+                      <Route path="/frequent-errors" element={<FrequentErrorsPage />} />
+                      <Route path="/major-system-settings" element={<MajorSystemPage />} />
+                      <Route path="/database" element={<DatabasePage />} />
+                      {/* Legacy redirects */}
+                      <Route path="/cards" element={<DatabasePage />} />
+                      <Route path="/categories" element={<DatabasePage />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
+                </MainLayout>
+                <ProcessingOverlay />
+              </ErrorBoundary>
+            </SessionProvider>
+          </AppProvider>
+        </HashRouter>
+      </div>
     </TooltipProvider>
   </QueryClientProvider>
 );
