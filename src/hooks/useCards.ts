@@ -475,7 +475,7 @@ export function useCards() {
     const templateCards = cards.map(c => ({
       id: c.id, question: c.question,
       sections: c.sections.map(s => ({ title: s.title, content: s.content })),
-      category: c.category, subcategory: c.subcategory || "", type: c.type, tags: c.tags || [],
+      category: c.category, subcategory: c.subcategory || "", chapter: c.chapter || "", type: c.type, tags: c.tags || [],
     }));
     const data = { version: 2, type: "template", cards: templateCards, categories, subcategories };
     const dateStr = new Date().toISOString().slice(0, 10);
