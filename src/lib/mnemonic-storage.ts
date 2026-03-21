@@ -147,6 +147,7 @@ export function createMnemonicCard(
     subcategory,
     tags: tags || [],
     hookType: detectHookType(sections),
+    hookMode: "video",
     mnemonicVideo: "",
     acronym: "",
     mnemonicStatus: "new",
