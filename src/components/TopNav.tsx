@@ -5,6 +5,7 @@ import { default as Home } from "lucide-react/dist/esm/icons/home";
 import { default as GraduationCap } from "lucide-react/dist/esm/icons/graduation-cap";
 import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
+import { default as Map } from "lucide-react/dist/esm/icons/map";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
 import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
@@ -36,6 +37,7 @@ const PRIMARY_NAV = [
 
 const LAB_ITEMS = [
   { path: "/stats", icon: BarChart3, label: "Statistika", desc: "Pregled napretka i analitika" },
+  { path: "/knowledge-map", icon: Map, label: "Mapa znanja", desc: "Vizuelna mapa savladanosti" },
   { path: "/metacognitive", icon: BookOpen, label: "Dnevnik", desc: "Metakognitivne refleksije" },
   { path: "/mnemonic", icon: Brain, label: "Mnemo radionica", desc: "Tehnike pamćenja" },
   { path: "/planner", icon: Target, label: "Strateški planer", desc: "Planiranje učenja" },
