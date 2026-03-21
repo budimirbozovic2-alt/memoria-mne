@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Card, createCard, createFlashCard, createSection, calculateNextReview, getDueCards, getStats, getCategoryStats, SRSettings, DEFAULT_SR_SETTINGS, ErrorLogEntry } from "@/lib/spaced-repetition";
+import { loadAppSettings } from "@/lib/app-settings";
 import { ReviewLogEntry, setLastBackupTime } from "@/lib/storage";
 import {
   migrateFromLocalStorage,
@@ -241,6 +242,8 @@ export function useCards() {
 
   // O(1) review — surgical IDB write
   const reviewSection = useCallback((cardId: string, sectionId: string, grade: number) => {
+    // Cache retention to avoid repeated localStorage reads during batch grading
+    const cachedRetention = loadAppSettings().targetRetention;
     patchCard(cardId, c => {
       const entry: ReviewLogEntry = { timestamp: Date.now(), cardId, sectionId, grade, category: c.category };
       idbAddReviewLogEntry(entry);
@@ -256,7 +259,7 @@ export function useCards() {
       return {
         ...c,
         ...(errorLog ? { errorLog } : {}),
-        sections: c.sections.map(s => s.id !== sectionId ? s : { ...s, ...calculateNextReview(s, grade) }),
+        sections: c.sections.map(s => s.id !== sectionId ? s : { ...s, ...calculateNextReview(s, grade, cachedRetention) }),
       };
     });
   }, [patchCard, setReviewLog]);
