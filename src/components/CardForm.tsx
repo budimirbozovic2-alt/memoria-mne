@@ -19,11 +19,11 @@ interface SectionInput {
 interface Props {
   categories: string[];
   subcategories: Record<string, string[]>;
-  onSave: (question: string, sections: SectionInput[], category: string, subcategory?: string) => void;
+  onSave: (question: string, sections: SectionInput[], category: string, subcategory?: string, chapter?: string) => void;
   onSaveFlash: (question: string, answer: string, category: string, subcategory?: string) => void;
   onCancel: () => void;
   editCard?: Card | null;
-  onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; category?: string; subcategory?: string }) => void;
+  onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; category?: string; subcategory?: string; chapter?: string }) => void;
 }
 
 type FormWidth = "compact" | "normal" | "wide" | "full";
