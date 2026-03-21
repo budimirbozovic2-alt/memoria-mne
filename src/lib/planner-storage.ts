@@ -6,6 +6,16 @@ import { addDays, differenceInDays, startOfDay } from "date-fns";
 const PLANNER_KEY = "sr-planner-config";
 const DISCIPLINE_KEY = "sr-discipline-log";
 
+// ─── Types ───────────────────────────────────────────────
+
+export interface StudyPhase {
+  id: string;
+  name: string;
+  expectedDays: number;
+  categories: string[];
+}
+
+/** @deprecated kept for migration */
 export interface StudyDecade {
   id: string;
   name: string;
@@ -15,21 +25,39 @@ export interface StudyDecade {
 }
 
 export interface PlannerConfig {
-  decades: StudyDecade[];
+  phases: StudyPhase[];
   finalGoalDate: string | null;
   createdAt: number;
+  bufferPercent: number;
+  /** @deprecated migrated to phases */
+  decades?: StudyDecade[];
 }
 
 const DEFAULT_CONFIG: PlannerConfig = {
-  decades: [],
+  phases: [],
   finalGoalDate: null,
   createdAt: Date.now(),
+  bufferPercent: 15,
 };
+
+// ─── Persistence ─────────────────────────────────────────
 
 export function loadPlanner(): PlannerConfig {
   try {
     const data = localStorage.getItem(PLANNER_KEY);
-    return data ? { ...DEFAULT_CONFIG, ...JSON.parse(data) } : { ...DEFAULT_CONFIG, createdAt: Date.now() };
+    if (!data) return { ...DEFAULT_CONFIG, createdAt: Date.now() };
+    const parsed = JSON.parse(data);
+    // Migrate old decades → phases
+    if (parsed.decades && !parsed.phases) {
+      parsed.phases = (parsed.decades as StudyDecade[]).map((d) => ({
+        id: d.id,
+        name: d.name,
+        expectedDays: d.durationDays,
+        categories: d.categories,
+      }));
+      delete parsed.decades;
+    }
+    return { ...DEFAULT_CONFIG, ...parsed };
   } catch {
     return { ...DEFAULT_CONFIG, createdAt: Date.now() };
   }
@@ -37,14 +65,139 @@ export function loadPlanner(): PlannerConfig {
 
 export function savePlanner(config: PlannerConfig): void {
   try { localStorage.setItem(PLANNER_KEY, JSON.stringify(config)); } catch {}
-  // IDB backup
   db.settings.put({ key: "plannerConfig", value: config }).catch(() => {});
 }
 
-export function calcVelocity(reviewLog: ReviewLogEntry[], days: number = 7): number {
-  const now = Date.now();
-  const cutoff = startOfDay(addDays(new Date(), -days)).getTime();
+// ─── Velocity ────────────────────────────────────────────
 
+export function calcVelocity(reviewLog: ReviewLogEntry[], days: number = 7): number {
+  const cutoff = startOfDay(addDays(new Date(), -days)).getTime();
+  const now = Date.now();
+  const sectionFirstSeen = new Map<string, number>();
+  reviewLog.forEach((e) => {
+    const key = `${e.cardId}:${e.sectionId}`;
+    const prev = sectionFirstSeen.get(key);
+    if (!prev || e.timestamp < prev) sectionFirstSeen.set(key, e.timestamp);
+  });
+  let newInWindow = 0;
+  sectionFirstSeen.forEach((ts) => { if (ts >= cutoff && ts <= now) newInWindow++; });
+  return days > 0 ? newInWindow / days : 0;
+}
+
+// ─── Phase Progress ──────────────────────────────────────
+
+export interface PhaseProgress {
+  phase: StudyPhase;
+  total: number;
+  learned: number;
+  pct: number;
+  remainingCards: number;
+}
+
+export function calcPhaseProgress(phase: StudyPhase, cards: Card[]): PhaseProgress {
+  const relevant = phase.categories.length > 0
+    ? cards.filter(c => phase.categories.includes(c.category))
+    : cards;
+  const total = relevant.reduce((s, c) => s + c.sections.length, 0);
+  let learned = 0;
+  relevant.forEach(c => c.sections.forEach(s => { if (s.lastReviewed) learned++; }));
+  return { phase, total, learned, pct: total > 0 ? Math.round((learned / total) * 100) : 0, remainingCards: total - learned };
+}
+
+/** Dynamic phase dates based on velocity */
+export function calcDynamicPhaseDates(
+  phases: StudyPhase[], cards: Card[], velocity: number
+): { phaseId: string; startDate: Date; endDate: Date; dynamicDays: number }[] {
+  const result: { phaseId: string; startDate: Date; endDate: Date; dynamicDays: number }[] = [];
+  let cursor = new Date();
+  for (const phase of phases) {
+    const { remainingCards } = calcPhaseProgress(phase, cards);
+    const dynamicDays = velocity > 0 ? Math.max(1, Math.ceil(remainingCards / velocity)) : phase.expectedDays;
+    const startDate = new Date(cursor);
+    const endDate = addDays(cursor, dynamicDays);
+    result.push({ phaseId: phase.id, startDate, endDate, dynamicDays });
+    cursor = endDate;
+  }
+  return result;
+}
+
+// ─── Smart Load Balancing ────────────────────────────────
+
+export interface SmartSuggestion {
+  suggestedToday: number;
+  message: string;
+  burnoutWarning: boolean;
+}
+
+export function getSmartSuggestion(
+  phase: StudyPhase | null, cards: Card[], goalDateStr: string | null, velocity: number, bufferPct: number
+): SmartSuggestion | null {
+  if (!goalDateStr) return null;
+  const goal = new Date(goalDateStr);
+  const bufferDays = Math.round(differenceInDays(goal, new Date()) * (bufferPct / 100));
+  const effectiveGoal = addDays(goal, -bufferDays);
+  const daysLeft = Math.max(1, differenceInDays(effectiveGoal, new Date()));
+
+  let remaining: number;
+  if (phase) {
+    const prog = calcPhaseProgress(phase, cards);
+    remaining = prog.remainingCards;
+  } else {
+    let total = 0, learned = 0;
+    cards.forEach(c => c.sections.forEach(s => { total++; if (s.lastReviewed) learned++; }));
+    remaining = total - learned;
+  }
+
+  if (remaining <= 0) return { suggestedToday: 0, message: "Sve cjeline su naučene! 🎉", burnoutWarning: false };
+  const needed = Math.ceil(remaining / daysLeft);
+  const burnoutWarning = needed > 60;
+  return {
+    suggestedToday: needed,
+    message: `Obradi bar ${needed} novih cjelina danas da ostaneš na planu.`,
+    burnoutWarning,
+  };
+}
+
+// ─── Re-balance (distribute debt) ────────────────────────
+
+export function calcRebalancedQuota(
+  totalRemaining: number, goalDateStr: string | null, bufferPct: number
+): { newDailyQuota: number; daysLeft: number } | null {
+  if (!goalDateStr) return null;
+  const goal = new Date(goalDateStr);
+  const bufferDays = Math.round(differenceInDays(goal, new Date()) * (bufferPct / 100));
+  const effectiveGoal = addDays(goal, -bufferDays);
+  const daysLeft = Math.max(1, differenceInDays(effectiveGoal, new Date()));
+  return { newDailyQuota: Math.ceil(totalRemaining / daysLeft), daysLeft };
+}
+
+// ─── Estimated Finish & Status ───────────────────────────
+
+export function calcEstimatedFinish(remaining: number, velocity: number): Date | null {
+  if (velocity <= 0 || remaining <= 0) return remaining <= 0 ? new Date() : null;
+  return addDays(new Date(), Math.ceil(remaining / velocity));
+}
+
+export type PlannerStatus = "green" | "yellow" | "red" | "no-goal";
+
+export function getPlannerStatus(
+  estimatedFinish: Date | null, goalDateStr: string | null, bufferPct: number = 0
+): { status: PlannerStatus; daysLate: number } {
+  if (!goalDateStr || !estimatedFinish) return { status: "no-goal", daysLate: 0 };
+  const goal = new Date(goalDateStr);
+  const bufferDays = Math.round(differenceInDays(goal, new Date()) * (bufferPct / 100));
+  const effectiveGoal = addDays(goal, -bufferDays);
+  const diff = differenceInDays(estimatedFinish, effectiveGoal);
+  if (diff <= 0) return { status: "green", daysLate: 0 };
+  if (diff < 14) return { status: "yellow", daysLate: diff };
+  return { status: "red", daysLate: diff };
+}
+
+// ─── Burn-up Chart Data ──────────────────────────────────
+
+export function buildBurnupData(
+  reviewLog: ReviewLogEntry[], totalSections: number, goalDateStr: string | null, bufferPct: number
+): { date: string; ideal: number | null; actual: number | null }[] {
   const sectionFirstSeen = new Map<string, number>();
   reviewLog.forEach((e) => {
     const key = `${e.cardId}:${e.sectionId}`;
@@ -52,48 +205,69 @@ export function calcVelocity(reviewLog: ReviewLogEntry[], days: number = 7): num
     if (!prev || e.timestamp < prev) sectionFirstSeen.set(key, e.timestamp);
   });
 
-  let newInWindow = 0;
+  // Build actual cumulative
+  const dailyCounts = new Map<string, number>();
   sectionFirstSeen.forEach((ts) => {
-    if (ts >= cutoff && ts <= now) newInWindow++;
+    const dayKey = new Date(ts).toISOString().slice(0, 10);
+    dailyCounts.set(dayKey, (dailyCounts.get(dayKey) || 0) + 1);
   });
 
-  return days > 0 ? newInWindow / days : 0;
+  const sortedActualDays = Array.from(dailyCounts.keys()).sort();
+  const actualMap = new Map<string, number>();
+  let cum = 0;
+  sortedActualDays.forEach(day => { cum += dailyCounts.get(day)!; actualMap.set(day, cum); });
+
+  // Build ideal line
+  const idealMap = new Map<string, number>();
+  if (goalDateStr && sortedActualDays.length > 0) {
+    const startDate = new Date(sortedActualDays[0]);
+    const goal = new Date(goalDateStr);
+    const bufferDays = Math.round(differenceInDays(goal, startDate) * (bufferPct / 100));
+    const effectiveGoal = addDays(goal, -bufferDays);
+    const totalDays = Math.max(1, differenceInDays(effectiveGoal, startDate));
+    const step = totalSections / totalDays;
+    const interval = Math.max(1, Math.floor(totalDays / 80));
+    for (let i = 0; i <= totalDays; i += interval) {
+      const d = addDays(startDate, i);
+      idealMap.set(d.toISOString().slice(0, 10), Math.round(step * i));
+    }
+    idealMap.set(effectiveGoal.toISOString().slice(0, 10), totalSections);
+  }
+
+  const allDates = new Set([...actualMap.keys(), ...idealMap.keys()]);
+  const sorted = Array.from(allDates).sort();
+  let lastActual = 0, lastIdeal = 0;
+  return sorted.map(date => {
+    if (actualMap.has(date)) lastActual = actualMap.get(date)!;
+    if (idealMap.has(date)) lastIdeal = idealMap.get(date)!;
+    return {
+      date,
+      actual: actualMap.has(date) ? lastActual : null,
+      ideal: idealMap.has(date) ? lastIdeal : null,
+    };
+  });
 }
 
-export function calcEstimatedFinish(remaining: number, velocity: number): Date | null {
-  if (velocity <= 0 || remaining <= 0) return remaining <= 0 ? new Date() : null;
-  const daysNeeded = Math.ceil(remaining / velocity);
-  return addDays(new Date(), daysNeeded);
-}
+// ─── Simulation Projection ───────────────────────────────
 
-export type PlannerStatus = "green" | "yellow" | "red" | "no-goal";
-
-export function getPlannerStatus(estimatedFinish: Date | null, goalDateStr: string | null): { status: PlannerStatus; daysLate: number } {
-  if (!goalDateStr || !estimatedFinish) return { status: "no-goal", daysLate: 0 };
+export function getProjectionText(
+  velocity: number, remaining: number, goalDateStr: string | null, bufferPct: number
+): string {
+  if (velocity <= 0) return "Nema dovoljno podataka za projekciju. Nastavi sa učenjem.";
+  const finish = calcEstimatedFinish(remaining, velocity);
+  if (!finish) return "Sve cjeline su savladane!";
+  if (!goalDateStr) return `Sa trenutnim tempom, završićeš bazu dana ${finish.toLocaleDateString("sr-Latn")}.`;
   const goal = new Date(goalDateStr);
-  const diff = differenceInDays(estimatedFinish, goal);
-  if (diff <= 0) return { status: "green", daysLate: 0 };
-  if (diff < 14) return { status: "yellow", daysLate: diff };
-  return { status: "red", daysLate: diff };
-}
-
-export function getDailySuggestion(
-  totalSections: number, learnedSections: number, goalDateStr: string | null, velocity: number
-): { suggestedToday: number; message: string } | null {
-  if (!goalDateStr) return null;
-  const goal = new Date(goalDateStr);
-  const remaining = totalSections - learnedSections;
-  if (remaining <= 0) return { suggestedToday: 0, message: "Sve cjeline su naučene! 🎉" };
-  const daysLeft = Math.max(1, differenceInDays(goal, new Date()));
-  const needed = Math.ceil(remaining / daysLeft);
-  return { suggestedToday: needed, message: `Obradi bar ${needed} novih cjelina danas da ostaneš na planu.` };
+  const bufferDays = Math.round(differenceInDays(goal, new Date()) * (bufferPct / 100));
+  const effectiveGoal = addDays(goal, -bufferDays);
+  const diff = differenceInDays(finish, effectiveGoal);
+  if (diff <= 0) {
+    return `Sa tvojim trenutnim tempom (zadnjih 7 dana), završićeš bazu dana ${finish.toLocaleDateString("sr-Latn")}. To je ${Math.abs(diff)} dana prije tvog cilja.`;
+  }
+  return `Sa tvojim trenutnim tempom (zadnjih 7 dana), završićeš bazu dana ${finish.toLocaleDateString("sr-Latn")}. To je ${diff} dana poslije tvog cilja.`;
 }
 
 // ─── Daily Time Predictor ────────────────────────────────
-
-export function calcAvgMinutesPerSection(reviewLog: ReviewLogEntry[]): number {
-  return 3;
-}
 
 export function calcDailyTimeRecommendation(
   suggestedSections: number, velocity: number, dueCount: number, avgMinPerSection: number = 3
@@ -156,7 +330,6 @@ export function recordDayDiscipline(
   const status = calcDisciplineStatus(reviewsDone, dailyGoal, slippageMs);
   const completion = dailyGoal > 0 ? Math.round((reviewsDone / dailyGoal) * 100) : 0;
   const entry: DisciplineEntry = { date, status, planCompletion: completion, slippageMs, reviewsDone, suggestedReviews: dailyGoal };
-
   const log = loadDisciplineLog();
   const idx = log.findIndex(e => e.date === date);
   if (idx >= 0) log[idx] = entry; else log.push(entry);
@@ -188,43 +361,10 @@ export function getDisciplineTrend(days: number = 30): { date: string; diligentP
   return result.slice(-days);
 }
 
-export function buildProgressCurve(
-  reviewLog: ReviewLogEntry[], totalSections: number, goalDateStr: string | null, planStartDate: number
-): { planned: { date: string; value: number }[]; actual: { date: string; value: number }[] } {
-  const sectionFirstSeen = new Map<string, number>();
-  reviewLog.forEach((e) => {
-    const key = `${e.cardId}:${e.sectionId}`;
-    const prev = sectionFirstSeen.get(key);
-    if (!prev || e.timestamp < prev) sectionFirstSeen.set(key, e.timestamp);
-  });
-
-  const dailyCounts = new Map<string, number>();
-  sectionFirstSeen.forEach((ts) => {
-    const dayKey = new Date(ts).toISOString().slice(0, 10);
-    dailyCounts.set(dayKey, (dailyCounts.get(dayKey) || 0) + 1);
-  });
-
-  const sortedDays = Array.from(dailyCounts.keys()).sort();
-  const actual: { date: string; value: number }[] = [];
-  let cumulative = 0;
-  sortedDays.forEach((day) => {
-    cumulative += dailyCounts.get(day) || 0;
-    actual.push({ date: day, value: cumulative });
-  });
-
-  const planned: { date: string; value: number }[] = [];
-  if (goalDateStr) {
-    const start = new Date(planStartDate);
-    const goal = new Date(goalDateStr);
-    const totalDays = Math.max(1, differenceInDays(goal, start));
-    const step = totalSections / totalDays;
-    const interval = Math.max(1, Math.floor(totalDays / 60));
-    for (let i = 0; i <= totalDays; i += interval) {
-      const d = addDays(start, i);
-      planned.push({ date: d.toISOString().slice(0, 10), value: Math.round(step * i) });
-    }
-    planned.push({ date: goalDateStr, value: totalSections });
-  }
-
-  return { planned, actual };
+/** Phase-specific discipline percentage */
+export function getPhaseDisciplinePct(disciplineLog: DisciplineEntry[]): number {
+  if (disciplineLog.length === 0) return 0;
+  const recent = disciplineLog.slice(-14);
+  const diligent = recent.filter(e => e.status === "diligent").length;
+  return Math.round((diligent / recent.length) * 100);
 }
