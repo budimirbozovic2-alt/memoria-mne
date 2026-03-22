@@ -17,11 +17,9 @@ import { default as CheckCircle } from "lucide-react/dist/esm/icons/check-circle
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
-  DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors,
-  DragEndEvent, DragOverlay, DragStartEvent, useDroppable, useDndMonitor,
+  DndContext, PointerSensor, useSensor, useSensors,
+  DragEndEvent, DragOverlay, DragStartEvent, useDroppable, useDraggable,
 } from "@dnd-kit/core";
-import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 
 type Mode = "navigator" | "auditor";
