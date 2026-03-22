@@ -10,6 +10,8 @@ import { default as Gauge } from "lucide-react/dist/esm/icons/gauge";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
 import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as Type } from "lucide-react/dist/esm/icons/type";
+import { default as Layers } from "lucide-react/dist/esm/icons/layers";
+import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
 import ScrollableRow from "@/components/ScrollableRow";
 import InfoPanel from "@/components/InfoPanel";
 import DOMPurify from "dompurify";
@@ -28,17 +30,54 @@ function stripHtml(html: string): string {
   return div.textContent || div.innerText || "";
 }
 
-function tokenize(text: string): string[] {
-  return text.split(/\s+/).filter(Boolean);
+// A "segment" is a block of words belonging to one card+section
+interface Segment {
+  cardQuestion: string;
+  sectionTitle: string;
+  cardIndex: number;
+  sectionIndex: number;
+  words: string[];
+  globalStartIdx: number; // index into flat word array
+}
+
+function buildSegments(selectedCards: Card[]): { segments: Segment[]; allWords: string[] } {
+  const segments: Segment[] = [];
+  const allWords: string[] = [];
+  selectedCards.forEach((card, ci) => {
+    card.sections.forEach((sec, si) => {
+      const text = stripHtml(sec.content);
+      const words = text.split(/\s+/).filter(Boolean);
+      if (words.length === 0) return;
+      segments.push({
+        cardQuestion: card.question,
+        sectionTitle: sec.title,
+        cardIndex: ci,
+        sectionIndex: si,
+        words,
+        globalStartIdx: allWords.length,
+      });
+      allWords.push(...words);
+    });
+  });
+  return { segments, allWords };
+}
+
+function getActiveSegment(segments: Segment[], wordIdx: number): Segment | null {
+  for (let i = segments.length - 1; i >= 0; i--) {
+    if (wordIdx >= segments[i].globalStartIdx) return segments[i];
+  }
+  return segments[0] || null;
 }
 
 const SPEED_READER_INFO = (
   <div className="space-y-3 text-sm">
-    <div className="flex items-start gap-2"><Eye className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Highlighting režim</strong><p className="text-muted-foreground">Tekst se prikazuje u cijelosti, a trenutna riječ se ističe u zadanom tempu (WPM).</p></div></div>
-    <div className="flex items-start gap-2"><Gauge className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Brzina čitanja</strong><p className="text-muted-foreground">Podesi WPM (riječi po minuti). Počni sporije pa postepeno ubrzavaj.</p></div></div>
-    <div className="flex items-start gap-2"><BookOpen className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Izbor sadržaja</strong><p className="text-muted-foreground">Odaberi kategoriju i karticu čiji sadržaj želiš brzo čitati.</p></div></div>
+    <div className="flex items-start gap-2"><Layers className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Čitaj podkategoriju</strong><p className="text-muted-foreground">Odaberi kategoriju i podkategoriju — sve kartice se spajaju u kontinuirani tok teksta.</p></div></div>
+    <div className="flex items-start gap-2"><Eye className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Highlighting</strong><p className="text-muted-foreground">Tekst se prikazuje u cijelosti, trenutna riječ se ističe u zadanom tempu.</p></div></div>
+    <div className="flex items-start gap-2"><Gauge className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Brzina</strong><p className="text-muted-foreground">Podesi WPM. Počni sporije pa postepeno ubrzavaj.</p></div></div>
   </div>
 );
+
+type ReadMode = "subcategory" | "card";
 
 export default function SpeedReader() {
   const { cards, categories, subcategories } = useAppContext();
@@ -46,8 +85,13 @@ export default function SpeedReader() {
   // Filters
   const [selCat, setSelCat] = useState<string | null>(null);
   const [selSub, setSelSub] = useState<string | null>(null);
+  const [readMode, setReadMode] = useState<ReadMode>("subcategory");
+
+  // For single-card mode
   const [selCard, setSelCard] = useState<Card | null>(null);
-  const [selSection, setSelSection] = useState(0);
+
+  // Reader active
+  const [readerActive, setReaderActive] = useState(false);
 
   // Reader state
   const [wpm, setWpm] = useState(200);
@@ -57,40 +101,41 @@ export default function SpeedReader() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
-  // Filtered cards
+  // Filtered cards (essay only)
   const filteredCards = useMemo(() => {
     let result = cards;
     if (selCat) result = result.filter(c => c.category === selCat);
     if (selSub) result = result.filter(c => c.subcategory === selSub);
-    return result.filter(c => c.type !== "flash"); // Only essay cards with sections
+    return result.filter(c => c.type !== "flash");
   }, [cards, selCat, selSub]);
 
   const availableSubs = selCat ? (subcategories[selCat] || []) : [];
 
-  // Current text content
-  const currentText = useMemo(() => {
-    if (!selCard) return "";
-    const section = selCard.sections[selSection];
-    if (!section) return "";
-    return stripHtml(section.content);
-  }, [selCard, selSection]);
+  // Build segments based on mode
+  const selectedCards = useMemo(() => {
+    if (readMode === "card" && selCard) return [selCard];
+    if (readMode === "subcategory") return filteredCards;
+    return [];
+  }, [readMode, selCard, filteredCards]);
 
-  const words = useMemo(() => tokenize(currentText), [currentText]);
+  const { segments, allWords } = useMemo(() => buildSegments(selectedCards), [selectedCards]);
+
+  const activeSegment = getActiveSegment(segments, currentWordIdx);
 
   // Reset on content change
   useEffect(() => {
     setCurrentWordIdx(0);
     setPlaying(false);
     wordRefs.current = [];
-  }, [currentText]);
+  }, [allWords.length, readerActive]);
 
   // Timer
   useEffect(() => {
-    if (playing && words.length > 0) {
+    if (playing && allWords.length > 0) {
       const interval = 60000 / wpm;
       timerRef.current = setInterval(() => {
         setCurrentWordIdx(prev => {
-          if (prev >= words.length - 1) {
+          if (prev >= allWords.length - 1) {
             setPlaying(false);
             return prev;
           }
@@ -99,35 +144,28 @@ export default function SpeedReader() {
       }, interval);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [playing, wpm, words.length]);
+  }, [playing, wpm, allWords.length]);
 
   // Scroll highlighted word into view
   useEffect(() => {
     const el = wordRefs.current[currentWordIdx];
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-    }
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
   }, [currentWordIdx]);
 
   const handlePlayPause = useCallback(() => {
-    if (words.length === 0) return;
-    if (currentWordIdx >= words.length - 1) setCurrentWordIdx(0);
+    if (allWords.length === 0) return;
+    if (currentWordIdx >= allWords.length - 1) setCurrentWordIdx(0);
     setPlaying(p => !p);
-  }, [words.length, currentWordIdx]);
+  }, [allWords.length, currentWordIdx]);
 
-  const handleReset = useCallback(() => {
-    setPlaying(false);
-    setCurrentWordIdx(0);
-  }, []);
+  const handleReset = useCallback(() => { setPlaying(false); setCurrentWordIdx(0); }, []);
+  const handlePrevWord = () => { setPlaying(false); setCurrentWordIdx(prev => Math.max(0, prev - 1)); };
+  const handleNextWord = () => { setPlaying(false); setCurrentWordIdx(prev => Math.min(allWords.length - 1, prev + 1)); };
 
-  const handlePrevWord = () => {
-    setPlaying(false);
-    setCurrentWordIdx(prev => Math.max(0, prev - 1));
-  };
-
-  const handleNextWord = () => {
-    setPlaying(false);
-    setCurrentWordIdx(prev => Math.min(words.length - 1, prev + 1));
+  // Jump to segment
+  const jumpToSegment = (segIdx: number) => {
+    const seg = segments[segIdx];
+    if (seg) { setCurrentWordIdx(seg.globalStartIdx); setPlaying(false); }
   };
 
   // Keyboard shortcuts
@@ -142,10 +180,34 @@ export default function SpeedReader() {
     return () => window.removeEventListener("keydown", handler);
   }, [handlePlayPause]);
 
-  const progress = words.length > 0 ? ((currentWordIdx + 1) / words.length) * 100 : 0;
+  const progress = allWords.length > 0 ? ((currentWordIdx + 1) / allWords.length) * 100 : 0;
 
-  // ─── No card selected ──────────────────────────────
-  if (!selCard) {
+  const startSubcategoryRead = () => {
+    if (filteredCards.length === 0) return;
+    setReadMode("subcategory");
+    setSelCard(null);
+    setReaderActive(true);
+  };
+
+  const startSingleCardRead = (card: Card) => {
+    setReadMode("card");
+    setSelCard(card);
+    setReaderActive(true);
+  };
+
+  const exitReader = () => {
+    setReaderActive(false);
+    setPlaying(false);
+    setSelCard(null);
+  };
+
+  // ─── Selection screen ──────────────────────────────
+  if (!readerActive) {
+    const totalWords = filteredCards.reduce((sum, c) => {
+      return sum + c.sections.reduce((s2, sec) => s2 + stripHtml(sec.content).split(/\s+/).filter(Boolean).length, 0);
+    }, 0);
+    const estMinutes = Math.ceil(totalWords / wpm);
+
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2">
@@ -155,7 +217,7 @@ export default function SpeedReader() {
 
         {/* Category filter */}
         <div className="rounded-xl border bg-card p-5 space-y-4">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Odaberi kategoriju</span>
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Kategorija</span>
           <ScrollableRow>
             <button onClick={() => { setSelCat(null); setSelSub(null); }} className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selCat ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
               Sve
@@ -181,29 +243,52 @@ export default function SpeedReader() {
           )}
         </div>
 
-        {/* Card list */}
+        {/* Read entire subcategory CTA */}
+        {filteredCards.length > 0 && (
+          <button
+            onClick={startSubcategoryRead}
+            className="w-full rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 p-5 transition-colors group"
+          >
+            <div className="flex items-center justify-center gap-3">
+              <Layers className="h-5 w-5 text-primary" />
+              <div className="text-left">
+                <p className="font-serif text-lg text-foreground group-hover:text-primary transition-colors">
+                  Čitaj {selSub ? `"${selSub}"` : selCat ? `"${selCat}"` : "sve kartice"} — {filteredCards.length} kartica
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {totalWords.toLocaleString()} riječi · ~{estMinutes} min pri {wpm} WPM
+                </p>
+              </div>
+            </div>
+          </button>
+        )}
+
+        {/* Individual card list */}
         <div className="rounded-xl border bg-card p-5 space-y-3">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Odaberi karticu ({filteredCards.length})
+            Ili odaberi pojedinačnu karticu ({filteredCards.length})
           </span>
           {filteredCards.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">Nema esejskih kartica za prikaz.</p>
           ) : (
-            <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-              {filteredCards.map(card => (
-                <button
-                  key={card.id}
-                  onClick={() => { setSelCard(card); setSelSection(0); }}
-                  className="w-full text-left p-3 rounded-lg border hover:border-primary/30 hover:bg-secondary/30 transition-colors"
-                >
-                  <div className="flex items-center gap-2 mb-0.5 text-xs text-muted-foreground">
-                    <span>{card.category}</span>
-                    {card.subcategory && <span>› {card.subcategory}</span>}
-                    <span className="ml-auto">{card.sections.length} sekcija</span>
-                  </div>
-                  <p className="font-serif text-sm line-clamp-1">{card.question}</p>
-                </button>
-              ))}
+            <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+              {filteredCards.map(card => {
+                const wc = card.sections.reduce((s, sec) => s + stripHtml(sec.content).split(/\s+/).filter(Boolean).length, 0);
+                return (
+                  <button
+                    key={card.id}
+                    onClick={() => startSingleCardRead(card)}
+                    className="w-full text-left p-3 rounded-lg border hover:border-primary/30 hover:bg-secondary/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-0.5 text-xs text-muted-foreground">
+                      <span>{card.category}</span>
+                      {card.subcategory && <span>› {card.subcategory}</span>}
+                      <span className="ml-auto">{card.sections.length} sek. · {wc} rij.</span>
+                    </div>
+                    <p className="font-serif text-sm line-clamp-1">{card.question}</p>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -212,41 +297,73 @@ export default function SpeedReader() {
   }
 
   // ─── Reader mode ──────────────────────────────
+  const activeSegIdx = segments.findIndex(s => s === activeSegment);
+
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={() => { setSelCard(null); setPlaying(false); }} className="p-2 rounded-lg hover:bg-secondary transition-colors">
+          <button onClick={exitReader} className="p-2 rounded-lg hover:bg-secondary transition-colors">
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div>
-            <h2 className="text-xl font-serif">{selCard.question}</h2>
-            <p className="text-xs text-muted-foreground">{selCard.category}{selCard.subcategory ? ` › ${selCard.subcategory}` : ""}</p>
+            {readMode === "subcategory" ? (
+              <>
+                <h2 className="text-xl font-serif flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-primary" />
+                  {selSub || selCat || "Sve kartice"}
+                </h2>
+                <p className="text-xs text-muted-foreground">{selectedCards.length} kartica · {allWords.length.toLocaleString()} riječi</p>
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-serif">{selCard?.question}</h2>
+                <p className="text-xs text-muted-foreground">{selCard?.category}{selCard?.subcategory ? ` › ${selCard.subcategory}` : ""}</p>
+              </>
+            )}
           </div>
         </div>
         <InfoPanel title="Speed Reader">{SPEED_READER_INFO}</InfoPanel>
       </div>
 
-      {/* Section tabs */}
-      {selCard.sections.length > 1 && (
+      {/* Segment navigator (card/section jumps) */}
+      {segments.length > 1 && (
         <ScrollableRow>
-          {selCard.sections.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => { setSelSection(i); setPlaying(false); setCurrentWordIdx(0); }}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap flex-shrink-0 ${selSection === i ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
-            >
-              {s.title || `Sekcija ${i + 1}`}
-            </button>
-          ))}
+          {segments.map((seg, i) => {
+            const isActive = i === activeSegIdx;
+            const isPast = activeSegIdx > i;
+            return (
+              <button
+                key={i}
+                onClick={() => jumpToSegment(i)}
+                className={`px-3 py-1.5 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 flex items-center gap-1.5 ${
+                  isActive ? "bg-primary text-primary-foreground shadow-sm" : isPast ? "text-muted-foreground/50 bg-secondary/50" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+                title={seg.cardQuestion}
+              >
+                <FileText className="h-3 w-3 flex-shrink-0" />
+                <span className="max-w-[120px] truncate">{seg.sectionTitle || seg.cardQuestion}</span>
+              </button>
+            );
+          })}
         </ScrollableRow>
+      )}
+
+      {/* Current card indicator */}
+      {readMode === "subcategory" && activeSegment && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 text-xs">
+          <BookOpen className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+          <span className="text-muted-foreground">Kartica {activeSegment.cardIndex + 1}/{selectedCards.length}:</span>
+          <span className="font-medium truncate">{activeSegment.cardQuestion}</span>
+          <span className="text-muted-foreground">›</span>
+          <span className="text-primary truncate">{activeSegment.sectionTitle}</span>
+        </div>
       )}
 
       {/* Controls bar */}
       <div className="rounded-xl border bg-card p-4 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          {/* Play controls */}
           <div className="flex items-center gap-2">
             <button onClick={handlePrevWord} disabled={currentWordIdx === 0} className="p-2 rounded-lg hover:bg-secondary disabled:opacity-30 transition-colors">
               <ChevronLeft className="h-4 w-4" />
@@ -254,7 +371,7 @@ export default function SpeedReader() {
             <button onClick={handlePlayPause} className="p-3 rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity">
               {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
             </button>
-            <button onClick={handleNextWord} disabled={currentWordIdx >= words.length - 1} className="p-2 rounded-lg hover:bg-secondary disabled:opacity-30 transition-colors">
+            <button onClick={handleNextWord} disabled={currentWordIdx >= allWords.length - 1} className="p-2 rounded-lg hover:bg-secondary disabled:opacity-30 transition-colors">
               <ChevronRight className="h-4 w-4" />
             </button>
             <button onClick={handleReset} className="p-2 rounded-lg hover:bg-secondary transition-colors" title="Resetuj">
@@ -262,7 +379,6 @@ export default function SpeedReader() {
             </button>
           </div>
 
-          {/* WPM selector */}
           <div className="flex items-center gap-2">
             <Gauge className="h-4 w-4 text-muted-foreground" />
             <div className="flex gap-1">
@@ -275,7 +391,6 @@ export default function SpeedReader() {
             <span className="text-xs text-muted-foreground ml-1">WPM</span>
           </div>
 
-          {/* Font size */}
           <div className="flex items-center gap-2">
             <Type className="h-4 w-4 text-muted-foreground" />
             <div className="flex gap-1">
@@ -288,41 +403,62 @@ export default function SpeedReader() {
           </div>
         </div>
 
-        {/* Progress bar */}
         <div className="space-y-1">
           <div className="w-full h-1.5 rounded-full bg-secondary overflow-hidden">
             <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>Riječ {currentWordIdx + 1} / {words.length}</span>
-            <span>{Math.ceil((words.length - currentWordIdx) / wpm)} min preostalo</span>
+            <span>Riječ {currentWordIdx + 1} / {allWords.length}</span>
+            <span>{Math.ceil((allWords.length - currentWordIdx) / wpm)} min preostalo</span>
           </div>
         </div>
       </div>
 
-      {/* Text display with highlighting */}
+      {/* Text display with section dividers */}
       <div className="rounded-xl border bg-card p-6 sm:p-8 min-h-[40vh] max-h-[60vh] overflow-y-auto">
-        {words.length === 0 ? (
-          <p className="text-muted-foreground text-center py-12">Ova sekcija nema tekstualni sadržaj.</p>
+        {allWords.length === 0 ? (
+          <p className="text-muted-foreground text-center py-12">Nema tekstualnog sadržaja.</p>
         ) : (
-          <p className={`${fontSize} leading-relaxed font-serif select-none`}>
-            {words.map((word, i) => (
-              <span
-                key={i}
-                ref={el => { wordRefs.current[i] = el; }}
-                className={`inline-block mr-[0.35em] py-0.5 px-0.5 rounded transition-all duration-150 cursor-pointer ${
-                  i === currentWordIdx
-                    ? "bg-primary text-primary-foreground scale-105 shadow-sm"
-                    : i < currentWordIdx
-                    ? "text-muted-foreground/60"
-                    : "text-foreground"
-                }`}
-                onClick={() => { setCurrentWordIdx(i); setPlaying(false); }}
-              >
-                {word}
-              </span>
-            ))}
-          </p>
+          <div className="space-y-6">
+            {segments.map((seg, segIdx) => {
+              const segEnd = seg.globalStartIdx + seg.words.length;
+              const isCurrentSeg = activeSegment === seg;
+              return (
+                <div key={segIdx}>
+                  {/* Section divider */}
+                  {(segments.length > 1) && (
+                    <div className={`flex items-center gap-2 mb-3 pb-2 border-b transition-colors ${isCurrentSeg ? "border-primary/30" : "border-border"}`}>
+                      <BookOpen className={`h-3.5 w-3.5 flex-shrink-0 ${isCurrentSeg ? "text-primary" : "text-muted-foreground/40"}`} />
+                      <span className={`text-xs font-medium truncate ${isCurrentSeg ? "text-primary" : "text-muted-foreground/60"}`}>
+                        {seg.cardQuestion} › {seg.sectionTitle}
+                      </span>
+                    </div>
+                  )}
+                  <p className={`${fontSize} leading-relaxed font-serif select-none`}>
+                    {seg.words.map((word, wi) => {
+                      const globalIdx = seg.globalStartIdx + wi;
+                      return (
+                        <span
+                          key={globalIdx}
+                          ref={el => { wordRefs.current[globalIdx] = el; }}
+                          className={`inline-block mr-[0.35em] py-0.5 px-0.5 rounded transition-all duration-150 cursor-pointer ${
+                            globalIdx === currentWordIdx
+                              ? "bg-primary text-primary-foreground scale-105 shadow-sm"
+                              : globalIdx < currentWordIdx
+                              ? "text-muted-foreground/60"
+                              : "text-foreground"
+                          }`}
+                          onClick={() => { setCurrentWordIdx(globalIdx); setPlaying(false); }}
+                        >
+                          {word}
+                        </span>
+                      );
+                    })}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
