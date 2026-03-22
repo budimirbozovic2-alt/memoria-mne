@@ -650,15 +650,27 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     }
   }, [category, subcategory]);
 
+  // Preserve stored order, append any card-derived chapters not yet stored
   const allChapters = useMemo(() => {
-    const merged = new Set([...chapters, ...storedChapters]);
-    return Array.from(merged).sort((a, b) => {
-      const numA = extractChapterNum(a);
-      const numB = extractChapterNum(b);
-      if (numA !== null && numB !== null) return numA - numB;
-      return a.localeCompare(b);
+    const ordered = [...storedChapters];
+    chapters.forEach(ch => {
+      if (!ordered.includes(ch)) ordered.push(ch);
     });
+    return ordered;
   }, [chapters, storedChapters]);
+
+  const handleMoveChapter = useCallback((index: number, direction: -1 | 1) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= allChapters.length) return;
+    const reordered = [...allChapters];
+    const [item] = reordered.splice(index, 1);
+    reordered.splice(newIndex, 0, item);
+    setStoredChapters(reordered);
+    const key = `chapters-${category}-${subcategory}`;
+    import("@/lib/db").then(({ idbSaveSettings }) => {
+      idbSaveSettings(key, reordered);
+    });
+  }, [allChapters, category, subcategory]);
 
   // Legend counts
   const levelCounts = useMemo(() => {
