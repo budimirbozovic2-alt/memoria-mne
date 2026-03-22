@@ -181,6 +181,10 @@ export default function MnemonicModule({ onBack }: Props) {
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
+      <AnimatePresence>
+        {showOnboarding && <MnemoOnboarding onComplete={() => setShowOnboarding(false)} />}
+      </AnimatePresence>
+
       <div className="flex items-center justify-between">
         <div>
           <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
@@ -191,13 +195,13 @@ export default function MnemonicModule({ onBack }: Props) {
           </h2>
           <p className="text-muted-foreground mt-2">Izolovani sistem za kreiranje i testiranje mentalnih kuka.</p>
         </div>
-        <InfoPanel title="Kako radi Memorizacija?">
-          <p><strong className="text-foreground">Mentalne kuke</strong> — za svaku karticu kreiraš vizuelnu asocijaciju (mentalni video) ili akronim koji pomaže pamćenju ključnih podataka.</p>
-          <p><strong className="text-foreground">Radionica</strong> — otvori karticu, napiši mentalni video ili akronim, i promijeni status u „Spremna" kad završiš.</p>
-          <p><strong className="text-foreground">Testiranje</strong> — sistem prikazuje pitanje, a ti imaš 3 sekunde da prizoveš mentalnu sliku. Vidiš samo svoj „okidač\", ne originalni tekst.</p>
-          <p><strong className="text-foreground">Kako dodati kartice?</strong> U Bazi podataka označi karticu tagom <strong>„Memorizacija"</strong> (ikona 🧠) — automatski se klonira ovdje.</p>
-          <p><strong className="text-foreground">Major sistem</strong> — brojevi u tekstu se automatski pretvaraju u riječi (0=OSA, 1=DUH...) za lakše vizuelno pamćenje.</p>
-        </InfoPanel>
+        <button
+          onClick={() => setShowOnboarding(true)}
+          className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+          title="Vodič kroz memorizaciju"
+        >
+          <HelpCircle className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Stats */}
