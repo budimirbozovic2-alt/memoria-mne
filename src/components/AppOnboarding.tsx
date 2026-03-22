@@ -33,6 +33,7 @@ const APP_SLIDES: OnboardingSlide[] = [
       "Idealni fokus — optimalan omjer novog i ponavljanog",
       "Statusne ikone upozoravaju na rizike i propuste",
     ],
+  },
   {
     icon: GraduationCap,
     iconColor: "bg-success/15 text-success",
