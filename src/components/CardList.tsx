@@ -415,6 +415,8 @@ export default function CardList({
   onEdit, onDelete, onToggleTag, scrollToCardId, onScrolledTo,
   selectionMode, selectedIds, onToggleSelect,
   reorderMode, onReorder,
+  categories: propCategories, subcategories: propSubcategories,
+  onMoveCategory, onAssignChapter, onCloneToMnemonic, availableChapters,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const listRef = useRef<{ scrollToRow: (config: { index: number; align?: string }) => void } | null>(null);
