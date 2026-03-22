@@ -1,13 +1,14 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"; 
 import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS, SectionState, getRetrievability } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2 } from "lucide-react";
+import { Volume2, CheckCircle2 } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
 import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as Info } from "lucide-react/dist/esm/icons/info";
+import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
+import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
 import { default as XIcon } from "lucide-react/dist/esm/icons/x";
 import { default as Flame } from "lucide-react/dist/esm/icons/flame";
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
@@ -73,6 +74,9 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
   const [finished, setFinished] = useState(false);
   const reviewStartRef = useRef(Date.now());
   const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => localStorage.getItem(REVIEW_ONBOARDING_KEY) !== "true"
+  );
 
   const dueCategories = useMemo(() => {
     const cats = new Set(dueCards.map((c) => c.category));
@@ -248,8 +252,11 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10 relative">
+        <AnimatePresence>
+          {showOnboarding && <ReviewOnboarding onComplete={() => setShowOnboarding(false)} />}
+        </AnimatePresence>
         {/* Info corner */}
-        <HowItWorksCorner />
+        <HowItWorksCorner onShowOnboarding={() => setShowOnboarding(true)} />
 
         <div>
           <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
@@ -501,57 +508,105 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
 
 // === Shared Components ===
 
-function HowItWorksCorner() {
-  const [open, setOpen] = useState(false);
+const REVIEW_ONBOARDING_KEY = "sr-review-onboarding-seen";
+
+const REVIEW_SLIDES = [
+  {
+    icon: Target,
+    iconColor: "bg-primary/15 text-primary",
+    title: "Fokusirano Utvrđivanje",
+    content: "Cilja svježe i pogrešne kartice (Learning/Relearning, S<5d). Prebacuje ih iz kratkoročne u dugoročnu memoriju.",
+  },
+  {
+    icon: Shield,
+    iconColor: "bg-warning/15 text-warning",
+    title: "Kritični Pregled",
+    content: "Hvata kartice kad im je vjerovatnoća prisjećanja 80\u201385%. Idealan trenutak za minimalan utrošak vremena uz maksimalnu korist.",
+  },
+  {
+    icon: Zap,
+    iconColor: "bg-destructive/15 text-destructive",
+    title: "Najteža Pitanja",
+    content: "Top 50 najtežih: Leech kartice (\u22655 padova) + visoka težina (D>7). Fokusirana sesija za najtvrdokornije gradivo.",
+  },
+  {
+    icon: BookOpen,
+    iconColor: "bg-success/15 text-success",
+    title: "Ocjenjivanje (1\u20134)",
+    content: "1 \u2014 Potpuno nepoznato (\u223C20 min)\n2 \u2014 Poznato bez detalja (max 24h)\n3 \u2014 Sa ključnim detaljima (interval raste)\n4 \u2014 Savršeno (maksimalan rast)\n\nPrečice: Space otkriva, 1-4 ocjenjuje, N bilježi grešku.",
+  },
+];
+
+function ReviewOnboarding({ onComplete }: { onComplete: () => void }) {
+  const [step, setStep] = useState(0);
+  const slide = REVIEW_SLIDES[step];
+  const Icon = slide.icon;
+
+  const finish = () => {
+    localStorage.setItem(REVIEW_ONBOARDING_KEY, "true");
+    onComplete();
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+      onClick={finish}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        onClick={e => e.stopPropagation()}
+        className="bg-background border rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
+      >
+        <div className="p-6 space-y-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${slide.iconColor}`}>
+            <Icon className="h-6 w-6" />
+          </div>
+          <h3 className="text-xl font-serif">{slide.title}</h3>
+          <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{slide.content}</p>
+          <div className="flex items-center justify-center gap-1.5 pt-2">
+            {REVIEW_SLIDES.map((_, i) => (
+              <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? "bg-primary" : "bg-secondary"}`} />
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center justify-between p-4 border-t">
+          {step > 0 ? (
+            <Button variant="ghost" size="sm" onClick={() => setStep(s => s - 1)}>
+              <ArrowLeft className="h-4 w-4 mr-1" /> Nazad
+            </Button>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={finish}>Preskoči</Button>
+          )}
+          {step < REVIEW_SLIDES.length - 1 ? (
+            <Button size="sm" onClick={() => setStep(s => s + 1)}>
+              Dalje <ArrowRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button size="sm" onClick={finish}>
+              Počni <CheckCircle2 className="h-4 w-4 ml-1" />
+            </Button>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function HowItWorksCorner({ onShowOnboarding }: { onShowOnboarding: () => void }) {
   return (
     <div className="absolute top-0 right-0">
       <button
-        onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary"
+        onClick={onShowOnboarding}
+        className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+        title="Vodič kroz konsolidaciju"
       >
-        <Info className="h-3.5 w-3.5" />
-        <span className="hidden sm:inline">Kako funkcioniše?</span>
+        <HelpCircle className="h-5 w-5" />
       </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            className="absolute right-0 top-8 w-80 rounded-xl border bg-card p-4 shadow-lg z-10 space-y-2.5"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Kako radi Konsolidacija?</span>
-              <button onClick={() => setOpen(false)} className="p-0.5 rounded hover:bg-secondary text-muted-foreground">
-                <XIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <div className="text-xs text-muted-foreground space-y-2 leading-relaxed">
-              <p>
-                <strong className="text-foreground">Fokusirano Utvrđivanje</strong> — cilja svježe i pogrešne kartice (Learning/Relearning, S&lt;5d). Prebacuje ih iz kratkoročne u dugoročnu memoriju.
-              </p>
-              <p>
-                <strong className="text-foreground">Kritični Pregled</strong> — hvata kartice kad im je vjerovatnoća prisjećanja 80–85%. Idealan trenutak za minimalan utrošak vremena.
-              </p>
-              <p>
-                <strong className="text-foreground">Najteža Pitanja</strong> — top 50 najtežih: Leech kartice (≥5 padova) + visoka težina (D&gt;7).
-              </p>
-              <p>
-                <strong className="text-foreground">Ocjenjivanje (1–4):</strong>
-              </p>
-              <ul className="space-y-1 pl-3">
-                <li><span className="font-mono text-destructive">1</span> — Potpuno nepoznato → ponovi za ~20 min</li>
-                <li><span className="font-mono text-warning">2</span> — Poznato bez detalja → max 24h</li>
-                <li><span className="font-mono text-primary">3</span> — Sa ključnim detaljima → interval raste</li>
-                <li><span className="font-mono text-success">4</span> — Savršeno (3s pauza) → maksimalan rast</li>
-              </ul>
-              <p>
-                <strong className="text-foreground">Prečice:</strong> <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">Space</kbd> otkriva, <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">1-4</kbd> ocjenjuje, <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">N</kbd> + selekcija bilježi grešku.
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
