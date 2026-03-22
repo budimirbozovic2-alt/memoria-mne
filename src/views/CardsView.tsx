@@ -23,7 +23,7 @@ export default function CardsView() {
   const {
     cards, categories, subcategories,
     deleteCard, handleToggleTag, bulkUpdateSubcategory, bulkUpdateChapter, reorderCards,
-    setView, setEditingCard,
+    setView, setEditingCard, updateCard,
   } = useAppContext();
 
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
