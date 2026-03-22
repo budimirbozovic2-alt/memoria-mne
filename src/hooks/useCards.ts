@@ -666,12 +666,26 @@ export function useCards() {
     [cards, categories]
   );
 
+  const reorderCategories = useCallback((ordered: string[]) => {
+    setCategoriesState(ordered);
+    idbSaveCategories(ordered);
+  }, []);
+
+  const reorderSubcategories = useCallback((category: string, ordered: string[]) => {
+    setSubcategoriesState(prev => {
+      const next = { ...prev, [category]: ordered };
+      idbSaveSubcategories(next);
+      return next;
+    });
+  }, []);
+
   return {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings, ready,
     addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, bulkUpdateSubcategory, bulkUpdateChapter, reorderCards, logError, clearErrorLog,
     exportData, exportTemplate, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,
+    reorderCategories, reorderSubcategories,
     updateSRSettings,
   };
 }
