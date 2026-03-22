@@ -155,6 +155,22 @@ function ChapterBox({
     return counts;
   }, [cards]);
 
+  // Section-level progress stats
+  const sectionStats = useMemo(() => {
+    let total = 0, learned = 0, due = 0, avgStability = 0;
+    cards.forEach(c => {
+      c.sections.forEach(s => {
+        total++;
+        if (s.state === SectionState.Review || s.state === SectionState.Relearning) learned++;
+        if (s.nextReview && s.nextReview <= Date.now()) due++;
+        avgStability += s.stability;
+      });
+    });
+    avgStability = total > 0 ? Math.round((avgStability / total) * 10) / 10 : 0;
+    const pct = total > 0 ? Math.round((learned / total) * 100) : 0;
+    return { total, learned, due, avgStability, pct };
+  }, [cards]);
+
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <div
