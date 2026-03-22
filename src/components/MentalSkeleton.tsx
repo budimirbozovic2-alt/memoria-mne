@@ -3,6 +3,8 @@ import { Card, SectionState, calculateNextReview } from "@/lib/spaced-repetition
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { motion, AnimatePresence } from "framer-motion";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
+import { default as ArrowUp } from "lucide-react/dist/esm/icons/arrow-up";
+import { default as ArrowDown } from "lucide-react/dist/esm/icons/arrow-down";
 import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as Compass } from "lucide-react/dist/esm/icons/compass";
 import { default as Plus } from "lucide-react/dist/esm/icons/plus";
@@ -122,7 +124,7 @@ function DraggableCardTile({ card, mode, onClick }: { card: Card; mode: Mode; on
 
 // ── Chapter Box (droppable on header) ──
 function ChapterBox({
-  chapter, cards, mode, isOpen, onToggle, onCardClick, onRename, onDelete,
+  chapter, cards, mode, isOpen, onToggle, onCardClick, onRename, onDelete, onMoveUp, onMoveDown,
 }: {
   chapter: string;
   cards: Card[];
@@ -132,6 +134,8 @@ function ChapterBox({
   onCardClick: (card: Card) => void;
   onRename: (oldName: string) => void;
   onDelete: (name: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }) {
   const isUnassigned = chapter === UNASSIGNED_CHAPTER;
   const displayName = isUnassigned ? "Nekategorisane" : chapter;
@@ -181,7 +185,17 @@ function ChapterBox({
               </div>
             )}
             {!isUnassigned && mode === "navigator" && (
-              <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                {onMoveUp && (
+                  <button onClick={onMoveUp} className="p-1 rounded hover:bg-secondary transition-colors" title="Pomjeri gore">
+                    <ArrowUp className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                )}
+                {onMoveDown && (
+                  <button onClick={onMoveDown} className="p-1 rounded hover:bg-secondary transition-colors" title="Pomjeri dolje">
+                    <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                )}
                 <button onClick={() => onRename(chapter)} className="p-1 rounded hover:bg-secondary transition-colors">
                   <Edit3 className="h-3 w-3 text-muted-foreground" />
                 </button>
@@ -636,15 +650,27 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     }
   }, [category, subcategory]);
 
+  // Preserve stored order, append any card-derived chapters not yet stored
   const allChapters = useMemo(() => {
-    const merged = new Set([...chapters, ...storedChapters]);
-    return Array.from(merged).sort((a, b) => {
-      const numA = extractChapterNum(a);
-      const numB = extractChapterNum(b);
-      if (numA !== null && numB !== null) return numA - numB;
-      return a.localeCompare(b);
+    const ordered = [...storedChapters];
+    chapters.forEach(ch => {
+      if (!ordered.includes(ch)) ordered.push(ch);
     });
+    return ordered;
   }, [chapters, storedChapters]);
+
+  const handleMoveChapter = useCallback((index: number, direction: -1 | 1) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= allChapters.length) return;
+    const reordered = [...allChapters];
+    const [item] = reordered.splice(index, 1);
+    reordered.splice(newIndex, 0, item);
+    setStoredChapters(reordered);
+    const key = `chapters-${category}-${subcategory}`;
+    import("@/lib/db").then(({ idbSaveSettings }) => {
+      idbSaveSettings(key, reordered);
+    });
+  }, [allChapters, category, subcategory]);
 
   // Legend counts
   const levelCounts = useMemo(() => {
@@ -758,7 +784,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
         onDragEnd={handleDragEnd}
       >
         <div className="space-y-2">
-          {allChapters.map(chapter => (
+          {allChapters.map((chapter, idx) => (
             <ChapterBox
               key={chapter}
               chapter={chapter}
@@ -769,6 +795,8 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
               onCardClick={handleCardClick}
               onRename={handleRenameChapter}
               onDelete={handleDeleteChapter}
+              onMoveUp={idx > 0 ? () => handleMoveChapter(idx, -1) : undefined}
+              onMoveDown={idx < allChapters.length - 1 ? () => handleMoveChapter(idx, 1) : undefined}
             />
           ))}
 
