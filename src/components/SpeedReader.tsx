@@ -37,27 +37,41 @@ interface Segment {
   cardIndex: number;
   sectionIndex: number;
   words: string[];
-  globalStartIdx: number; // index into flat word array
+  globalStartIdx: number;
 }
 
-function buildSegments(selectedCards: Card[]): { segments: Segment[]; allWords: string[] } {
+// Each word in the flat array knows if it's a title word
+interface WordEntry {
+  text: string;
+  isTitle: boolean;       // section title word
+  segmentIdx: number;
+}
+
+function buildSegments(selectedCards: Card[]): { segments: Segment[]; wordEntries: WordEntry[] } {
   const segments: Segment[] = [];
-  const allWords: string[] = [];
+  const wordEntries: WordEntry[] = [];
   selectedCards.forEach((card, ci) => {
     card.sections.forEach((sec, si) => {
-      const text = stripHtml(sec.content);
-      const words = text.split(/\s+/).filter(Boolean);
-      if (words.length === 0) return;
+      const titleWords = (sec.title || "").split(/\s+/).filter(Boolean);
+      const contentText = stripHtml(sec.content);
+      const contentWords = contentText.split(/\s+/).filter(Boolean);
+      if (titleWords.length === 0 && contentWords.length === 0) return;
+      const segIdx = segments.length;
+      const globalStart = wordEntries.length;
+      // Add title words
+      titleWords.forEach(w => wordEntries.push({ text: w, isTitle: true, segmentIdx: segIdx }));
+      // Add content words
+      contentWords.forEach(w => wordEntries.push({ text: w, isTitle: false, segmentIdx: segIdx }));
       segments.push({
         cardQuestion: card.question,
         sectionTitle: sec.title,
         cardIndex: ci,
         sectionIndex: si,
-        words,
-        globalStartIdx: allWords.length,
+        words: [...titleWords, ...contentWords],
+        globalStartIdx: globalStart,
       });
-      allWords.push(...words);
     });
+  });
   });
   return { segments, allWords };
 }
