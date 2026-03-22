@@ -144,13 +144,12 @@ export function useCards() {
 
       splashProgress(100, "Spremno!");
 
-      // Trigger fade-out animation on splash icon before splash disappears
-      const splashIcon = document.querySelector('#app-splash div > div:first-child') as HTMLElement;
-      if (splashIcon) {
-        splashIcon.style.transition = 'transform 0.5s ease-out, opacity 0.5s ease-out';
-        splashIcon.style.transform = 'scale(1.15)';
-        splashIcon.style.opacity = '0';
-        splashIcon.style.animation = 'none';
+      // Fade out and remove the splash screen now that data is ready
+      const splash = document.getElementById("app-splash");
+      if (splash) {
+        splash.style.transition = 'opacity 0.4s ease-out';
+        splash.style.opacity = '0';
+        setTimeout(() => splash.remove(), 450);
       }
       setReady(true);
 
