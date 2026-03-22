@@ -328,7 +328,7 @@ export default function SpeedReader() {
                   <Layers className="h-5 w-5 text-primary" />
                   {selSub || selCat || "Sve kartice"}
                 </h2>
-                <p className="text-xs text-muted-foreground">{selectedCards.length} kartica · {allWords.length.toLocaleString()} riječi</p>
+                <p className="text-xs text-muted-foreground">{selectedCards.length} kartica · {totalWords.toLocaleString()} riječi</p>
               </>
             ) : (
               <>
