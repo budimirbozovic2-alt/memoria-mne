@@ -46,7 +46,7 @@ const LAB_ITEMS = [
 
 const LAB_PATHS = LAB_ITEMS.map(i => i.path);
 
-export default function TopNav({ onToggleZen, zenActive }: Props) {
+export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Props) {
   const location = useLocation();
   const { stats } = useCardContext();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
