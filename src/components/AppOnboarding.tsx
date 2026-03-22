@@ -1,4 +1,5 @@
 import { default as Sparkles } from "lucide-react/dist/esm/icons/sparkles";
+import { default as LayoutDashboard } from "lucide-react/dist/esm/icons/layout-dashboard";
 import { default as GraduationCap } from "lucide-react/dist/esm/icons/graduation-cap";
 import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
 import { default as Map } from "lucide-react/dist/esm/icons/map";
