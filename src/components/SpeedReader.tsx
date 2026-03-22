@@ -72,8 +72,7 @@ function buildSegments(selectedCards: Card[]): { segments: Segment[]; wordEntrie
       });
     });
   });
-  });
-  return { segments, allWords };
+  return { segments, wordEntries };
 }
 
 function getActiveSegment(segments: Segment[], wordIdx: number): Segment | null {
