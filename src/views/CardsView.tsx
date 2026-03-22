@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AnimatePresence, motion } from "framer-motion";
@@ -23,7 +23,7 @@ export default function CardsView() {
   const {
     cards, categories, subcategories,
     deleteCard, handleToggleTag, bulkUpdateSubcategory, bulkUpdateChapter, reorderCards,
-    setView, setEditingCard,
+    setView, setEditingCard, updateCard,
   } = useAppContext();
 
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
@@ -103,6 +103,47 @@ export default function CardsView() {
 
   const bulkSubcats = filterCategory ? (subcategories[filterCategory] || []) : [];
   const availableSubcategories = filterCategory ? (subcategories[filterCategory] || []) : [];
+
+  // Available chapters for context menu
+  const availableChapters = useMemo(() => {
+    const catFilter = filterCategory;
+    const subFilter = filterSubcategory;
+    const relevant = cards.filter(c => {
+      if (catFilter && c.category !== catFilter) return false;
+      if (subFilter && c.subcategory !== subFilter) return false;
+      return !!c.chapter;
+    });
+    return Array.from(new Set(relevant.map(c => c.chapter!))).sort();
+  }, [cards, filterCategory, filterSubcategory]);
+
+  // Context menu: move category
+  const handleMoveCategory = useCallback((cardId: string, category: string, subcategory?: string) => {
+    updateCard(cardId, { category, subcategory: subcategory || "" });
+    toast.success(`Kartica premještena u "${category}"${subcategory ? ` › ${subcategory}` : ""}`);
+  }, [updateCard]);
+
+  // Context menu: assign chapter
+  const handleAssignChapter = useCallback((cardId: string, chapter: string) => {
+    bulkUpdateChapter([{ id: cardId, chapter, chapterOrder: 0 }]);
+    toast.success(`Glava "${chapter}" dodijeljena`);
+  }, [bulkUpdateChapter]);
+
+  // Context menu: clone to mnemonic workshop
+  const handleCloneToMnemonic = useCallback((card: Card) => {
+    import("@/lib/mnemonic-storage").then(({ createMnemonicCard, loadMnemonicCards, saveMnemonicCards }) => {
+      const existing = loadMnemonicCards();
+      const alreadyExists = existing.some(m => m.originalCardId === card.id);
+      if (alreadyExists) {
+        toast.info("Kartica je već u Mnemo radionici");
+        return;
+      }
+      const sections = card.sections.map(s => ({ title: s.title, content: s.content }));
+      const clone = createMnemonicCard(card.id, card.question, sections, card.category, card.subcategory, card.tags);
+      saveMnemonicCards([...existing, clone]);
+      handleToggleTag(card.id, "mnemonic");
+      toast.success("Klonirano u Mnemo radionicu");
+    });
+  }, [handleToggleTag]);
 
   const handleEdit = (card: Card) => {
     sessionStorage.setItem("sr-scroll-to-card", card.id);
@@ -366,6 +407,12 @@ export default function CardsView() {
         onToggleSelect={toggleSelect}
         reorderMode={reorderMode}
         onReorder={handleReorder}
+        categories={categories}
+        subcategories={subcategories}
+        availableChapters={availableChapters}
+        onMoveCategory={handleMoveCategory}
+        onAssignChapter={handleAssignChapter}
+        onCloneToMnemonic={handleCloneToMnemonic}
       />
     </div>
   );
