@@ -492,19 +492,41 @@ export default function SpeedReader() {
             <button onClick={handleReset} className="p-2 rounded-lg hover:bg-secondary transition-colors" title="Resetuj">
               <RotateCcw className="h-4 w-4 text-muted-foreground" />
             </button>
+
+            {/* TTS toggle */}
+            <div className="w-px h-6 bg-border" />
+            <button
+              onClick={() => { setTtsEnabled(v => !v); stopTts(); }}
+              className={`p-2 rounded-lg transition-colors ${ttsEnabled ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+              title={ttsEnabled ? "Isključi glasovno praćenje" : "Uključi glasovno praćenje"}
+            >
+              {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </button>
+            {ttsEnabled && (
+              <button
+                onClick={() => setShowTtsSettings(v => !v)}
+                className={`p-2 rounded-lg transition-colors ${showTtsSettings ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                title="TTS podešavanja"
+              >
+                <Settings2 className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
-            <Gauge className="h-4 w-4 text-muted-foreground" />
-            <div className="flex gap-1">
-              {WPM_OPTIONS.map(w => (
-                <button key={w} onClick={() => setWpm(w)} className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${wpm === w ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
-                  {w}
-                </button>
-              ))}
+          {/* WPM (hidden when TTS drives the pace) */}
+          {!ttsEnabled && (
+            <div className="flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-muted-foreground" />
+              <div className="flex gap-1">
+                {WPM_OPTIONS.map(w => (
+                  <button key={w} onClick={() => setWpm(w)} className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${wpm === w ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
+                    {w}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-muted-foreground ml-1">WPM</span>
             </div>
-            <span className="text-xs text-muted-foreground ml-1">WPM</span>
-          </div>
+          )}
 
           <div className="flex items-center gap-2">
             <Type className="h-4 w-4 text-muted-foreground" />
@@ -517,6 +539,47 @@ export default function SpeedReader() {
             </div>
           </div>
         </div>
+
+        {/* TTS settings panel */}
+        {ttsEnabled && showTtsSettings && (
+          <div className="rounded-lg border bg-secondary/30 p-3 space-y-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium">Brzina govora</label>
+                <span className="text-xs text-muted-foreground tabular-nums">{ttsSettings.rate.toFixed(2)}×</span>
+              </div>
+              <input
+                type="range" min="0.5" max="2" step="0.05" value={ttsSettings.rate}
+                onChange={(e) => {
+                  const newSettings = { ...ttsSettings, rate: parseFloat(e.target.value) };
+                  setTtsSettings(newSettings);
+                  saveTTSSettings(newSettings);
+                }}
+                className="w-full h-1.5 rounded-full appearance-none bg-secondary cursor-pointer accent-primary"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>Sporo</span><span>Normalno</span><span>Brzo</span>
+              </div>
+            </div>
+            {voices.length > 0 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">Glas</label>
+                <select
+                  value={ttsSettings.voiceURI || "__default__"}
+                  onChange={(e) => {
+                    const newSettings = { ...ttsSettings, voiceURI: e.target.value === "__default__" ? "" : e.target.value };
+                    setTtsSettings(newSettings);
+                    saveTTSSettings(newSettings);
+                  }}
+                  className="w-full px-3 py-1.5 rounded-lg border bg-background text-xs"
+                >
+                  <option value="__default__">Sistemski podrazumijevani</option>
+                  {voices.map(v => <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="space-y-1">
           <div className="w-full h-1.5 rounded-full bg-secondary overflow-hidden">
