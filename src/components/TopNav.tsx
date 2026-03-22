@@ -1,4 +1,5 @@
 import { useLocation } from "react-router-dom";
+import { default as Zap } from "lucide-react/dist/esm/icons/zap";
 import { NavLink } from "@/components/NavLink";
 import { useCardContext } from "@/contexts/AppContext";
 import { default as Home } from "lucide-react/dist/esm/icons/home";
