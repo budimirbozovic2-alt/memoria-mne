@@ -3,6 +3,8 @@ import { Card, SectionState, calculateNextReview } from "@/lib/spaced-repetition
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { motion, AnimatePresence } from "framer-motion";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
+import { default as ArrowUp } from "lucide-react/dist/esm/icons/arrow-up";
+import { default as ArrowDown } from "lucide-react/dist/esm/icons/arrow-down";
 import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as Compass } from "lucide-react/dist/esm/icons/compass";
 import { default as Plus } from "lucide-react/dist/esm/icons/plus";
