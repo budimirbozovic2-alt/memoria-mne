@@ -10,6 +10,8 @@ import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
 import { default as ArrowUp } from "lucide-react/dist/esm/icons/arrow-up";
 import { default as ArrowDown } from "lucide-react/dist/esm/icons/arrow-down";
 import { default as ListOrdered } from "lucide-react/dist/esm/icons/list-ordered";
+import { default as Kanban } from "lucide-react/dist/esm/icons/columns-3";
+import { default as List } from "lucide-react/dist/esm/icons/list";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 
 const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
