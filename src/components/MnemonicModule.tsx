@@ -5,6 +5,7 @@ import {
   addMnemonicTestEntry, getMnemonicStats,
 } from "@/lib/mnemonic-storage";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
+import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Wrench } from "lucide-react/dist/esm/icons/wrench";
 import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
