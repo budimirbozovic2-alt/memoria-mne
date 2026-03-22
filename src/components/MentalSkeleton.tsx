@@ -779,13 +779,14 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
         )}
       </AnimatePresence>
 
-      {/* Chapters with DnD */}
+      {/* Chapters with DnD — single SortableContext for cross-chapter dragging */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
+        <SortableContext items={subCards.map(c => c.id)} strategy={rectSortingStrategy}>
         <div className="space-y-2">
           {allChapters.map(chapter => (
             <ChapterBox
