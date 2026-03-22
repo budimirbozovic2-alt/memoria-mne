@@ -25,7 +25,6 @@ import { default as RotateCw } from "lucide-react/dist/esm/icons/rotate-cw";
 import { default as Trophy } from "lucide-react/dist/esm/icons/trophy";
 import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
 import SessionFilters from "@/components/SessionFilters";
-import SessionFilters from "@/components/SessionFilters";
 import { Button } from "@/components/ui/button";
 import { speak } from "@/lib/tts";
 import LearnOnboarding, { hasSeenOnboarding } from "@/components/LearnOnboarding";
