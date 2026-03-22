@@ -1,6 +1,9 @@
+import DOMPurify from "dompurify";
+
 function stripHtml(html: string): string {
+  const sanitized = DOMPurify.sanitize(html, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
   const div = document.createElement("div");
-  div.innerHTML = html;
+  div.innerHTML = sanitized;
   return div.textContent || div.innerText || "";
 }
 
