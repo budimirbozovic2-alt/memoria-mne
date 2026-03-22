@@ -252,8 +252,11 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10 relative">
+        <AnimatePresence>
+          {showOnboarding && <ReviewOnboarding onComplete={() => setShowOnboarding(false)} />}
+        </AnimatePresence>
         {/* Info corner */}
-        <HowItWorksCorner />
+        <HowItWorksCorner onShowOnboarding={() => setShowOnboarding(true)} />
 
         <div>
           <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
