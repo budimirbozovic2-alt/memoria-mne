@@ -17,13 +17,10 @@ import { default as CheckCircle } from "lucide-react/dist/esm/icons/check-circle
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
-  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
-  DragEndEvent, DragOverlay, DragStartEvent, useDroppable,
+  DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  DragEndEvent, DragOverlay, DragStartEvent, useDroppable, useDndMonitor,
 } from "@dnd-kit/core";
-import {
-  arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 
