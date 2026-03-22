@@ -13,6 +13,7 @@ import { default as ListOrdered } from "lucide-react/dist/esm/icons/list-ordered
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 
 const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
+const KanbanBoard = lazy(() => import("@/components/KanbanBoard"));
 
 interface Props {
   cards: Card[];
