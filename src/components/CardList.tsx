@@ -591,6 +591,12 @@ export default function CardList({
                 onExpand={setExpandedId}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                categories={propCategories}
+                subcategories={propSubcategories}
+                availableChapters={availableChapters}
+                onMoveCategory={onMoveCategory}
+                onAssignChapter={onAssignChapter}
+                onCloneToMnemonic={onCloneToMnemonic}
               />
             </div>
           </div>
