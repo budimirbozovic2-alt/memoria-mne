@@ -41,6 +41,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         onOpenDocxImport={() => setDocxOpen(true)}
         onToggleZen={() => setZenMode(v => !v)}
         zenActive={zenMode}
+        onOpenOnboarding={() => setShowAppOnboarding(true)}
       />
 
       {/* Main content */}
