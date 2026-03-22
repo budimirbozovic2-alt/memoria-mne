@@ -18,6 +18,7 @@ import { default as SettingsIcon } from "lucide-react/dist/esm/icons/settings";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
 import { default as DatabaseIcon } from "lucide-react/dist/esm/icons/database";
+import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
