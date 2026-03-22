@@ -320,6 +320,7 @@ export default function SpeedReader() {
   const stopTts = useCallback(() => {
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     ttsUtteranceRef.current = null;
+    ttsPlayingRef.current = false;
   }, []);
 
   const handlePlayPause = useCallback(() => {
