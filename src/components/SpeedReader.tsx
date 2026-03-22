@@ -32,11 +32,13 @@ function tokenize(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
 }
 
-const INFO_ITEMS = [
-  { icon: Eye, title: "Highlighting režim", desc: "Tekst se prikazuje u cijelosti, a trenutna riječ se ističe u zadanom tempu (WPM)." },
-  { icon: Gauge, title: "Brzina čitanja", desc: "Podesi WPM (riječi po minuti) za brže ili sporije čitanje. Počni sporije pa postepeno ubrzavaj." },
-  { icon: BookOpen, title: "Izbor sadržaja", desc: "Odaberi kategoriju i karticu čiji sadržaj želiš brzo čitati. Svaka sekcija se čita zasebno." },
-];
+const SPEED_READER_INFO = (
+  <div className="space-y-3 text-sm">
+    <div className="flex items-start gap-2"><Eye className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Highlighting režim</strong><p className="text-muted-foreground">Tekst se prikazuje u cijelosti, a trenutna riječ se ističe u zadanom tempu (WPM).</p></div></div>
+    <div className="flex items-start gap-2"><Gauge className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Brzina čitanja</strong><p className="text-muted-foreground">Podesi WPM (riječi po minuti). Počni sporije pa postepeno ubrzavaj.</p></div></div>
+    <div className="flex items-start gap-2"><BookOpen className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Izbor sadržaja</strong><p className="text-muted-foreground">Odaberi kategoriju i karticu čiji sadržaj želiš brzo čitati.</p></div></div>
+  </div>
+);
 
 export default function SpeedReader() {
   const { cards, categories, subcategories } = useAppContext();
