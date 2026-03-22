@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { initColorTheme } from "./lib/app-settings";
+import { db } from "./lib/db";
 
 initColorTheme();
 
@@ -19,14 +20,26 @@ setTimeout(() => {
 
 // ── Electron IPC: listen for backup-requested before quit ──
 if (window.electronAPI) {
-  const cleanup = window.electronAPI.onBackupRequested(() => {
+  const cleanup = window.electronAPI.onBackupRequested(async () => {
     try {
-      const keys = ['sr-essay-cards', 'sr-essay-categories', 'sr-essay-subcategories', 'sr-review-log', 'sr-settings'];
-      const data: Record<string, unknown> = {};
-      keys.forEach(k => {
-        const v = localStorage.getItem(k);
-        if (v) data[k] = JSON.parse(v);
-      });
+      const [cards, categories, subcategories, reviewLog, srSettings] = await Promise.all([
+        db.cards.toArray(),
+        db.categories.toArray().then(rows => rows.map(r => r.name)),
+        db.subcategories.toArray().then(rows => {
+          const result: Record<string, string[]> = {};
+          rows.forEach(r => { result[r.category] = r.subs; });
+          return result;
+        }),
+        db.reviewLog.toArray(),
+        db.settings.get("srSettings").then(r => r?.value ?? null),
+      ]);
+      const data: Record<string, unknown> = {
+        "sr-essay-cards": cards,
+        "sr-essay-categories": categories,
+        "sr-essay-subcategories": subcategories,
+        "sr-review-log": reviewLog,
+      };
+      if (srSettings) data["sr-settings"] = srSettings;
       const json = JSON.stringify(data, null, 2);
       window.electronAPI!.requestBackup(json);
     } catch (_) {}
