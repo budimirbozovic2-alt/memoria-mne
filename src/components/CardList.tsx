@@ -547,6 +547,12 @@ export default function CardList({
           onExpand: setExpandedId,
           onEdit,
           onDelete,
+          categories: propCategories,
+          subcategories: propSubcategories,
+          availableChapters,
+          onMoveCategory,
+          onAssignChapter,
+          onCloneToMnemonic,
         }}
         style={{ height: Math.min(filtered.length * (COLLAPSED_ROW_HEIGHT + GAP), 700) }}
       />
