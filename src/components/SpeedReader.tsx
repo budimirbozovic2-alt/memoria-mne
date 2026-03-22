@@ -131,7 +131,8 @@ export default function SpeedReader() {
     return [];
   }, [readMode, selCard, filteredCards]);
 
-  const { segments, allWords } = useMemo(() => buildSegments(selectedCards), [selectedCards]);
+  const { segments, wordEntries } = useMemo(() => buildSegments(selectedCards), [selectedCards]);
+  const totalWords = wordEntries.length;
 
   const activeSegment = getActiveSegment(segments, currentWordIdx);
 
