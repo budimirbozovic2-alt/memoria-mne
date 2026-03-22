@@ -226,8 +226,6 @@ export async function idbSaveSubcategories(subs: Record<string, string[]>): Prom
       Object.entries(subs).map(([category, subList]) => ({ id: category, category, subs: subList }))
     );
   });
-  deferredLocalStorageSync("sr-essay-subcategories", () => JSON.stringify(subs));
-}
 
 export async function idbLoadReviewLog(): Promise<ReviewLogEntry[]> {
   return db.reviewLog.toArray();
