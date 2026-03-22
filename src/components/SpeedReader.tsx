@@ -194,7 +194,7 @@ export default function SpeedReader() {
     return () => window.removeEventListener("keydown", handler);
   }, [handlePlayPause]);
 
-  const progress = allWords.length > 0 ? ((currentWordIdx + 1) / allWords.length) * 100 : 0;
+  const progress = totalWords > 0 ? ((currentWordIdx + 1) / totalWords) * 100 : 0;
 
   const startSubcategoryRead = () => {
     if (filteredCards.length === 0) return;
