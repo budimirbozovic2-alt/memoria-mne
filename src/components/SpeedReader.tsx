@@ -429,8 +429,8 @@ export default function SpeedReader() {
                   {(segments.length > 1) && (
                     <div className={`flex items-center gap-2 mb-3 pb-2 border-b transition-colors ${isCurrentSeg ? "border-primary/30" : "border-border"}`}>
                       <BookOpen className={`h-3.5 w-3.5 flex-shrink-0 ${isCurrentSeg ? "text-primary" : "text-muted-foreground/40"}`} />
-                      <span className={`text-xs font-medium truncate ${isCurrentSeg ? "text-primary" : "text-muted-foreground/60"}`}>
-                        {seg.cardQuestion} › {seg.sectionTitle}
+                      <span className={`text-sm font-semibold ${isCurrentSeg ? "text-primary" : "text-muted-foreground/60"}`}>
+                        {seg.sectionTitle}
                       </span>
                     </div>
                   )}
