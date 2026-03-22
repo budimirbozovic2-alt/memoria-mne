@@ -34,26 +34,51 @@ type PersistAction =
   | { type: "bulk"; cards: Card[] }
   | { type: "full"; map: CardMap };
 
-const pendingActions: PersistAction[] = [];
-let flushTimer: number | null = null;
+// Persist queue — encapsulated to avoid shared mutable state issues
+function createPersistQueue() {
+  const pending: PersistAction[] = [];
+  let timer: number | null = null;
 
-// Fix #3: Non-blocking localStorage sync via requestIdleCallback
-function asyncLocalStorageSync(key: string, data: () => string) {
-  if ("requestIdleCallback" in window) {
-    (window as any).requestIdleCallback(() => {
-      try { localStorage.setItem(key, data()); } catch {}
-    }, { timeout: 5000 });
-  } else {
-    setTimeout(() => {
-      try { localStorage.setItem(key, data()); } catch {}
-    }, 100);
+  async function flush() {
+    timer = null;
+    const actions = pending.splice(0);
+    if (actions.length === 0) return;
+
+    const fullAction = actions.find(a => a.type === "full");
+    if (fullAction && fullAction.type === "full") {
+      await idbSaveCards(mapToArray(fullAction.map));
+      return;
+    }
+
+    const puts: Card[] = [];
+    const deletes: string[] = [];
+    for (const a of actions) {
+      if (a.type === "put") puts.push(a.card);
+      else if (a.type === "delete") deletes.push(a.id);
+      else if (a.type === "bulk") puts.push(...a.cards);
+    }
+
+    if (puts.length > 0) await idbBulkPutCards(puts);
+    for (const id of deletes) await idbDeleteCard(id);
   }
-}
 
-function schedulePersist(action: PersistAction) {
-  pendingActions.push(action);
-  if (flushTimer !== null) return;
-  flushTimer = window.setTimeout(flushPersist, 16); // batch within a frame
+  function schedule(action: PersistAction) {
+    pending.push(action);
+    if (timer !== null) return;
+    timer = window.setTimeout(flush, 16);
+  }
+
+  function cleanup() {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+    if (pending.length > 0) {
+      flush();
+    }
+  }
+
+  return { schedule, cleanup };
 }
 
 async function flushPersist() {
