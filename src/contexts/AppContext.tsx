@@ -14,6 +14,7 @@ const VIEW_TO_PATH: Record<View, string> = {
   "frequent-errors": "/frequent-errors", "knowledge-map": "/knowledge-map",
   mnemonic: "/mnemonic", "major-system-settings": "/major-system-settings",
   metacognitive: "/metacognitive", stats: "/stats", planner: "/planner",
+  "speed-reader": "/speed-reader",
 };
 
 const PATH_TO_VIEW: Record<string, View> = {};
