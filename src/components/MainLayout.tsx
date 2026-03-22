@@ -19,6 +19,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const [docxOpen, setDocxOpen] = useState(false);
   const [zenMode, setZenMode] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [showAppOnboarding, setShowAppOnboarding] = useState(
+    () => !hasSeenOnboarding(APP_ONBOARDING_KEY)
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
