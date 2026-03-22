@@ -71,7 +71,7 @@ export default function MnemonicModule({ onBack }: Props) {
 
   const [subView, setSubView] = useState<"menu" | "workshop" | "test" | "major">("menu");
   const [showOnboarding, setShowOnboarding] = useState(
-    () => localStorage.getItem(MNEMO_ONBOARDING_KEY) !== "true"
+    () => !hasSeenOnboarding(MNEMO_ONBOARDING_KEY)
   );
 
   const setCards = useCallback((updater: (prev: MnemonicCard[]) => MnemonicCard[]) => {
