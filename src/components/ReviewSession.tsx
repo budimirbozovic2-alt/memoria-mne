@@ -74,6 +74,9 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
   const [finished, setFinished] = useState(false);
   const reviewStartRef = useRef(Date.now());
   const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => localStorage.getItem(REVIEW_ONBOARDING_KEY) !== "true"
+  );
 
   const dueCategories = useMemo(() => {
     const cats = new Set(dueCards.map((c) => c.category));
