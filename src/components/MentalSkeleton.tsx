@@ -494,13 +494,23 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     if (!over || active.id === over.id) return;
 
     const activeChapter = findChapterForCard(active.id as string);
-    const overChapter = findChapterForCard(over.id as string);
+    
+    // Determine target chapter: either from a droppable chapter zone or from the card's chapter
+    let overChapter: string;
+    const overId = over.id as string;
+    if (overId.startsWith("chapter-drop-")) {
+      // Dropped onto a chapter droppable zone
+      overChapter = overId.replace("chapter-drop-", "");
+    } else {
+      // Dropped onto another card
+      overChapter = findChapterForCard(overId);
+    }
 
-    if (activeChapter === overChapter) {
+    if (activeChapter === overChapter && !overId.startsWith("chapter-drop-")) {
       // Reorder within same chapter
       const chapterCards = [...(cardsByChapter[activeChapter] || [])].sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
       const oldIndex = chapterCards.findIndex(c => c.id === active.id);
-      const newIndex = chapterCards.findIndex(c => c.id === over.id);
+      const newIndex = chapterCards.findIndex(c => c.id === overId);
       if (oldIndex !== -1 && newIndex !== -1) {
         const reordered = arrayMove(chapterCards, oldIndex, newIndex);
         const updates = reordered.map((c, i) => ({
@@ -511,21 +521,26 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
         onUpdateChapters(updates);
       }
     } else {
-      // Move to different chapter (Fix #2: null-check for race condition)
+      // Move to different chapter
       const movedCard = subCards.find(c => c.id === active.id);
-      if (!movedCard) return; // guard against stale state
+      if (!movedCard) return;
 
-      const targetChapter = overChapter === UNASSIGNED_CHAPTER ? "" : overChapter;
-      const targetCards = [...(cardsByChapter[overChapter] || [])].sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
-      const overIndex = targetCards.findIndex(c => c.id === over.id);
-      const insertIndex = overIndex !== -1 ? overIndex : targetCards.length;
+      const targetChapterName = overChapter === UNASSIGNED_CHAPTER ? "" : overChapter;
+      const targetCards = [...(cardsByChapter[overChapter] || [])]
+        .filter(c => c.id !== active.id)
+        .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
+      
+      // If dropped on a card, insert at that position; otherwise append
+      let insertIndex = targetCards.length;
+      if (!overId.startsWith("chapter-drop-")) {
+        const overIdx = targetCards.findIndex(c => c.id === overId);
+        if (overIdx !== -1) insertIndex = overIdx;
+      }
 
-      // Update moved card
       const updates: { id: string; chapter: string; chapterOrder: number }[] = [];
-      // Insert into target
       targetCards.splice(insertIndex, 0, movedCard);
       targetCards.forEach((c, i) => {
-        updates.push({ id: c.id, chapter: targetChapter, chapterOrder: i });
+        updates.push({ id: c.id, chapter: targetChapterName, chapterOrder: i });
       });
 
       // Re-index source chapter
