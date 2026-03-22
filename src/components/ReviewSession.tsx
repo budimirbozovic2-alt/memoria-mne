@@ -10,7 +10,7 @@ import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-tria
 import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
 import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
 import { default as XIcon } from "lucide-react/dist/esm/icons/x";
-import { default as Flame } from "lucide-react/dist/esm/icons/flame";
+
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
 import { default as Pause } from "lucide-react/dist/esm/icons/pause";
 import { default as Play } from "lucide-react/dist/esm/icons/play";
