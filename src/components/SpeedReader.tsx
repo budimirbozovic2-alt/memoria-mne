@@ -34,6 +34,15 @@ function stripHtml(html: string): string {
   return div.textContent || div.innerText || "";
 }
 
+// Strip non-letter/non-digit chars that cause TTS to stall
+function cleanForTTS(text: string): string {
+  // Keep letters (any script), digits, spaces; remove isolated symbols
+  return text
+    .replace(/[^\p{L}\p{N}\s.,!?;:'"()-]/gu, " ")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 // A "segment" is a block of words belonging to one card+section
 interface Segment {
   cardQuestion: string;
