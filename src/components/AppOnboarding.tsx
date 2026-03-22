@@ -24,6 +24,16 @@ const APP_SLIDES: OnboardingSlide[] = [
     ],
   },
   {
+    icon: LayoutDashboard,
+    iconColor: "bg-primary/15 text-primary",
+    title: "Kontrolna tabla",
+    content: "Centralni pregled napretka sa dnevnim ciljem, streikom i preporukama.",
+    bullets: [
+      "Progres ispita, dnevni cilj i streak na jednom mjestu",
+      "Idealni fokus — optimalan omjer novog i ponavljanog",
+      "Statusne ikone upozoravaju na rizike i propuste",
+    ],
+  {
     icon: GraduationCap,
     iconColor: "bg-success/15 text-success",
     title: "Učenje",
