@@ -185,7 +185,17 @@ function ChapterBox({
               </div>
             )}
             {!isUnassigned && mode === "navigator" && (
-              <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                {onMoveUp && (
+                  <button onClick={onMoveUp} className="p-1 rounded hover:bg-secondary transition-colors" title="Pomjeri gore">
+                    <ArrowUp className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                )}
+                {onMoveDown && (
+                  <button onClick={onMoveDown} className="p-1 rounded hover:bg-secondary transition-colors" title="Pomjeri dolje">
+                    <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                )}
                 <button onClick={() => onRename(chapter)} className="p-1 rounded hover:bg-secondary transition-colors">
                   <Edit3 className="h-3 w-3 text-muted-foreground" />
                 </button>
