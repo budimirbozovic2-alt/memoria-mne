@@ -225,7 +225,7 @@ export default function SpeedReader() {
             <p className="text-xs text-muted-foreground">{selCard.category}{selCard.subcategory ? ` › ${selCard.subcategory}` : ""}</p>
           </div>
         </div>
-        <InfoPanel title="Speed Reader" items={INFO_ITEMS} />
+        <InfoPanel title="Speed Reader">{SPEED_READER_INFO}</InfoPanel>
       </div>
 
       {/* Section tabs */}
