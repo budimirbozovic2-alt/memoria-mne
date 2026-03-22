@@ -458,10 +458,9 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     return map;
   }, [subCards, chapters]);
 
-  // DnD sensors
+   // DnD sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
   const toggleChapter = useCallback((ch: string) => {
@@ -472,7 +471,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     });
   }, []);
 
-  // Initialize all chapters as expanded — useEffect instead of useMemo (Fix #1)
+  // Initialize all chapters as expanded
   useEffect(() => {
     const all = new Set([UNASSIGNED_CHAPTER, ...chapters]);
     setExpandedChapters(all);
@@ -492,73 +491,47 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over) return;
 
-    const activeChapter = findChapterForCard(active.id as string);
-    
-    // Determine target chapter: either from a droppable chapter zone or from the card's chapter
-    let overChapter: string;
     const overId = over.id as string;
-    if (overId.startsWith("chapter-drop-")) {
-      // Dropped onto a chapter droppable zone
-      overChapter = overId.replace("chapter-drop-", "");
-    } else {
-      // Dropped onto another card
-      overChapter = findChapterForCard(overId);
-    }
+    // Only accept drops on chapter headers
+    if (!overId.startsWith("chapter-drop-")) return;
 
-    if (activeChapter === overChapter && !overId.startsWith("chapter-drop-")) {
-      // Reorder within same chapter
-      const chapterCards = [...(cardsByChapter[activeChapter] || [])].sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
-      const oldIndex = chapterCards.findIndex(c => c.id === active.id);
-      const newIndex = chapterCards.findIndex(c => c.id === overId);
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const reordered = arrayMove(chapterCards, oldIndex, newIndex);
-        const updates = reordered.map((c, i) => ({
-          id: c.id,
-          chapter: activeChapter === UNASSIGNED_CHAPTER ? "" : activeChapter,
-          chapterOrder: i,
-        }));
-        onUpdateChapters(updates);
-      }
-    } else {
-      // Move to different chapter
-      const movedCard = subCards.find(c => c.id === active.id);
-      if (!movedCard) return;
+    const targetChapter = overId.replace("chapter-drop-", "");
+    const sourceChapter = findChapterForCard(active.id as string);
 
-      const targetChapterName = overChapter === UNASSIGNED_CHAPTER ? "" : overChapter;
-      const targetCards = [...(cardsByChapter[overChapter] || [])]
-        .filter(c => c.id !== active.id)
-        .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
-      
-      // If dropped on a card, insert at that position; otherwise append
-      let insertIndex = targetCards.length;
-      if (!overId.startsWith("chapter-drop-")) {
-        const overIdx = targetCards.findIndex(c => c.id === overId);
-        if (overIdx !== -1) insertIndex = overIdx;
-      }
+    // Don't do anything if dropped on same chapter
+    if (sourceChapter === targetChapter) return;
 
-      const updates: { id: string; chapter: string; chapterOrder: number }[] = [];
-      targetCards.splice(insertIndex, 0, movedCard);
-      targetCards.forEach((c, i) => {
-        updates.push({ id: c.id, chapter: targetChapterName, chapterOrder: i });
+    const movedCard = subCards.find(c => c.id === active.id);
+    if (!movedCard) return;
+
+    const targetChapterName = targetChapter === UNASSIGNED_CHAPTER ? "" : targetChapter;
+    const updates: { id: string; chapter: string; chapterOrder: number }[] = [];
+
+    // Add card to end of target chapter
+    const targetCards = [...(cardsByChapter[targetChapter] || [])]
+      .filter(c => c.id !== active.id)
+      .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
+    targetCards.push(movedCard);
+    targetCards.forEach((c, i) => {
+      updates.push({ id: c.id, chapter: targetChapterName, chapterOrder: i });
+    });
+
+    // Re-index source chapter
+    const sourceCards = [...(cardsByChapter[sourceChapter] || [])]
+      .filter(c => c.id !== active.id)
+      .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
+    sourceCards.forEach((c, i) => {
+      updates.push({
+        id: c.id,
+        chapter: sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter,
+        chapterOrder: i,
       });
+    });
 
-      // Re-index source chapter
-      const sourceCards = [...(cardsByChapter[activeChapter] || [])]
-        .filter(c => c.id !== active.id)
-        .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
-      sourceCards.forEach((c, i) => {
-        updates.push({
-          id: c.id,
-          chapter: activeChapter === UNASSIGNED_CHAPTER ? "" : activeChapter,
-          chapterOrder: i,
-        });
-      });
-
-      onUpdateChapters(updates);
-      toast.success("Kartica premještena");
-    }
+    onUpdateChapters(updates);
+    toast.success(`Premješteno u "${targetChapter === UNASSIGNED_CHAPTER ? "Nekategorisane" : targetChapter}"`);
   };
 
   const handleCardClick = (card: Card) => {
