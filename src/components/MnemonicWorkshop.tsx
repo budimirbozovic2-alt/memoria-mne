@@ -40,7 +40,7 @@ const WORKSHOP_SLIDES = [
     icon: Wrench,
     iconColor: "bg-primary/15 text-primary",
     title: "Dobrodošli u Radionicu",
-    content: "Ovdje kreiraš mentalne kuke — asocijacije koje ti pomažu da zapamtiš gradivo. Selektuj tekst u sesiji učenja ili bazi i klikni „Mnemo kuka" da dodaš karticu.",
+    content: 'Ovdje kreiraš mentalne kuke \u2014 asocijacije koje ti pomažu da zapamtiš gradivo. Selektuj tekst u sesiji učenja ili bazi i klikni \u201eMnemo kuka\u201c da dodaš karticu.',
   },
   {
     icon: Film,
@@ -58,13 +58,13 @@ const WORKSHOP_SLIDES = [
     icon: Hash,
     iconColor: "bg-primary/15 text-primary",
     title: "Major sistem",
-    content: "Brojevi u tekstu se automatski pretvaraju u riječi pomoću fonetskog koda. Konfiguriši tablice u sekciji „Mentalne tablice".",
+    content: 'Brojevi u tekstu se automatski pretvaraju u riječi pomoću fonetskog koda. Konfiguriši tablice u sekciji \u201eMentalne tablice\u201c.',
   },
   {
     icon: Sparkles,
     iconColor: "bg-success/15 text-success",
     title: "Statusi kartica",
-    content: "✨ Nova — čeka obradu\n🔧 U radionici — kuka u izradi\n✅ Spremna — dostupna za testiranje u Sefu. Klikni „Uredi" da mjienjaš pitanje i sadržaj direktno.",
+    content: '\u2728 Nova \u2014 čeka obradu\n\uD83D\uDD27 U radionici \u2014 kuka u izradi\n\u2705 Spremna \u2014 dostupna za testiranje u Sefu. Klikni \u201eUredi\u201c da mijenjaš pitanje i sadržaj direktno.',
   },
 ];
 
