@@ -130,6 +130,7 @@ export default function SpeedReader() {
 
   // TTS read-along state
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [ttsMode, setTtsMode] = useState<"natural" | "wpm">("natural"); // natural = TTS drives pace, wpm = WPM timer drives pace
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
   const [showTtsSettings, setShowTtsSettings] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -174,9 +175,9 @@ export default function SpeedReader() {
     wordRefs.current = [];
   }, [totalWords, readerActive]);
 
-  // Timer
+  // Timer — runs when playing, but NOT when TTS is in "natural" mode (TTS drives pace)
   useEffect(() => {
-    if (playing && totalWords > 0) {
+    if (playing && totalWords > 0 && !(ttsEnabled && ttsMode === "natural")) {
       const interval = 60000 / wpm;
       timerRef.current = setInterval(() => {
         setCurrentWordIdx(prev => {
@@ -189,9 +190,9 @@ export default function SpeedReader() {
       }, interval);
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [playing, wpm, totalWords]);
+  }, [playing, wpm, totalWords, ttsEnabled, ttsMode]);
 
-  // TTS read-along: speak entire text from current position using a stable ref-based approach
+  // TTS "natural" mode: speak entire text, TTS boundary events drive highlight
   const speakSegment = useCallback((segIdx: number, startLocal: number) => {
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
@@ -201,7 +202,6 @@ export default function SpeedReader() {
 
     const remainingWords = seg.words.slice(startLocal);
     if (remainingWords.length === 0) {
-      // Move to next segment
       if (segIdx + 1 < segments.length) {
         ttsSegIdxRef.current = segIdx + 1;
         setTimeout(() => speakSegment(segIdx + 1, 0), 50);
@@ -212,10 +212,8 @@ export default function SpeedReader() {
       return;
     }
 
-    // Clean text for TTS — strip problematic symbols
     const ttsText = cleanForTTS(remainingWords.join(" "));
     if (!ttsText) {
-      // All remaining words were symbols, skip to next segment
       if (segIdx + 1 < segments.length) {
         ttsSegIdxRef.current = segIdx + 1;
         setTimeout(() => speakSegment(segIdx + 1, 0), 50);
@@ -235,7 +233,6 @@ export default function SpeedReader() {
       if (v) utterance.voice = v;
     }
 
-    // Sync word highlighting with TTS boundary events
     utterance.onboundary = (event) => {
       if (event.name === "word") {
         const spokenSoFar = utterance.text.substring(0, event.charIndex);
@@ -249,7 +246,6 @@ export default function SpeedReader() {
 
     utterance.onend = () => {
       if (!ttsPlayingRef.current) return;
-      // Move to next segment
       const nextIdx = segIdx + 1;
       if (nextIdx < segments.length) {
         ttsSegIdxRef.current = nextIdx;
@@ -262,7 +258,6 @@ export default function SpeedReader() {
     };
 
     utterance.onerror = (e) => {
-      // On error, try to continue to next segment
       if (e.error === "canceled") return;
       const nextIdx = segIdx + 1;
       if (nextIdx < segments.length) {
@@ -280,17 +275,16 @@ export default function SpeedReader() {
     window.speechSynthesis.speak(utterance);
   }, [segments, ttsSettings]);
 
-  // Start/stop TTS when playing state or ttsEnabled changes
+  // Start/stop TTS natural mode
   useEffect(() => {
-    if (!ttsEnabled || !playing) {
-      if (ttsPlayingRef.current) {
+    if (!ttsEnabled || !playing || ttsMode !== "natural") {
+      if (ttsPlayingRef.current && ttsMode === "natural") {
         window.speechSynthesis.cancel();
         ttsPlayingRef.current = false;
       }
       return;
     }
 
-    // Start TTS from current position
     ttsPlayingRef.current = true;
     const seg = getActiveSegment(segments, currentWordIdx);
     if (!seg) return;
@@ -298,12 +292,37 @@ export default function SpeedReader() {
     const localIdx = currentWordIdx - seg.globalStartIdx;
     speakSegment(segIdx, localIdx);
 
-    return () => {
-      // Only cancel on unmount/dependency change, not on word index change
-    };
+    return () => {};
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ttsEnabled, playing]);
+  }, [ttsEnabled, playing, ttsMode]);
 
+  // TTS "wpm" mode: speak each word individually as the WPM timer highlights it
+  const prevWordIdxRef = useRef(-1);
+  useEffect(() => {
+    if (!ttsEnabled || !playing || ttsMode !== "wpm" || !("speechSynthesis" in window)) return;
+    if (currentWordIdx === prevWordIdxRef.current) return;
+    prevWordIdxRef.current = currentWordIdx;
+
+    // Cancel any ongoing speech quickly
+    window.speechSynthesis.cancel();
+
+    const entry = wordEntries[currentWordIdx];
+    if (!entry) return;
+
+    const cleaned = cleanForTTS(entry.text);
+    if (!cleaned) return; // skip symbols
+
+    const utterance = new SpeechSynthesisUtterance(cleaned);
+    utterance.lang = "sr-RS";
+    utterance.rate = Math.max(1.5, ttsSettings.rate); // speak fast to fit within WPM interval
+
+    if (ttsSettings.voiceURI) {
+      const v = window.speechSynthesis.getVoices().find(v => v.voiceURI === ttsSettings.voiceURI);
+      if (v) utterance.voice = v;
+    }
+
+    window.speechSynthesis.speak(utterance);
+  }, [ttsEnabled, playing, ttsMode, currentWordIdx, wordEntries, ttsSettings]);
   // When TTS is enabled, disable the WPM timer
   useEffect(() => {
     if (ttsEnabled && timerRef.current) {
@@ -575,18 +594,37 @@ export default function SpeedReader() {
               {ttsEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </button>
             {ttsEnabled && (
-              <button
-                onClick={() => setShowTtsSettings(v => !v)}
-                className={`p-2 rounded-lg transition-colors ${showTtsSettings ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
-                title="TTS podešavanja"
-              >
-                <Settings2 className="h-4 w-4" />
-              </button>
+              <>
+                {/* TTS mode toggle: natural vs WPM */}
+                <div className="flex gap-0.5 rounded-lg border p-0.5">
+                  <button
+                    onClick={() => { setTtsMode("natural"); stopTts(); }}
+                    className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${ttsMode === "natural" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    title="TTS kontroliše brzinu čitanja"
+                  >
+                    Prirodno
+                  </button>
+                  <button
+                    onClick={() => { setTtsMode("wpm"); stopTts(); }}
+                    className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${ttsMode === "wpm" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                    title="WPM tajmer kontroliše brzinu, TTS prati"
+                  >
+                    WPM
+                  </button>
+                </div>
+                <button
+                  onClick={() => setShowTtsSettings(v => !v)}
+                  className={`p-2 rounded-lg transition-colors ${showTtsSettings ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                  title="TTS podešavanja"
+                >
+                  <Settings2 className="h-4 w-4" />
+                </button>
+              </>
             )}
           </div>
 
-          {/* WPM (hidden when TTS drives the pace) */}
-          {!ttsEnabled && (
+          {/* WPM — show when TTS is off OR when TTS is in WPM mode */}
+          {(!ttsEnabled || ttsMode === "wpm") && (
             <div className="flex items-center gap-2">
               <Gauge className="h-4 w-4 text-muted-foreground" />
               <div className="flex gap-1">
