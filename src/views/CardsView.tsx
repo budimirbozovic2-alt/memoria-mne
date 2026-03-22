@@ -407,6 +407,12 @@ export default function CardsView() {
         onToggleSelect={toggleSelect}
         reorderMode={reorderMode}
         onReorder={handleReorder}
+        categories={categories}
+        subcategories={subcategories}
+        availableChapters={availableChapters}
+        onMoveCategory={handleMoveCategory}
+        onAssignChapter={handleAssignChapter}
+        onCloneToMnemonic={handleCloneToMnemonic}
       />
     </div>
   );
