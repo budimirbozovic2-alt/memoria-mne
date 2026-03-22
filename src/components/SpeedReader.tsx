@@ -141,7 +141,7 @@ export default function SpeedReader() {
     setCurrentWordIdx(0);
     setPlaying(false);
     wordRefs.current = [];
-  }, [allWords.length, readerActive]);
+  }, [totalWords, readerActive]);
 
   // Timer
   useEffect(() => {
