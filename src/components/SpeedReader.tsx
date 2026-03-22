@@ -303,6 +303,7 @@ export default function SpeedReader() {
     setReaderActive(false);
     setPlaying(false);
     setSelCard(null);
+    stopTts();
   };
 
   // ─── Selection screen ──────────────────────────────
