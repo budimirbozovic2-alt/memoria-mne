@@ -65,8 +65,10 @@ interface Props {
 
 export default function ReviewSession({ dueCards, allCards, subcategories, srSettings, onReviewSection, onLogError, onBack }: Props) {
   const [mode, setMode] = useState<ReviewMode>(null);
+  const [setupStep, setSetupStep] = useState<"mode" | "filter">("mode");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
   const [cardIndex, setCardIndex] = useState(0);
   const [sectionIndex, setSectionIndex] = useState(0);
@@ -88,18 +90,20 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     let filtered = dueCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (selectedChapter) filtered = filtered.filter((c) => c.chapter === selectedChapter);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
     return filtered;
-  }, [dueCards, selectedCategory, selectedSubcategory, filterExamFrequent]);
+  }, [dueCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent]);
 
   // Apply same category/tag filters to allCards
   const filteredAllCards = useMemo(() => {
     let filtered = allCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (selectedChapter) filtered = filtered.filter((c) => c.chapter === selectedChapter);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
     return filtered;
-  }, [allCards, selectedCategory, selectedSubcategory, filterExamFrequent]);
+  }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent]);
 
   // === MODE 1: Fokusirano Utvrđivanje (Stabilizacija) ===
   // Learning/Relearning sections with stability < 5, sorted by lowest stability
@@ -230,6 +234,12 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     return Array.from(subs).sort();
   }, [dueCards, selectedCategory]);
 
+  const dueChapters = useMemo(() => {
+    if (!selectedSubcategory) return [];
+    const chapters = new Set(dueCards.filter(c => c.category === selectedCategory && c.subcategory === selectedSubcategory && c.chapter).map(c => c.chapter!));
+    return Array.from(chapters).sort();
+  }, [dueCards, selectedCategory, selectedSubcategory]);
+
   // Log activity when session finishes
   useEffect(() => {
     if (finished) {
@@ -248,212 +258,235 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     hardest: "Najteža Pitanja",
   };
 
-  if (mode === null) {
+  if (mode === null || setupStep === "filter") {
     const filteredCount = filteredDueCards.length;
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10 relative">
-        <AnimatePresence>
-          {showOnboarding && (
-            <OnboardingModal
-              slides={REVIEW_SLIDES}
-              storageKey={REVIEW_ONBOARDING_KEY}
-              onComplete={() => setShowOnboarding(false)}
-              finishLabel="Počni"
-            />
-          )}
-        </AnimatePresence>
-        {/* Info corner */}
-        <HowItWorksCorner onShowOnboarding={() => setShowOnboarding(true)} />
 
-        <div>
-          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
-            <ArrowLeft className="h-4 w-4" /> Nazad
-          </button>
-          <h2 className="text-3xl font-serif">Konsolidacija</h2>
-          <p className="text-muted-foreground mt-2">
-            {filteredCount} kartica · {filteredSections} {filteredSections === 1 ? "sekcija dospjela" : "sekcija dospjelo"} za učvršćivanje
-          </p>
-        </div>
-
-        {/* Resume saved session */}
-        {savedSession && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-3">
-            <Play className="h-5 w-5 text-primary shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Sačuvana sesija</p>
-              <p className="text-xs text-muted-foreground">
-                Mod: {modeLabels[savedSession.mode] || savedSession.mode}
-                {savedSession.selectedCategory && ` · ${savedSession.selectedCategory}`}
-              </p>
-            </div>
-            <Button size="sm" onClick={resumeSession} className="bg-primary text-primary-foreground hover:bg-primary/90">
-              <Play className="h-3.5 w-3.5 mr-1" /> Nastavi
-            </Button>
-            <button onClick={() => { setSavedSession(null); clearSavedSession(); }} className="text-muted-foreground hover:text-foreground p-1">
-              <XIcon className="h-3.5 w-3.5" />
-            </button>
-          </motion.div>
-        )}
-
-        {/* Filters */}
-        <div className="rounded-xl border bg-card p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Kategorija</span>
-            {examFrequentCount > 0 && (
-              <button
-                onClick={() => setFilterExamFrequent(!filterExamFrequent)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${filterExamFrequent ? "bg-destructive/15 text-destructive border border-destructive/30" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
-              >
-                <Flame className="h-3 w-3" />
-                Često na ispitu ({examFrequentCount})
-              </button>
+    // ── Step 1: Choose mode ──
+    if (setupStep === "mode") {
+      return (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10 relative">
+          <AnimatePresence>
+            {showOnboarding && (
+              <OnboardingModal
+                slides={REVIEW_SLIDES}
+                storageKey={REVIEW_ONBOARDING_KEY}
+                onComplete={() => setShowOnboarding(false)}
+                finishLabel="Razumijem"
+              />
             )}
+          </AnimatePresence>
+          <HowItWorksCorner onShowOnboarding={() => setShowOnboarding(true)} />
+
+          <div>
+            <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
+              <ArrowLeft className="h-4 w-4" /> Nazad
+            </button>
+            <h2 className="text-3xl font-serif">Konsolidacija</h2>
+            <p className="text-muted-foreground mt-2">Izaberi režim ponavljanja koji odgovara tvom cilju.</p>
           </div>
 
-          {dueCategories.length >= 1 && (
-            <div className="space-y-2.5">
-              <ScrollableRow>
+          {/* Resume saved session */}
+          {savedSession && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-3">
+              <Play className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Sačuvana sesija</p>
+                <p className="text-xs text-muted-foreground">
+                  Mod: {modeLabels[savedSession.mode] || savedSession.mode}
+                  {savedSession.selectedCategory && ` · ${savedSession.selectedCategory}`}
+                </p>
+              </div>
+              <Button size="sm" onClick={resumeSession} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <Play className="h-3.5 w-3.5 mr-1" /> Nastavi
+              </Button>
+              <button onClick={() => { setSavedSession(null); clearSavedSession(); }} className="text-muted-foreground hover:text-foreground p-1">
+                <XIcon className="h-3.5 w-3.5" />
+              </button>
+            </motion.div>
+          )}
+
+          {/* Mode selection */}
+          <div className="grid gap-4">
+            {[
+              { key: "stabilization" as ReviewMode, icon: Target, label: "Fokusirano Utvrđivanje", sublabel: "Stabilizacija", count: stabilizationItems.length, color: "primary", desc: "Cilja nove eseje i one koje si skoro pogriješio. Ključno za brzo prebacivanje svježih informacija iz kratkoročne u dugoročnu memoriju." },
+              { key: "critical" as ReviewMode, icon: Shield, label: "Kritični Pregled", sublabel: "Zadržavanje", count: criticalItems.length, color: "warning", desc: "Hvata kartice u idealnom trenutku zaborava (R ≈ 80–85%). Najbrži način da održiš sve eseje u glavi uz minimalan utrošak vremena." },
+              { key: "hardest" as ReviewMode, icon: Zap, label: "Najteža Pitanja", sublabel: "Okršaj", count: hardestItems.length, color: "destructive", desc: "Direktan okršaj sa do 50 statistički najzahtjevnijih eseja. Uključuje tvoje \"Leech\" kartice (padovi ≥5×) i one sa najvećim indeksom težine." },
+            ].map(({ key, icon: Icon, label, sublabel, count, color, desc }) => (
+              <button
+                key={key}
+                onClick={() => { if (count > 0) { setMode(key); setSetupStep("filter"); } }}
+                disabled={count === 0}
+                className={`rounded-xl border bg-card p-6 text-left transition-colors group ${count > 0 ? `hover:border-${color}` : "opacity-50 cursor-not-allowed"}`}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`p-2.5 rounded-lg bg-${color}/10 text-${color}`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-medium">{label}</h3>
+                    <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{sublabel}</span>
+                  </div>
+                  <span className={`text-xs bg-${color}/10 text-${color} px-2.5 py-1 rounded-full font-medium`}>
+                    {count} sekcija
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      );
+    }
+
+    // ── Step 2: Filters + Start ──
+    const modeMeta = mode === "stabilization"
+      ? { label: "Fokusirano Utvrđivanje", items: stabilizationItems }
+      : mode === "critical"
+      ? { label: "Kritični Pregled", items: criticalItems }
+      : { label: "Najteža Pitanja", items: hardestItems };
+
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10">
+        <div>
+          <button onClick={() => { setSetupStep("mode"); setMode(null); setSelectedCategory(null); setSelectedSubcategory(null); setSelectedChapter(null); setFilterExamFrequent(false); }} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
+            <ArrowLeft className="h-4 w-4" /> Nazad na režime
+          </button>
+          <h2 className="text-3xl font-serif">{modeMeta.label}</h2>
+          <p className="text-muted-foreground mt-2">{modeMeta.items.length} sekcija dostupno za ponavljanje.</p>
+        </div>
+
+        {/* Category filter */}
+        {dueCategories.length >= 1 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Kategorija</label>
+              {examFrequentCount > 0 && (
+                <button
+                  onClick={() => setFilterExamFrequent(!filterExamFrequent)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${filterExamFrequent ? "bg-destructive/15 text-destructive border border-destructive/30" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                >
+                  <Flame className="h-3 w-3" />
+                  Često na ispitu ({examFrequentCount})
+                </button>
+              )}
+            </div>
+            <ScrollableRow>
+              <motion.button
+                onClick={() => { setSelectedCategory(null); setSelectedSubcategory(null); setSelectedChapter(null); }}
+                className={`relative px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedCategory ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                whileTap={{ scale: 0.95 }}
+              >
+                {!selectedCategory && (
+                  <motion.span layoutId="review-cat-pill" className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
+                )}
+                <span className="relative z-10">Sve</span>
+              </motion.button>
+              {dueCategories.map((c) => (
                 <motion.button
-                  onClick={() => { setSelectedCategory(null); setSelectedSubcategory(null); }}
-                  className={`relative px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedCategory ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  key={c}
+                  onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); setSelectedChapter(null); }}
+                  className={`relative px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === c ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {!selectedCategory && (
-                    <motion.span layoutId="cat-pill" className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
+                  {selectedCategory === c && (
+                    <motion.span layoutId="review-cat-pill" className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
                   )}
-                  <span className="relative z-10">Sve</span>
+                  <span className="relative z-10">{c}</span>
+                  <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
+                    {dueCards.filter(card => card.category === c).length}
+                  </span>
                 </motion.button>
-                {dueCategories.map((c) => (
-                  <motion.button
-                    key={c}
-                    onClick={() => { setSelectedCategory(c); setSelectedSubcategory(null); }}
-                    className={`relative px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === c ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {selectedCategory === c && (
-                      <motion.span layoutId="cat-pill" className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
-                    )}
-                    <span className="relative z-10">{c}</span>
-                    <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
-                      {dueCards.filter(card => card.category === c).length}
-                    </span>
-                  </motion.button>
-                ))}
-              </ScrollableRow>
+              ))}
+            </ScrollableRow>
 
-              <AnimatePresence>
-                {selectedCategory && dueSubcategories.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="overflow-hidden"
-                  >
-                    <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1">
+            {/* Subcategory filter */}
+            <AnimatePresence>
+              {selectedCategory && dueSubcategories.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1">
+                    <motion.button
+                      onClick={() => { setSelectedSubcategory(null); setSelectedChapter(null); }}
+                      className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedSubcategory ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {!selectedSubcategory && (
+                        <motion.span layoutId="review-subcat-pill" className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                      )}
+                      <span className="relative z-10">Sve podkat.</span>
+                    </motion.button>
+                    {dueSubcategories.map((sc) => (
                       <motion.button
-                        onClick={() => setSelectedSubcategory(null)}
-                        className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedSubcategory ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        key={sc}
+                        onClick={() => { setSelectedSubcategory(sc); setSelectedChapter(null); }}
+                        className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${selectedSubcategory === sc ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
                         whileTap={{ scale: 0.95 }}
                       >
-                        {!selectedSubcategory && (
-                          <motion.span layoutId="subcat-pill" className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                        {selectedSubcategory === sc && (
+                          <motion.span layoutId="review-subcat-pill" className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
                         )}
-                        <span className="relative z-10">Sve podkat.</span>
+                        <span className="relative z-10">{sc}</span>
                       </motion.button>
-                      {dueSubcategories.map((sc) => (
-                        <motion.button
-                          key={sc}
-                          onClick={() => setSelectedSubcategory(sc)}
-                          className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${selectedSubcategory === sc ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          {selectedSubcategory === sc && (
-                            <motion.span layoutId="subcat-pill" className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
-                          )}
-                          <span className="relative z-10">{sc}</span>
-                        </motion.button>
-                      ))}
-                    </ScrollableRow>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
+                    ))}
+                  </ScrollableRow>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-        {/* Mode selection */}
-        <div className="grid gap-4">
-          {/* Mode 1: Fokusirano Utvrđivanje */}
-          <button
-            onClick={() => { if (stabilizationItems.length > 0) { setMode("stabilization"); clearSavedSession(); } }}
-            disabled={stabilizationItems.length === 0}
-            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${stabilizationItems.length > 0 ? "hover:border-primary" : "opacity-50 cursor-not-allowed"}`}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 rounded-lg bg-primary/10 text-primary">
-                <Target className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium">Fokusirano Utvrđivanje</h3>
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Stabilizacija</span>
-              </div>
-              <span className="text-xs bg-primary/10 text-primary px-2.5 py-1 rounded-full font-medium">
-                {stabilizationItems.length} {stabilizationItems.length === 1 ? "sekcija" : "sekcija"}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Cilja nove eseje i one koje si skoro pogriješio. Ključno za brzo prebacivanje svježih informacija iz kratkoročne u dugoročnu memoriju.
-            </p>
-          </button>
+            {/* Chapter filter */}
+            <AnimatePresence>
+              {selectedSubcategory && dueChapters.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <ScrollableRow className="pl-6 border-l-2 border-primary/10 ml-1">
+                    <motion.button
+                      onClick={() => setSelectedChapter(null)}
+                      className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedChapter ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      {!selectedChapter && (
+                        <motion.span layoutId="review-chapter-pill" className="absolute inset-0 rounded-md bg-primary/10" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                      )}
+                      <span className="relative z-10">Sve glave</span>
+                    </motion.button>
+                    {dueChapters.map((ch) => (
+                      <motion.button
+                        key={ch}
+                        onClick={() => setSelectedChapter(ch)}
+                        className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${selectedChapter === ch ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {selectedChapter === ch && (
+                          <motion.span layoutId="review-chapter-pill" className="absolute inset-0 rounded-md bg-primary/10" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                        )}
+                        <span className="relative z-10">{ch}</span>
+                      </motion.button>
+                    ))}
+                  </ScrollableRow>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
-          {/* Mode 2: Kritični Pregled */}
-          <button
-            onClick={() => { if (criticalItems.length > 0) { setMode("critical"); clearSavedSession(); } }}
-            disabled={criticalItems.length === 0}
-            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${criticalItems.length > 0 ? "hover:border-warning" : "opacity-50 cursor-not-allowed"}`}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 rounded-lg bg-warning/10 text-warning">
-                <Shield className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium">Kritični Pregled</h3>
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Zadržavanje</span>
-              </div>
-              <span className="text-xs bg-warning/10 text-warning px-2.5 py-1 rounded-full font-medium">
-                {criticalItems.length} {criticalItems.length === 1 ? "sekcija" : "sekcija"}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Hvata kartice u idealnom trenutku zaborava (R ≈ 80–85%). Najbrži način da održiš sve eseje u glavi uz minimalan utrošak vremena.
-            </p>
-          </button>
-
-          {/* Mode 3: Najteža Pitanja */}
-          <button
-            onClick={() => { if (hardestItems.length > 0) { setMode("hardest"); clearSavedSession(); } }}
-            disabled={hardestItems.length === 0}
-            className={`rounded-xl border bg-card p-6 text-left transition-colors group ${hardestItems.length > 0 ? "hover:border-destructive" : "opacity-50 cursor-not-allowed"}`}
-          >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 rounded-lg bg-destructive/10 text-destructive">
-                <Zap className="h-6 w-6" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-medium">Najteža Pitanja</h3>
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Okršaj</span>
-              </div>
-              <span className="text-xs bg-destructive/10 text-destructive px-2.5 py-1 rounded-full font-medium">
-                {hardestItems.length} {hardestItems.length === 1 ? "sekcija" : "sekcija"}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Direktan okršaj sa do 50 statistički najzahtjevnijih eseja. Uključuje tvoje "Leech" kartice (padovi ≥5×) i one sa najvećim indeksom težine.
-            </p>
-          </button>
-        </div>
+        <Button
+          onClick={() => { clearSavedSession(); setSetupStep("mode"); }}
+          className="w-full py-6 text-base"
+          disabled={modeMeta.items.length === 0}
+        >
+          <BookOpen className="h-4 w-4 mr-2" /> Počni konsolidaciju ({modeMeta.items.length} sekcija)
+        </Button>
       </motion.div>
     );
   }
