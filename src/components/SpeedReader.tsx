@@ -130,6 +130,7 @@ export default function SpeedReader() {
 
   // TTS read-along state
   const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [ttsMode, setTtsMode] = useState<"natural" | "wpm">("natural"); // natural = TTS drives pace, wpm = WPM timer drives pace
   const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
   const [showTtsSettings, setShowTtsSettings] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
