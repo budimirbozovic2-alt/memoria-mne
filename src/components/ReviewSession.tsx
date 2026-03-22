@@ -75,7 +75,7 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
   const reviewStartRef = useRef(Date.now());
   const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
   const [showOnboarding, setShowOnboarding] = useState(
-    () => localStorage.getItem(REVIEW_ONBOARDING_KEY) !== "true"
+    () => !hasSeenOnboarding(REVIEW_ONBOARDING_KEY)
   );
 
   const dueCategories = useMemo(() => {
