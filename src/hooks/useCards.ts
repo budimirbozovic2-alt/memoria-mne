@@ -81,30 +81,9 @@ function createPersistQueue() {
   return { schedule, cleanup };
 }
 
-async function flushPersist() {
-  flushTimer = null;
-  const actions = pendingActions.splice(0);
-  if (actions.length === 0) return;
-
-  // If any action is "full", just do full save
-  const fullAction = actions.find(a => a.type === "full");
-  if (fullAction && fullAction.type === "full") {
-    await idbSaveCards(mapToArray(fullAction.map));
-    return;
-  }
-
-  // Otherwise, surgical puts and deletes
-  const puts: Card[] = [];
-  const deletes: string[] = [];
-  for (const a of actions) {
-    if (a.type === "put") puts.push(a.card);
-    else if (a.type === "delete") deletes.push(a.id);
-    else if (a.type === "bulk") puts.push(...a.cards);
-  }
-
-  if (puts.length > 0) await idbBulkPutCards(puts);
-  for (const id of deletes) await idbDeleteCard(id);
-}
+// Singleton persist queue — created once per module, safe for StrictMode double-mount
+const persistQueue = createPersistQueue();
+const schedulePersist = persistQueue.schedule;
 
 export function useCards() {
   const [cardMap, setCardMapState] = useState<CardMap>({});
@@ -115,16 +94,10 @@ export function useCards() {
   const [ready, setReady] = useState(false);
   const initialLoadDone = useRef(false);
 
-  // Fix #5: Flush pending actions on unmount to prevent data loss
+  // Flush pending actions on unmount to prevent data loss
   useEffect(() => {
     return () => {
-      if (flushTimer !== null) {
-        clearTimeout(flushTimer);
-        flushTimer = null;
-      }
-      if (pendingActions.length > 0) {
-        flushPersist();
-      }
+      persistQueue.cleanup();
     };
   }, []);
 
