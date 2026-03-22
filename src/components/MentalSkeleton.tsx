@@ -190,15 +190,42 @@ function ChapterBox({
               <span className="ml-2 text-xs text-muted-foreground">{cards.length}</span>
               {isOver && <span className="ml-2 text-xs text-primary animate-pulse">← Pusti ovdje</span>}
             </div>
-            {mode === "auditor" && cards.length > 0 && (
-              <div className="flex h-2 w-24 rounded-full overflow-hidden bg-secondary flex-shrink-0">
-                {levelCounts.map((count, lvl) => {
-                  if (count === 0) return null;
-                  return (
-                    <div key={lvl} style={{ width: `${(count / cards.length) * 100}%`, backgroundColor: getMasteryColor(lvl) }} />
-                  );
-                })}
-              </div>
+            {/* Section progress bar with tooltip — always visible when cards exist */}
+            {cards.length > 0 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    <span className="text-[10px] text-muted-foreground font-medium tabular-nums">{sectionStats.pct}%</span>
+                    {mode === "auditor" ? (
+                      <div className="flex h-2 w-24 rounded-full overflow-hidden bg-secondary">
+                        {levelCounts.map((count, lvl) => {
+                          if (count === 0) return null;
+                          return (
+                            <div key={lvl} style={{ width: `${(count / cards.length) * 100}%`, backgroundColor: getMasteryColor(lvl) }} />
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex h-2 w-20 rounded-full overflow-hidden bg-secondary">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${sectionStats.pct}%`,
+                            backgroundColor: sectionStats.pct >= 80 ? 'hsl(142, 60%, 40%)' : sectionStats.pct >= 50 ? 'hsl(45, 93%, 47%)' : 'hsl(25, 95%, 53%)',
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs space-y-1 max-w-52">
+                  <p className="font-medium">{displayName}</p>
+                  <p>{sectionStats.learned}/{sectionStats.total} sekcija savladano ({sectionStats.pct}%)</p>
+                  {sectionStats.due > 0 && <p className="text-warning">{sectionStats.due} sekcija čeka ponavljanje</p>}
+                  <p>Prosječna stabilnost: {sectionStats.avgStability} dana</p>
+                  <p>{cards.length} kartica</p>
+                </TooltipContent>
+              </Tooltip>
             )}
             {!isUnassigned && mode === "navigator" && (
               <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
