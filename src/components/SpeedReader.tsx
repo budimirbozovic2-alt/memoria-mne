@@ -118,6 +118,22 @@ export default function SpeedReader() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
 
+  // TTS read-along state
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
+  const [showTtsSettings, setShowTtsSettings] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Load voices
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const load = () => { const v = window.speechSynthesis.getVoices(); if (v.length) setVoices(v); };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+    return () => { window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
+
   // Filtered cards (essay only)
   const filteredCards = useMemo(() => {
     let result = cards;
