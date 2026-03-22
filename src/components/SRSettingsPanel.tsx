@@ -25,8 +25,20 @@ interface Props {
 export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
   const [local, setLocal] = useState<SRSettings>({ ...settings });
   const [app, setApp] = useState<AppSettings>(loadAppSettings());
+  const [tts, setTts] = useState<TTSSettings>(loadTTSSettings());
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
 
-
+  useEffect(() => {
+    const loadVoices = () => {
+      const v = getAvailableVoices();
+      if (v.length > 0) setVoices(v);
+    };
+    loadVoices();
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    return () => { if ("speechSynthesis" in window) window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
   const handleChange = (key: keyof SRSettings, value: number) => {
     setLocal((prev) => ({ ...prev, [key]: value }));
   };
