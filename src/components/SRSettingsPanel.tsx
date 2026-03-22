@@ -45,6 +45,7 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
 
   const handleSave = () => {
     onUpdate(local);
+    saveTTSSettings(tts);
     saveAppSettings(app);
   };
 
