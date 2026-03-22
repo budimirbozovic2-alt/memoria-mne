@@ -174,19 +174,6 @@ export async function migrateFromLocalStorage(): Promise<void> {
   }
 }
 
-// Fix #3: Non-blocking localStorage sync helper
-function deferredLocalStorageSync(key: string, data: () => string) {
-  if ("requestIdleCallback" in window) {
-    (window as any).requestIdleCallback(() => {
-      try { localStorage.setItem(key, data()); } catch {}
-    }, { timeout: 5000 });
-  } else {
-    setTimeout(() => {
-      try { localStorage.setItem(key, data()); } catch {}
-    }, 200);
-  }
-}
-
 // ─── Async storage API ──────────────────────────────────
 
 export async function idbLoadCards(): Promise<Card[]> {
