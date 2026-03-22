@@ -434,8 +434,8 @@ export default function SpeedReader() {
             <div className="h-full rounded-full bg-primary transition-all duration-200" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>Riječ {currentWordIdx + 1} / {allWords.length}</span>
-            <span>{Math.ceil((allWords.length - currentWordIdx) / wpm)} min preostalo</span>
+            <span>Riječ {currentWordIdx + 1} / {totalWords}</span>
+            <span>{Math.ceil((totalWords - currentWordIdx) / wpm)} min preostalo</span>
           </div>
         </div>
       </div>
