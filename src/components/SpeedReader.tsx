@@ -12,8 +12,12 @@ import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as Type } from "lucide-react/dist/esm/icons/type";
 import { default as Layers } from "lucide-react/dist/esm/icons/layers";
 import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
+import { default as Volume2 } from "lucide-react/dist/esm/icons/volume-2";
+import { default as VolumeX } from "lucide-react/dist/esm/icons/volume-x";
+import { default as Settings2 } from "lucide-react/dist/esm/icons/settings-2";
 import ScrollableRow from "@/components/ScrollableRow";
 import InfoPanel from "@/components/InfoPanel";
+import { loadTTSSettings, saveTTSSettings, getAvailableVoices, type TTSSettings } from "@/lib/tts";
 import DOMPurify from "dompurify";
 
 const WPM_OPTIONS = [100, 150, 200, 250, 300, 400, 500];
