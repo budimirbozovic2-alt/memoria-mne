@@ -753,10 +753,9 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
         )}
       </AnimatePresence>
 
-      {/* Chapters with DnD — separate SortableContext per chapter */}
+      {/* Chapters with DnD — drag cards onto chapter headers */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
