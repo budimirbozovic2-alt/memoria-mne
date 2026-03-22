@@ -68,4 +68,6 @@ const ScrollableRow = forwardRef<HTMLDivElement, Props>(function ScrollableRow({
       )}
     </div>
   );
-}
+});
+
+export default ScrollableRow;
