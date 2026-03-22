@@ -46,6 +46,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">("order");
+  const [filterExamFrequent, setFilterExamFrequent] = useState(false);
   const [started, setStarted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
