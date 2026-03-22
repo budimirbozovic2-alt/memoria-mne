@@ -90,18 +90,20 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     let filtered = dueCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (selectedChapter) filtered = filtered.filter((c) => c.chapter === selectedChapter);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
     return filtered;
-  }, [dueCards, selectedCategory, selectedSubcategory, filterExamFrequent]);
+  }, [dueCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent]);
 
   // Apply same category/tag filters to allCards
   const filteredAllCards = useMemo(() => {
     let filtered = allCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (selectedChapter) filtered = filtered.filter((c) => c.chapter === selectedChapter);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
     return filtered;
-  }, [allCards, selectedCategory, selectedSubcategory, filterExamFrequent]);
+  }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent]);
 
   // === MODE 1: Fokusirano Utvrđivanje (Stabilizacija) ===
   // Learning/Relearning sections with stability < 5, sorted by lowest stability
