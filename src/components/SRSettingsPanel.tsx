@@ -56,6 +56,7 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
 
 
   const hasChanges = JSON.stringify(local) !== JSON.stringify(settings) ||
+    JSON.stringify(tts) !== JSON.stringify(loadTTSSettings()) ||
     JSON.stringify(app) !== JSON.stringify(loadAppSettings());
   const isDefault = JSON.stringify(local) === JSON.stringify(DEFAULT_SR_SETTINGS) &&
     JSON.stringify(app) === JSON.stringify(DEFAULT_APP_SETTINGS);
