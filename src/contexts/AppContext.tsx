@@ -6,7 +6,7 @@ import { recordAppEntry, recordFirstAction, addActivityEntry, ActivityType } fro
 import { addPomodoroEntry } from "@/lib/storage";
 
 // ─── Types ──────────────────────────────────────────────
-export type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings" | "metacognitive" | "stats" | "planner" | "database";
+export type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings" | "metacognitive" | "stats" | "planner" | "database" | "speed-reader";
 
 const VIEW_TO_PATH: Record<View, string> = {
   dashboard: "/", create: "/create", edit: "/edit", cards: "/database", review: "/review",
