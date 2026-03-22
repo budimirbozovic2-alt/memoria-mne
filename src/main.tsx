@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { initColorTheme } from "./lib/app-settings";
+import { db } from "./lib/db";
 
 initColorTheme();
 
