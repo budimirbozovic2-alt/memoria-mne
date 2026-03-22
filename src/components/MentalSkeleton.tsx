@@ -125,7 +125,7 @@ function SortableCardTile({ card, mode, onClick }: { card: Card; mode: Mode; onC
   );
 }
 
-// ── Chapter Box ──────────────────────────────────────────
+// ── Chapter Box (with useDroppable for cross-chapter DnD) ──
 function ChapterBox({
   chapter, cards, mode, isOpen, onToggle, onCardClick, onRename, onDelete,
 }: {
@@ -144,6 +144,12 @@ function ChapterBox({
     [...cards].sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0)),
     [cards]
   );
+
+  // Make this chapter a drop target so cards can be dragged into empty chapters too
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: `chapter-drop-${chapter}`,
+    data: { type: "chapter", chapter },
+  });
 
   // Mastery distribution for this chapter
   const levelCounts = useMemo(() => {
@@ -186,19 +192,20 @@ function ChapterBox({
         </div>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="pl-4 pr-2 py-3">
-          <SortableContext items={sortedCards.map(c => c.id)} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-              {sortedCards.map(card => (
-                <SortableCardTile
-                  key={card.id}
-                  card={card}
-                  mode={mode}
-                  onClick={() => onCardClick(card)}
-                />
-              ))}
-            </div>
-          </SortableContext>
+        <div
+          ref={setDropRef}
+          className={`pl-4 pr-2 py-3 rounded-b-xl transition-colors ${isOver ? "bg-primary/5 ring-2 ring-primary/20" : ""}`}
+        >
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+            {sortedCards.map(card => (
+              <SortableCardTile
+                key={card.id}
+                card={card}
+                mode={mode}
+                onClick={() => onCardClick(card)}
+              />
+            ))}
+          </div>
           {cards.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-4">Prevuci kartice ovdje</p>
           )}
