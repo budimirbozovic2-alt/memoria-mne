@@ -258,7 +258,7 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     hardest: "Najteža Pitanja",
   };
 
-  if (mode === null) {
+  if (mode === null || setupStep === "filter") {
     const filteredCount = filteredDueCards.length;
     const filteredSections = filteredDueCards.reduce((sum, c) => sum + getDueSections(c).length, 0);
 
