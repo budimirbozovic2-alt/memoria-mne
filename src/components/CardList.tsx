@@ -34,6 +34,13 @@ interface Props {
   onToggleSelect?: (id: string) => void;
   reorderMode?: boolean;
   onReorder?: (orderedIds: string[]) => void;
+  // Context menu support
+  categories?: string[];
+  subcategories?: Record<string, string[]>;
+  onMoveCategory?: (cardId: string, category: string, subcategory?: string) => void;
+  onAssignChapter?: (cardId: string, chapter: string) => void;
+  onCloneToMnemonic?: (card: Card) => void;
+  availableChapters?: string[];
 }
 
 function ScoreBadge({ score }: { score: number }) {
