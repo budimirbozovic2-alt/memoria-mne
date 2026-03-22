@@ -4,9 +4,8 @@ import {
   MnemonicCard, loadMnemonicCards, saveMnemonicCards,
   addMnemonicTestEntry, getMnemonicStats,
 } from "@/lib/mnemonic-storage";
-import { CheckCircle2 } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
+import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Wrench } from "lucide-react/dist/esm/icons/wrench";
 import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
@@ -16,19 +15,20 @@ import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
 import { default as Film } from "lucide-react/dist/esm/icons/film";
 import { default as Type } from "lucide-react/dist/esm/icons/type";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import MnemonicWorkshop from "./MnemonicWorkshop";
 import MnemonicTest from "./MnemonicTest";
 import MajorSystemSettings from "./MajorSystemSettings";
+import OnboardingModal, { type OnboardingSlide, hasSeenOnboarding } from "@/components/OnboardingModal";
 
 interface Props {
   onBack: () => void;
 }
 
 const MNEMONIC_KEY = ["mnemonicCards"] as const;
+
 const MNEMO_ONBOARDING_KEY = "sr-mnemo-onboarding-seen";
 
-const MNEMO_SLIDES = [
+const MNEMO_SLIDES: OnboardingSlide[] = [
   {
     icon: Brain,
     iconColor: "bg-primary/15 text-primary",
@@ -61,66 +61,6 @@ const MNEMO_SLIDES = [
   },
 ];
 
-function MnemoOnboarding({ onComplete }: { onComplete: () => void }) {
-  const [step, setStep] = useState(0);
-  const slide = MNEMO_SLIDES[step];
-  const Icon = slide.icon;
-
-  const finish = () => {
-    localStorage.setItem(MNEMO_ONBOARDING_KEY, "true");
-    onComplete();
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
-      onClick={finish}
-    >
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        onClick={e => e.stopPropagation()}
-        className="bg-background border rounded-2xl shadow-xl w-full max-w-md overflow-hidden"
-      >
-        <div className="p-6 space-y-4">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${slide.iconColor}`}>
-            <Icon className="h-6 w-6" />
-          </div>
-          <h3 className="text-xl font-serif">{slide.title}</h3>
-          <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">{slide.content}</p>
-          <div className="flex items-center justify-center gap-1.5 pt-2">
-            {MNEMO_SLIDES.map((_, i) => (
-              <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? "bg-primary" : "bg-secondary"}`} />
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center justify-between p-4 border-t">
-          {step > 0 ? (
-            <Button variant="ghost" size="sm" onClick={() => setStep(s => s - 1)}>
-              <ArrowLeft className="h-4 w-4 mr-1" /> Nazad
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" onClick={finish}>Preskoči</Button>
-          )}
-          {step < MNEMO_SLIDES.length - 1 ? (
-            <Button size="sm" onClick={() => setStep(s => s + 1)}>
-              Dalje <ArrowRight className="h-4 w-4 ml-1" />
-            </Button>
-          ) : (
-            <Button size="sm" onClick={finish}>
-              Počni <CheckCircle2 className="h-4 w-4 ml-1" />
-            </Button>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 export default function MnemonicModule({ onBack }: Props) {
   const qc = useQueryClient();
   const { data: cards = [] } = useQuery({
@@ -132,7 +72,7 @@ export default function MnemonicModule({ onBack }: Props) {
 
   const [subView, setSubView] = useState<"menu" | "workshop" | "test" | "major">("menu");
   const [showOnboarding, setShowOnboarding] = useState(
-    () => localStorage.getItem(MNEMO_ONBOARDING_KEY) !== "true"
+    () => !hasSeenOnboarding(MNEMO_ONBOARDING_KEY)
   );
 
   const setCards = useCallback((updater: (prev: MnemonicCard[]) => MnemonicCard[]) => {
@@ -182,7 +122,14 @@ export default function MnemonicModule({ onBack }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <AnimatePresence>
-        {showOnboarding && <MnemoOnboarding onComplete={() => setShowOnboarding(false)} />}
+        {showOnboarding && (
+          <OnboardingModal
+            slides={MNEMO_SLIDES}
+            storageKey={MNEMO_ONBOARDING_KEY}
+            onComplete={() => setShowOnboarding(false)}
+            finishLabel="Počni"
+          />
+        )}
       </AnimatePresence>
 
       <div className="flex items-center justify-between">

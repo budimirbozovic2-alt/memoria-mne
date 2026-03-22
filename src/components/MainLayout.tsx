@@ -4,9 +4,12 @@ import { useAppContext } from "@/contexts/AppContext";
 import ZenMode from "@/components/ZenMode";
 import TopNav from "@/components/TopNav";
 import { AnimatePresence } from "framer-motion";
+import { hasSeenOnboarding } from "@/components/OnboardingModal";
+import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
+const AppOnboarding = lazy(() => import("@/components/AppOnboarding"));
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const ctx = useAppContext();
@@ -16,6 +19,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const [docxOpen, setDocxOpen] = useState(false);
   const [zenMode, setZenMode] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [showAppOnboarding, setShowAppOnboarding] = useState(
+    () => !hasSeenOnboarding(APP_ONBOARDING_KEY)
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -35,6 +41,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         onOpenDocxImport={() => setDocxOpen(true)}
         onToggleZen={() => setZenMode(v => !v)}
         zenActive={zenMode}
+        onOpenOnboarding={() => setShowAppOnboarding(true)}
       />
 
       {/* Main content */}
@@ -74,6 +81,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
           }}
         />
       </Suspense>
+      <AnimatePresence>
+        {showAppOnboarding && (
+          <Suspense fallback={null}>
+            <AppOnboarding onComplete={() => setShowAppOnboarding(false)} />
+          </Suspense>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

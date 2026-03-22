@@ -18,6 +18,7 @@ import { default as SettingsIcon } from "lucide-react/dist/esm/icons/settings";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
 import { default as DatabaseIcon } from "lucide-react/dist/esm/icons/database";
+import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
@@ -27,6 +28,7 @@ interface Props {
   onOpenDocxImport?: () => void;
   onToggleZen?: () => void;
   zenActive?: boolean;
+  onOpenOnboarding?: () => void;
 }
 
 const PRIMARY_NAV = [
@@ -45,7 +47,7 @@ const LAB_ITEMS = [
 
 const LAB_PATHS = LAB_ITEMS.map(i => i.path);
 
-export default function TopNav({ onToggleZen, zenActive }: Props) {
+export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Props) {
   const location = useLocation();
   const { stats } = useCardContext();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -175,6 +177,11 @@ export default function TopNav({ onToggleZen, zenActive }: Props) {
         </div>
 
         <div className="flex items-center gap-0.5 ml-2">
+          {onOpenOnboarding && (
+            <button onClick={onOpenOnboarding} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" title="Vodič kroz aplikaciju">
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          )}
           <button onClick={onToggleZen} className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${zenActive ? "text-primary bg-primary/10" : "text-muted-foreground"}`} title="Zen Mode">
             <Focus className="h-4 w-4" />
           </button>
@@ -191,6 +198,11 @@ export default function TopNav({ onToggleZen, zenActive }: Props) {
           <span className="text-base font-serif italic text-primary select-none">Memoria</span>
         </div>
         <div className="flex items-center gap-1">
+          {onOpenOnboarding && (
+            <button onClick={onOpenOnboarding} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" title="Vodič">
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          )}
           <button onClick={onToggleZen} className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${zenActive ? "text-primary bg-primary/10" : "text-muted-foreground"}`} title="Zen Mode">
             <Focus className="h-4 w-4" />
           </button>
