@@ -5,6 +5,12 @@ import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
 import { default as Flame } from "lucide-react/dist/esm/icons/flame";
+import { default as MoreVertical } from "lucide-react/dist/esm/icons/more-vertical";
+import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
+import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
+import { default as Tag } from "lucide-react/dist/esm/icons/tag";
+import { default as Brain } from "lucide-react/dist/esm/icons/brain";
+import { default as Check } from "lucide-react/dist/esm/icons/check";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
 import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
 import { useState, useRef, useEffect, useMemo, useCallback, CSSProperties, memo } from "react";
