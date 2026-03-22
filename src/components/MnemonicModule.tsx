@@ -4,9 +4,7 @@ import {
   MnemonicCard, loadMnemonicCards, saveMnemonicCards,
   addMnemonicTestEntry, getMnemonicStats,
 } from "@/lib/mnemonic-storage";
-import { CheckCircle2 } from "lucide-react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Wrench } from "lucide-react/dist/esm/icons/wrench";
 import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
@@ -16,10 +14,10 @@ import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
 import { default as Film } from "lucide-react/dist/esm/icons/film";
 import { default as Type } from "lucide-react/dist/esm/icons/type";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/button";
 import MnemonicWorkshop from "./MnemonicWorkshop";
 import MnemonicTest from "./MnemonicTest";
 import MajorSystemSettings from "./MajorSystemSettings";
+import OnboardingModal, { type OnboardingSlide, hasSeenOnboarding } from "@/components/OnboardingModal";
 
 interface Props {
   onBack: () => void;
