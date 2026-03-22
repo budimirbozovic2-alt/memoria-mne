@@ -40,9 +40,6 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
     setApp({ ...DEFAULT_APP_SETTINGS });
   };
 
-  const testVoice = () => {
-    speak("Ovo je test govora. Memoria MNE.", tts);
-  };
 
   const hasChanges = JSON.stringify(local) !== JSON.stringify(settings) ||
     JSON.stringify(tts) !== JSON.stringify(loadTTSSettings()) ||
