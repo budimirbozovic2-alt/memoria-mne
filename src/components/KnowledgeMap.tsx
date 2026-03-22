@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback, lazy, Suspense } from "react";
+import { useState, useMemo, useRef, useCallback, lazy, Suspense, startTransition } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
@@ -10,9 +10,12 @@ import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
 import { default as ArrowUp } from "lucide-react/dist/esm/icons/arrow-up";
 import { default as ArrowDown } from "lucide-react/dist/esm/icons/arrow-down";
 import { default as ListOrdered } from "lucide-react/dist/esm/icons/list-ordered";
+import { default as Kanban } from "lucide-react/dist/esm/icons/columns-3";
+import { default as List } from "lucide-react/dist/esm/icons/list";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 
 const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
+const KanbanBoard = lazy(() => import("@/components/KanbanBoard"));
 
 interface Props {
   cards: Card[];
@@ -71,6 +74,7 @@ export default function KnowledgeMap({
 }: Props) {
   const [view, setView] = useState<ViewState>({ step: "categories" });
   const [searchQuery, setSearchQuery] = useState("");
+  const [detailMode, setDetailMode] = useState<"skeleton" | "kanban">("skeleton");
   const [reorderMode, setReorderMode] = useState(false);
   const directionRef = useRef(1);
 
@@ -98,8 +102,9 @@ export default function KnowledgeMap({
     return result;
   }, []);
 
-  // ── Step 3: Detail view via MentalSkeleton ──
+  // ── Step 3: Detail view ──
   if (view.step === "detail" && onUpdateChapters && onReviewSection) {
+    const backFn = () => navigate({ step: "subcategories", category: view.category });
     return (
       <motion.div
         key="detail"
@@ -108,16 +113,51 @@ export default function KnowledgeMap({
         initial="enter"
         animate="center"
         transition={transition}
+        className="space-y-3"
       >
+        {/* View mode toggle */}
+        <div className="flex justify-end">
+          <div className="flex items-center gap-1 border rounded-lg p-0.5">
+            <button
+              onClick={() => setDetailMode("skeleton")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                detailMode === "skeleton" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <List className="h-3.5 w-3.5" />
+              Lista
+            </button>
+            <button
+              onClick={() => setDetailMode("kanban")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                detailMode === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Kanban className="h-3.5 w-3.5" />
+              Kanban
+            </button>
+          </div>
+        </div>
+
         <Suspense fallback={<TabSkeleton />}>
-          <MentalSkeleton
-            cards={cards}
-            category={view.category}
-            subcategory={view.subcategory}
-            onBack={() => navigate({ step: "subcategories", category: view.category })}
-            onUpdateChapters={onUpdateChapters}
-            onReviewSection={onReviewSection}
-          />
+          {detailMode === "skeleton" ? (
+            <MentalSkeleton
+              cards={cards}
+              category={view.category}
+              subcategory={view.subcategory}
+              onBack={backFn}
+              onUpdateChapters={onUpdateChapters}
+              onReviewSection={onReviewSection}
+            />
+          ) : (
+            <KanbanBoard
+              cards={cards}
+              category={view.category}
+              subcategory={view.subcategory}
+              onBack={backFn}
+              onUpdateChapters={onUpdateChapters}
+            />
+          )}
         </Suspense>
       </motion.div>
     );
