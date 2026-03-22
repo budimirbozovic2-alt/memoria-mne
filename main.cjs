@@ -67,7 +67,7 @@ function createSplashWindow() {
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    icon: getPublicPath('favicon.ico'),
+    icon: getPublicPath('icon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
