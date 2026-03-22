@@ -121,7 +121,14 @@ export default function MnemonicModule({ onBack }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <AnimatePresence>
-        {showOnboarding && <MnemoOnboarding onComplete={() => setShowOnboarding(false)} />}
+        {showOnboarding && (
+          <OnboardingModal
+            slides={MNEMO_SLIDES}
+            storageKey={MNEMO_ONBOARDING_KEY}
+            onComplete={() => setShowOnboarding(false)}
+            finishLabel="Počni"
+          />
+        )}
       </AnimatePresence>
 
       <div className="flex items-center justify-between">
