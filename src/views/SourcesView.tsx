@@ -272,7 +272,9 @@ export default function SourcesView() {
     return cards.filter(c => c.sourceId === sourceId && c.needsReview).length;
   }, [cards]);
 
-  // Diff view
+  const deleteConfirmSource = sources.find(s => s.id === deleteConfirmId);
+  const deleteLinkedCount = deleteConfirmId ? linkedCardCount(deleteConfirmId) : 0;
+
   if (diffView) {
     return (
       <Suspense fallback={<TabSkeleton />}>
