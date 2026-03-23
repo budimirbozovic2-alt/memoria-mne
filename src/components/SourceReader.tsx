@@ -374,6 +374,22 @@ export default function SourceReader({ source, onBack }: Props) {
         </div>
 
         <Button
+          variant={examOpen ? "default" : "outline"}
+          size="sm"
+          onClick={() => setExamOpen(!examOpen)}
+          className="gap-1.5"
+          title="Ispitna pitanja sidebar"
+        >
+          <FileQuestion className="h-3.5 w-3.5" />
+          {examOpen ? "Zatvori pitanja" : "Pitanja"}
+          {examQuestions.filter(q => !q.done).length > 0 && (
+            <Badge variant="secondary" className="text-[10px] h-4 min-w-4 px-1">
+              {examQuestions.filter(q => !q.done).length}
+            </Badge>
+          )}
+        </Button>
+
+        <Button
           variant="outline"
           size="sm"
           onClick={() => setOutlineOpen(!outlineOpen)}
