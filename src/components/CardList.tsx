@@ -274,6 +274,8 @@ const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, s
   const isFlash = card.type === "flash";
   const cardTags = card.tags || [];
   const isFrequent = cardTags.includes("često-na-ispitu");
+  const hasSource = !!card.sourceId && !!card.originalSourceSnippet;
+  const [snippetOpen, setSnippetOpen] = useState(false);
 
   return (
     <div
