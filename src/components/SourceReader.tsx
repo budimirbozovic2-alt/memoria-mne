@@ -67,7 +67,7 @@ export default function SourceReader({ source, onBack }: Props) {
   const [essayQuestion, setEssayQuestion] = useState("");
   const [essayCategory, setEssayCategory] = useState(categories[0] ?? "Opšte");
   const [selectedText, setSelectedText] = useState("");
-
+  const [autoSplitOpen, setAutoSplitOpen] = useState(false);
   // Coverage analysis (memoized)
   const coverage = useMemo(
     () => analyzeCoverage(source.id, source.htmlContent, cards),
