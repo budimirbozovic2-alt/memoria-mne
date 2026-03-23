@@ -141,8 +141,19 @@ export default function SourcesView() {
       const oldArticles = parseArticles(oldSource.htmlContent);
 
       // Find cards linked to CHANGED articles only
+      // Use originalSourceSnippet for smarter matching when available
       const linkedCards = cards.filter(c => c.sourceId === oldSource.id);
       const affectedCards = linkedCards.filter(c => {
+        // If card has originalSourceSnippet, check if its content changed in new version
+        if (c.originalSourceSnippet) {
+          const snippet = c.originalSourceSnippet.trim().toLowerCase().replace(/\s+/g, " ");
+          const newText = htmlWithIds.replace(/<[^>]+>/g, "").toLowerCase().replace(/\s+/g, " ");
+          const oldText = oldSource.htmlContent.replace(/<[^>]+>/g, "").toLowerCase().replace(/\s+/g, " ");
+          // If snippet exists in old but not in new → content changed
+          if (oldText.includes(snippet) && !newText.includes(snippet)) return true;
+          if (oldText.includes(snippet) && newText.includes(snippet)) return false;
+        }
+        // Fallback to article-level matching
         if (!c.textAnchor) {
           return changedArticleIds.size > 0;
         }
