@@ -112,6 +112,23 @@ class MemoriaDB extends Dexie {
       sources: "id, label, version, createdAt",
       mindMaps: "id, title, updatedAt",
     });
+    // v5: add compound indexes for fast aggregation
+    this.version(5).stores({
+      cards: "id, category, subcategory, type, createdAt, sourceId, [category+subcategory]",
+      categories: "id, name",
+      subcategories: "id, category",
+      reviewLog: "++id, cardId, sectionId, timestamp, category",
+      pomodoroLog: "++id, timestamp, type",
+      settings: "key",
+      diary: "id, date",
+      calibrationLog: "++id, timestamp, cardId",
+      latencyLog: "++id, timestamp, cardId",
+      slippageLog: "++id, date",
+      activityLog: "++id, timestamp, type",
+      disciplineLog: "++id, date",
+      sources: "id, label, version, createdAt",
+      mindMaps: "id, title, updatedAt",
+    });
   }
 }
 
@@ -327,4 +344,21 @@ export async function idbLoadSettings<T>(key: string, fallback: T): Promise<T> {
 
 export async function idbSaveSettings(key: string, value: any): Promise<void> {
   await db.settings.put({ key, value });
+}
+
+// ─── Fast aggregation helpers (cursor-based, no full toArray) ──
+export async function idbCountCardsByCategory(category: string): Promise<number> {
+  return db.cards.where("category").equals(category).count();
+}
+
+export async function idbCountAllCards(): Promise<number> {
+  return db.cards.count();
+}
+
+export async function idbCountByType(type: string): Promise<number> {
+  return db.cards.where("type").equals(type).count();
+}
+
+export async function idbCountReviewLogSince(since: number): Promise<number> {
+  return db.reviewLog.where("timestamp").aboveOrEqual(since).count();
 }
