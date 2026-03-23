@@ -171,7 +171,7 @@ function PhaseItem({ phase: p, index: i, dynamicDays, isEditing, editName, editD
 
 // ─── Main Component ──────────────────────────────────────
 
-export default function StrategicPlanner({ cards, categories, reviewLog, onBack }: Props) {
+export default function StrategicPlanner({ cards, categories, reviewLog, onBack, onNavigateToDatabase }: Props) {
   const [config, setConfig] = useState<PlannerConfig>(() => loadPlanner());
   const [newPhaseName, setNewPhaseName] = useState("");
   const [newPhaseDays, setNewPhaseDays] = useState("30");
