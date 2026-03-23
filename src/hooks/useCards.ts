@@ -240,7 +240,7 @@ export function useCards() {
   }, [categories, setCategories]);
 
   // O(1) direct update — surgical IDB write
-  const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string; chapter?: string; sourceId?: string; textAnchor?: string; originalSourceSnippet?: string; childCardIds?: string[]; sourceModules?: SourceModule[] }) => {
+  const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string; chapter?: string; sourceId?: string; textAnchor?: string; originalSourceSnippet?: string; childCardIds?: string[]; sourceModules?: SourceModule[]; needsReview?: boolean }) => {
     patchCard(id, c => {
       const newCard = { ...c };
       if (updates.question) newCard.question = updates.question;
