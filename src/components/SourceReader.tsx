@@ -75,6 +75,7 @@ export default function SourceReader({ source, onBack }: Props) {
   const [splitResult, setSplitResult] = useState<{ modules: SelectionModule[]; rangeLabel: string; parentName: string } | null>(null);
   const [splitDone, setSplitDone] = useState(false);
   const [splitCreatedCount, setSplitCreatedCount] = useState(0);
+  const [splitParentName, setSplitParentName] = useState("");
   // Coverage analysis (memoized)
   const coverage = useMemo(
     () => analyzeCoverage(source.id, source.htmlContent, cards),
