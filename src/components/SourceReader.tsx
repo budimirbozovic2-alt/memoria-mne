@@ -78,6 +78,9 @@ export default function SourceReader({ source, onBack }: Props) {
   const [splitDone, setSplitDone] = useState(false);
   const [splitCreatedCount, setSplitCreatedCount] = useState(0);
   const [splitParentName, setSplitParentName] = useState("");
+  // Exam sidebar state
+  const [examOpen, setExamOpen] = useState(false);
+  const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
   // Coverage analysis (memoized)
   const coverage = useMemo(
     () => analyzeCoverage(source.id, source.htmlContent, cards),
