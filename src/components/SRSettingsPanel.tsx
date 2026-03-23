@@ -355,6 +355,7 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
                 </div>
               </div>
             )}
+          </div>
 
           {/* TTS */}
           <div className="rounded-xl border bg-card p-5 space-y-4">
