@@ -29,8 +29,8 @@ export default defineConfig(({ mode }) => ({
       "@radix-ui/react-dialog",
       "@radix-ui/react-select",
       "@radix-ui/react-tooltip",
+      "lucide-react",
     ],
-    exclude: ["lucide-react"],
   },
   build: {
     rollupOptions: {
