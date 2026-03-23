@@ -108,10 +108,19 @@ export default function SourcesView() {
     if (!oldSource) return;
 
     try {
+      // Pre-version auto backup (Electron)
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI?.requestBackup) {
+        try {
+          const backupData = await exportData();
+          if (backupData) await electronAPI.requestBackup(backupData);
+        } catch (_) { /* backup is best-effort */ }
+      }
+
+      // Parse DOCX in Web Worker
       const arrayBuffer = await versionFile.arrayBuffer();
-      const mammoth = (await import("mammoth")).default;
-      const result = await mammoth.convertToHtml({ arrayBuffer });
-      const html = sanitizeHtml(result.value);
+      const rawHtml = await parseDocxInWorker(arrayBuffer);
+      const html = sanitizeHtml(rawHtml);
       const htmlWithIds = injectHeadingIds(html);
       const outline = extractOutline(htmlWithIds);
       const articles = extractArticles(htmlWithIds);
@@ -127,14 +136,13 @@ export default function SourcesView() {
       const linkedCards = cards.filter(c => c.sourceId === oldSource.id);
       const affectedCards = linkedCards.filter(c => {
         if (!c.textAnchor) {
-          // No anchor → flag if any article changed
           return changedArticleIds.size > 0;
         }
         const articleId = matchAnchorToArticle(c.textAnchor, oldArticles);
         return articleId ? changedArticleIds.has(articleId) : false;
       });
 
-      // Atomic update: source + affected cards
+      // Atomic source update in IDB
       const newSource: Source = {
         ...oldSource,
         htmlContent: htmlWithIds,
@@ -146,13 +154,14 @@ export default function SourcesView() {
         previousHtmlContent: oldSource.htmlContent,
       };
 
-      await db.transaction("rw", [db.sources, db.cards], async () => {
+      await db.transaction("rw", [db.sources], async () => {
         await db.sources.put(newSource);
-        if (affectedCards.length > 0) {
-          const updated = affectedCards.map(c => ({ ...c, needsReview: true }));
-          await db.cards.bulkPut(updated);
-        }
       });
+
+      // Flag affected cards via React state (patchCard pipeline)
+      if (affectedCards.length > 0) {
+        bulkFlagNeedsReview(affectedCards.map(c => c.id));
+      }
 
       setSources(prev => prev.map(s => s.id === versioningSourceId ? newSource : s));
       setVersioningSourceId(null);
@@ -178,7 +187,7 @@ export default function SourcesView() {
     } catch {
       toast({ title: "Greška", description: "Nije moguće procesirati novu verziju.", variant: "destructive" });
     }
-  }, [versionFile, versioningSourceId, sources, cards]);
+  }, [versionFile, versioningSourceId, sources, cards, bulkFlagNeedsReview, exportData]);
 
   const linkedCardCount = useCallback((sourceId: string) => {
     return cards.filter(c => c.sourceId === sourceId).length;
