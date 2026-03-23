@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, lazy, Suspense } from "react";
+import { ReactNode, useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
 import ZenMode from "@/components/ZenMode";
@@ -6,10 +6,15 @@ import TopNav from "@/components/TopNav";
 import { AnimatePresence } from "framer-motion";
 import { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
+import { toast } from "@/hooks/use-toast";
+import { loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
 const AppOnboarding = lazy(() => import("@/components/AppOnboarding"));
+
+// Routes where the user is actively working on source material
+const SOURCE_ROUTES = ["/database"];
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const ctx = useAppContext();
@@ -23,6 +28,10 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     () => !hasSeenOnboarding(APP_ONBOARDING_KEY)
   );
 
+  // Track previous route for gentle nudge
+  const prevPathRef = useRef(pathname);
+  const nudgeShownRef = useRef(false);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -33,6 +42,40 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
+
+  // Gentle nudge: show toast when leaving source/database route with unmet daily quota
+  useEffect(() => {
+    const prevPath = prevPathRef.current;
+    prevPathRef.current = pathname;
+
+    // Only trigger when navigating AWAY from source routes
+    if (!SOURCE_ROUTES.some(r => prevPath.startsWith(r))) return;
+    if (SOURCE_ROUTES.some(r => pathname.startsWith(r))) return;
+    if (nudgeShownRef.current) return;
+
+    try {
+      const planner = loadPlanner();
+      if (!planner.finalGoalDate || planner.phases.length === 0) return;
+
+      const velocity = calcVelocity([], 7); // lightweight check
+      const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
+      if (!suggestion || suggestion.suggestedToday <= 0) return;
+
+      const dailyDone = getDailyMappedCount();
+      const remaining = suggestion.suggestedToday - dailyDone;
+
+      if (remaining > 0 && dailyDone < suggestion.suggestedToday) {
+        nudgeShownRef.current = true;
+        toast({
+          title: "📌 Ostani fokusiran",
+          description: `Preostalo ti je još ${remaining} od ${suggestion.suggestedToday} planiranih sekcija za danas.`,
+          duration: 5000,
+        });
+        // Reset nudge flag after 30 min so it can show again
+        setTimeout(() => { nudgeShownRef.current = false; }, 30 * 60 * 1000);
+      }
+    } catch {}
+  }, [pathname, cards]);
 
   return (
     <div className="min-h-screen flex flex-col w-full">
