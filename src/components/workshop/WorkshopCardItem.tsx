@@ -348,6 +348,57 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
                 </div>
               </div>
 
+              {/* Tags */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="h-3 w-3" /> Oznake
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(card.tags || []).map(tag => (
+                    <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-xs font-medium">
+                      {tag}
+                      <button onClick={() => {
+                        const updated = (card.tags || []).filter(t => t !== tag);
+                        onUpdateCard(card.id, { tags: updated });
+                      }} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                  <div className="flex items-center gap-1">
+                    <input
+                      value={newTag}
+                      onChange={e => setNewTag(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && newTag.trim()) {
+                          const existing = card.tags || [];
+                          if (!existing.includes(newTag.trim())) {
+                            onUpdateCard(card.id, { tags: [...existing, newTag.trim()] });
+                          }
+                          setNewTag("");
+                        }
+                      }}
+                      placeholder="Novi tag..."
+                      className="w-24 px-2 py-0.5 rounded-md border bg-background text-[11px] focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <button
+                      onClick={() => {
+                        if (newTag.trim()) {
+                          const existing = card.tags || [];
+                          if (!existing.includes(newTag.trim())) {
+                            onUpdateCard(card.id, { tags: [...existing, newTag.trim()] });
+                          }
+                          setNewTag("");
+                        }
+                      }}
+                      className="p-0.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {/* Delete + stats */}
               <div className="flex items-center justify-between pt-1 border-t border-dashed">
                 {!confirmDelete ? (
