@@ -1,25 +1,25 @@
 import { memo, useState, useCallback } from "react";
 import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
 import { cn } from "@/lib/utils";
-import { default as Scale } from "lucide-react/dist/esm/icons/scale";
-import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
-import { default as Building2 } from "lucide-react/dist/esm/icons/building-2";
-import { default as Calendar } from "lucide-react/dist/esm/icons/calendar";
-import { default as OctagonX } from "lucide-react/dist/esm/icons/octagon-x";
-import { default as RefreshCw } from "lucide-react/dist/esm/icons/refresh-cw";
-import { default as User } from "lucide-react/dist/esm/icons/user";
-import { default as Coins } from "lucide-react/dist/esm/icons/coins";
-import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
-import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as Gavel } from "lucide-react/dist/esm/icons/gavel";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as ShieldCheck } from "lucide-react/dist/esm/icons/shield-check";
-import { default as Send } from "lucide-react/dist/esm/icons/send";
-import { default as Search } from "lucide-react/dist/esm/icons/search";
-import { default as Copy } from "lucide-react/dist/esm/icons/copy";
+import { Scale, FileText, Building2, Calendar, OctagonX, RefreshCw, User, Coins, ArrowRight, CheckCircle2, AlertTriangle, HelpCircle, Clock, Gavel, BookOpen, ShieldCheck, Send, Search, Copy } from "lucide-react";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ── Icon Registry with Lucide components ──
 export const ICON_REGISTRY: { value: string; label: string; Icon: React.FC<{ className?: string }> }[] = [

@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback, ReactNode, forwardRef } from "react";
-import { default as ChevronLeft } from "lucide-react/dist/esm/icons/chevron-left";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 
 interface Props {
   children: ReactNode;

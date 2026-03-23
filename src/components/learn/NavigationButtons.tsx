@@ -1,7 +1,8 @@
 import React from "react";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
+
+
 import { Button } from "@/components/ui/button";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 
 interface Props {
   currentIndex: number;

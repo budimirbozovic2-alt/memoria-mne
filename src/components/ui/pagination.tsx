@@ -1,10 +1,10 @@
 import * as React from "react";
-import { default as ChevronLeft } from "lucide-react/dist/esm/icons/chevron-left";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
-import { default as MoreHorizontal } from "lucide-react/dist/esm/icons/more-horizontal";
+
+
 
 import { cn } from "@/lib/utils";
 import { ButtonProps, buttonVariants } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 
 const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
   <nav

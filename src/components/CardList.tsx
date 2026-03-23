@@ -1,23 +1,24 @@
 import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { format } from "date-fns";
-import { default as Edit2 } from "lucide-react/dist/esm/icons/edit-2";
-import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
-import { default as Scale } from "lucide-react/dist/esm/icons/scale";
-import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
-import { default as Zap } from "lucide-react/dist/esm/icons/zap";
-import { default as Flame } from "lucide-react/dist/esm/icons/flame";
-import { default as MoreVertical } from "lucide-react/dist/esm/icons/more-vertical";
-import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Tag } from "lucide-react/dist/esm/icons/tag";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as Check } from "lucide-react/dist/esm/icons/check";
+
+
+
+
+
+
+
+
+
+
+
+
+
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
-import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
+
 import { useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense, CSSProperties, memo } from "react";
 import { List, type RowComponentProps } from "react-window";
+import { Edit2, Trash2, Scale, ChevronDown, ChevronRight, Zap, Flame, MoreVertical, FolderOpen, BookOpen, Tag, Brain, Check, GripVertical } from "lucide-react";
 
 const SourceSnippetDialog = lazy(() => import("@/components/SourceSnippetDialog"));
 

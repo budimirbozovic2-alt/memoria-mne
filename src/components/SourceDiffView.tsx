@@ -1,19 +1,20 @@
 import { useMemo, useState } from "react";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as Check } from "lucide-react/dist/esm/icons/check";
-import { default as Plus } from "lucide-react/dist/esm/icons/plus";
-import { default as Minus } from "lucide-react/dist/esm/icons/minus";
-import { default as Edit3 } from "lucide-react/dist/esm/icons/edit-3";
-import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as Columns } from "lucide-react/dist/esm/icons/columns";
-import { default as AlignLeft } from "lucide-react/dist/esm/icons/align-left";
-import { default as Eye } from "lucide-react/dist/esm/icons/eye";
+
+
+
+
+
+
+
+
+
+
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import type { DiffResult, ArticleDiff, DiffSegment } from "@/lib/article-parser";
+import { ArrowLeft, Check, Plus, Minus, Edit3, ChevronDown, ChevronRight, AlertTriangle, Columns, AlignLeft, Eye } from "lucide-react";
 
 interface Props {
   diffResult: DiffResult;

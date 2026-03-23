@@ -1,10 +1,11 @@
-import { default as LayoutDashboard } from "lucide-react/dist/esm/icons/layout-dashboard";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as Gauge } from "lucide-react/dist/esm/icons/gauge";
-import { default as ShieldAlert } from "lucide-react/dist/esm/icons/shield-alert";
-import { default as TrendingUp } from "lucide-react/dist/esm/icons/trending-up";
-import { default as Lightbulb } from "lucide-react/dist/esm/icons/lightbulb";
+
+
+
+
+
+
 import OnboardingModal, { type OnboardingSlide } from "@/components/OnboardingModal";
+import { LayoutDashboard, Target, Gauge, ShieldAlert, TrendingUp, Lightbulb } from "lucide-react";
 
 export const DASHBOARD_ONBOARDING_KEY = "sr-dashboard-onboarding-seen";
 

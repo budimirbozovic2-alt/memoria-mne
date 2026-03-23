@@ -3,8 +3,9 @@ import { useAppContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "@/components/Dashboard";
 import EmptyState from "@/components/EmptyState";
-import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
+
 import { AnimatePresence } from "framer-motion";
+import { HelpCircle } from "lucide-react";
 
 const DashboardOnboarding = lazy(() => import("@/components/DashboardOnboarding"));
 

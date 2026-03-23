@@ -1,29 +1,30 @@
 import { useLocation } from "react-router-dom";
-import { default as Zap } from "lucide-react/dist/esm/icons/zap";
+
 import { NavLink } from "@/components/NavLink";
 import { useCardContext } from "@/contexts/AppContext";
-import { default as Home } from "lucide-react/dist/esm/icons/home";
-import { default as GraduationCap } from "lucide-react/dist/esm/icons/graduation-cap";
-import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Map } from "lucide-react/dist/esm/icons/map";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as Network } from "lucide-react/dist/esm/icons/network";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
-import { default as Moon } from "lucide-react/dist/esm/icons/moon";
-import { default as Sun } from "lucide-react/dist/esm/icons/sun";
-import { default as Menu } from "lucide-react/dist/esm/icons/menu";
-import { default as X } from "lucide-react/dist/esm/icons/x";
-import { default as Focus } from "lucide-react/dist/esm/icons/focus";
-import { default as SettingsIcon } from "lucide-react/dist/esm/icons/settings";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
-import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
-import { default as DatabaseIcon } from "lucide-react/dist/esm/icons/database";
-import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import { Zap, Home, GraduationCap, RotateCcw, BookOpen, Map, Brain, Network, Target, FolderOpen, Moon, Sun, Menu, X, Focus, Settings as SettingsIcon, BarChart3, FlaskConical, Database as DatabaseIcon, HelpCircle } from "lucide-react";
 
 interface Props {
   onOpenSearch?: () => void;

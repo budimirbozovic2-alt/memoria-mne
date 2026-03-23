@@ -1,12 +1,12 @@
 import { useState, useMemo, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as CheckCircle } from "lucide-react/dist/esm/icons/check-circle";
-import { default as XCircle } from "lucide-react/dist/esm/icons/x-circle";
+
+
+
+
+
+
+
 import InfoPanel from "@/components/InfoPanel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +23,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { format, startOfDay } from "date-fns";
+import { ArrowLeft, BookOpen, Clock, Brain, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 
 const FrequentErrors = lazy(() => import("@/pages/FrequentErrors"));
 const CognitiveAnalytics = lazy(() => import("./CognitiveAnalytics"));

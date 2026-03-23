@@ -1,10 +1,11 @@
 import * as React from "react";
-import { default as ChevronLeft } from "lucide-react/dist/esm/icons/chevron-left";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
+
+
 import { DayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 

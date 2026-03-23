@@ -1,16 +1,16 @@
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as Download } from "lucide-react/dist/esm/icons/download";
-import { default as HardDrive } from "lucide-react/dist/esm/icons/hard-drive";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as ShieldAlert } from "lucide-react/dist/esm/icons/shield-alert";
-import { default as Gauge } from "lucide-react/dist/esm/icons/gauge";
-import { default as Lightbulb } from "lucide-react/dist/esm/icons/lightbulb";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as Trophy } from "lucide-react/dist/esm/icons/trophy";
-import { default as TrendingUp } from "lucide-react/dist/esm/icons/trending-up";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { motion } from "framer-motion";
 import { Card as SRCard, SRSettings, getPendingFirstReviewCount, getSectionScore } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, getLastBackupTime } from "@/lib/storage";
@@ -23,6 +23,7 @@ import { useDeferredCompute } from "@/hooks/useDeferredCompute";
 import { Progress } from "@/components/ui/progress";
 import { startOfDay } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Clock, BookOpen, AlertTriangle, Download, HardDrive, Target, ShieldAlert, Gauge, Lightbulb, Brain, Trophy, TrendingUp, BarChart3 } from "lucide-react";
 
 interface Props {
   stats: { due: number; total: number; totalSections: number; learnedSections: number };

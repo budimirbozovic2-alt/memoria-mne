@@ -2,11 +2,12 @@ import { useMemo, useState } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { motion } from "framer-motion";
-import { default as TrendingDown } from "lucide-react/dist/esm/icons/trending-down";
-import { default as Eye } from "lucide-react/dist/esm/icons/eye";
-import { default as EyeOff } from "lucide-react/dist/esm/icons/eye-off";
+
+
+
 import { Button } from "@/components/ui/button";
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
+import { TrendingDown, Eye, EyeOff } from "lucide-react";
 
 interface Props {
   cards: Card[];

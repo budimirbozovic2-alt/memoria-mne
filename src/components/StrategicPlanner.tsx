@@ -1,24 +1,24 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion, Reorder, useDragControls } from "framer-motion";
-import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
-import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
-import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
-import { default as RefreshCw } from "lucide-react/dist/esm/icons/refresh-cw";
-import { default as Shield } from "lucide-react/dist/esm/icons/shield";
-import { default as Flame } from "lucide-react/dist/esm/icons/flame";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as Plus } from "lucide-react/dist/esm/icons/plus";
-import { default as Calendar } from "lucide-react/dist/esm/icons/calendar";
-import { default as Zap } from "lucide-react/dist/esm/icons/zap";
-import { default as TrendingUp } from "lucide-react/dist/esm/icons/trending-up";
-import { default as Lightbulb } from "lucide-react/dist/esm/icons/lightbulb";
-import { default as CheckCircle } from "lucide-react/dist/esm/icons/check-circle";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as XCircle } from "lucide-react/dist/esm/icons/x-circle";
-import { default as MapIcon } from "lucide-react/dist/esm/icons/map";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import InfoPanel from "@/components/InfoPanel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ import { Calendar as CalendarUI } from "@/components/ui/calendar";
 import { format, differenceInDays, addDays, startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
+import { Trash2, Pencil, Clock, BarChart3, GripVertical, RefreshCw, Shield, Flame, ArrowLeft, Target, Plus, Calendar, Zap, TrendingUp, Lightbulb, CheckCircle, AlertTriangle, XCircle, Map as MapIcon } from "lucide-react";
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart,
 } from "recharts";
 

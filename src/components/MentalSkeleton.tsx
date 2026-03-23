@@ -2,20 +2,20 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, SectionState, calculateNextReview } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { motion, AnimatePresence } from "framer-motion";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as ArrowUp } from "lucide-react/dist/esm/icons/arrow-up";
-import { default as ArrowDown } from "lucide-react/dist/esm/icons/arrow-down";
-import { default as Eye } from "lucide-react/dist/esm/icons/eye";
-import { default as Compass } from "lucide-react/dist/esm/icons/compass";
-import { default as Plus } from "lucide-react/dist/esm/icons/plus";
-import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
-import { default as X } from "lucide-react/dist/esm/icons/x";
-import { default as Edit3 } from "lucide-react/dist/esm/icons/edit-3";
-import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as CheckCircle } from "lucide-react/dist/esm/icons/check-circle";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
@@ -23,6 +23,7 @@ import {
   DragEndEvent, DragOverlay, DragStartEvent, useDroppable, useDraggable,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
+import { ArrowLeft, ArrowUp, ArrowDown, Eye, Compass, Plus, GripVertical, X, Edit3, Trash2, BookOpen, ChevronDown, AlertTriangle, CheckCircle } from "lucide-react";
 
 type Mode = "navigator" | "auditor";
 

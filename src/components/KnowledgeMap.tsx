@@ -1,18 +1,19 @@
 import { useState, useMemo, useRef, useCallback, lazy, Suspense, startTransition } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
-import { default as Search } from "lucide-react/dist/esm/icons/search";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
-import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
-import { default as ArrowUp } from "lucide-react/dist/esm/icons/arrow-up";
-import { default as ArrowDown } from "lucide-react/dist/esm/icons/arrow-down";
-import { default as ListOrdered } from "lucide-react/dist/esm/icons/list-ordered";
-import { default as Kanban } from "lucide-react/dist/esm/icons/columns-3";
-import { default as List } from "lucide-react/dist/esm/icons/list";
+
+
+
+
+
+
+
+
+
+
+
 import { TabSkeleton } from "@/components/ui/page-skeleton";
+import { ArrowLeft, ChevronRight, Search, BookOpen, BarChart3, HelpCircle, ArrowUp, ArrowDown, ListOrdered, Columns3 as Kanban, List } from "lucide-react";
 
 const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
 const KanbanBoard = lazy(() => import("@/components/KanbanBoard"));

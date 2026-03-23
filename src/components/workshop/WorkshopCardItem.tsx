@@ -1,26 +1,27 @@
 import { useState, useMemo, memo, useCallback, lazy, Suspense } from "react";
 import { MnemonicCard, MnemonicStatus, HookType, HookMode, loadMajorSystem, resolveNumber, extractNumbers, detectEnumerationItems } from "@/lib/mnemonic-storage";
-import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as Film } from "lucide-react/dist/esm/icons/film";
-import { default as Type } from "lucide-react/dist/esm/icons/type";
-import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
-import { default as Sparkles } from "lucide-react/dist/esm/icons/sparkles";
-import { default as Wrench } from "lucide-react/dist/esm/icons/wrench";
-import { default as Hash } from "lucide-react/dist/esm/icons/hash";
-import { default as MapPin } from "lucide-react/dist/esm/icons/map-pin";
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as List } from "lucide-react/dist/esm/icons/list";
-import { default as MoreHorizontal } from "lucide-react/dist/esm/icons/more-horizontal";
-import { default as Tag } from "lucide-react/dist/esm/icons/tag";
-import { default as Plus } from "lucide-react/dist/esm/icons/plus";
-import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
-import { default as Save } from "lucide-react/dist/esm/icons/save";
-import { default as X } from "lucide-react/dist/esm/icons/x";
-import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { CheckCircle2, Brain, Film, Type, ChevronDown, ChevronRight, Sparkles, Wrench, Hash, MapPin, Clock, List, MoreHorizontal, Tag, Plus, Pencil, Save, X, Trash2 } from "lucide-react";
 
 const RichTextEditor = lazy(() => import("@/components/RichTextEditor"));
 

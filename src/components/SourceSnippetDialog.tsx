@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { useEffect, useState } from "react";
-import { default as CheckCircle } from "lucide-react/dist/esm/icons/check-circle";
+
 import { getSource, type Source } from "@/lib/sources-storage";
 import { db } from "@/lib/db";
 import { toast } from "sonner";
+import { CheckCircle } from "lucide-react";
 
 interface Props {
   card: Card;

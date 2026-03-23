@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from "react";
-import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
-import { default as Upload } from "lucide-react/dist/esm/icons/upload";
-import { default as Calendar } from "lucide-react/dist/esm/icons/calendar";
-import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
-import { default as Eye } from "lucide-react/dist/esm/icons/eye";
-import { default as RefreshCw } from "lucide-react/dist/esm/icons/refresh-cw";
-import { default as Tag } from "lucide-react/dist/esm/icons/tag";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as GitCompare } from "lucide-react/dist/esm/icons/git-compare-arrows";
-import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
+
+
+
+
+
+
+
+
+
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,7 @@ import { useAppContext } from "@/contexts/AppContext";
 import { db, idbLoadCards, idbLoadCategories, idbLoadSubcategories, idbLoadReviewLog, idbLoadSettings } from "@/lib/db";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 import { normalizeMatchText, stripHtmlText } from "@/lib/source-coverage";
+import { FileText, Upload, Calendar, Trash2, Eye, RefreshCw, Tag, AlertTriangle, GitCompareArrows as GitCompare, Pencil } from "lucide-react";
 
 const SourceReader = lazy(() => import("@/components/SourceReader"));
 const SourceDiffView = lazy(() => import("@/components/SourceDiffView"));

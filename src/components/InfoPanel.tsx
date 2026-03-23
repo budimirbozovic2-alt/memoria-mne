@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { default as Info } from "lucide-react/dist/esm/icons/info";
-import { default as X } from "lucide-react/dist/esm/icons/x";
+
+
 import { motion, AnimatePresence } from "framer-motion";
+import { Info, X } from "lucide-react";
 
 interface InfoPanelProps {
   title: string;

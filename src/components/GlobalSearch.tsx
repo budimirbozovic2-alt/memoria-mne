@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Card } from "@/lib/spaced-repetition";
-import { default as Search } from "lucide-react/dist/esm/icons/search";
-import { default as X } from "lucide-react/dist/esm/icons/x";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Zap } from "lucide-react/dist/esm/icons/zap";
+
+
+
+
 import { motion, AnimatePresence } from "framer-motion";
+import { Search, X, BookOpen, Zap } from "lucide-react";
 
 interface Props {
   cards: Card[];

@@ -1,15 +1,16 @@
 import React, { useEffect } from "react";
 import { LearnMode } from "@/lib/storage";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as Trophy } from "lucide-react/dist/esm/icons/trophy";
-import { default as RotateCw } from "lucide-react/dist/esm/icons/rotate-cw";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Check } from "lucide-react/dist/esm/icons/check";
+
+
+
+
+
+
+
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { GRADE_LABELS } from "./types";
+import { BarChart3, Clock, Target, Trophy, RotateCw, BookOpen, Check } from "lucide-react";
 
 interface Props {
   learnMode: LearnMode;

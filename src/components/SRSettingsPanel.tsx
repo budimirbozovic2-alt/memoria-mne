@@ -11,10 +11,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
-import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
+
+
+
 import InfoPanel from "@/components/InfoPanel";
+import { ArrowLeft, RotateCcw, ChevronDown } from "lucide-react";
 
 interface Props {
   settings: SRSettings;

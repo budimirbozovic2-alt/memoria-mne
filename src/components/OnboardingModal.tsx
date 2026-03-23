@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as X } from "lucide-react/dist/esm/icons/x";
-import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
+
+
+
+
 import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
+import { ArrowRight, ArrowLeft, X, CheckCircle2 } from "lucide-react";
 
 export interface OnboardingSlide {
   icon: LucideIcon;
