@@ -584,13 +584,42 @@ export function useCards() {
   }, [cards, categories, subcategories, downloadFile, buildJsonChunked]);
 
   const exportData = useCallback(async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
-    onProgress(5, "Učitavanje izvora i mentalnih mapa...");
+    onProgress(5, "Učitavanje svih podataka...");
     const { db } = await import("@/lib/db");
-    const [sources, mindMaps] = await Promise.all([
+    const [sources, mindMaps, diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog] = await Promise.all([
       db.sources.toArray(),
       db.mindMaps.toArray(),
+      db.diary.toArray(),
+      db.calibrationLog.toArray(),
+      db.latencyLog.toArray(),
+      db.slippageLog.toArray(),
+      db.activityLog.toArray(),
+      db.disciplineLog.toArray(),
+      db.pomodoroLog.toArray(),
     ]);
-    const data = { version: 3, type: "full", cards, categories, subcategories, reviewLog, srSettings, sources, mindMaps };
+
+    // Collect key localStorage items
+    const localStorageData: Record<string, any> = {};
+    const lsKeys = [
+      "sr-planner-config", "sr-app-settings", "sr-mnemonic-workshop",
+      "sr-mnemonic-associations", "sr-major-system-map",
+      "sr-daily-mapped-count", "sr-daily-mapped-date",
+      "sr-learn-progress", "sr-last-backup",
+    ];
+    for (const key of lsKeys) {
+      const val = localStorage.getItem(key);
+      if (val !== null) {
+        try { localStorageData[key] = JSON.parse(val); } catch { localStorageData[key] = val; }
+      }
+    }
+
+    const data = {
+      version: 4, type: "full",
+      cards, categories, subcategories, reviewLog, srSettings,
+      sources, mindMaps,
+      diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog,
+      localStorageData,
+    };
     const dateStr = new Date().toISOString().slice(0, 10);
 
     const json = await buildJsonChunked(data, onProgress);
@@ -603,11 +632,11 @@ export function useCards() {
       const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
       onProgress(100, "Preuzimanje...");
       downloadFile(blob, `codex-backup-${dateStr}.zip`);
-      toast.success("Pun backup uspješno exportovan.");
+      toast.success("Kompletni backup uspješno exportovan.");
     } else {
       onProgress(100, "Preuzimanje...");
       downloadFile(new Blob([json], { type: "application/json" }), `codex-backup-${dateStr}.json`);
-      toast.success("Pun backup uspješno exportovan.");
+      toast.success("Kompletni backup uspješno exportovan.");
     }
     setLastBackupTime();
   }, [cards, categories, subcategories, reviewLog, srSettings, downloadFile, buildJsonChunked]);
