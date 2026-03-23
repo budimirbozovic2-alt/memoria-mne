@@ -88,7 +88,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
       {/* Desktop */}
       <div className="hidden md:flex items-center h-11 px-4 gap-1 max-w-7xl mx-auto">
         <div className="flex items-center gap-2 mr-4">
-          <img src="/logo-icon.png" alt="Memoria" className="h-6 w-6 rounded-md" />
+          <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="Memoria" className="h-6 w-6 rounded-md" />
           <span className="text-base font-serif italic text-primary select-none tracking-tight">Memoria</span>
         </div>
 
@@ -197,7 +197,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
       {/* Mobile */}
       <div className="md:hidden flex items-center h-11 px-3 justify-between">
         <div className="flex items-center gap-2">
-          <img src="/logo-icon.png" alt="Memoria" className="h-6 w-6 rounded-md" />
+          <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="Memoria" className="h-6 w-6 rounded-md" />
           <span className="text-base font-serif italic text-primary select-none">Memoria</span>
         </div>
         <div className="flex items-center gap-1">
