@@ -492,16 +492,19 @@ export function useCards() {
   // Bulk flag cards as needsReview (for source version updates)
   const bulkFlagNeedsReview = useCallback((cardIds: string[]) => {
     if (cardIds.length === 0) return;
-    setCardMap(prev => {
+    setCardMapState(prev => {
       const next = { ...prev };
+      const updated: Card[] = [];
       for (const id of cardIds) {
         if (next[id]) {
           next[id] = { ...next[id], needsReview: true };
+          updated.push(next[id]);
         }
       }
+      schedulePersist({ type: "bulk", cards: updated });
       return next;
     });
-  }, [setCardMap]);
+  }, []);
 
   const downloadFile = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);

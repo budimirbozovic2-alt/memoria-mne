@@ -256,12 +256,28 @@ export async function idbSaveCards(cards: Card[]): Promise<void> {
 }
 
 export async function idbPutCard(card: Card): Promise<void> {
-  await db.cards.put(card);
+  try {
+    await db.cards.put(card);
+  } catch (err: any) {
+    if (err?.name === "QuotaExceededError" || err?.inner?.name === "QuotaExceededError") {
+      console.error("[MemoriaDB] Storage quota exceeded", err);
+      throw new Error("QUOTA_EXCEEDED");
+    }
+    throw err;
+  }
 }
 
 export async function idbBulkPutCards(cards: Card[]): Promise<void> {
   if (cards.length === 0) return;
-  await db.cards.bulkPut(cards);
+  try {
+    await db.cards.bulkPut(cards);
+  } catch (err: any) {
+    if (err?.name === "QuotaExceededError" || err?.inner?.name === "QuotaExceededError") {
+      console.error("[MemoriaDB] Storage quota exceeded during bulk write", err);
+      throw new Error("QUOTA_EXCEEDED");
+    }
+    throw err;
+  }
 }
 
 export async function idbDeleteCard(id: string): Promise<void> {
