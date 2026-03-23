@@ -78,6 +78,8 @@ export function loadAppSettings(): AppSettings {
       ...DEFAULT_APP_SETTINGS,
       ...parsed,
       dashboardWidgets: { ...DEFAULT_APP_SETTINGS.dashboardWidgets, ...parsed.dashboardWidgets },
+      pomodoro: { ...DEFAULT_APP_SETTINGS.pomodoro, ...parsed.pomodoro },
+      notifications: { ...DEFAULT_APP_SETTINGS.notifications, ...parsed.notifications },
     };
   } catch {
     return { ...DEFAULT_APP_SETTINGS };
