@@ -254,6 +254,7 @@ export default function SourceReader({ source, onBack }: Props) {
       description: `Povezano sa izvorom "${source.label}"`,
     });
     setEssayDialogOpen(false);
+    incrementDailyMapped(1);
   }, [essayQuestion, selectedText, essayCategory, source, addCard]);
 
   const scrollToHeading = useCallback((id: string) => {
