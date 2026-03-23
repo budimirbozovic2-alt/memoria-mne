@@ -289,45 +289,52 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
       />
     );
   }
+  const fallback = <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Učitavanje...</div>;
 
-  // ── ACTIVE MODES (delegated to sub-components) ──
+  // ── ACTIVE MODES (delegated to lazy sub-components) ──
   if (learnMode === "free") {
     return (
-      <StudyModeFree
-        card={card} sortedCards={sortedCards} currentIndex={currentIndex}
-        viewWidth={viewWidth} setViewWidth={setViewWidth}
-        readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
-        onMarkRead={handleMarkRead} onEdit={onEdit} onAddKeyPart={onAddKeyPart}
-        goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
-      />
+      <Suspense fallback={fallback}>
+        <StudyModeFree
+          card={card} sortedCards={sortedCards} currentIndex={currentIndex}
+          viewWidth={viewWidth} setViewWidth={setViewWidth}
+          readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
+          onMarkRead={handleMarkRead} onEdit={onEdit} onAddKeyPart={onAddKeyPart}
+          goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
+        />
+      </Suspense>
     );
   }
 
   if (learnMode === "active-recall") {
     return (
-      <StudyModeRecall
-        card={card} sortedCards={sortedCards} currentIndex={currentIndex}
-        viewWidth={viewWidth} setViewWidth={setViewWidth}
-        readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
-        onMarkRead={handleMarkRead} onReviewSection={onReviewSection} onAddKeyPart={onAddKeyPart}
-        goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
-        setCompletedCards={setCompletedCards} setTotalGrades={setTotalGrades}
-        setModulesCompleted={setModulesCompleted} updateProgress={updateProgress}
-      />
+      <Suspense fallback={fallback}>
+        <StudyModeRecall
+          card={card} sortedCards={sortedCards} currentIndex={currentIndex}
+          viewWidth={viewWidth} setViewWidth={setViewWidth}
+          readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
+          onMarkRead={handleMarkRead} onReviewSection={onReviewSection} onAddKeyPart={onAddKeyPart}
+          goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
+          setCompletedCards={setCompletedCards} setTotalGrades={setTotalGrades}
+          setModulesCompleted={setModulesCompleted} updateProgress={updateProgress}
+        />
+      </Suspense>
     );
   }
 
   if (learnMode === "chain") {
     return (
-      <StudyModeChain
-        card={card} sortedCards={sortedCards} currentIndex={currentIndex}
-        viewWidth={viewWidth} setViewWidth={setViewWidth}
-        readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
-        onReviewSection={onReviewSection}
-        goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
-        setChainCompletedCards={setChainCompletedCards} setTotalGrades={setTotalGrades}
-        setModulesCompleted={setModulesCompleted} setChainResets={setChainResets} updateProgress={updateProgress}
-      />
+      <Suspense fallback={fallback}>
+        <StudyModeChain
+          card={card} sortedCards={sortedCards} currentIndex={currentIndex}
+          viewWidth={viewWidth} setViewWidth={setViewWidth}
+          readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
+          onReviewSection={onReviewSection}
+          goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
+          setChainCompletedCards={setChainCompletedCards} setTotalGrades={setTotalGrades}
+          setModulesCompleted={setModulesCompleted} setChainResets={setChainResets} updateProgress={updateProgress}
+        />
+      </Suspense>
     );
   }
 
