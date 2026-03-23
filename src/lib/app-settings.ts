@@ -58,6 +58,15 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     showStatusIcons: true,
     showProgressRing: true,
   },
+  pomodoro: {
+    workMinutes: 25,
+    breakMinutes: 5,
+  },
+  notifications: {
+    enabled: false,
+    reminderHour: 9,
+    reminderMinute: 0,
+  },
 };
 
 export function loadAppSettings(): AppSettings {
