@@ -321,7 +321,37 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </div>
       )}
 
-      {/* 3. Dnevni Briefing (Insight Box) */}
+      {/* 2.5 Progress Ring Widget */}
+      {wc.showProgressRing && plannerData && plannerData.activePhase && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+          className="rounded-xl bg-card border p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-medium">Progres faze: {plannerData.activePhase.name}</h3>
+          </div>
+          <div className="flex items-center justify-around">
+            <ProgressRing
+              percent={plannerData.activePhase.pct}
+              label="Ukupno"
+              sublabel={`${plannerData.activePhase.learned}/${plannerData.activePhase.total}`}
+              colorClass="text-primary"
+            />
+            <ProgressRing
+              percent={plannerData.dailyQuota > 0 ? Math.min(100, Math.round((plannerData.dailyMapped / plannerData.dailyQuota) * 100)) : 0}
+              label="Danas"
+              sublabel={`${plannerData.dailyMapped}/${plannerData.dailyQuota}`}
+              colorClass={plannerData.dailyMapped >= plannerData.dailyQuota && plannerData.dailyQuota > 0 ? "text-success" : "text-warning"}
+            />
+          </div>
+          {plannerData.redistResult?.redistributed && (
+            <p className="text-xs text-warning mt-3 text-center">
+              ⚡ Kvota automatski redistribuirana: {plannerData.redistResult.newQuota} sekcija/dan
+            </p>
+          )}
+        </motion.div>
+      )}
+
+
       {wc.showBriefing && <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="rounded-xl bg-card border p-5 space-y-4">
         <div className="flex items-center gap-2">
