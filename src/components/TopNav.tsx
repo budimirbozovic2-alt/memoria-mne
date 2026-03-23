@@ -202,6 +202,13 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
         </div>
 
         <div className="flex items-center gap-0.5 ml-2">
+          {/* Mapping badge */}
+          {mappingFlash && (
+            <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-success/15 text-success text-[10px] font-bold animate-in fade-in zoom-in-95 duration-300">
+              <Plus className="h-3 w-3" />
+              Mapirano
+            </div>
+          )}
           {onOpenOnboarding && (
             <button onClick={onOpenOnboarding} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" title="Vodič kroz aplikaciju">
               <HelpCircle className="h-4 w-4" />
