@@ -12,6 +12,15 @@ export interface SourceArticle {
   text: string;
 }
 
+export interface MindMapDoc {
+  id: string;
+  title: string;
+  nodes: any[];
+  edges: any[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Source {
   id: string;
   label: string;
