@@ -151,12 +151,11 @@ export default function SourceReader({ source, onBack }: Props) {
   }, [selection]);
 
   const handleSmartSplitConfirm = useCallback(() => {
-    if (!splitResult) return;
+    if (!splitResult || splitModules.length === 0) return;
     const category = source.label || categories[0] || "Opšte";
-    const { modules } = splitResult;
+    const modules = splitModules;
     const parentName = splitParentName.trim() || splitResult.parentName;
 
-    // Build sections and sourceModules for parent card
     const sections = modules.map((mod) => ({
       title: mod.title,
       content: sanitizeHtml(mod.contentHtml),
@@ -197,7 +196,7 @@ export default function SourceReader({ source, onBack }: Props) {
       title: `Generisano 1 esej sa ${modules.length} modula`,
       description: `${splitResult.rangeLabel} iz "${source.label}"`,
     });
-  }, [splitResult, splitParentName, source, categories, addCard]);
+  }, [splitResult, splitModules, splitParentName, source, categories, addCard]);
 
   const handleCreateEssay = useCallback(() => {
     if (!essayQuestion.trim() || !selectedText) return;
