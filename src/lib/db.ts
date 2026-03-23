@@ -36,6 +36,7 @@ export interface Source {
   updatedAt: number;
   previousVersionId?: string;
   previousHtmlContent?: string; // stored for diff comparison
+  officialGazetteInfo?: string; // e.g. "Službenom listu CG, br. 56/2014, 20/2015..."
 }
 
 class MemoriaDB extends Dexie {

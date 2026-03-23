@@ -75,3 +75,36 @@ export function extractArticles(html: string) {
     text: a.text,
   }));
 }
+
+/**
+ * Extract official gazette info from the first ~10 paragraphs of HTML.
+ * Looks for patterns like "Zakon je objavljen u", "objavljen u Službenom",
+ * "Sl. list", "Službeni glasnik", etc.
+ */
+export function extractOfficialGazette(html: string): string | undefined {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  const elements = Array.from(doc.body.children).slice(0, 20);
+
+  const patterns = [
+    /zakon\s+je\s+objavljen\s+u[^.]*\./i,
+    /objavljen[a]?\s+(?:je\s+)?u\s+(?:"|„|")?služben[a-z]*\s+(?:list[a-z]*|glasnik[a-z]*)[^.]*\./i,
+    /(?:"|„|")?služben[a-z]*\s+(?:list[a-z]*|glasnik[a-z]*)\s+[A-ZČĆŽŠĐa-zčćžšđ]+[^.]*br\.[^.]*\./i,
+    /sl\.\s*list[^.]*br\.[^.]*\./i,
+    /sl\.\s*glasnik[^.]*br\.[^.]*\./i,
+  ];
+
+  for (const el of elements) {
+    const text = (el.textContent || "").trim();
+    if (!text || text.length < 10) continue;
+
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        return match[0].trim();
+      }
+    }
+  }
+
+  return undefined;
+}

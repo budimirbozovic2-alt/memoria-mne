@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { sanitizeHtml } from "@/lib/sanitize";
 import {
   loadSources, saveSource, deleteSource,
-  extractOutline, injectHeadingIds, extractArticles, type Source,
+  extractOutline, injectHeadingIds, extractArticles, extractOfficialGazette, type Source,
 } from "@/lib/sources-storage";
 import { compareVersions, getChangedArticleIds, matchAnchorToArticle, parseArticles, type DiffResult } from "@/lib/article-parser";
 import { parseDocxInWorker } from "@/lib/docx-parser";
@@ -72,6 +72,7 @@ export default function SourcesView() {
     const htmlWithIds = injectHeadingIds(importHtml);
     const outline = extractOutline(htmlWithIds);
     const articles = extractArticles(htmlWithIds);
+    const officialGazetteInfo = extractOfficialGazette(htmlWithIds);
     const source: Source = {
       id: generateId(),
       label: importLabel,
@@ -79,6 +80,7 @@ export default function SourcesView() {
       htmlContent: htmlWithIds,
       outline,
       articles,
+      officialGazetteInfo,
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -286,6 +288,11 @@ export default function SourcesView() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-medium text-sm truncate">{source.label}</h3>
+                      {source.officialGazetteInfo && (
+                        <p className="text-[11px] italic text-muted-foreground/70 truncate mt-0.5">
+                          {source.officialGazetteInfo}
+                        </p>
+                      )}
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
