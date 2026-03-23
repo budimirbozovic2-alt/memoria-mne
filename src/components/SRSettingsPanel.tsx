@@ -298,6 +298,40 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
                   <span>1 min</span><span>20 min</span>
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm">Dugačka pauza</label>
+                  <span className="text-sm font-medium tabular-nums">{app.pomodoro.longBreakMinutes} min</span>
+                </div>
+                <Slider
+                  value={[app.pomodoro.longBreakMinutes]}
+                  min={5} max={30} step={5}
+                  onValueChange={(v) => setApp(prev => ({ ...prev, pomodoro: { ...prev.pomodoro, longBreakMinutes: v[0] } }))}
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>5 min</span><span>30 min</span>
+                </div>
+              </div>
+              <div className="border-t pt-3 flex items-center justify-between">
+                <div>
+                  <label className="text-sm">Interval dugačke pauze</label>
+                  <p className="text-xs text-muted-foreground">Nakon svakog N-tog fokus ciklusa</p>
+                </div>
+                <Select value={String(app.pomodoro.longBreakInterval)}
+                  onValueChange={(v) => setApp(prev => ({ ...prev, pomodoro: { ...prev.pomodoro, longBreakInterval: parseInt(v) } }))}>
+                  <SelectTrigger className="w-24 bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Isključeno</SelectItem>
+                    <SelectItem value="2">Svaka 2</SelectItem>
+                    <SelectItem value="3">Svaka 3</SelectItem>
+                    <SelectItem value="4">Svaka 4</SelectItem>
+                    <SelectItem value="5">Svaka 5</SelectItem>
+                    <SelectItem value="6">Svaka 6</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
