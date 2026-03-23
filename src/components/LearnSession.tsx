@@ -325,7 +325,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
 
     // Step 2: Category/subcategory filter + sort + start
     const sortOptions = [
-      { key: "order" as const, label: "Hronološki", desc: "Kronološkim redoslijedom", icon: ListOrdered },
+      { key: "order" as const, label: "Hronološki", desc: "Hronološkim redoslijedom", icon: ListOrdered },
       { key: "weakest" as const, label: "Najslabija", desc: "Najniži rezultat prvo", icon: TrendingDown },
       { key: "leastRead" as const, label: "Najmanje čitana", desc: "Nepročitana prvo", icon: Eye },
     ];
