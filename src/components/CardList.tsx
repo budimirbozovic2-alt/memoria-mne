@@ -606,6 +606,7 @@ export default function CardList({
                 onMoveCategory={onMoveCategory}
                 onAssignChapter={onAssignChapter}
                 onCloneToMnemonic={onCloneToMnemonic}
+                onAddKeyPart={onAddKeyPart}
               />
             </div>
           </div>
