@@ -93,7 +93,7 @@ interface PhaseItemProps {
   onOpenInDB: () => void;
 }
 
-function PhaseItem({ phase: p, index: i, dynamicDays, isEditing, editName, editDays, setEditName, setEditDays, onSaveEdit, onCancelEdit, onStartEdit, onRemove }: PhaseItemProps) {
+function PhaseItem({ phase: p, index: i, dynamicDays, isEditing, editName, editDays, setEditName, setEditDays, onSaveEdit, onCancelEdit, onStartEdit, onRemove, onOpenInDB }: PhaseItemProps) {
   const controls = useDragControls();
 
   return (
