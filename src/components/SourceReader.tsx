@@ -23,56 +23,32 @@ interface Props {
   onBack: () => void;
 }
 
-// Coverage stats removed from overlay — now inline only
-
-// ── Stats Bar ──
+// ── Compact Coverage Stats ──
 function CoverageStatsBar({
   percent,
-  coveredChars,
-  totalChars,
   linkedCount,
 }: {
   percent: number;
-  coveredChars: number;
-  totalChars: number;
   linkedCount: number;
 }) {
-  const color =
-    percent >= 80 ? "text-green-500" : percent >= 50 ? "text-amber-500" : "text-red-500";
   const barColor =
     percent >= 80 ? "bg-green-500" : percent >= 50 ? "bg-amber-500" : "bg-red-500";
+  const color =
+    percent >= 80 ? "text-green-500" : percent >= 50 ? "text-amber-500" : "text-red-500";
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Pokrivenost izvora</span>
+    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2.5">
+      <BarChart3 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all duration-500", barColor)}
+            style={{ width: `${percent}%` }}
+          />
         </div>
-        <span className={cn("text-2xl font-bold tabular-nums", color)}>
-          {percent}%
-        </span>
       </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn("h-full rounded-full transition-all duration-500", barColor)}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{coveredChars.toLocaleString()} / {totalChars.toLocaleString()} znakova</span>
-        <span>{linkedCount} povezanih kartica</span>
-      </div>
-      <div className="flex items-center gap-4 text-[10px] text-muted-foreground pt-1">
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm bg-green-500/20 border-l-2 border-green-500" />
-          Pokriveno
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm bg-muted text-foreground/40 border-l-2 border-transparent" />
-          Nepokriveno
-        </span>
-      </div>
+      <span className={cn("text-sm font-bold tabular-nums", color)}>{percent}%</span>
+      <span className="text-xs text-muted-foreground">{linkedCount} kartica</span>
     </div>
   );
 }
