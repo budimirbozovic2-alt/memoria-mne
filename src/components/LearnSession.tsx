@@ -52,6 +52,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
   const [started, setStarted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [snippetOpen, setSnippetOpen] = useState(false);
+  const SourceSnippetDialog = useMemo(() => lazy(() => import("@/components/SourceSnippetDialog")), []);
 
   // Session state
   const [currentIndex, setCurrentIndex] = useState(0);
