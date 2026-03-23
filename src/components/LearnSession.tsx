@@ -7,6 +7,7 @@ import { default as ShieldAlert } from "lucide-react/dist/esm/icons/shield-alert
 import { motion, AnimatePresence } from "framer-motion";
 import { Link2, BarChart3, Volume2 } from "lucide-react";
 import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
+import { default as Scale } from "lucide-react/dist/esm/icons/scale";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
