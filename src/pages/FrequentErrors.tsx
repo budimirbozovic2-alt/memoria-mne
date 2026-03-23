@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Card, ErrorLogEntry, getErrorStatus, ErrorStatus } from "@/lib/spaced-repetition";
-import { Trash2 } from "lucide-react";
+import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as AlertCircle } from "lucide-react/dist/esm/icons/alert-circle";
 import { default as Target } from "lucide-react/dist/esm/icons/target";

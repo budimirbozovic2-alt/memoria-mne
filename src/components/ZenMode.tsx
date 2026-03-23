@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Volume2 } from "lucide-react";
+import { default as Volume2 } from "lucide-react/dist/esm/icons/volume-2";
 import { default as X } from "lucide-react/dist/esm/icons/x";
 import { default as Play } from "lucide-react/dist/esm/icons/play";
 import { default as Pause } from "lucide-react/dist/esm/icons/pause";

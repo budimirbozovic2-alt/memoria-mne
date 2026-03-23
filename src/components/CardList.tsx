@@ -1,7 +1,8 @@
 import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { format } from "date-fns";
-import { Edit2, Trash2 } from "lucide-react";
+import { default as Edit2 } from "lucide-react/dist/esm/icons/edit-2";
+import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
 import { default as Scale } from "lucide-react/dist/esm/icons/scale";
 import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";

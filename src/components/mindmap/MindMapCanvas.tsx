@@ -33,7 +33,13 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Save, ArrowLeft, GitBranch, Workflow, ChevronDown, LayoutGrid } from "lucide-react";
+import { default as Plus } from "lucide-react/dist/esm/icons/plus";
+import { default as Save } from "lucide-react/dist/esm/icons/save";
+import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
+import { default as GitBranch } from "lucide-react/dist/esm/icons/git-branch";
+import { default as Workflow } from "lucide-react/dist/esm/icons/workflow";
+import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
+import { default as LayoutGrid } from "lucide-react/dist/esm/icons/layout-grid";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 

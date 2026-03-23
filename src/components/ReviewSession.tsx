@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } fro
 import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS, SectionState, getRetrievability } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2 } from "lucide-react";
+import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
