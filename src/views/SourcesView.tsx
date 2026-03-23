@@ -351,7 +351,7 @@ export default function SourcesView() {
                         {linked > 0 && (
                           <span className="flex items-center gap-1">
                             <Tag className="h-3 w-3" />
-                            {linked} kartica
+                            {linked} modula
                           </span>
                         )}
                         {review > 0 && (
