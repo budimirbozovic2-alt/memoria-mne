@@ -45,6 +45,9 @@ export default function SourcesView() {
   const [readingSource, setReadingSource] = useState<Source | null>(null);
   const [versioningSourceId, setVersioningSourceId] = useState<string | null>(null);
   const [versionFile, setVersionFile] = useState<File | null>(null);
+  const [editingSource, setEditingSource] = useState<Source | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editGazette, setEditGazette] = useState("");
   const [diffView, setDiffView] = useState<{
     result: DiffResult;
     sourceName: string;
