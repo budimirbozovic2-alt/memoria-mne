@@ -489,7 +489,7 @@ export default function SourceReader({ source, onBack }: Props) {
 
       {/* Essay creation dialog */}
       <Dialog open={essayDialogOpen} onOpenChange={setEssayDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Kreiraj esejsko pitanje</DialogTitle>
           </DialogHeader>
@@ -539,7 +539,7 @@ export default function SourceReader({ source, onBack }: Props) {
 
       {/* Smart-Split Summary Dialog */}
       <Dialog open={splitSummaryOpen} onOpenChange={(o) => { if (!o) { setSplitSummaryOpen(false); setSplitResult(null); } }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Wand2 className="h-5 w-5 text-primary" />
@@ -587,7 +587,7 @@ export default function SourceReader({ source, onBack }: Props) {
                 </p>
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
+              <div className="max-h-[400px] overflow-y-auto space-y-1 pr-1">
                 {splitModules.map((mod, i) => (
                   <div key={`${mod.articleNum}-${i}`} className="group flex items-start gap-1.5 rounded-md border bg-card px-2 py-2">
                     <div className="flex flex-col gap-0.5 flex-shrink-0 mt-0.5">

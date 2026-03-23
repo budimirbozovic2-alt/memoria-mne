@@ -244,7 +244,7 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
 
       {/* Edit Questions Modal */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl max-h-[85vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PencilLine className="h-5 w-5 text-primary" />
@@ -259,7 +259,7 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
             <textarea
               value={editText}
               onChange={e => setEditText(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[250px] resize-y font-mono leading-relaxed"
+              className="w-full px-3 py-2.5 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[450px] max-h-[60vh] resize-y font-mono leading-relaxed"
               placeholder={"Zalijepite listu pitanja ovdje...\n\n1. Prvo ispitno pitanje\n2. Drugo ispitno pitanje\n3. Treće ispitno pitanje"}
               autoFocus
             />
