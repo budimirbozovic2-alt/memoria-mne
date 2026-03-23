@@ -235,16 +235,18 @@ export default function SourceReader({ source, onBack }: Props) {
 
         {/* Main content */}
         <div className="flex-1 min-w-0 relative">
-          {isCoverage ? (
-            <div data-coverage-container>
-              <CoverageContent
-                htmlContent={source.htmlContent}
-                ranges={coverage.ranges}
-                onMouseUp={handleMouseUp}
-              />
-            </div>
-          ) : (
+          {true ? (
             <>
+              <div
+                ref={contentRef}
+                className="rounded-lg border bg-card p-6 prose prose-sm max-w-none
+                  prose-headings:text-foreground prose-p:text-foreground/90
+                  prose-strong:text-foreground prose-a:text-primary
+                  prose-ul:text-foreground/90 prose-ol:text-foreground/90
+                  prose-li:text-foreground/90"
+                onMouseUp={handleMouseUp}
+                dangerouslySetInnerHTML={{ __html: source.htmlContent }}
+              />
               <div
                 ref={contentRef}
                 className="rounded-lg border bg-card p-6 prose prose-sm max-w-none
