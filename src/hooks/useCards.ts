@@ -240,7 +240,7 @@ export function useCards() {
   }, [categories, setCategories]);
 
   // O(1) direct update — surgical IDB write
-  const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string; chapter?: string; sourceId?: string; textAnchor?: string; originalSourceSnippet?: string; childCardIds?: string[]; sourceModules?: SourceModule[] }) => {
+  const updateCard = useCallback((id: string, updates: { question?: string; sections?: { title: string; content: string }[]; category?: string; subcategory?: string; chapter?: string; sourceId?: string; textAnchor?: string; originalSourceSnippet?: string; childCardIds?: string[]; sourceModules?: SourceModule[]; needsReview?: boolean }) => {
     patchCard(id, c => {
       const newCard = { ...c };
       if (updates.question) newCard.question = updates.question;
@@ -252,6 +252,7 @@ export function useCards() {
       if (updates.originalSourceSnippet !== undefined) newCard.originalSourceSnippet = updates.originalSourceSnippet;
       if (updates.childCardIds !== undefined) newCard.childCardIds = updates.childCardIds;
       if (updates.sourceModules !== undefined) newCard.sourceModules = updates.sourceModules;
+      if (updates.needsReview !== undefined) newCard.needsReview = updates.needsReview;
       if (updates.sections) {
         newCard.sections = updates.sections.map(s => {
           const existing = c.sections.find(es => es.title === s.title);

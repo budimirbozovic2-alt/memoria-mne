@@ -1,18 +1,25 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { useEffect, useState } from "react";
+import { default as CheckCircle } from "lucide-react/dist/esm/icons/check-circle";
 import { getSource, type Source } from "@/lib/sources-storage";
+import { db } from "@/lib/db";
+import { toast } from "sonner";
 
 interface Props {
   card: Card;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called after confirming review so parent can update local state */
+  onReviewConfirmed?: (cardId: string) => void;
 }
 
-export default function SourceSnippetDialog({ card, open, onOpenChange }: Props) {
+export default function SourceSnippetDialog({ card, open, onOpenChange, onReviewConfirmed }: Props) {
   const [source, setSource] = useState<Source | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     if (!open || !card.sourceId) return;
@@ -22,6 +29,21 @@ export default function SourceSnippetDialog({ card, open, onOpenChange }: Props)
   if (!card.sourceId || !card.originalSourceSnippet) return null;
 
   const essayHtml = card.sections.map(s => s.content).join("<hr/>");
+
+  const handleConfirmReview = async () => {
+    setConfirming(true);
+    try {
+      // Update in IndexedDB directly
+      await db.cards.update(card.id, { needsReview: undefined });
+      onReviewConfirmed?.(card.id);
+      toast.success("Kartica potvrđena — oznaka za provjeru uklonjena.");
+      onOpenChange(false);
+    } catch {
+      toast.error("Greška pri potvrđivanju.");
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -63,9 +85,21 @@ export default function SourceSnippetDialog({ card, open, onOpenChange }: Props)
         </div>
 
         {card.needsReview && (
-          <div className="mt-2 p-2 rounded-md bg-warning/10 border border-warning/30 text-xs text-warning flex items-center gap-2">
-            <span>⚠️</span>
-            <span>Izvor je ažuriran — provjerite da li je vaš esej još uvijek u skladu sa novim tekstom.</span>
+          <div className="mt-2 p-3 rounded-md bg-warning/10 border border-warning/30 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-warning">
+              <span>⚠️</span>
+              <span>Izvor je ažuriran — provjerite da li je vaš esej još uvijek u skladu sa novim tekstom.</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={confirming}
+              className="shrink-0 border-success/50 text-success hover:bg-success/10 hover:text-success"
+              onClick={handleConfirmReview}
+            >
+              <CheckCircle className="h-4 w-4 mr-1.5" />
+              Potvrdi provjeru
+            </Button>
           </div>
         )}
       </DialogContent>
