@@ -8,6 +8,10 @@ import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { default as Wand2 } from "lucide-react/dist/esm/icons/wand-2";
 import { default as FileQuestion } from "lucide-react/dist/esm/icons/file-question";
+import { default as ChevronUp } from "lucide-react/dist/esm/icons/chevron-up";
+import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
+import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
+import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
 
 const AutoSplitDialog = lazy(() => import("@/components/AutoSplitDialog"));
 import ExamSidebar, { type ExamQuestion } from "@/components/ExamSidebar";
@@ -78,6 +82,7 @@ export default function SourceReader({ source, onBack }: Props) {
   const [splitDone, setSplitDone] = useState(false);
   const [splitCreatedCount, setSplitCreatedCount] = useState(0);
   const [splitParentName, setSplitParentName] = useState("");
+  const [splitModules, setSplitModules] = useState<SelectionModule[]>([]);
   // Exam sidebar state
   const [examOpen, setExamOpen] = useState(false);
   const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
@@ -137,6 +142,7 @@ export default function SourceReader({ source, onBack }: Props) {
       // Smart-split: show summary and auto-create
       setSplitResult(result);
       setSplitParentName(result.parentName);
+      setSplitModules([...result.modules]);
       setSplitDone(false);
       setSplitCreatedCount(0);
       setSplitSummaryOpen(true);
@@ -149,12 +155,11 @@ export default function SourceReader({ source, onBack }: Props) {
   }, [selection]);
 
   const handleSmartSplitConfirm = useCallback(() => {
-    if (!splitResult) return;
+    if (!splitResult || splitModules.length === 0) return;
     const category = source.label || categories[0] || "Opšte";
-    const { modules } = splitResult;
+    const modules = splitModules;
     const parentName = splitParentName.trim() || splitResult.parentName;
 
-    // Build sections and sourceModules for parent card
     const sections = modules.map((mod) => ({
       title: mod.title,
       content: sanitizeHtml(mod.contentHtml),
@@ -195,7 +200,7 @@ export default function SourceReader({ source, onBack }: Props) {
       title: `Generisano 1 esej sa ${modules.length} modula`,
       description: `${splitResult.rangeLabel} iz "${source.label}"`,
     });
-  }, [splitResult, splitParentName, source, categories, addCard]);
+  }, [splitResult, splitModules, splitParentName, source, categories, addCard]);
 
   const handleCreateEssay = useCallback(() => {
     if (!essayQuestion.trim() || !selectedText) return;
@@ -583,13 +588,47 @@ export default function SourceReader({ source, onBack }: Props) {
               </div>
 
               <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
-                {splitResult.modules.map((mod, i) => (
-                  <div key={mod.articleNum} className="flex items-start gap-2 rounded-md border bg-card px-3 py-2">
-                    <Badge variant="outline" className="text-[10px] mt-0.5 flex-shrink-0">
+                {splitModules.map((mod, i) => (
+                  <div key={`${mod.articleNum}-${i}`} className="group flex items-start gap-1.5 rounded-md border bg-card px-2 py-2">
+                    <div className="flex flex-col gap-0.5 flex-shrink-0 mt-0.5">
+                      <button
+                        disabled={i === 0}
+                        onClick={() => setSplitModules(prev => {
+                          const arr = [...prev];
+                          [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+                          return arr;
+                        })}
+                        className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20 transition-colors"
+                        title="Pomjeri gore"
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </button>
+                      <button
+                        disabled={i === splitModules.length - 1}
+                        onClick={() => setSplitModules(prev => {
+                          const arr = [...prev];
+                          [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+                          return arr;
+                        })}
+                        className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20 transition-colors"
+                        title="Pomjeri dolje"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] mt-1 flex-shrink-0">
                       {i + 1}
                     </Badge>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{mod.title}</p>
+                    <div className="min-w-0 flex-1">
+                      <input
+                        value={mod.title}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setSplitModules(prev => prev.map((m, j) => j === i ? { ...m, title: val } : m));
+                        }}
+                        className="w-full text-sm font-medium bg-transparent border-b border-transparent hover:border-border focus:border-ring focus:outline-none px-0 py-0.5 transition-colors"
+                        title="Klikni za editovanje naslova"
+                      />
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
                         {mod.contentText.slice(0, 100)}{mod.contentText.length > 100 ? "..." : ""}
                       </p>
