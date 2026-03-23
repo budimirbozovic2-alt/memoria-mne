@@ -317,10 +317,11 @@ export default function SourceReader({ source, onBack }: Props) {
         }
       );
 
-      // Mark question as done
+      // Mark question as done & sync planner
       setExamQuestions(prev =>
         prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: modules.length } : q)
       );
+      incrementDailyMapped(modules.length);
 
       toast({
         title: `Esej kreiran: ${modules.length} modula`,
