@@ -33,10 +33,12 @@ export default function SessionFilters({
   selectedChapter,
   filterExamFrequent,
   examFrequentCount,
+  filterType = "all",
   onSelectCategory,
   onSelectSubcategory,
   onSelectChapter,
   onToggleExamFrequent,
+  onFilterTypeChange,
 }: SessionFiltersProps) {
   const availableSubs = selectedCategory ? (subcategories[selectedCategory] || []) : [];
 
