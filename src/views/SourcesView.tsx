@@ -110,6 +110,26 @@ export default function SourcesView() {
     toast({ title: "Izvor obrisan", description: "Linkovi na karticama su očišćeni." });
   }, []);
 
+  const handleEditSource = useCallback((source: Source) => {
+    setEditingSource(source);
+    setEditLabel(source.label);
+    setEditGazette(source.officialGazetteInfo || "");
+  }, []);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editingSource || !editLabel.trim()) return;
+    const updated: Source = {
+      ...editingSource,
+      label: editLabel.trim(),
+      officialGazetteInfo: editGazette.trim() || undefined,
+      updatedAt: Date.now(),
+    };
+    await saveSource(updated);
+    setSources(prev => prev.map(s => s.id === updated.id ? updated : s));
+    setEditingSource(null);
+    toast({ title: "Izvor ažuriran" });
+  }, [editingSource, editLabel, editGazette]);
+
   const handleNewVersion = useCallback(async () => {
     if (!versionFile || !versioningSourceId) return;
     const oldSource = sources.find(s => s.id === versioningSourceId);
