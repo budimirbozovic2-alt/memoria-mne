@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { idbLoadSettings } from "@/lib/db";
 import { useAppContext } from "@/contexts/AppContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AnimatePresence, motion } from "framer-motion";
