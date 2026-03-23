@@ -41,9 +41,13 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
   const done = questions.filter(q => q.done);
 
   // Open edit modal — populate with current pending questions
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const handleOpenEdit = useCallback(() => {
     setEditText(pending.map(q => q.text).join("\n"));
     setEditModalOpen(true);
+    // Auto-focus textarea after dialog opens
+    setTimeout(() => textareaRef.current?.focus(), 100);
   }, [pending]);
 
   // Save edited list — replace pending, keep done
