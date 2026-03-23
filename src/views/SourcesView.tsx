@@ -108,18 +108,21 @@ export default function SourcesView() {
     if (!oldSource) return;
 
     try {
-      // Pre-version auto backup (Electron)
+      // Pre-version auto backup (Electron only, best-effort)
       const electronAPI = (window as any).electronAPI;
       if (electronAPI?.requestBackup) {
         try {
+          const [bCards, bCats, bSubs, bLog, bSr] = await Promise.all([
+            idbLoadCards(), idbLoadCategories(), idbLoadSubcategories(),
+            idbLoadReviewLog(), idbLoadSettings("srSettings", {}),
+          ]);
           const backupJson = JSON.stringify({
-            timestamp: Date.now(),
-            type: "pre-version-backup",
-            sourceId: oldSource.id,
-            sourceLabel: oldSource.label,
+            version: 2, type: "pre-version-backup",
+            cards: bCards, categories: bCats, subcategories: bSubs,
+            reviewLog: bLog, srSettings: bSr,
           });
           await electronAPI.requestBackup(backupJson);
-        } catch (_) { /* backup is best-effort */ }
+        } catch (_) { /* best-effort */ }
       }
 
       // Parse DOCX in Web Worker
