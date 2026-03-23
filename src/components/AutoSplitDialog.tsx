@@ -445,43 +445,6 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
         </div>
       </DialogContent>
 
-      {/* Merge naming dialog */}
-      {mergeNameDialog && (
-        <Dialog open={mergeNameDialog} onOpenChange={(o) => !o && setMergeNameDialog(false)}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Merge className="h-5 w-5 text-primary" />
-                Imenuj grupni esej
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-medium">Naziv eseja</label>
-                <input
-                  value={mergeName}
-                  onChange={(e) => setMergeName(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  placeholder="npr. 'Sve o podnescima'"
-                  autoFocus
-                  onKeyDown={(e) => e.key === "Enter" && confirmMerge()}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Članci {selectedIndices.map(i => rows[i]?.articles.map(a => a.articleNum).join(",")).join(", ")} će postati moduli unutar ovog eseja.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setMergeNameDialog(false)} className="flex-1">
-                  Otkaži
-                </Button>
-                <Button onClick={confirmMerge} disabled={!mergeName.trim()} className="flex-1">
-                  Spoji
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </Dialog>
   );
 }
