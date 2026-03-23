@@ -34,9 +34,10 @@ const VIEW_ACTIVITY_MAP: Partial<Record<View, ActivityType>> = {
 
 // ─── Pomodoro types ─────────────────────────────────────
 export interface PomodoroState {
-  mode: "work" | "break";
+  mode: "work" | "break" | "longBreak";
   seconds: number;
   running: boolean;
+  cycleCount: number;
 }
 
 // ═══════════════════════════════════════════════════════════
