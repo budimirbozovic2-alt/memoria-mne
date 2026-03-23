@@ -138,6 +138,7 @@ export default function SourceReader({ source, onBack }: Props) {
       // Smart-split: show summary and auto-create
       setSplitResult(result);
       setSplitParentName(result.parentName);
+      setSplitModules([...result.modules]);
       setSplitDone(false);
       setSplitCreatedCount(0);
       setSplitSummaryOpen(true);
