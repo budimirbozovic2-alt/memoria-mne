@@ -539,6 +539,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
           </Suspense>
         )}
       </div>
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════
