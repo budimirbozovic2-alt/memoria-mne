@@ -625,20 +625,20 @@ export function useCards() {
     };
     const dateStr = new Date().toISOString().slice(0, 10);
 
-    const json = await buildJsonChunked(data, onProgress);
+    const blob = await buildJsonChunked(data, onProgress);
 
     if (compress) {
       onProgress(85, "Kompresija...");
       const JSZip = (await import("jszip")).default;
       const zip = new JSZip();
-      zip.file(`codex-backup-${dateStr}.json`, json);
-      const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
+      zip.file(`codex-backup-${dateStr}.json`, blob);
+      const zipBlob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
       onProgress(100, "Preuzimanje...");
-      downloadFile(blob, `codex-backup-${dateStr}.zip`);
+      downloadFile(zipBlob, `codex-backup-${dateStr}.zip`);
       toast.success("Kompletni backup uspješno exportovan.");
     } else {
       onProgress(100, "Preuzimanje...");
-      downloadFile(new Blob([json], { type: "application/json" }), `codex-backup-${dateStr}.json`);
+      downloadFile(blob, `codex-backup-${dateStr}.json`);
       toast.success("Kompletni backup uspješno exportovan.");
     }
     setLastBackupTime();
