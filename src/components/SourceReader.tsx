@@ -146,7 +146,8 @@ export default function SourceReader({ source, onBack }: Props) {
   const handleSmartSplitConfirm = useCallback(() => {
     if (!splitResult) return;
     const category = source.label || categories[0] || "Opšte";
-    const { modules, parentName } = splitResult;
+    const { modules } = splitResult;
+    const parentName = splitParentName.trim() || splitResult.parentName;
 
     // Build sections and sourceModules for parent card
     const sections = modules.map((mod) => ({
