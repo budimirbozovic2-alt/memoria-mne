@@ -198,7 +198,8 @@ export default function CardForm({ categories, subcategories, onSave, onSaveFlas
               </button>
             ))}
           </div>
-          <button type="button" onClick={onCancel} className="text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
+            {editCard && <span className="text-xs">Vrati me nazad</span>}
             <X className="h-5 w-5" />
           </button>
         </div>
