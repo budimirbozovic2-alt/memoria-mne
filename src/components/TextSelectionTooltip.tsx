@@ -12,6 +12,7 @@ interface Props {
   category: string;
   subcategory?: string;
   tags?: string[];
+  keyParts?: string[];
   onMarkKeyPart?: (text: string) => void;
 }
 
