@@ -595,7 +595,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
 
             {arPhase === "preview" && !isCompleted && (
               <>
-                <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags} onMarkKeyPart={onAddKeyPart ? (text: string) => onAddKeyPart(card.id, text) : undefined}>
+                <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags} keyParts={card.keyParts} onMarkKeyPart={onAddKeyPart ? (text: string) => onAddKeyPart(card.id, text) : undefined}>
                 <div className="space-y-3">
                   <span className="text-sm text-muted-foreground">{sections.length} modula — pročitaj pažljivo</span>
                   {sections.map((section) => (
