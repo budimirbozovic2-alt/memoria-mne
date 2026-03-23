@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { sanitizeHtml } from "@/lib/sanitize";
 import {
   loadSources, saveSource, deleteSource,
-  extractOutline, injectHeadingIds, extractArticles, extractOfficialGazette, type Source,
+  extractOutline, injectHeadingIds, extractArticles, type Source,
 } from "@/lib/sources-storage";
 import { compareVersions, getChangedArticleIds, matchAnchorToArticle, parseArticles, type DiffResult } from "@/lib/article-parser";
 import { parseDocxInWorker } from "@/lib/docx-parser";
