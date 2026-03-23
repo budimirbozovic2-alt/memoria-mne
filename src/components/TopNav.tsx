@@ -21,10 +21,11 @@ import { useCardContext } from "@/contexts/AppContext";
 
 
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Zap, Home, GraduationCap, RotateCcw, BookOpen, Map, Brain, Network, Target, FolderOpen, Moon, Sun, Menu, X, Focus, Settings as SettingsIcon, BarChart3, FlaskConical, Database as DatabaseIcon, HelpCircle } from "lucide-react";
+import { setDarkMode } from "@/lib/app-settings";
 
 interface Props {
   onOpenSearch?: () => void;
