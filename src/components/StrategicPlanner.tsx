@@ -456,6 +456,11 @@ export default function StrategicPlanner({ cards, categories, reviewLog, onBack,
                       onCancelEdit={() => setEditingPhaseId(null)}
                       onStartEdit={() => startEditPhase(p)}
                       onRemove={() => removePhase(p.id)}
+                      onOpenInDB={() => {
+                        if (p.categories.length > 0 && onNavigateToDatabase) {
+                          onNavigateToDatabase(p.categories[0]);
+                        }
+                      }}
                     />
                   );
                 })}
