@@ -148,8 +148,23 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     const status = getPlannerStatus(estimated, planner.finalGoalDate, planner.bufferPercent ?? 15);
     const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
     const timeRec = suggestion ? calcDailyTimeRecommendation(suggestion.suggestedToday, velocity, stats.due) : null;
-    return { status, suggestion, timeRec, remaining, totalSections, learnedSections };
-  }, [stats, reviewLog]);
+
+    // Active phase progress
+    const phaseProgressList = planner.phases.map(p => ({ ...p, ...calcPhaseProgress(p, cards) }));
+    const activePhase = phaseProgressList.find(p => p.pct < 100) || phaseProgressList[0] || null;
+
+    // Daily mapped count
+    const dailyMapped = getDailyMappedCount();
+    const dailyQuota = suggestion?.suggestedToday ?? 0;
+
+    // Auto-redistribute check
+    const redistResult = autoRedistributeIfNeeded(cards, planner.finalGoalDate, planner.bufferPercent ?? 15);
+
+    return {
+      status, suggestion, timeRec, remaining, totalSections, learnedSections,
+      activePhase, dailyMapped, dailyQuota, redistResult,
+    };
+  }, [stats, reviewLog, cards]);
 
   const cognitiveDebt = useDeferredCompute(() => getCognitiveDebt(dailyGoal), [dailyGoal]);
 
