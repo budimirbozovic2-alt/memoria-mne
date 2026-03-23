@@ -532,8 +532,13 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
             </div>
           </motion.div>
         </AnimatePresence>
+
+        {card.sourceId && card.originalSourceSnippet && snippetOpen && (
+          <Suspense fallback={null}>
+            <SourceSnippetDialog card={card} open={snippetOpen} onOpenChange={setSnippetOpen} />
+          </Suspense>
+        )}
       </div>
-    );
   }
 
   // ═══════════════════════════════════════════════════════════════
