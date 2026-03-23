@@ -179,6 +179,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
 
   const goToCard = useCallback((index: number) => {
     setCurrentIndex(index);
+    sessionStorage.setItem("sr-learn-current-index", String(index));
     setExpandedSections(new Set());
     setDrillRevealed(false);
     setChainRevealed(false);
