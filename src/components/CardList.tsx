@@ -2,6 +2,7 @@ import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrieva
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { format } from "date-fns";
 import { Edit2, Trash2 } from "lucide-react";
+import { default as Scale } from "lucide-react/dist/esm/icons/scale";
 import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
