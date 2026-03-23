@@ -80,6 +80,7 @@ export default function SourceReader({ source, onBack }: Props) {
       {
         sourceId: source.id,
         textAnchor: anchor,
+        originalSourceSnippet: selectedText,
       }
     );
 
