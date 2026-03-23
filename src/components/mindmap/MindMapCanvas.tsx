@@ -60,6 +60,31 @@ interface Props {
   onBack: () => void;
 }
 
+// ── Snap guide lines component (viewport-aware) ──
+function SnapGuideLines({ snapLines }: { snapLines: { x?: number; y?: number } }) {
+  const { getViewport } = useReactFlow();
+  if (snapLines.x === undefined && snapLines.y === undefined) return null;
+  const { x: tx, y: ty, zoom } = getViewport();
+  return (
+    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 1000 }}>
+      {snapLines.x !== undefined && (
+        <line
+          x1={snapLines.x * zoom + tx} y1={0}
+          x2={snapLines.x * zoom + tx} y2={9999}
+          stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="6 3" opacity={0.5}
+        />
+      )}
+      {snapLines.y !== undefined && (
+        <line
+          x1={0} y1={snapLines.y * zoom + ty}
+          x2={9999} y2={snapLines.y * zoom + ty}
+          stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="6 3" opacity={0.5}
+        />
+      )}
+    </svg>
+  );
+}
+
 function MindMapCanvasInner({ doc, onBack }: Props) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
