@@ -121,7 +121,16 @@ function PhaseItem({ phase: p, index: i, dynamicDays, isEditing, editName, editD
           </button>
           <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: PHASE_COLORS[i % PHASE_COLORS.length] }} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{p.name}</p>
+            <button
+              onClick={p.categories.length > 0 ? onOpenInDB : undefined}
+              className={cn(
+                "text-sm font-medium truncate text-left",
+                p.categories.length > 0 && "hover:text-primary hover:underline cursor-pointer transition-colors"
+              )}
+              title={p.categories.length > 0 ? "Otvori u Bazi podataka" : undefined}
+            >
+              {p.name}
+            </button>
             <p className="text-xs text-muted-foreground">
               {p.expectedDays}d očekivano
               {dynamicDays !== null && dynamicDays !== p.expectedDays && (
@@ -129,7 +138,22 @@ function PhaseItem({ phase: p, index: i, dynamicDays, isEditing, editName, editD
                   → {dynamicDays}d dinamički
                 </span>
               )}
-              {p.categories.length > 0 ? ` • ${p.categories.join(", ")}` : ""}
+              {p.categories.length > 0 && (
+                <span className="ml-1">
+                  •{" "}
+                  {p.categories.map((cat, ci) => (
+                    <span key={cat}>
+                      {ci > 0 && ", "}
+                      <button
+                        onClick={onOpenInDB}
+                        className="hover:text-primary hover:underline cursor-pointer transition-colors"
+                      >
+                        {cat}
+                      </button>
+                    </span>
+                  ))}
+                </span>
+              )}
             </p>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onStartEdit}><Pencil className="h-3.5 w-3.5" /></Button>
