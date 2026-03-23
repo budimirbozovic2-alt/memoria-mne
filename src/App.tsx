@@ -28,6 +28,7 @@ const FrequentErrorsPage = lazy(() => import("@/views/FrequentErrorsPage"));
 const MajorSystemPage = lazy(() => import("@/views/MajorSystemPage"));
 const DatabasePage = lazy(() => import("@/views/DatabasePage"));
 const SpeedReaderPage = lazy(() => import("@/views/SpeedReaderPage"));
+const MindMapPage = lazy(() => import("@/views/MindMapPage"));
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
                       <Route path="/major-system-settings" element={<MajorSystemPage />} />
                       <Route path="/database" element={<DatabasePage />} />
                       <Route path="/speed-reader" element={<SpeedReaderPage />} />
+                      <Route path="/mind-map" element={<MindMapPage />} />
                       {/* Legacy redirects */}
                       <Route path="/cards" element={<DatabasePage />} />
                       <Route path="/categories" element={<DatabasePage />} />

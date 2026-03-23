@@ -12,6 +12,15 @@ export interface SourceArticle {
   text: string;
 }
 
+export interface MindMapDoc {
+  id: string;
+  title: string;
+  nodes: any[];
+  edges: any[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Source {
   id: string;
   label: string;
@@ -42,6 +51,7 @@ class MemoriaDB extends Dexie {
   disciplineLog!: Table<DisciplineEntry & { id?: number }, number>;
   // v3: sources
   sources!: Table<Source, string>;
+  mindMaps!: Table<MindMapDoc, string>;
 
   constructor() {
     super("MemoriaDB");
@@ -81,6 +91,22 @@ class MemoriaDB extends Dexie {
       activityLog: "++id, timestamp, type",
       disciplineLog: "++id, date",
       sources: "id, label, version, createdAt",
+    });
+    this.version(4).stores({
+      cards: "id, category, subcategory, type, createdAt, sourceId",
+      categories: "id, name",
+      subcategories: "id, category",
+      reviewLog: "++id, cardId, sectionId, timestamp, category",
+      pomodoroLog: "++id, timestamp, type",
+      settings: "key",
+      diary: "id, date",
+      calibrationLog: "++id, timestamp, cardId",
+      latencyLog: "++id, timestamp, cardId",
+      slippageLog: "++id, date",
+      activityLog: "++id, timestamp, type",
+      disciplineLog: "++id, date",
+      sources: "id, label, version, createdAt",
+      mindMaps: "id, title, updatedAt",
     });
   }
 }

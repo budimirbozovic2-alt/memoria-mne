@@ -13,6 +13,7 @@ import { default as Moon } from "lucide-react/dist/esm/icons/moon";
 import { default as Sun } from "lucide-react/dist/esm/icons/sun";
 import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
 import { default as DatabaseIcon } from "lucide-react/dist/esm/icons/database";
+import { default as Network } from "lucide-react/dist/esm/icons/network";
 import { BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -45,6 +46,7 @@ const LAB_ITEMS = [
   { path: "/database", icon: DatabaseIcon, label: "Kartice" },
   { path: "/categories", icon: FolderOpen, label: "Kategorije" },
   { path: "/speed-reader", icon: Zap, label: "Speed Reader" },
+  { path: "/mind-map", icon: Network, label: "Mentalne mape" },
 ];
 
 export default function AppSidebar() {
