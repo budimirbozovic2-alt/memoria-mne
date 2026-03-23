@@ -15,7 +15,7 @@ const APP_SLIDES: OnboardingSlide[] = [
   {
     icon: Sparkles,
     iconColor: "bg-primary/15 text-primary",
-    title: "Dobrodošli u Memoria-u",
+    title: "Dobrodošli u CODEX",
     content: "Inteligentni sistem za učenje koji se prilagođava tvom napretku. Evo kratkog pregleda ključnih funkcija.",
     bullets: [
       "Sve kartice se automatski raspoređuju po FSRS algoritmu",

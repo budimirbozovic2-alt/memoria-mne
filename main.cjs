@@ -234,7 +234,7 @@ function writeBackup(jsonString) {
     ensureBackupDir();
     const now = new Date();
     const ts = now.toISOString().replace(/[-:T]/g, '_').slice(0, 15);
-    const filename = `Memoria_AutoBackup_${ts}.json`;
+    const filename = `Codex_AutoBackup_${ts}.json`;
     fs.writeFileSync(path.join(BACKUP_DIR, filename), jsonString);
     cleanOldBackups();
     return true;

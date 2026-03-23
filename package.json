@@ -1,5 +1,5 @@
 {
-  "name": "memoria-mne",
+  "name": "codex-app",
   "private": true,
   "version": "3.0.0",
   "type": "module",
@@ -18,8 +18,8 @@
     "dist:mac": "npm run build && electron-builder --mac"
   },
   "build": {
-    "appId": "com.memoria.mne",
-    "productName": "Memoria MNE",
+    "appId": "com.codex.app",
+    "productName": "CODEX",
     "directories": {
       "output": "release",
       "buildResources": "build"
