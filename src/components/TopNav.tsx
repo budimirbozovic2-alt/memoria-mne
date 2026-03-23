@@ -8,6 +8,7 @@ import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
 import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
 import { default as Map } from "lucide-react/dist/esm/icons/map";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
+import { default as Network } from "lucide-react/dist/esm/icons/network";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
 import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
 import { default as Moon } from "lucide-react/dist/esm/icons/moon";
