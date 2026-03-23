@@ -1,4 +1,5 @@
 import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability } from "@/lib/spaced-repetition";
+import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { format } from "date-fns";
 import { Edit2, Trash2 } from "lucide-react";
 import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
