@@ -70,6 +70,11 @@ export default function SourceReader({ source, onBack }: Props) {
   const [essayCategory, setEssayCategory] = useState(categories[0] ?? "Opšte");
   const [selectedText, setSelectedText] = useState("");
   const [autoSplitOpen, setAutoSplitOpen] = useState(false);
+  // Smart-split summary state
+  const [splitSummaryOpen, setSplitSummaryOpen] = useState(false);
+  const [splitResult, setSplitResult] = useState<{ modules: SelectionModule[]; rangeLabel: string; parentName: string } | null>(null);
+  const [splitDone, setSplitDone] = useState(false);
+  const [splitCreatedCount, setSplitCreatedCount] = useState(0);
   // Coverage analysis (memoized)
   const coverage = useMemo(
     () => analyzeCoverage(source.id, source.htmlContent, cards),
