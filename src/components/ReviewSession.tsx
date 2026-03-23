@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react"; 
+import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react"; 
 import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS, SectionState, getRetrievability } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,6 +18,7 @@ import { default as Play } from "lucide-react/dist/esm/icons/play";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
 import { default as Shield } from "lucide-react/dist/esm/icons/shield";
 import SessionFilters from "@/components/SessionFilters";
+import { default as Scale } from "lucide-react/dist/esm/icons/scale";
 import { Button } from "@/components/ui/button";
 
 import { useToast } from "@/hooks/use-toast";
@@ -525,7 +526,10 @@ function ReviewCard({
   const [answerRevealedAt, setAnswerRevealedAt] = useState<number | null>(null);
   const [canGradeEasy, setCanGradeEasy] = useState(false);
   const [confidence, setConfidence] = useState<number | null>(null);
+  const [snippetOpen, setSnippetOpen] = useState(false);
   const questionShownAt = useRef<number>(Date.now());
+  const hasSource = !!card.sourceId && !!card.originalSourceSnippet;
+  const SourceSnippetDialog = useMemo(() => hasSource ? lazy(() => import("@/components/SourceSnippetDialog")) : null, [hasSource]);
 
   // Reset timer when card/section changes or answer is hidden
   useEffect(() => {
@@ -688,6 +692,15 @@ function ReviewCard({
             </div>
             <div className="flex items-center gap-2 mt-1">
               <p className="text-lg leading-relaxed font-serif flex-1">{card.question}</p>
+              {hasSource && (
+                <button
+                  onClick={() => setSnippetOpen(true)}
+                  className={`p-1.5 rounded-md transition-colors shrink-0 ${card.needsReview ? "text-warning hover:bg-warning/10" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+                  title="Uporedi sa izvorom"
+                >
+                  <Scale className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -788,6 +801,12 @@ function ReviewCard({
           )}
         </motion.div>
       </AnimatePresence>
+
+      {hasSource && snippetOpen && SourceSnippetDialog && (
+        <Suspense fallback={null}>
+          <SourceSnippetDialog card={card} open={snippetOpen} onOpenChange={setSnippetOpen} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import { Card, getCardScore, getDueCards } from "@/lib/spaced-repetition";
 import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress, loadReviewLog } from "@/lib/storage";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
@@ -7,6 +7,7 @@ import { default as ShieldAlert } from "lucide-react/dist/esm/icons/shield-alert
 import { motion, AnimatePresence } from "framer-motion";
 import { Link2, BarChart3, Volume2 } from "lucide-react";
 import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
+import { default as Scale } from "lucide-react/dist/esm/icons/scale";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
@@ -51,6 +52,8 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
   const [started, setStarted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [snippetOpen, setSnippetOpen] = useState(false);
+  const SourceSnippetDialog = useMemo(() => lazy(() => import("@/components/SourceSnippetDialog")), []);
 
   // Session state
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -512,6 +515,11 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
+              {card.sourceId && card.originalSourceSnippet && (
+                <Button variant="ghost" size="icon" onClick={() => setSnippetOpen(true)} title="Uporedi sa izvorom" className={`shrink-0 ${card.needsReview ? "text-warning" : ""}`}>
+                  <Scale className="h-4 w-4" />
+                </Button>
+              )}
               {!isRead ? (
                 <Button onClick={() => { handleMarkRead(); goNext(); }} className="flex-1">
                   <Check className="h-4 w-4 mr-2" /> Pročitano
@@ -524,6 +532,12 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
             </div>
           </motion.div>
         </AnimatePresence>
+
+        {card.sourceId && card.originalSourceSnippet && snippetOpen && (
+          <Suspense fallback={null}>
+            <SourceSnippetDialog card={card} open={snippetOpen} onOpenChange={setSnippetOpen} />
+          </Suspense>
+        )}
       </div>
     );
   }
