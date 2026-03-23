@@ -496,9 +496,11 @@ export default function SourceReader({ source, onBack }: Props) {
               <button
                 onClick={handleConvertToEssay}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
+                title="Prečica: S"
               >
                 <PenSquare className="h-3.5 w-3.5" />
                 Pretvori u esej
+                <kbd className="text-[9px] opacity-70 ml-0.5 border border-primary-foreground/30 rounded px-1">S</kbd>
               </button>
               <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
             </div>

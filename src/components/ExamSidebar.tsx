@@ -141,11 +141,25 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
           {/* Pending questions */}
           <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1.5">
             {pending.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-6">
-                {questions.length === 0
-                  ? "Kliknite 'Uredi listu pitanja' da dodate pitanja"
-                  : "Sva pitanja su mapirana ✓"}
-              </p>
+              <div className="text-center py-6 space-y-3">
+                {questions.length === 0 ? (
+                  <>
+                    <FileText className="h-8 w-8 mx-auto text-muted-foreground/30" />
+                    <p className="text-xs text-muted-foreground">
+                      Nema ispitnih pitanja.
+                    </p>
+                    <Button size="sm" variant="outline" className="text-xs gap-1.5" onClick={handleOpenEdit}>
+                      <ClipboardPaste className="h-3 w-3" />
+                      Započni uvoz iz Worda
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-8 w-8 mx-auto text-success" />
+                    <p className="text-xs text-muted-foreground">Sva pitanja su mapirana ✓</p>
+                  </>
+                )}
+              </div>
             )}
             {pending.map(q => {
               const isMapping = mappingId === q.id;
