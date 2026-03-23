@@ -515,6 +515,11 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   <Pencil className="h-4 w-4" />
                 </Button>
               )}
+              {card.sourceId && card.originalSourceSnippet && (
+                <Button variant="ghost" size="icon" onClick={() => setSnippetOpen(true)} title="Uporedi sa izvorom" className={`shrink-0 ${card.needsReview ? "text-warning" : ""}`}>
+                  <Scale className="h-4 w-4" />
+                </Button>
+              )}
               {!isRead ? (
                 <Button onClick={() => { handleMarkRead(); goNext(); }} className="flex-1">
                   <Check className="h-4 w-4 mr-2" /> Pročitano
