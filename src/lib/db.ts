@@ -195,7 +195,7 @@ export async function migrateFromLocalStorage(): Promise<void> {
     }
 
     localStorage.setItem(MIGRATION_FLAG, "1");
-    console.log("[MemoriaDB] Migration from localStorage complete");
+    // migration complete
   } catch (err) {
     console.error("[MemoriaDB] Migration failed, falling back to localStorage", err);
   }
