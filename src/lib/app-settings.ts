@@ -22,12 +22,25 @@ export interface DashboardWidgetConfig {
   showProgressRing: boolean;
 }
 
+export interface PomodoroConfig {
+  workMinutes: number;
+  breakMinutes: number;
+}
+
+export interface NotificationConfig {
+  enabled: boolean;
+  reminderHour: number; // 0-23
+  reminderMinute: number; // 0-59
+}
+
 export interface AppSettings {
   targetRetention: number;
   autoBackupDays: number;
   soundEffects: boolean;
   colorTheme: ColorTheme;
   dashboardWidgets: DashboardWidgetConfig;
+  pomodoro: PomodoroConfig;
+  notifications: NotificationConfig;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -45,6 +58,15 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     showStatusIcons: true,
     showProgressRing: true,
   },
+  pomodoro: {
+    workMinutes: 25,
+    breakMinutes: 5,
+  },
+  notifications: {
+    enabled: false,
+    reminderHour: 9,
+    reminderMinute: 0,
+  },
 };
 
 export function loadAppSettings(): AppSettings {
@@ -56,6 +78,8 @@ export function loadAppSettings(): AppSettings {
       ...DEFAULT_APP_SETTINGS,
       ...parsed,
       dashboardWidgets: { ...DEFAULT_APP_SETTINGS.dashboardWidgets, ...parsed.dashboardWidgets },
+      pomodoro: { ...DEFAULT_APP_SETTINGS.pomodoro, ...parsed.pomodoro },
+      notifications: { ...DEFAULT_APP_SETTINGS.notifications, ...parsed.notifications },
     };
   } catch {
     return { ...DEFAULT_APP_SETTINGS };
