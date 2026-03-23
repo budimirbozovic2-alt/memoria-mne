@@ -21,10 +21,11 @@ import { useCardContext } from "@/contexts/AppContext";
 
 
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Zap, Home, GraduationCap, RotateCcw, BookOpen, Map, Brain, Network, Target, FolderOpen, Moon, Sun, Menu, X, Focus, Settings as SettingsIcon, BarChart3, FlaskConical, Database as DatabaseIcon, HelpCircle } from "lucide-react";
+import { setDarkMode } from "@/lib/app-settings";
 
 interface Props {
   onOpenSearch?: () => void;
@@ -59,11 +60,12 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
   const [mobileOpen, setMobileOpen] = useState(false);
   const [labOpen, setLabOpen] = useState(false);
   const labRef = useRef<HTMLDivElement>(null);
+  const [, startTransition] = useTransition();
 
   const toggleDark = useCallback(() => {
     const next = !dark;
     setDarkState(next);
-    import("@/lib/app-settings").then(m => m.setDarkMode(next));
+    setDarkMode(next);
   }, [dark]);
 
   // Close mega menu on click outside
@@ -117,7 +119,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
           {/* Laboratorija mega menu trigger */}
           <div ref={labRef} className="relative">
             <button
-              onClick={() => setLabOpen(v => !v)}
+              onClick={() => startTransition(() => setLabOpen(v => !v))}
               className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap hover:bg-secondary/60 ${
                 isLabActive || labOpen
                   ? "bg-primary/10 text-primary"
