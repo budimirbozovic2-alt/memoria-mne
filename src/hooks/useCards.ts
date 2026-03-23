@@ -584,13 +584,42 @@ export function useCards() {
   }, [cards, categories, subcategories, downloadFile, buildJsonChunked]);
 
   const exportData = useCallback(async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
-    onProgress(5, "Učitavanje izvora i mentalnih mapa...");
+    onProgress(5, "Učitavanje svih podataka...");
     const { db } = await import("@/lib/db");
-    const [sources, mindMaps] = await Promise.all([
+    const [sources, mindMaps, diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog] = await Promise.all([
       db.sources.toArray(),
       db.mindMaps.toArray(),
+      db.diary.toArray(),
+      db.calibrationLog.toArray(),
+      db.latencyLog.toArray(),
+      db.slippageLog.toArray(),
+      db.activityLog.toArray(),
+      db.disciplineLog.toArray(),
+      db.pomodoroLog.toArray(),
     ]);
-    const data = { version: 3, type: "full", cards, categories, subcategories, reviewLog, srSettings, sources, mindMaps };
+
+    // Collect key localStorage items
+    const localStorageData: Record<string, any> = {};
+    const lsKeys = [
+      "sr-planner-config", "sr-app-settings", "sr-mnemonic-workshop",
+      "sr-mnemonic-associations", "sr-major-system-map",
+      "sr-daily-mapped-count", "sr-daily-mapped-date",
+      "sr-learn-progress", "sr-last-backup",
+    ];
+    for (const key of lsKeys) {
+      const val = localStorage.getItem(key);
+      if (val !== null) {
+        try { localStorageData[key] = JSON.parse(val); } catch { localStorageData[key] = val; }
+      }
+    }
+
+    const data = {
+      version: 4, type: "full",
+      cards, categories, subcategories, reviewLog, srSettings,
+      sources, mindMaps,
+      diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog,
+      localStorageData,
+    };
     const dateStr = new Date().toISOString().slice(0, 10);
 
     const json = await buildJsonChunked(data, onProgress);
@@ -603,11 +632,11 @@ export function useCards() {
       const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
       onProgress(100, "Preuzimanje...");
       downloadFile(blob, `codex-backup-${dateStr}.zip`);
-      toast.success("Pun backup uspješno exportovan.");
+      toast.success("Kompletni backup uspješno exportovan.");
     } else {
       onProgress(100, "Preuzimanje...");
       downloadFile(new Blob([json], { type: "application/json" }), `codex-backup-${dateStr}.json`);
-      toast.success("Pun backup uspješno exportovan.");
+      toast.success("Kompletni backup uspješno exportovan.");
     }
     setLastBackupTime();
   }, [cards, categories, subcategories, reviewLog, srSettings, downloadFile, buildJsonChunked]);
@@ -716,9 +745,42 @@ export function useCards() {
         }
       }
 
+      // Restore metacognitive + planner IDB tables (v4+)
+      const idbTables: { key: string; table: string }[] = [
+        { key: "diary", table: "diary" },
+        { key: "calibrationLog", table: "calibrationLog" },
+        { key: "latencyLog", table: "latencyLog" },
+        { key: "slippageLog", table: "slippageLog" },
+        { key: "activityLog", table: "activityLog" },
+        { key: "disciplineLog", table: "disciplineLog" },
+        { key: "pomodoroLog", table: "pomodoroLog" },
+      ];
+      const hasExtraTables = idbTables.some(t => Array.isArray(parsed[t.key]) && parsed[t.key].length > 0);
+      if (hasExtraTables) {
+        const { db } = await import("@/lib/db");
+        for (const { key, table } of idbTables) {
+          if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
+            if (strategy === "overwrite") {
+              await (db as any)[table].clear();
+            }
+            await (db as any)[table].bulkPut(parsed[key]);
+          }
+        }
+      }
+
+      // Restore localStorage data (v4+)
+      if (parsed.localStorageData && typeof parsed.localStorageData === "object") {
+        for (const [key, value] of Object.entries(parsed.localStorageData)) {
+          localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+        }
+      }
+
       const extraParts: string[] = [];
       if (Array.isArray(parsed.sources) && parsed.sources.length > 0) extraParts.push(`${parsed.sources.length} izvora`);
       if (Array.isArray(parsed.mindMaps) && parsed.mindMaps.length > 0) extraParts.push(`${parsed.mindMaps.length} mentalnih mapa`);
+      if (Array.isArray(parsed.diary) && parsed.diary.length > 0) extraParts.push(`${parsed.diary.length} dnevničkih zapisa`);
+      if (Array.isArray(parsed.disciplineLog) && parsed.disciplineLog.length > 0) extraParts.push("disciplinski log");
+      if (parsed.localStorageData) extraParts.push("podešavanja i planer");
       const extraMsg = extraParts.length > 0 ? ` + ${extraParts.join(", ")}` : "";
       toast.success(`Uspješno uvezeno ${importedCards.length} kartica${extraMsg}.`);
     } catch (err) {
