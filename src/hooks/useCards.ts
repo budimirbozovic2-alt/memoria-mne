@@ -469,6 +469,20 @@ export function useCards() {
     });
   }, [patchCard]);
 
+  // Bulk flag cards as needsReview (for source version updates)
+  const bulkFlagNeedsReview = useCallback((cardIds: string[]) => {
+    if (cardIds.length === 0) return;
+    setCardMap(prev => {
+      const next = { ...prev };
+      for (const id of cardIds) {
+        if (next[id]) {
+          next[id] = { ...next[id], needsReview: true };
+        }
+      }
+      return next;
+    });
+  }, [setCardMap]);
+
   const downloadFile = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -691,7 +705,7 @@ export function useCards() {
 
   return {
     cards, categories, subcategories, dueCards, stats, categoryStats, cardCountByCategory, reviewLog, srSettings, ready,
-    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, addKeyPart, bulkUpdateSubcategory, bulkUpdateChapter, reorderCards, logError, clearErrorLog,
+    addCard, addFlashCard, updateCard, deleteCard, splitCard, reviewSection, markRead, toggleTag, addKeyPart, bulkFlagNeedsReview, bulkUpdateSubcategory, bulkUpdateChapter, reorderCards, logError, clearErrorLog,
     exportData, exportTemplate, importData, importCards,
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,

@@ -19,8 +19,9 @@ import {
   extractOutline, injectHeadingIds, extractArticles, type Source,
 } from "@/lib/sources-storage";
 import { compareVersions, getChangedArticleIds, matchAnchorToArticle, parseArticles, type DiffResult } from "@/lib/article-parser";
+import { parseDocxInWorker } from "@/lib/docx-parser";
 import { useAppContext } from "@/contexts/AppContext";
-import { db } from "@/lib/db";
+import { db, idbLoadCards, idbLoadCategories, idbLoadSubcategories, idbLoadReviewLog, idbLoadSettings } from "@/lib/db";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 
 const SourceReader = lazy(() => import("@/components/SourceReader"));
@@ -31,7 +32,7 @@ function generateId() {
 }
 
 export default function SourcesView() {
-  const { cards } = useAppContext();
+  const { cards, bulkFlagNeedsReview } = useAppContext();
   const [sources, setSources] = useState<Source[]>([]);
   const [importing, setImporting] = useState(false);
   const [importLabel, setImportLabel] = useState("");
@@ -58,9 +59,8 @@ export default function SourcesView() {
     setImportLabel(f.name.replace(/\.docx$/i, ""));
     try {
       const arrayBuffer = await f.arrayBuffer();
-      const mammoth = (await import("mammoth")).default;
-      const result = await mammoth.convertToHtml({ arrayBuffer });
-      setImportHtml(sanitizeHtml(result.value));
+      const html = await parseDocxInWorker(arrayBuffer);
+      setImportHtml(sanitizeHtml(html));
     } catch {
       toast({ title: "Greška", description: "Nije moguće procesirati DOCX fajl.", variant: "destructive" });
     }
@@ -108,10 +108,27 @@ export default function SourcesView() {
     if (!oldSource) return;
 
     try {
+      // Pre-version auto backup (Electron only, best-effort)
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI?.requestBackup) {
+        try {
+          const [bCards, bCats, bSubs, bLog, bSr] = await Promise.all([
+            idbLoadCards(), idbLoadCategories(), idbLoadSubcategories(),
+            idbLoadReviewLog(), idbLoadSettings("srSettings", {}),
+          ]);
+          const backupJson = JSON.stringify({
+            version: 2, type: "pre-version-backup",
+            cards: bCards, categories: bCats, subcategories: bSubs,
+            reviewLog: bLog, srSettings: bSr,
+          });
+          await electronAPI.requestBackup(backupJson);
+        } catch (_) { /* best-effort */ }
+      }
+
+      // Parse DOCX in Web Worker
       const arrayBuffer = await versionFile.arrayBuffer();
-      const mammoth = (await import("mammoth")).default;
-      const result = await mammoth.convertToHtml({ arrayBuffer });
-      const html = sanitizeHtml(result.value);
+      const rawHtml = await parseDocxInWorker(arrayBuffer);
+      const html = sanitizeHtml(rawHtml);
       const htmlWithIds = injectHeadingIds(html);
       const outline = extractOutline(htmlWithIds);
       const articles = extractArticles(htmlWithIds);
@@ -127,14 +144,13 @@ export default function SourcesView() {
       const linkedCards = cards.filter(c => c.sourceId === oldSource.id);
       const affectedCards = linkedCards.filter(c => {
         if (!c.textAnchor) {
-          // No anchor → flag if any article changed
           return changedArticleIds.size > 0;
         }
         const articleId = matchAnchorToArticle(c.textAnchor, oldArticles);
         return articleId ? changedArticleIds.has(articleId) : false;
       });
 
-      // Atomic update: source + affected cards
+      // Atomic source update in IDB
       const newSource: Source = {
         ...oldSource,
         htmlContent: htmlWithIds,
@@ -146,13 +162,14 @@ export default function SourcesView() {
         previousHtmlContent: oldSource.htmlContent,
       };
 
-      await db.transaction("rw", [db.sources, db.cards], async () => {
+      await db.transaction("rw", [db.sources], async () => {
         await db.sources.put(newSource);
-        if (affectedCards.length > 0) {
-          const updated = affectedCards.map(c => ({ ...c, needsReview: true }));
-          await db.cards.bulkPut(updated);
-        }
       });
+
+      // Flag affected cards via React state (patchCard pipeline)
+      if (affectedCards.length > 0) {
+        bulkFlagNeedsReview(affectedCards.map(c => c.id));
+      }
 
       setSources(prev => prev.map(s => s.id === versioningSourceId ? newSource : s));
       setVersioningSourceId(null);
@@ -178,7 +195,7 @@ export default function SourcesView() {
     } catch {
       toast({ title: "Greška", description: "Nije moguće procesirati novu verziju.", variant: "destructive" });
     }
-  }, [versionFile, versioningSourceId, sources, cards]);
+  }, [versionFile, versioningSourceId, sources, cards, bulkFlagNeedsReview]);
 
   const linkedCardCount = useCallback((sourceId: string) => {
     return cards.filter(c => c.sourceId === sourceId).length;
