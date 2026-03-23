@@ -73,7 +73,6 @@ export default function SourcesView() {
     const htmlWithIds = injectHeadingIds(importHtml);
     const outline = extractOutline(htmlWithIds);
     const articles = extractArticles(htmlWithIds);
-    const officialGazetteInfo = extractOfficialGazette(htmlWithIds);
     const source: Source = {
       id: generateId(),
       label: importLabel,
@@ -81,7 +80,7 @@ export default function SourcesView() {
       htmlContent: htmlWithIds,
       outline,
       articles,
-      officialGazetteInfo,
+      officialGazetteInfo: importGazette.trim() || undefined,
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -92,13 +91,14 @@ export default function SourcesView() {
     setImportHtml("");
     setImportLabel("");
     setImportDate("");
+    setImportGazette("");
     setImportFile(null);
     const articleCount = articles.length;
     toast({
       title: "Izvor dodan",
       description: `"${source.label}" — ${articleCount > 1 ? `${articleCount} članova prepoznato` : "uvezeno"}`,
     });
-  }, [importHtml, importLabel, importDate]);
+  }, [importHtml, importLabel, importDate, importGazette]);
 
   const handleDelete = useCallback(async (id: string) => {
     await deleteSource(id);
