@@ -2,7 +2,7 @@ import React from "react";
 import { Card, getCardScore } from "@/lib/spaced-repetition";
 import { LearnMode } from "@/lib/storage";
 import { ViewWidth, viewWidthClasses, viewWidthLabels } from "./types";
-import { Volume2 } from "lucide-react";
+import { default as Volume2 } from "lucide-react/dist/esm/icons/volume-2";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
 import { motion } from "framer-motion";

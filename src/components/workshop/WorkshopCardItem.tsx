@@ -1,6 +1,6 @@
 import { useState, useMemo, memo, useCallback, lazy, Suspense } from "react";
 import { MnemonicCard, MnemonicStatus, HookType, HookMode, loadMajorSystem, resolveNumber, extractNumbers, detectEnumerationItems } from "@/lib/mnemonic-storage";
-import { CheckCircle2 } from "lucide-react";
+import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Film } from "lucide-react/dist/esm/icons/film";
 import { default as Type } from "lucide-react/dist/esm/icons/type";

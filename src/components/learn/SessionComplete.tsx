@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import { LearnMode } from "@/lib/storage";
-import { BarChart3 } from "lucide-react";
+import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { default as Clock } from "lucide-react/dist/esm/icons/clock";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
 import { default as Trophy } from "lucide-react/dist/esm/icons/trophy";

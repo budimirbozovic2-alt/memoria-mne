@@ -1,6 +1,13 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion, Reorder, useDragControls } from "framer-motion";
-import { Trash2, Pencil, Clock, BarChart3, GripVertical, RefreshCw, Shield, Flame } from "lucide-react";
+import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
+import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
+import { default as Clock } from "lucide-react/dist/esm/icons/clock";
+import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
+import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
+import { default as RefreshCw } from "lucide-react/dist/esm/icons/refresh-cw";
+import { default as Shield } from "lucide-react/dist/esm/icons/shield";
+import { default as Flame } from "lucide-react/dist/esm/icons/flame";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
 import { default as Plus } from "lucide-react/dist/esm/icons/plus";

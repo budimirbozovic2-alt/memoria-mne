@@ -5,7 +5,7 @@ import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as X } from "lucide-react/dist/esm/icons/x";
 import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
 import { Button } from "@/components/ui/button";
-import { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 export interface OnboardingSlide {
   icon: LucideIcon;

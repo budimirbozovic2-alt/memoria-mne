@@ -14,7 +14,7 @@ import { default as Sun } from "lucide-react/dist/esm/icons/sun";
 import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
 import { default as DatabaseIcon } from "lucide-react/dist/esm/icons/database";
 import { default as Network } from "lucide-react/dist/esm/icons/network";
-import { BarChart3 } from "lucide-react";
+import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
