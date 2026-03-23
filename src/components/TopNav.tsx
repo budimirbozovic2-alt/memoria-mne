@@ -79,6 +79,12 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
     return () => window.removeEventListener("codex-mapping-created", handler);
   }, []);
 
+  const toggleDark = useCallback(() => {
+    const next = !dark;
+    setDarkState(next);
+    setDarkMode(next);
+  }, [dark]);
+
   // Close mega menu on click outside
   useEffect(() => {
     if (!labOpen) return;
