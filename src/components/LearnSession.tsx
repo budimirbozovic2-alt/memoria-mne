@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import LearnOnboarding, { hasSeenOnboarding } from "@/components/LearnOnboarding";
 import SessionComplete from "./learn/SessionComplete";
 import { LearnSessionProps, ViewWidth } from "./learn/types";
-import { lazy, Suspense } from "react";
 const StudyModeFree = lazy(() => import("./learn/StudyModeFree"));
 const StudyModeRecall = lazy(() => import("./learn/StudyModeRecall"));
 const StudyModeChain = lazy(() => import("./learn/StudyModeChain"));
