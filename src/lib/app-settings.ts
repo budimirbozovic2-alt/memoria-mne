@@ -19,6 +19,7 @@ export interface DashboardWidgetConfig {
   showVelocity: boolean;
   showWeakCategories: boolean;
   showStatusIcons: boolean;
+  showProgressRing: boolean;
 }
 
 export interface AppSettings {
