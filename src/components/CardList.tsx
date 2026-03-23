@@ -386,10 +386,11 @@ interface VirtualRowData {
   onMoveCategory?: (cardId: string, category: string, subcategory?: string) => void;
   onAssignChapter?: (cardId: string, chapter: string) => void;
   onCloneToMnemonic?: (card: Card) => void;
+  onAddKeyPart?: (cardId: string, text: string) => void;
 }
 
 function VirtualRow(props: RowComponentProps<VirtualRowData>) {
-  const { index, style, filteredCards, expandedId, scrollToCardId, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete, categories, subcategories, availableChapters, onMoveCategory, onAssignChapter, onCloneToMnemonic } = props;
+  const { index, style, filteredCards, expandedId, scrollToCardId, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete, categories, subcategories, availableChapters, onMoveCategory, onAssignChapter, onCloneToMnemonic, onAddKeyPart } = props;
   const card = filteredCards[index];
   if (!card) return null;
 
