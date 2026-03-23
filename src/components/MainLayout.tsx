@@ -87,6 +87,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         onOpenOnboarding={() => setShowAppOnboarding(true)}
       />
 
+      {/* Breadcrumbs */}
+      <Breadcrumbs />
+
       {/* Main content */}
       <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full">
         {children}
