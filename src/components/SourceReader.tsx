@@ -13,7 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import { createTextAnchor, type Source } from "@/lib/sources-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { analyzeCoverage, type CoverageRange } from "@/lib/coverage-analysis";
+import { analyzeCoverage } from "@/lib/coverage-analysis";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "standard" | "coverage";
@@ -23,187 +23,32 @@ interface Props {
   onBack: () => void;
 }
 
-// ── Coverage Overlay Component ──
-function CoverageContent({
-  htmlContent,
-  ranges,
-  onMouseUp,
-}: {
-  htmlContent: string;
-  ranges: CoverageRange[];
-  onMouseUp: () => void;
-}) {
-  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Strip HTML to plain text and build annotated segments
-  const segments = useMemo(() => {
-    const plain = htmlContent
-      .replace(/<[^>]*>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    const normalized = plain.toLowerCase().replace(/\s+/g, " ").trim();
-
-    if (ranges.length === 0) {
-      return [{ text: plain, covered: false, cardQuestion: "" }];
-    }
-
-    const segs: { text: string; covered: boolean; cardQuestion: string }[] = [];
-    let cursor = 0;
-
-    for (const range of ranges) {
-      // Uncovered gap before this range
-      if (range.start > cursor) {
-        segs.push({
-          text: normalized.substring(cursor, range.start),
-          covered: false,
-          cardQuestion: "",
-        });
-      }
-      segs.push({
-        text: normalized.substring(range.start, range.end),
-        covered: true,
-        cardQuestion: range.cardQuestion,
-      });
-      cursor = range.end;
-    }
-
-    // Trailing uncovered text
-    if (cursor < normalized.length) {
-      segs.push({
-        text: normalized.substring(cursor),
-        covered: false,
-        cardQuestion: "",
-      });
-    }
-
-    return segs;
-  }, [htmlContent, ranges]);
-
-  const handleCoveredClick = useCallback(
-    (e: React.MouseEvent, cardQuestion: string) => {
-      const rect = (e.target as HTMLElement).getBoundingClientRect();
-      const containerRect = containerRef.current?.getBoundingClientRect();
-      if (!containerRect) return;
-      setTooltip({
-        text: cardQuestion,
-        x: rect.left + rect.width / 2 - containerRect.left,
-        y: rect.top - containerRect.top - 8,
-      });
-    },
-    []
-  );
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest("[data-coverage-tooltip]") && !target.closest("[data-covered]")) {
-        setTooltip(null);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={containerRef} className="relative rounded-lg border bg-card p-6" onMouseUp={onMouseUp}>
-      <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-        {segments.map((seg, i) =>
-          seg.covered ? (
-            <span
-              key={i}
-              data-covered
-              className="bg-green-500/20 border-l-2 border-green-500 px-0.5 cursor-pointer hover:bg-green-500/30 transition-colors"
-              onClick={(e) => handleCoveredClick(e, seg.cardQuestion)}
-            >
-              {seg.text}
-            </span>
-          ) : (
-            <span
-              key={i}
-              className="text-foreground/40 border-l-2 border-transparent hover:border-red-400/50 transition-colors"
-            >
-              {seg.text}
-            </span>
-          )
-        )}
-      </div>
-
-      {/* Coverage tooltip */}
-      {tooltip && (
-        <div
-          data-coverage-tooltip
-          className="absolute z-50 -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95 duration-150"
-          style={{ left: tooltip.x, top: tooltip.y }}
-        >
-          <div className="bg-popover border border-border rounded-lg shadow-lg p-3 max-w-[280px]">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Pokriveno esejom</p>
-            {tooltip.text.split("; ").map((q, i) => (
-              <p key={i} className="text-xs font-medium text-foreground">{q}</p>
-            ))}
-          </div>
-          <div className="w-2.5 h-2.5 bg-popover border-b border-r border-border rotate-45 mx-auto -mt-1.5" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Stats Bar ──
+// ── Compact Coverage Stats ──
 function CoverageStatsBar({
   percent,
-  coveredChars,
-  totalChars,
   linkedCount,
 }: {
   percent: number;
-  coveredChars: number;
-  totalChars: number;
   linkedCount: number;
 }) {
-  const color =
-    percent >= 80 ? "text-green-500" : percent >= 50 ? "text-amber-500" : "text-red-500";
   const barColor =
     percent >= 80 ? "bg-green-500" : percent >= 50 ? "bg-amber-500" : "bg-red-500";
+  const color =
+    percent >= 80 ? "text-green-500" : percent >= 50 ? "text-amber-500" : "text-red-500";
 
   return (
-    <div className="rounded-lg border bg-card p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Pokrivenost izvora</span>
+    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-2.5">
+      <BarChart3 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          <div
+            className={cn("h-full rounded-full transition-all duration-500", barColor)}
+            style={{ width: `${percent}%` }}
+          />
         </div>
-        <span className={cn("text-2xl font-bold tabular-nums", color)}>
-          {percent}%
-        </span>
       </div>
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className={cn("h-full rounded-full transition-all duration-500", barColor)}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{coveredChars.toLocaleString()} / {totalChars.toLocaleString()} znakova</span>
-        <span>{linkedCount} povezanih kartica</span>
-      </div>
-      <div className="flex items-center gap-4 text-[10px] text-muted-foreground pt-1">
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm bg-green-500/20 border-l-2 border-green-500" />
-          Pokriveno
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block w-3 h-3 rounded-sm bg-muted text-foreground/40 border-l-2 border-transparent" />
-          Nepokriveno
-        </span>
-      </div>
+      <span className={cn("text-sm font-bold tabular-nums", color)}>{percent}%</span>
+      <span className="text-xs text-muted-foreground">{linkedCount} kartica</span>
     </div>
   );
 }
@@ -361,8 +206,6 @@ export default function SourceReader({ source, onBack }: Props) {
       {isCoverage && (
         <CoverageStatsBar
           percent={coverage.percent}
-          coveredChars={coverage.coveredChars}
-          totalChars={coverage.totalChars}
           linkedCount={linkedCount}
         />
       )}
@@ -370,7 +213,7 @@ export default function SourceReader({ source, onBack }: Props) {
       {/* Content area with optional outline */}
       <div className="flex gap-4">
         {/* Outline sidebar (standard mode only) */}
-        {outlineOpen && !isCoverage && source.outline.length > 0 && (
+        {outlineOpen && source.outline.length > 0 && (
           <div className="w-56 flex-shrink-0 sticky top-20 self-start max-h-[calc(100vh-8rem)] overflow-y-auto">
             <div className="rounded-lg border bg-card p-3">
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Sadržaj</h4>
@@ -392,45 +235,33 @@ export default function SourceReader({ source, onBack }: Props) {
 
         {/* Main content */}
         <div className="flex-1 min-w-0 relative">
-          {isCoverage ? (
-            <div data-coverage-container>
-              <CoverageContent
-                htmlContent={source.htmlContent}
-                ranges={coverage.ranges}
-                onMouseUp={handleMouseUp}
-              />
-            </div>
-          ) : (
-            <>
-              <div
-                ref={contentRef}
-                className="rounded-lg border bg-card p-6 prose prose-sm max-w-none
-                  prose-headings:text-foreground prose-p:text-foreground/90
-                  prose-strong:text-foreground prose-a:text-primary
-                  prose-ul:text-foreground/90 prose-ol:text-foreground/90
-                  prose-li:text-foreground/90"
-                onMouseUp={handleMouseUp}
-                dangerouslySetInnerHTML={{ __html: source.htmlContent }}
-              />
+          <div
+            ref={contentRef}
+            className="rounded-lg border bg-card p-6 prose prose-sm max-w-none
+              prose-headings:text-foreground prose-p:text-foreground/90
+              prose-strong:text-foreground prose-a:text-primary
+              prose-ul:text-foreground/90 prose-ol:text-foreground/90
+              prose-li:text-foreground/90"
+            onMouseUp={handleMouseUp}
+            dangerouslySetInnerHTML={{ __html: source.htmlContent }}
+          />
 
-              {/* Selection tooltip */}
-              {selection && (
-                <div
-                  data-source-tooltip
-                  className="absolute z-50 -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95 duration-150"
-                  style={{ left: selection.x, top: selection.y }}
-                >
-                  <button
-                    onClick={handleConvertToEssay}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
-                  >
-                    <PenSquare className="h-3.5 w-3.5" />
-                    Pretvori u esej
-                  </button>
-                  <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
-                </div>
-              )}
-            </>
+          {/* Selection tooltip */}
+          {selection && (
+            <div
+              data-source-tooltip
+              className="absolute z-50 -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95 duration-150"
+              style={{ left: selection.x, top: selection.y }}
+            >
+              <button
+                onClick={handleConvertToEssay}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
+              >
+                <PenSquare className="h-3.5 w-3.5" />
+                Pretvori u esej
+              </button>
+              <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
+            </div>
           )}
         </div>
       </div>
