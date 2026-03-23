@@ -25,6 +25,8 @@ export interface DashboardWidgetConfig {
 export interface PomodoroConfig {
   workMinutes: number;
   breakMinutes: number;
+  longBreakMinutes: number;
+  longBreakInterval: number; // every N work sessions
 }
 
 export interface NotificationConfig {
