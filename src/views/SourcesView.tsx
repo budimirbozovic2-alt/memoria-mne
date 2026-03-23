@@ -7,6 +7,7 @@ import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as RefreshCw } from "lucide-react/dist/esm/icons/refresh-cw";
 import { default as Tag } from "lucide-react/dist/esm/icons/tag";
 import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
+import { default as GitCompare } from "lucide-react/dist/esm/icons/git-compare-arrows";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,13 +16,15 @@ import { toast } from "@/hooks/use-toast";
 import { sanitizeHtml } from "@/lib/sanitize";
 import {
   loadSources, saveSource, deleteSource,
-  extractOutline, injectHeadingIds, type Source,
+  extractOutline, injectHeadingIds, extractArticles, type Source,
 } from "@/lib/sources-storage";
+import { compareVersions, getChangedArticleIds, matchAnchorToArticle, parseArticles, type DiffResult } from "@/lib/article-parser";
 import { useAppContext } from "@/contexts/AppContext";
 import { db } from "@/lib/db";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 
 const SourceReader = lazy(() => import("@/components/SourceReader"));
+const SourceDiffView = lazy(() => import("@/components/SourceDiffView"));
 
 function generateId() {
   return crypto.randomUUID?.() || Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
@@ -38,6 +41,13 @@ export default function SourcesView() {
   const [readingSource, setReadingSource] = useState<Source | null>(null);
   const [versioningSourceId, setVersioningSourceId] = useState<string | null>(null);
   const [versionFile, setVersionFile] = useState<File | null>(null);
+  const [diffView, setDiffView] = useState<{
+    result: DiffResult;
+    sourceName: string;
+    oldVersion: number;
+    newVersion: number;
+    affectedCardCount: number;
+  } | null>(null);
 
   useEffect(() => {
     loadSources().then(setSources);
@@ -60,12 +70,14 @@ export default function SourcesView() {
     if (!importHtml || !importLabel) return;
     const htmlWithIds = injectHeadingIds(importHtml);
     const outline = extractOutline(htmlWithIds);
+    const articles = extractArticles(htmlWithIds);
     const source: Source = {
       id: generateId(),
       label: importLabel,
       date: importDate || new Date().toISOString().slice(0, 10),
       htmlContent: htmlWithIds,
       outline,
+      articles,
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -77,13 +89,17 @@ export default function SourcesView() {
     setImportLabel("");
     setImportDate("");
     setImportFile(null);
-    toast({ title: "Izvor dodan", description: `"${source.label}" uspješno uvezen.` });
+    const articleCount = articles.length;
+    toast({
+      title: "Izvor dodan",
+      description: `"${source.label}" — ${articleCount > 1 ? `${articleCount} članova prepoznato` : "uvezeno"}`,
+    });
   }, [importHtml, importLabel, importDate]);
 
   const handleDelete = useCallback(async (id: string) => {
     await deleteSource(id);
     setSources(prev => prev.filter(s => s.id !== id));
-    toast({ title: "Izvor obrisan" });
+    toast({ title: "Izvor obrisan", description: "Linkovi na karticama su očišćeni." });
   }, []);
 
   const handleNewVersion = useCallback(async () => {
@@ -98,33 +114,67 @@ export default function SourcesView() {
       const html = sanitizeHtml(result.value);
       const htmlWithIds = injectHeadingIds(html);
       const outline = extractOutline(htmlWithIds);
+      const articles = extractArticles(htmlWithIds);
 
+      // Smart Diff: compare at article level
+      const diffResult = compareVersions(oldSource.htmlContent, htmlWithIds);
+      const changedArticleIds = getChangedArticleIds(diffResult);
+
+      // Parse old articles to match card anchors
+      const oldArticles = parseArticles(oldSource.htmlContent);
+
+      // Find cards linked to CHANGED articles only
+      const linkedCards = cards.filter(c => c.sourceId === oldSource.id);
+      const affectedCards = linkedCards.filter(c => {
+        if (!c.textAnchor) {
+          // No anchor → flag if any article changed
+          return changedArticleIds.size > 0;
+        }
+        const articleId = matchAnchorToArticle(c.textAnchor, oldArticles);
+        return articleId ? changedArticleIds.has(articleId) : false;
+      });
+
+      // Atomic update: source + affected cards
       const newSource: Source = {
         ...oldSource,
         htmlContent: htmlWithIds,
         outline,
+        articles,
         version: oldSource.version + 1,
         updatedAt: Date.now(),
         previousVersionId: oldSource.id,
+        previousHtmlContent: oldSource.htmlContent,
       };
-      await saveSource(newSource);
 
-      // Mark all linked cards as needsReview
-      const linkedCards = cards.filter(c => c.sourceId === oldSource.id);
-      if (linkedCards.length > 0) {
-        const updated = linkedCards.map(c => ({ ...c, needsReview: true }));
-        await db.cards.bulkPut(updated);
-        toast({
-          title: "Nova verzija učitana",
-          description: `${linkedCards.length} kartica označeno za provjeru.`,
-        });
-      } else {
-        toast({ title: "Nova verzija učitana", description: `Verzija ${newSource.version}` });
-      }
+      await db.transaction("rw", [db.sources, db.cards], async () => {
+        await db.sources.put(newSource);
+        if (affectedCards.length > 0) {
+          const updated = affectedCards.map(c => ({ ...c, needsReview: true }));
+          await db.cards.bulkPut(updated);
+        }
+      });
 
       setSources(prev => prev.map(s => s.id === versioningSourceId ? newSource : s));
       setVersioningSourceId(null);
       setVersionFile(null);
+
+      // Show diff view
+      setDiffView({
+        result: diffResult,
+        sourceName: oldSource.label,
+        oldVersion: oldSource.version,
+        newVersion: newSource.version,
+        affectedCardCount: affectedCards.length,
+      });
+
+      if (affectedCards.length > 0) {
+        toast({
+          title: "Nova verzija učitana",
+          description: `${affectedCards.length}/${linkedCards.length} kartica označeno za provjeru (samo izmijenjeni članovi).`,
+        });
+      } else {
+        toast({ title: "Nova verzija učitana", description: `Verzija ${newSource.version} — bez promjena u povezanim članovima.` });
+      }
     } catch {
       toast({ title: "Greška", description: "Nije moguće procesirati novu verziju.", variant: "destructive" });
     }
@@ -137,6 +187,22 @@ export default function SourcesView() {
   const needsReviewCount = useCallback((sourceId: string) => {
     return cards.filter(c => c.sourceId === sourceId && c.needsReview).length;
   }, [cards]);
+
+  // Diff view
+  if (diffView) {
+    return (
+      <Suspense fallback={<TabSkeleton />}>
+        <SourceDiffView
+          diffResult={diffView.result}
+          sourceName={diffView.sourceName}
+          oldVersion={diffView.oldVersion}
+          newVersion={diffView.newVersion}
+          affectedCardCount={diffView.affectedCardCount}
+          onClose={() => setDiffView(null)}
+        />
+      </Suspense>
+    );
+  }
 
   if (readingSource) {
     return (
@@ -169,6 +235,7 @@ export default function SourcesView() {
         {sources.sort((a, b) => b.updatedAt - a.updatedAt).map(source => {
           const linked = linkedCardCount(source.id);
           const review = needsReviewCount(source.id);
+          const articleCount = source.articles?.length || 0;
           return (
             <Card key={source.id} className="group">
               <CardContent className="p-4">
@@ -179,7 +246,7 @@ export default function SourcesView() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-medium text-sm truncate">{source.label}</h3>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {source.date}
@@ -187,6 +254,9 @@ export default function SourcesView() {
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                           v{source.version}
                         </Badge>
+                        {articleCount > 1 && (
+                          <span className="text-[10px]">{articleCount} čl.</span>
+                        )}
                         {linked > 0 && (
                           <span className="flex items-center gap-1">
                             <Tag className="h-3 w-3" />
@@ -206,6 +276,26 @@ export default function SourcesView() {
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setReadingSource(source)}>
                       <Eye className="h-4 w-4" />
                     </Button>
+                    {source.previousHtmlContent && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        title="Pogledaj razlike"
+                        onClick={() => {
+                          const diff = compareVersions(source.previousHtmlContent!, source.htmlContent);
+                          setDiffView({
+                            result: diff,
+                            sourceName: source.label,
+                            oldVersion: source.version - 1,
+                            newVersion: source.version,
+                            affectedCardCount: needsReviewCount(source.id),
+                          });
+                        }}
+                      >
+                        <GitCompare className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setVersioningSourceId(source.id); setVersionFile(null); }}>
                       <RefreshCw className="h-4 w-4" />
                     </Button>
@@ -292,7 +382,7 @@ export default function SourcesView() {
             <DialogTitle>Nova verzija izvora</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Upload novog .docx fajla će ažurirati tekst izvora i automatski označiti sve povezane kartice za provjeru.
+            Smart Diff: sistem će automatski uporediti članove po članovima i označiti za provjeru <strong className="text-foreground">samo</strong> kartice povezane sa izmijenjenim dijelovima.
           </p>
           <div
             className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
@@ -317,7 +407,7 @@ export default function SourcesView() {
             />
           </div>
           <Button onClick={handleNewVersion} disabled={!versionFile} className="w-full">
-            Ažuriraj izvor
+            Uporedi i ažuriraj
           </Button>
         </DialogContent>
       </Dialog>

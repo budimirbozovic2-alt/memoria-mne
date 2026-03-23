@@ -1,4 +1,5 @@
 import { db, type Source } from "./db";
+import { parseArticles } from "./article-parser";
 
 export type { Source };
 
@@ -11,7 +12,20 @@ export async function saveSource(source: Source): Promise<void> {
 }
 
 export async function deleteSource(id: string): Promise<void> {
-  await db.sources.delete(id);
+  // Cascade: clear sourceId/textAnchor/needsReview on linked cards
+  await db.transaction("rw", [db.sources, db.cards], async () => {
+    const linkedCards = await db.cards.where("sourceId").equals(id).toArray();
+    if (linkedCards.length > 0) {
+      const cleaned = linkedCards.map(c => ({
+        ...c,
+        sourceId: undefined,
+        textAnchor: undefined,
+        needsReview: undefined,
+      }));
+      await db.cards.bulkPut(cleaned);
+    }
+    await db.sources.delete(id);
+  });
 }
 
 export async function getSource(id: string): Promise<Source | undefined> {
@@ -52,30 +66,12 @@ export function createTextAnchor(text: string): string {
   return text.trim().substring(0, 80).toLowerCase().replace(/\s+/g, " ");
 }
 
-/** Find the approximate position of a text anchor in HTML content */
-export function findAnchorInContent(htmlContent: string, anchor: string): string | null {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(htmlContent, "text/html");
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-
-  let node: Text | null;
-  while ((node = walker.nextNode() as Text | null)) {
-    const normalized = node.textContent?.toLowerCase().replace(/\s+/g, " ") || "";
-    if (normalized.includes(anchor)) {
-      // Find parent element and return its nearest heading ID
-      let el = node.parentElement;
-      while (el) {
-        if (el.id?.startsWith("src-heading-")) return el.id;
-        // Check previous siblings for a heading
-        let prev = el.previousElementSibling;
-        while (prev) {
-          if (prev.id?.startsWith("src-heading-")) return prev.id;
-          prev = prev.previousElementSibling;
-        }
-        el = el.parentElement;
-      }
-      return null;
-    }
-  }
-  return null;
+/** Parse and store articles from HTML */
+export function extractArticles(html: string) {
+  return parseArticles(html).map(a => ({
+    id: a.id,
+    number: a.number,
+    title: a.title,
+    text: a.text,
+  }));
 }
