@@ -2,29 +2,29 @@ import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } fro
 import { Card, Section, GRADES, getDueSections, isLeech, formatInterval, previewIntervals, SRSettings, DEFAULT_SR_SETTINGS, SectionState, getRetrievability } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { motion, AnimatePresence } from "framer-motion";
-import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as Eye } from "lucide-react/dist/esm/icons/eye";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
-import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
-import { default as XIcon } from "lucide-react/dist/esm/icons/x";
 
-import { default as Zap } from "lucide-react/dist/esm/icons/zap";
-import { default as Pause } from "lucide-react/dist/esm/icons/pause";
-import { default as Play } from "lucide-react/dist/esm/icons/play";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as Shield } from "lucide-react/dist/esm/icons/shield";
+
+
+
+
+
+
+
+
+
+
+
+
+
 import SessionFilters from "@/components/SessionFilters";
-import { default as Scale } from "lucide-react/dist/esm/icons/scale";
+
 import { Button } from "@/components/ui/button";
 
 import { useToast } from "@/hooks/use-toast";
 import { addCalibrationEntry, addLatencyEntry, addActivityEntry } from "@/lib/metacognitive-storage";
 import ShortcutsHint from "@/components/ShortcutsHint";
 import OnboardingModal, { type OnboardingSlide, hasSeenOnboarding } from "@/components/OnboardingModal";
+import { CheckCircle2, ArrowLeft, Eye, ChevronRight, BookOpen, AlertTriangle, HelpCircle, ArrowRight, X as XIcon, Zap, Pause, Play, Target, Shield, Scale } from "lucide-react";
 
 const REVIEW_SHORTCUTS = [
   { keys: "Space", description: "Otkrij odgovor" },

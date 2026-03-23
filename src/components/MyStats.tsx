@@ -2,17 +2,17 @@ import { useState, useMemo, memo, lazy, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
 import { motion } from "framer-motion";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as LayoutGrid } from "lucide-react/dist/esm/icons/layout-grid";
-import { default as TrendingUp } from "lucide-react/dist/esm/icons/trending-up";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as Layers } from "lucide-react/dist/esm/icons/layers";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as Flame } from "lucide-react/dist/esm/icons/flame";
-import { default as CalendarClock } from "lucide-react/dist/esm/icons/calendar-clock";
-import { default as Activity } from "lucide-react/dist/esm/icons/activity";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
+
+
+
+
+
+
+
+
+
+
+
 import InfoPanel from "@/components/InfoPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, getSectionScore, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
@@ -29,6 +29,7 @@ import RetentionChart from "./RetentionChart";
 import ForgettingCurve from "./ForgettingCurve";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 import { useDeferredCompute } from "@/hooks/useDeferredCompute";
+import { ArrowLeft, LayoutGrid, TrendingUp, Brain, Layers, Target, Clock, Flame, CalendarClock, Activity, ChevronRight } from "lucide-react";
 
 const DashboardChart = lazy(() => import("@/components/DashboardChart"));
 

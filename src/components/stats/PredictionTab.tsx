@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { default as CalendarClock } from "lucide-react/dist/esm/icons/calendar-clock";
+
 import { Card, SectionState } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { getLearningVelocity } from "@/lib/metacognitive-storage";
@@ -9,6 +9,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { format } from "date-fns";
+import { CalendarClock } from "lucide-react";
 
 interface Props {
   cards: Card[];

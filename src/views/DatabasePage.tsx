@@ -2,13 +2,14 @@ import { useState, lazy, Suspense, useEffect } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { default as Database } from "lucide-react/dist/esm/icons/database";
-import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
-import { default as Download } from "lucide-react/dist/esm/icons/download";
-import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
+
+
+
+
+
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 import InfoPanel from "@/components/InfoPanel";
+import { Database, FolderOpen, Download, FileText, BookOpen } from "lucide-react";
 
 const CardsView = lazy(() => import("@/views/CardsView"));
 const CategoriesPage = lazy(() => import("@/views/CategoriesPage"));

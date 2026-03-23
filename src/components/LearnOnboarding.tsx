@@ -1,9 +1,10 @@
-import { default as Sparkles } from "lucide-react/dist/esm/icons/sparkles";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as Link2 } from "lucide-react/dist/esm/icons/link-2";
-import { default as CheckCircle2 } from "lucide-react/dist/esm/icons/check-circle-2";
+
+
+
+
+
 import OnboardingModal, { type OnboardingSlide, hasSeenOnboarding as _hasSeenOnboarding } from "@/components/OnboardingModal";
+import { Sparkles, BookOpen, Brain, Link2, CheckCircle2 } from "lucide-react";
 
 const ONBOARDING_KEY = "sr-learn-onboarding-seen";
 

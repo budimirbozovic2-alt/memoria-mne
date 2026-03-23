@@ -1,8 +1,9 @@
-import { default as Timer } from "lucide-react/dist/esm/icons/timer";
-import { default as Play } from "lucide-react/dist/esm/icons/play";
+
+
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useUIContext } from "@/contexts/AppContext";
+import { Timer, Play } from "lucide-react";
 
 export default function PomodoroTimer({ compact = false }: { compact?: boolean }) {
   const { pomodoro, pomodoroToggle, pomodoroReset } = useUIContext();

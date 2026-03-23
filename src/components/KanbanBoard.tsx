@@ -1,16 +1,17 @@
 import { useState, useMemo, useCallback } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as Layers } from "lucide-react/dist/esm/icons/layers";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
-import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
+
+
+
+
 import { motion } from "framer-motion";
 import {
   DndContext, PointerSensor, useSensor, useSensors,
   DragEndEvent, DragOverlay, DragStartEvent, useDroppable, useDraggable,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
+import { ArrowLeft, Layers, BarChart3, GripVertical } from "lucide-react";
 
 type GroupMode = "chapter" | "mastery";
 

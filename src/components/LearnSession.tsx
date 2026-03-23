@@ -3,30 +3,30 @@ import { Card, getCardScore, getDueCards } from "@/lib/spaced-repetition";
 import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress, loadReviewLog } from "@/lib/storage";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
 import { recordDayDiscipline, getSmartSuggestion, calcVelocity, loadPlanner } from "@/lib/planner-storage";
-import { default as ShieldAlert } from "lucide-react/dist/esm/icons/shield-alert";
+
 import { motion, AnimatePresence } from "framer-motion";
-import { default as Link2 } from "lucide-react/dist/esm/icons/link-2";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
-import { default as Volume2 } from "lucide-react/dist/esm/icons/volume-2";
-import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
-import { default as Scale } from "lucide-react/dist/esm/icons/scale";
-import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
-import { default as ArrowRight } from "lucide-react/dist/esm/icons/arrow-right";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Check } from "lucide-react/dist/esm/icons/check";
-import { default as Eye } from "lucide-react/dist/esm/icons/eye";
-import { default as TrendingDown } from "lucide-react/dist/esm/icons/trending-down";
-import { default as ListOrdered } from "lucide-react/dist/esm/icons/list-ordered";
-import { default as Zap } from "lucide-react/dist/esm/icons/zap";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
-import { default as HelpCircle } from "lucide-react/dist/esm/icons/help-circle";
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as RotateCw } from "lucide-react/dist/esm/icons/rotate-cw";
-import { default as Trophy } from "lucide-react/dist/esm/icons/trophy";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import SessionFilters from "@/components/SessionFilters";
 import { Button } from "@/components/ui/button";
 
@@ -41,6 +41,7 @@ import SessionComplete from "./learn/SessionComplete";
 import GradeButtons from "./learn/GradeButtons";
 import NavigationButtons from "./learn/NavigationButtons";
 import { LearnSessionProps, ViewWidth, viewWidthClasses } from "./learn/types";
+import { ShieldAlert, Link2, BarChart3, Volume2, Pencil, Scale, ArrowLeft, ArrowRight, ChevronRight, BookOpen, Check, Eye, TrendingDown, ListOrdered, Zap, Brain, RotateCcw, HelpCircle, Clock, Target, RotateCw, Trophy, AlertTriangle } from "lucide-react";
 
 export default function LearnSession({ cards, categories, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0 }: LearnSessionProps) {
   // Setup state

@@ -4,17 +4,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/lib/spaced-repetition";
-import { default as Download } from "lucide-react/dist/esm/icons/download";
-import { default as Upload } from "lucide-react/dist/esm/icons/upload";
-import { default as FileBox } from "lucide-react/dist/esm/icons/file-box";
-import { default as Package } from "lucide-react/dist/esm/icons/package";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as Check } from "lucide-react/dist/esm/icons/check";
-import { default as Clock } from "lucide-react/dist/esm/icons/clock";
-import { default as FileArchive } from "lucide-react/dist/esm/icons/file-archive";
-import { default as Loader2 } from "lucide-react/dist/esm/icons/loader-2";
-import { default as ShieldCheck } from "lucide-react/dist/esm/icons/shield-check";
+
+
+
+
+
+
+
+
+
+
 import { Switch } from "@/components/ui/switch";
+import { Download, Upload, FileBox, Package, AlertTriangle, Check, Clock, FileArchive, Loader2, ShieldCheck } from "lucide-react";
 
 interface ExportImportDialogProps {
   open: boolean;

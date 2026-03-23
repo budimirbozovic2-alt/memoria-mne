@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
-import { default as Gauge } from "lucide-react/dist/esm/icons/gauge";
+
+
 import { loadCalibration, getCalibrationStats } from "@/lib/metacognitive-storage";
+import { AlertTriangle, Gauge } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, CartesianGrid, Legend,

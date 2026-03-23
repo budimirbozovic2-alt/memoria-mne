@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { default as Edit2 } from "lucide-react/dist/esm/icons/edit-2";
-import { default as Trash2 } from "lucide-react/dist/esm/icons/trash-2";
-import { default as Check } from "lucide-react/dist/esm/icons/check";
-import { default as X } from "lucide-react/dist/esm/icons/x";
-import { default as Plus } from "lucide-react/dist/esm/icons/plus";
-import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
-import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
-import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
-import { default as Tag } from "lucide-react/dist/esm/icons/tag";
+
+
+
+
+
+
+
+
+
 import { motion, AnimatePresence } from "framer-motion";
+import { Edit2, Trash2, Check, X, Plus, FolderOpen, ChevronDown, ChevronRight, Tag } from "lucide-react";
 
 interface Props {
   categories: string[];

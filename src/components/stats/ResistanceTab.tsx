@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { default as Flame } from "lucide-react/dist/esm/icons/flame";
-import { default as Zap } from "lucide-react/dist/esm/icons/zap";
+
+
 import { Card, getCardRetrievability } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { loadLatency } from "@/lib/metacognitive-storage";
+import { Flame, Zap } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid,
 } from "recharts";

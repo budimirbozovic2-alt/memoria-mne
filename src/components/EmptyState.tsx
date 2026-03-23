@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as Sparkles } from "lucide-react/dist/esm/icons/sparkles";
+
+
+
 import { Button } from "@/components/ui/button";
+import { BookOpen, Brain, Sparkles } from "lucide-react";
 
 interface Props {
   type: "dashboard" | "review";

@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { default as Flame } from "lucide-react/dist/esm/icons/flame";
+
 import ScrollableRow from "@/components/ScrollableRow";
 import type { Card } from "@/lib/spaced-repetition";
+import { Flame } from "lucide-react";
 
 interface SessionFiltersProps {
   /** Unique prefix for layoutId animations (e.g. "learn", "review") */

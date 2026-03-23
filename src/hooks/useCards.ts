@@ -116,44 +116,55 @@ export function useCards() {
     };
 
     (async () => {
-      splashProgress(10, "Migracija podataka…");
-      await migrateFromLocalStorage();
+      try {
+        console.log("[boot] useCards init:start");
+        splashProgress(10, "Migracija podataka…");
+        await migrateFromLocalStorage();
+        console.log("[boot] migration:done");
 
-      splashProgress(25, "Učitavanje kartica…");
-      const c = await idbLoadCards();
+        splashProgress(25, "Učitavanje kartica…");
+        const c = await idbLoadCards();
+        console.log("[boot] cards:done", c.length);
 
-      splashProgress(50, `${c.length} kartica učitano`);
-      const cats = await idbLoadCategories();
+        splashProgress(50, `${c.length} kartica učitano`);
+        const cats = await idbLoadCategories();
+        console.log("[boot] categories:done", cats.length);
 
-      splashProgress(65, "Učitavanje kategorija…");
-      const subs = await idbLoadSubcategories();
+        splashProgress(65, "Učitavanje kategorija…");
+        const subs = await idbLoadSubcategories();
+        console.log("[boot] subcategories:done", Object.keys(subs).length);
 
-      splashProgress(80, "Učitavanje dnevnika…");
-      const log = await idbLoadReviewLog();
+        splashProgress(80, "Učitavanje dnevnika…");
+        const log = await idbLoadReviewLog();
+        console.log("[boot] reviewLog:done", log.length);
 
-      splashProgress(90, "Učitavanje podešavanja…");
-      const settings = await idbLoadSettings<SRSettings>("srSettings", DEFAULT_SR_SETTINGS);
+        splashProgress(90, "Učitavanje podešavanja…");
+        const settings = await idbLoadSettings<SRSettings>("srSettings", DEFAULT_SR_SETTINGS);
+        console.log("[boot] settings:done");
 
-      setCardMapState(arrayToMap(c));
-      setCategoriesState(cats);
-      setSubcategoriesState(subs);
-      setReviewLogState(log);
-      setSrSettingsState(settings);
+        setCardMapState(arrayToMap(c));
+        setCategoriesState(cats);
+        setSubcategoriesState(subs);
+        setReviewLogState(log);
+        setSrSettingsState(settings);
 
-      splashProgress(100, "Spremno!");
+        splashProgress(100, "Spremno!");
+        console.log("[boot] useCards init:ready");
+      } catch (error) {
+        console.error("[boot] useCards init:failed", error);
+        splashProgress(100, "Pokretanje sa rezervnim stanjem…");
+      } finally {
+        const splash = document.getElementById("app-splash");
+        if (splash) {
+          splash.style.transition = 'opacity 0.4s ease-out';
+          splash.style.opacity = '0';
+          setTimeout(() => splash.remove(), 450);
+        }
+        setReady(true);
 
-      // Fade out and remove the splash screen now that data is ready
-      const splash = document.getElementById("app-splash");
-      if (splash) {
-        splash.style.transition = 'opacity 0.4s ease-out';
-        splash.style.opacity = '0';
-        setTimeout(() => splash.remove(), 450);
-      }
-      setReady(true);
-
-      // Signal Electron main process that app is ready
-      if (window.electronAPI?.notifyReady) {
-        window.electronAPI.notifyReady();
+        if (window.electronAPI?.notifyReady) {
+          window.electronAPI.notifyReady();
+        }
       }
     })();
   }, []);

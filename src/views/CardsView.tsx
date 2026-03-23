@@ -3,18 +3,19 @@ import { idbLoadSettings } from "@/lib/db";
 import { useAppContext } from "@/contexts/AppContext";
 import { useDebounce } from "@/hooks/useDebounce";
 
-import { default as Plus } from "lucide-react/dist/esm/icons/plus";
-import { default as CheckSquare } from "lucide-react/dist/esm/icons/check-square";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as X } from "lucide-react/dist/esm/icons/x";
-import { default as Search } from "lucide-react/dist/esm/icons/search";
-import { default as Flame } from "lucide-react/dist/esm/icons/flame";
-import { default as ArrowUpDown } from "lucide-react/dist/esm/icons/arrow-up-down";
+
+
+
+
+
+
+
 import { Card } from "@/lib/spaced-repetition";
 import ScrollableRow from "@/components/ScrollableRow";
 import CardList from "@/components/CardList";
 import ShortcutsHint from "@/components/ShortcutsHint";
 import { toast } from "sonner";
+import { Plus, CheckSquare, BookOpen, X, Search, Flame, ArrowUpDown } from "lucide-react";
 
 const CARDS_SHORTCUTS = [
   { keys: "Ctrl+K", description: "Globalna pretraga" },

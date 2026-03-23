@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { default as Keyboard } from "lucide-react/dist/esm/icons/keyboard";
-import { default as X } from "lucide-react/dist/esm/icons/x";
+import { Keyboard, X } from "lucide-react";
+
 
 interface Shortcut {
   keys: string;

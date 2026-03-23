@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
-import { default as Wand2 } from "lucide-react/dist/esm/icons/wand-2";
-import { default as Check } from "lucide-react/dist/esm/icons/check";
-import { default as RefreshCw } from "lucide-react/dist/esm/icons/refresh-cw";
-import { default as Merge } from "lucide-react/dist/esm/icons/git-merge";
-import { default as Ungroup } from "lucide-react/dist/esm/icons/ungroup";
-import { default as Sparkles } from "lucide-react/dist/esm/icons/sparkles";
+
+
+
+
+
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ import { useAppContext } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { Card, SourceModule } from "@/lib/spaced-repetition";
+import { Wand2, Check, RefreshCw, GitMerge as Merge, Ungroup, Sparkles } from "lucide-react";
 
 interface Props {
   open: boolean;

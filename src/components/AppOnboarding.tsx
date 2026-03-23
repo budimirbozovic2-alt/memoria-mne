@@ -1,13 +1,14 @@
-import { default as Sparkles } from "lucide-react/dist/esm/icons/sparkles";
-import { default as LayoutDashboard } from "lucide-react/dist/esm/icons/layout-dashboard";
-import { default as GraduationCap } from "lucide-react/dist/esm/icons/graduation-cap";
-import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
-import { default as Map } from "lucide-react/dist/esm/icons/map";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as Rocket } from "lucide-react/dist/esm/icons/rocket";
+
+
+
+
+
+
+
+
+
 import OnboardingModal, { type OnboardingSlide } from "@/components/OnboardingModal";
+import { Sparkles, LayoutDashboard, GraduationCap, RotateCcw, Map, Brain, BarChart3, Target, Rocket } from "lucide-react";
 
 export const APP_ONBOARDING_KEY = "sr-app-onboarding-seen";
 

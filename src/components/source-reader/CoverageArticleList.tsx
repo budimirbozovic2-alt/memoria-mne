@@ -1,12 +1,13 @@
 import { useMemo } from "react";
-import { default as Check } from "lucide-react/dist/esm/icons/check";
-import { default as Link2 } from "lucide-react/dist/esm/icons/link-2";
+
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Card } from "@/lib/spaced-repetition";
 import type { Source } from "@/lib/sources-storage";
 import { getCoveredSourceArticles } from "@/lib/source-coverage";
 import { cn } from "@/lib/utils";
+import { Check, Link2 } from "lucide-react";
 
 interface Props {
   source: Source;

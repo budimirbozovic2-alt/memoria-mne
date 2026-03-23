@@ -1,20 +1,20 @@
 import { useLocation } from "react-router-dom";
 import { useCardContext } from "@/contexts/AppContext";
-import { default as Home } from "lucide-react/dist/esm/icons/home";
-import { default as Zap } from "lucide-react/dist/esm/icons/zap";
-import { default as GraduationCap } from "lucide-react/dist/esm/icons/graduation-cap";
-import { default as RotateCcw } from "lucide-react/dist/esm/icons/rotate-ccw";
-import { default as Brain } from "lucide-react/dist/esm/icons/brain";
-import { default as Target } from "lucide-react/dist/esm/icons/target";
-import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
-import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
-import { default as Settings } from "lucide-react/dist/esm/icons/settings";
-import { default as Moon } from "lucide-react/dist/esm/icons/moon";
-import { default as Sun } from "lucide-react/dist/esm/icons/sun";
-import { default as FlaskConical } from "lucide-react/dist/esm/icons/flask-conical";
-import { default as DatabaseIcon } from "lucide-react/dist/esm/icons/database";
-import { default as Network } from "lucide-react/dist/esm/icons/network";
-import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useState, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Home, Zap, GraduationCap, RotateCcw, Brain, Target, BookOpen, FolderOpen, Settings, Moon, Sun, FlaskConical, Database as DatabaseIcon, Network, BarChart3 } from "lucide-react";
 
 const PRIMARY_ITEMS = [
   { path: "/", icon: Home, label: "Početna" },
