@@ -750,7 +750,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                       ) : (
                         <div className="space-y-4">
                           <div className="rounded-lg bg-secondary/50 p-4">
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sections[chainIndex].content }} />
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightKeyParts(sections[chainIndex].content, card.keyParts) }} />
                           </div>
                           <GradeButtons onGrade={handleChainGrade} hint="Ocijeni (samo 4 = napredak)" />
                         </div>
