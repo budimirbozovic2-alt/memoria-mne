@@ -160,9 +160,30 @@ function MindMapCanvasInner({ doc, onBack }: Props) {
     if (changes.some(c => c.type !== "select")) setDirty(true);
   }, [onEdgesChange]);
 
-  // ── Snap nearly-aligned nodes to perfect alignment ──
-  const SNAP_THRESHOLD = 20; // px tolerance
+  // ── Snap guides & alignment ──
+  const SNAP_THRESHOLD = 20;
+  const [snapLines, setSnapLines] = useState<{ x?: number; y?: number }>({});
+
+  const onNodeDrag = useCallback((_event: React.MouseEvent, draggedNode: Node) => {
+    const others = nodes.filter(n => n.id !== draggedNode.id);
+    const { x, y } = draggedNode.position;
+    let snapX: number | undefined;
+    let snapY: number | undefined;
+
+    for (const other of others) {
+      if (snapX === undefined && Math.abs(other.position.x - x) <= SNAP_THRESHOLD) {
+        snapX = other.position.x;
+      }
+      if (snapY === undefined && Math.abs(other.position.y - y) <= SNAP_THRESHOLD) {
+        snapY = other.position.y;
+      }
+      if (snapX !== undefined && snapY !== undefined) break;
+    }
+    setSnapLines({ x: snapX, y: snapY });
+  }, [nodes]);
+
   const onNodeDragStop = useCallback((_event: React.MouseEvent, draggedNode: Node) => {
+    setSnapLines({});
     setNodes(nds => {
       const others = nds.filter(n => n.id !== draggedNode.id);
       let { x, y } = draggedNode.position;
