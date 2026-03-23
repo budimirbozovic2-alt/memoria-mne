@@ -59,7 +59,10 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const SourceSnippetDialog = useMemo(() => lazy(() => import("@/components/SourceSnippetDialog")), []);
 
   // Session state
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    const saved = sessionStorage.getItem("sr-learn-current-index");
+    return saved ? parseInt(saved, 10) || 0 : 0;
+  });
   const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
   const [readCards, setReadCards] = useState<Set<string>>(new Set());
 
