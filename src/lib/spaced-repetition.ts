@@ -59,6 +59,7 @@ export interface Card {
   textAnchor?: string;
   needsReview?: boolean;
   keyParts?: string[];
+  originalSourceSnippet?: string;  // Raw text from source at creation time (hidden, for linking)
 }
 
 export const CARD_TAGS = [

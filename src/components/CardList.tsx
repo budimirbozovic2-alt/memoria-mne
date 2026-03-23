@@ -2,6 +2,7 @@ import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrieva
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { format } from "date-fns";
 import { Edit2, Trash2 } from "lucide-react";
+import { default as Scale } from "lucide-react/dist/esm/icons/scale";
 import { default as ChevronDown } from "lucide-react/dist/esm/icons/chevron-down";
 import { default as ChevronRight } from "lucide-react/dist/esm/icons/chevron-right";
 import { default as Zap } from "lucide-react/dist/esm/icons/zap";
@@ -14,8 +15,10 @@ import { default as Brain } from "lucide-react/dist/esm/icons/brain";
 import { default as Check } from "lucide-react/dist/esm/icons/check";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
 import { default as GripVertical } from "lucide-react/dist/esm/icons/grip-vertical";
-import { useState, useRef, useEffect, useMemo, useCallback, CSSProperties, memo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense, CSSProperties, memo } from "react";
 import { List, type RowComponentProps } from "react-window";
+
+const SourceSnippetDialog = lazy(() => import("@/components/SourceSnippetDialog"));
 
 interface Props {
   cards: Card[];
@@ -271,6 +274,8 @@ const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, s
   const isFlash = card.type === "flash";
   const cardTags = card.tags || [];
   const isFrequent = cardTags.includes("često-na-ispitu");
+  const hasSource = !!card.sourceId && !!card.originalSourceSnippet;
+  const [snippetOpen, setSnippetOpen] = useState(false);
 
   return (
     <div
@@ -309,6 +314,15 @@ const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, s
             <p className="font-serif text-lg line-clamp-2">{card.question}</p>
           </div>
           <div className="flex gap-1 flex-shrink-0">
+            {hasSource && (
+              <button
+                onClick={() => setSnippetOpen(true)}
+                className={`p-2 rounded-lg transition-colors ${card.needsReview ? "text-warning bg-warning/10 hover:bg-warning/20" : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary"}`}
+                title={card.needsReview ? "Izvor ažuriran — klikni za poređenje" : "Pogledaj originalni tekst izvora"}
+              >
+                <Scale className="h-4 w-4" />
+              </button>
+            )}
             <button onClick={() => onToggleTag(card.id, "često-na-ispitu")} className={`p-2 rounded-lg transition-colors ${isFrequent ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`} title={isFrequent ? "Često na ispitu (klikni da ukloniš)" : "Označi kao često na ispitu"}>
               <Flame className="h-4 w-4" />
             </button>
@@ -334,6 +348,12 @@ const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, s
           </div>
         </div>
       </div>
+
+      {hasSource && snippetOpen && (
+        <Suspense fallback={null}>
+          <SourceSnippetDialog card={card} open={snippetOpen} onOpenChange={setSnippetOpen} />
+        </Suspense>
+      )}
 
       {expanded && (
         <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags} onMarkKeyPart={onAddKeyPart ? (text: string) => onAddKeyPart(card.id, text) : undefined}>
