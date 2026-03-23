@@ -190,7 +190,7 @@ export default function SourceReader({ source, onBack }: Props) {
       title: `Generisano 1 esej sa ${modules.length} modula`,
       description: `${splitResult.rangeLabel} iz "${source.label}"`,
     });
-  }, [splitResult, source, categories, addCard]);
+  }, [splitResult, splitParentName, source, categories, addCard]);
 
   const handleCreateEssay = useCallback(() => {
     if (!essayQuestion.trim() || !selectedText) return;
