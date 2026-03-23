@@ -588,13 +588,47 @@ export default function SourceReader({ source, onBack }: Props) {
               </div>
 
               <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
-                {splitResult.modules.map((mod, i) => (
-                  <div key={mod.articleNum} className="flex items-start gap-2 rounded-md border bg-card px-3 py-2">
-                    <Badge variant="outline" className="text-[10px] mt-0.5 flex-shrink-0">
+                {splitModules.map((mod, i) => (
+                  <div key={`${mod.articleNum}-${i}`} className="group flex items-start gap-1.5 rounded-md border bg-card px-2 py-2">
+                    <div className="flex flex-col gap-0.5 flex-shrink-0 mt-0.5">
+                      <button
+                        disabled={i === 0}
+                        onClick={() => setSplitModules(prev => {
+                          const arr = [...prev];
+                          [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+                          return arr;
+                        })}
+                        className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20 transition-colors"
+                        title="Pomjeri gore"
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </button>
+                      <button
+                        disabled={i === splitModules.length - 1}
+                        onClick={() => setSplitModules(prev => {
+                          const arr = [...prev];
+                          [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+                          return arr;
+                        })}
+                        className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20 transition-colors"
+                        title="Pomjeri dolje"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] mt-1 flex-shrink-0">
                       {i + 1}
                     </Badge>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{mod.title}</p>
+                    <div className="min-w-0 flex-1">
+                      <input
+                        value={mod.title}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setSplitModules(prev => prev.map((m, j) => j === i ? { ...m, title: val } : m));
+                        }}
+                        className="w-full text-sm font-medium bg-transparent border-b border-transparent hover:border-border focus:border-ring focus:outline-none px-0 py-0.5 transition-colors"
+                        title="Klikni za editovanje naslova"
+                      />
                       <p className="text-xs text-muted-foreground truncate mt-0.5">
                         {mod.contentText.slice(0, 100)}{mod.contentText.length > 100 ? "..." : ""}
                       </p>
