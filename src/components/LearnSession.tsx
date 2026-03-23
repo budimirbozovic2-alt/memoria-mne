@@ -471,7 +471,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                 </button>
                 {expandedSections.has(0) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: card.sections[0]?.content || "" }} />
+                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: card.sections[0]?.content || "" }} />
                   </motion.div>
                 )}
               </div>
@@ -493,7 +493,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                     </button>
                     {expandedSections.has(i) && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                        <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: section.content }} />
+                        <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: section.content }} />
                       </motion.div>
                     )}
                   </div>
@@ -583,7 +583,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   {sections.map((section) => (
                     <div key={section.id} className="rounded-xl border bg-card p-4">
                       <p className="font-medium text-sm mb-2">{section.title}</p>
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: section.content }} />
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: section.content }} />
                     </div>
                   ))}
                 </div>
@@ -617,7 +617,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   ) : (
                     <div className="space-y-4">
                       <div className="rounded-lg bg-secondary/50 p-4">
-                        <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sections[drillIndex].content }} />
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sections[drillIndex].content }} />
                       </div>
                       <GradeButtons onGrade={handleArGrade} hint="Ocijeni svoje znanje (samo 4 = napredak)" />
                     </div>
@@ -749,7 +749,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                       ) : (
                         <div className="space-y-4">
                           <div className="rounded-lg bg-secondary/50 p-4">
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sections[chainIndex].content }} />
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sections[chainIndex].content }} />
                           </div>
                           <GradeButtons onGrade={handleChainGrade} hint="Ocijeni (samo 4 = napredak)" />
                         </div>
@@ -778,7 +778,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                       ) : (
                         <div className="space-y-4">
                           <div className="rounded-lg bg-secondary/50 p-4">
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sections[chainReviewIndex].content }} />
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sections[chainReviewIndex].content }} />
                           </div>
                           <GradeButtons onGrade={handleChainReviewGrade} hint="Bilo šta ispod 4 = reset na modul 1" />
                         </div>
