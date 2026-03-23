@@ -550,7 +550,13 @@ export function useCards() {
   }, [cards, categories, subcategories, downloadFile, buildJsonChunked]);
 
   const exportData = useCallback(async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
-    const data = { version: 2, type: "full", cards, categories, subcategories, reviewLog, srSettings };
+    onProgress(5, "Učitavanje izvora i mentalnih mapa...");
+    const { db } = await import("@/lib/db");
+    const [sources, mindMaps] = await Promise.all([
+      db.sources.toArray(),
+      db.mindMaps.toArray(),
+    ]);
+    const data = { version: 3, type: "full", cards, categories, subcategories, reviewLog, srSettings, sources, mindMaps };
     const dateStr = new Date().toISOString().slice(0, 10);
 
     const json = await buildJsonChunked(data, onProgress);
