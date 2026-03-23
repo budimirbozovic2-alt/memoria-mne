@@ -16,7 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { sanitizeHtml } from "@/lib/sanitize";
 import {
   loadSources, saveSource, deleteSource,
-  extractOutline, injectHeadingIds, extractArticles, extractOfficialGazette, type Source,
+  extractOutline, injectHeadingIds, extractArticles, type Source,
 } from "@/lib/sources-storage";
 import { compareVersions, getChangedArticleIds, matchAnchorToArticle, parseArticles, type DiffResult } from "@/lib/article-parser";
 import { parseDocxInWorker } from "@/lib/docx-parser";
@@ -38,6 +38,7 @@ export default function SourcesView() {
   const [importing, setImporting] = useState(false);
   const [importLabel, setImportLabel] = useState("");
   const [importDate, setImportDate] = useState("");
+  const [importGazette, setImportGazette] = useState("");
   const [importHtml, setImportHtml] = useState("");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [readingSource, setReadingSource] = useState<Source | null>(null);
@@ -72,7 +73,6 @@ export default function SourcesView() {
     const htmlWithIds = injectHeadingIds(importHtml);
     const outline = extractOutline(htmlWithIds);
     const articles = extractArticles(htmlWithIds);
-    const officialGazetteInfo = extractOfficialGazette(htmlWithIds);
     const source: Source = {
       id: generateId(),
       label: importLabel,
@@ -80,7 +80,7 @@ export default function SourcesView() {
       htmlContent: htmlWithIds,
       outline,
       articles,
-      officialGazetteInfo,
+      officialGazetteInfo: importGazette.trim() || undefined,
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -91,13 +91,14 @@ export default function SourcesView() {
     setImportHtml("");
     setImportLabel("");
     setImportDate("");
+    setImportGazette("");
     setImportFile(null);
     const articleCount = articles.length;
     toast({
       title: "Izvor dodan",
       description: `"${source.label}" — ${articleCount > 1 ? `${articleCount} članova prepoznato` : "uvezeno"}`,
     });
-  }, [importHtml, importLabel, importDate]);
+  }, [importHtml, importLabel, importDate, importGazette]);
 
   const handleDelete = useCallback(async (id: string) => {
     await deleteSource(id);
@@ -175,16 +176,13 @@ export default function SourcesView() {
         return articleId ? changedArticleIds.has(articleId) : false;
       });
 
-      // Re-extract gazette info from new version
-      const newGazetteInfo = extractOfficialGazette(htmlWithIds);
-
-      // Atomic source update in IDB
+      // Atomic source update in IDB — preserve existing gazette info
       const newSource: Source = {
         ...oldSource,
         htmlContent: htmlWithIds,
         outline,
         articles,
-        officialGazetteInfo: newGazetteInfo || oldSource.officialGazetteInfo,
+        // Keep existing officialGazetteInfo (user-entered, manual only)
         version: oldSource.version + 1,
         updatedAt: Date.now(),
         previousVersionId: oldSource.id,
@@ -412,6 +410,15 @@ export default function SourcesView() {
                     value={importDate}
                     onChange={e => setImportDate(e.target.value)}
                     className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Službeni list (oznaka)</label>
+                  <input
+                    value={importGazette}
+                    onChange={e => setImportGazette(e.target.value)}
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder='npr. "Sl. list CG", br. 47/2008'
                   />
                 </div>
                 <div className="max-h-40 overflow-y-auto rounded-md border p-3">
