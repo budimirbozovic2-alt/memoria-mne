@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
 import { Card, getCardScore, getDueCards } from "@/lib/spaced-repetition";
 import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress, loadReviewLog } from "@/lib/storage";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 import LearnOnboarding, { hasSeenOnboarding } from "@/components/LearnOnboarding";
 import SessionComplete from "./learn/SessionComplete";
 import { LearnSessionProps, ViewWidth } from "./learn/types";
-import StudyModeFree from "./learn/StudyModeFree";
-import StudyModeRecall from "./learn/StudyModeRecall";
-import StudyModeChain from "./learn/StudyModeChain";
+const StudyModeFree = lazy(() => import("./learn/StudyModeFree"));
+const StudyModeRecall = lazy(() => import("./learn/StudyModeRecall"));
+const StudyModeChain = lazy(() => import("./learn/StudyModeChain"));
 import { ShieldAlert, Link2, BookOpen, Brain, ArrowLeft, ChevronRight, ListOrdered, TrendingDown, Eye, HelpCircle, AlertTriangle } from "lucide-react";
 
 export default function LearnSession({ cards, categories, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0 }: LearnSessionProps) {
@@ -289,45 +289,52 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
       />
     );
   }
+  const fallback = <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Učitavanje...</div>;
 
-  // ── ACTIVE MODES (delegated to sub-components) ──
+  // ── ACTIVE MODES (delegated to lazy sub-components) ──
   if (learnMode === "free") {
     return (
-      <StudyModeFree
-        card={card} sortedCards={sortedCards} currentIndex={currentIndex}
-        viewWidth={viewWidth} setViewWidth={setViewWidth}
-        readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
-        onMarkRead={handleMarkRead} onEdit={onEdit} onAddKeyPart={onAddKeyPart}
-        goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
-      />
+      <Suspense fallback={fallback}>
+        <StudyModeFree
+          card={card} sortedCards={sortedCards} currentIndex={currentIndex}
+          viewWidth={viewWidth} setViewWidth={setViewWidth}
+          readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
+          onMarkRead={handleMarkRead} onEdit={onEdit} onAddKeyPart={onAddKeyPart}
+          goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
+        />
+      </Suspense>
     );
   }
 
   if (learnMode === "active-recall") {
     return (
-      <StudyModeRecall
-        card={card} sortedCards={sortedCards} currentIndex={currentIndex}
-        viewWidth={viewWidth} setViewWidth={setViewWidth}
-        readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
-        onMarkRead={handleMarkRead} onReviewSection={onReviewSection} onAddKeyPart={onAddKeyPart}
-        goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
-        setCompletedCards={setCompletedCards} setTotalGrades={setTotalGrades}
-        setModulesCompleted={setModulesCompleted} updateProgress={updateProgress}
-      />
+      <Suspense fallback={fallback}>
+        <StudyModeRecall
+          card={card} sortedCards={sortedCards} currentIndex={currentIndex}
+          viewWidth={viewWidth} setViewWidth={setViewWidth}
+          readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
+          onMarkRead={handleMarkRead} onReviewSection={onReviewSection} onAddKeyPart={onAddKeyPart}
+          goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
+          setCompletedCards={setCompletedCards} setTotalGrades={setTotalGrades}
+          setModulesCompleted={setModulesCompleted} updateProgress={updateProgress}
+        />
+      </Suspense>
     );
   }
 
   if (learnMode === "chain") {
     return (
-      <StudyModeChain
-        card={card} sortedCards={sortedCards} currentIndex={currentIndex}
-        viewWidth={viewWidth} setViewWidth={setViewWidth}
-        readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
-        onReviewSection={onReviewSection}
-        goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
-        setChainCompletedCards={setChainCompletedCards} setTotalGrades={setTotalGrades}
-        setModulesCompleted={setModulesCompleted} setChainResets={setChainResets} updateProgress={updateProgress}
-      />
+      <Suspense fallback={fallback}>
+        <StudyModeChain
+          card={card} sortedCards={sortedCards} currentIndex={currentIndex}
+          viewWidth={viewWidth} setViewWidth={setViewWidth}
+          readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
+          onReviewSection={onReviewSection}
+          goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
+          setChainCompletedCards={setChainCompletedCards} setTotalGrades={setTotalGrades}
+          setModulesCompleted={setModulesCompleted} setChainResets={setChainResets} updateProgress={updateProgress}
+        />
+      </Suspense>
     );
   }
 
