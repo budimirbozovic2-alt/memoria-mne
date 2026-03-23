@@ -12,10 +12,11 @@ interface Props {
   category: string;
   subcategory?: string;
   tags?: string[];
+  keyParts?: string[];
   onMarkKeyPart?: (text: string) => void;
 }
 
-export default function TextSelectionTooltip({ children, cardId, question, category, subcategory, tags, onMarkKeyPart }: Props) {
+export default function TextSelectionTooltip({ children, cardId, question, category, subcategory, tags, keyParts, onMarkKeyPart }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
@@ -70,11 +71,15 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
 
   const handleKeyPart = useCallback(() => {
     if (!tooltip || !onMarkKeyPart) return;
+    const isAlreadyMarked = (keyParts || []).some(p => p === tooltip.text.trim());
     onMarkKeyPart(tooltip.text);
-    toast({ title: "Označeno kao ključni dio", description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
+    toast({
+      title: isAlreadyMarked ? "Uklonjena oznaka" : "Označeno kao ključni dio",
+      description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"`,
+    });
     setTooltip(null);
     window.getSelection()?.removeAllRanges();
-  }, [tooltip, onMarkKeyPart]);
+  }, [tooltip, onMarkKeyPart, keyParts]);
 
   return (
     <div ref={containerRef} className="relative" onMouseUp={handleMouseUp}>
@@ -93,14 +98,23 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
               <Brain className="h-3.5 w-3.5" />
               Mnemo kuka
             </button>
-            {onMarkKeyPart && (
-              <button
-                onClick={handleKeyPart}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-warning text-warning-foreground text-xs font-medium shadow-lg hover:bg-warning/90 transition-colors"
-              >
-                <Star className="h-3.5 w-3.5" />
-                Ključni dio
-              </button>
+            {onMarkKeyPart && tooltip && (
+              (() => {
+                const isMarked = (keyParts || []).some(p => p === tooltip.text.trim());
+                return (
+                  <button
+                    onClick={handleKeyPart}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg transition-colors ${
+                      isMarked
+                        ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                        : "bg-warning text-warning-foreground hover:bg-warning/90"
+                    }`}
+                  >
+                    <Star className="h-3.5 w-3.5" />
+                    {isMarked ? "Ukloni oznaku" : "Ključni dio"}
+                  </button>
+                );
+              })()
             )}
           </div>
           <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
