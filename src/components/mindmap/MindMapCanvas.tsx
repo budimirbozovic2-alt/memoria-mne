@@ -305,7 +305,11 @@ function MindMapCanvasInner({ doc, onBack }: Props) {
             <ChevronDown className="h-3 w-3 ml-1" />
           </Button>
           {showTemplates && (
-            <div className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-popover p-2 shadow-xl animate-in fade-in-0 zoom-in-95 duration-150">
+            <div
+              className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-popover p-2 shadow-xl animate-in fade-in-0 zoom-in-95 duration-150"
+              onPointerDown={e => e.stopPropagation()}
+              onMouseDown={e => e.stopPropagation()}
+            >
               {templates.map(t => (
                 <button
                   key={t.icon}
