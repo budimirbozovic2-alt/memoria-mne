@@ -106,8 +106,6 @@ export default function SourcesView() {
   }, [importHtml, importLabel, importDate, importGazette]);
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const deleteConfirmSource = sources.find(s => s.id === deleteConfirmId);
-  const deleteLinkedCount = deleteConfirmId ? linkedCardCount(deleteConfirmId) : 0;
 
   const handleDelete = useCallback(async (id: string) => {
     const linked = cards.filter(c => c.sourceId === id).length;
