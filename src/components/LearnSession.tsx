@@ -29,6 +29,7 @@ import { Button } from "@/components/ui/button";
 
 import LearnOnboarding, { hasSeenOnboarding } from "@/components/LearnOnboarding";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
+import { highlightKeyParts } from "@/lib/highlight-key-parts";
 
 // Sub-components
 import SessionHeader from "./learn/SessionHeader";
