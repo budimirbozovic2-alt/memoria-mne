@@ -12,41 +12,23 @@ import { lazy, Suspense } from "react";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
 import NotFound from "./pages/NotFound";
 
-// Retry wrapper for lazy imports — handles stale Vite module URLs after HMR
-function lazyRetry<T extends { default: React.ComponentType<any> }>(
-  factory: () => Promise<T>,
-): React.LazyExoticComponent<T["default"]> {
-  return lazy(() =>
-    factory().catch(() => {
-      // Module fetch failed (stale URL) — reload page once
-      const key = "lazyRetryReloaded";
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, "1");
-        window.location.reload();
-      }
-      sessionStorage.removeItem(key);
-      return factory();
-    }),
-  );
-}
-
 // Lazy-loaded route pages
-const DashboardPage = lazyRetry(() => import("@/views/DashboardPage"));
-const ReviewPage = lazyRetry(() => import("@/views/ReviewPage"));
-const LearnPage = lazyRetry(() => import("@/views/LearnPage"));
-const CreatePage = lazyRetry(() => import("@/views/CreatePage"));
-const EditPage = lazyRetry(() => import("@/views/EditPage"));
-const SettingsPage = lazyRetry(() => import("@/views/SettingsPage"));
-const StatsPage = lazyRetry(() => import("@/views/StatsPage"));
-const MnemonicPage = lazyRetry(() => import("@/views/MnemonicPage"));
-const PlannerPage = lazyRetry(() => import("@/views/PlannerPage"));
-const KnowledgeMapPage = lazyRetry(() => import("@/views/KnowledgeMapPage"));
-const MetacognitivePage = lazyRetry(() => import("@/views/MetacognitivePage"));
-const FrequentErrorsPage = lazyRetry(() => import("@/views/FrequentErrorsPage"));
-const MajorSystemPage = lazyRetry(() => import("@/views/MajorSystemPage"));
-const DatabasePage = lazyRetry(() => import("@/views/DatabasePage"));
-const SpeedReaderPage = lazyRetry(() => import("@/views/SpeedReaderPage"));
-const MindMapPage = lazyRetry(() => import("@/views/MindMapPage"));
+const DashboardPage = lazy(() => import("@/views/DashboardPage"));
+const ReviewPage = lazy(() => import("@/views/ReviewPage"));
+const LearnPage = lazy(() => import("@/views/LearnPage"));
+const CreatePage = lazy(() => import("@/views/CreatePage"));
+const EditPage = lazy(() => import("@/views/EditPage"));
+const SettingsPage = lazy(() => import("@/views/SettingsPage"));
+const StatsPage = lazy(() => import("@/views/StatsPage"));
+const MnemonicPage = lazy(() => import("@/views/MnemonicPage"));
+const PlannerPage = lazy(() => import("@/views/PlannerPage"));
+const KnowledgeMapPage = lazy(() => import("@/views/KnowledgeMapPage"));
+const MetacognitivePage = lazy(() => import("@/views/MetacognitivePage"));
+const FrequentErrorsPage = lazy(() => import("@/views/FrequentErrorsPage"));
+const MajorSystemPage = lazy(() => import("@/views/MajorSystemPage"));
+const DatabasePage = lazy(() => import("@/views/DatabasePage"));
+const SpeedReaderPage = lazy(() => import("@/views/SpeedReaderPage"));
+const MindMapPage = lazy(() => import("@/views/MindMapPage"));
 
 const queryClient = new QueryClient();
 
