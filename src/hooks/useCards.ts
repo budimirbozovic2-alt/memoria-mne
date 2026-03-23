@@ -44,22 +44,31 @@ function createPersistQueue() {
     const actions = pending.splice(0);
     if (actions.length === 0) return;
 
-    const fullAction = actions.find(a => a.type === "full");
-    if (fullAction && fullAction.type === "full") {
-      await idbSaveCards(mapToArray(fullAction.map));
-      return;
-    }
+    try {
+      const fullAction = actions.find(a => a.type === "full");
+      if (fullAction && fullAction.type === "full") {
+        await idbSaveCards(mapToArray(fullAction.map));
+        return;
+      }
 
-    const puts: Card[] = [];
-    const deletes: string[] = [];
-    for (const a of actions) {
-      if (a.type === "put") puts.push(a.card);
-      else if (a.type === "delete") deletes.push(a.id);
-      else if (a.type === "bulk") puts.push(...a.cards);
-    }
+      const puts: Card[] = [];
+      const deletes: string[] = [];
+      for (const a of actions) {
+        if (a.type === "put") puts.push(a.card);
+        else if (a.type === "delete") deletes.push(a.id);
+        else if (a.type === "bulk") puts.push(...a.cards);
+      }
 
-    if (puts.length > 0) await idbBulkPutCards(puts);
-    for (const id of deletes) await idbDeleteCard(id);
+      if (puts.length > 0) await idbBulkPutCards(puts);
+      for (const id of deletes) await idbDeleteCard(id);
+    } catch (err: any) {
+      if (err?.message === "QUOTA_EXCEEDED") {
+        const { toast } = await import("sonner");
+        toast.error("Memorija browsera je puna! Exportuj backup i očisti nepotrebne podatke.");
+      } else {
+        console.error("[persistQueue] flush failed", err);
+      }
+    }
   }
 
   function schedule(action: PersistAction) {
