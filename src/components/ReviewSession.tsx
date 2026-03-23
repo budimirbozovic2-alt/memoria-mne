@@ -70,6 +70,7 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
+  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
   const [cardIndex, setCardIndex] = useState(0);
   const [sectionIndex, setSectionIndex] = useState(0);
   const [randomIndex, setRandomIndex] = useState(0);
