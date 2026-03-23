@@ -65,12 +65,19 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
   const [labOpen, setLabOpen] = useState(false);
   const labRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
+  const [mappingFlash, setMappingFlash] = useState(false);
+  const mappingCountRef = useRef(0);
 
-  const toggleDark = useCallback(() => {
-    const next = !dark;
-    setDarkState(next);
-    setDarkMode(next);
-  }, [dark]);
+  // Listen for mapping events (custom event from SourceReader)
+  useEffect(() => {
+    const handler = () => {
+      mappingCountRef.current += 1;
+      setMappingFlash(true);
+      setTimeout(() => setMappingFlash(false), 1200);
+    };
+    window.addEventListener("codex-mapping-created", handler);
+    return () => window.removeEventListener("codex-mapping-created", handler);
+  }, []);
 
   // Close mega menu on click outside
   useEffect(() => {
