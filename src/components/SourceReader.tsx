@@ -157,7 +157,31 @@ export default function SourceReader({ source, onBack }: Props) {
     }
   }, [selection]);
 
-  const handleSmartSplitConfirm = useCallback(() => {
+  // Keyboard shortcuts: S = smart-split selection, M = toggle sidebar, ESC = close modals
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
+
+      if (e.key === "s" || e.key === "S") {
+        if (selection) {
+          e.preventDefault();
+          handleConvertToEssay();
+        }
+      } else if (e.key === "m" || e.key === "M") {
+        e.preventDefault();
+        setExamOpen(prev => !prev);
+      } else if (e.key === "Escape") {
+        if (essayDialogOpen) setEssayDialogOpen(false);
+        else if (splitSummaryOpen) { setSplitSummaryOpen(false); setSplitResult(null); }
+        else if (autoSplitOpen) setAutoSplitOpen(false);
+        else if (selection) setSelection(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [selection, handleConvertToEssay, essayDialogOpen, splitSummaryOpen, autoSplitOpen]);
+
     if (!splitResult || splitModules.length === 0) return;
     const category = source.label || categories[0] || "Opšte";
     const modules = splitModules;
