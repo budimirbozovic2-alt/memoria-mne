@@ -42,6 +42,7 @@ interface Props {
   onAssignChapter?: (cardId: string, chapter: string) => void;
   onCloneToMnemonic?: (card: Card) => void;
   availableChapters?: string[];
+  onAddKeyPart?: (cardId: string, text: string) => void;
 }
 
 function ScoreBadge({ score }: { score: number }) {
