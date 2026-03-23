@@ -525,35 +525,38 @@ export function useCards() {
     URL.revokeObjectURL(url);
   }, []);
 
-  // Chunked JSON builder to avoid memory spikes on large datasets
-  const buildJsonChunked = useCallback(async (data: object, onProgress: (p: number, msg: string) => void): Promise<string> => {
+  // Chunked JSON builder using Blob parts to avoid memory spikes on large datasets
+  const buildJsonChunked = useCallback(async (data: object, onProgress: (p: number, msg: string) => void): Promise<Blob> => {
     onProgress(10, "Priprema podataka...");
     await new Promise(r => setTimeout(r, 30));
 
     const dataAny = data as any;
     const cardsArr: any[] = dataAny.cards || [];
     const CHUNK = 500;
-    const parts: string[] = [];
+    const blobParts: (string | Blob)[] = [];
 
-    // Build cards array in chunks
+    // Build header (everything except cards)
+    const rest = { ...dataAny };
+    delete rest.cards;
+    const restJson = JSON.stringify(rest);
+    // Open: {"key":"val",...,"cards":[
+    blobParts.push(restJson.slice(0, -1) + ',"cards":[');
+
+    // Serialize cards in chunks → Blob parts (avoids giant string concatenation)
     for (let i = 0; i < cardsArr.length; i += CHUNK) {
       const chunk = cardsArr.slice(i, i + CHUNK);
-      parts.push(...chunk.map((c: any) => JSON.stringify(c)));
-      const pct = 10 + Math.round((i / cardsArr.length) * 60);
+      const prefix = i > 0 ? "," : "";
+      blobParts.push(prefix + chunk.map((c: any) => JSON.stringify(c)).join(","));
+      const pct = 10 + Math.round((i / Math.max(cardsArr.length, 1)) * 60);
       onProgress(pct, `Serijalizacija kartica... ${Math.min(i + CHUNK, cardsArr.length)}/${cardsArr.length}`);
       await new Promise(r => setTimeout(r, 10)); // yield to UI
     }
 
-    onProgress(75, "Finalizacija JSON-a...");
+    blobParts.push("]}");
+    onProgress(75, "Finalizacija...");
     await new Promise(r => setTimeout(r, 20));
 
-    const rest = { ...dataAny };
-    delete rest.cards;
-    const restJson = JSON.stringify(rest);
-    // Merge: {"cards":[...chunk1,chunk2...],"rest":"..."}
-    const cardsJson = `[${parts.join(",")}]`;
-    const json = `${restJson.slice(0, -1)},"cards":${cardsJson}}`;
-    return json;
+    return new Blob(blobParts, { type: "application/json" });
   }, []);
 
   const exportTemplate = useCallback(async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
