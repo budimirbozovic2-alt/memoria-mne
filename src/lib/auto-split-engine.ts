@@ -2,13 +2,19 @@
  * Auto-Split Engine for Legal Documents
  * Detects articles (Član) with their titles and content,
  * enabling batch essay generation from legal source texts.
+ *
+ * Supports two scanning modes:
+ *   A) Standard: Title + Član + Content
+ *   B) Articles-only: When no title exists, auto-generates from first words
  */
 
 export interface DetectedArticle {
   /** e.g. "59" or "10a" */
   articleNum: string;
-  /** Title line found above the Član line */
+  /** Title line found above the Član line (or auto-generated) */
   title: string;
+  /** Whether the title was auto-generated from content */
+  autoTitle: boolean;
   /** Full essay name: "Čl. 59 Pojam, sadržina..." */
   essayName: string;
   /** HTML content of the article body */
@@ -17,20 +23,30 @@ export interface DetectedArticle {
   plainSnippet: string;
 }
 
+/** Extract first N words from text for auto-title */
+function firstWords(text: string, n = 6): string {
+  const words = text
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean);
+  if (words.length === 0) return "";
+  const slice = words.slice(0, n).join(" ");
+  return words.length > n ? slice + "..." : slice;
+}
+
 /**
  * Parse source HTML and detect legal articles with titles.
- * Pattern:
- *   [Title line]       ← line immediately above "Član X"
- *   Član X             ← article marker
- *   [Content...]       ← everything until next title/Član or end
+ *
+ * Mode A (Standard): Looks for a title line immediately above "Član X".
+ * Mode B (Articles-only): If no title found, generates one from the first
+ *   5-7 words of the article's first paragraph.
  */
 export function detectArticles(html: string): DetectedArticle[] {
-  // Convert HTML to lines, preserving tags for content extraction
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
   const elements = Array.from(doc.body.children);
 
-  // Build line-based structure from DOM elements
   interface Line {
     text: string;
     html: string;
@@ -53,7 +69,6 @@ export function detectArticles(html: string): DetectedArticle[] {
     });
   }
 
-  // Now detect articles: title is the non-empty line before "Član X"
   const articles: DetectedArticle[] = [];
 
   for (let i = 0; i < lines.length; i++) {
@@ -61,11 +76,11 @@ export function detectArticles(html: string): DetectedArticle[] {
 
     const articleNum = lines[i].articleNum;
 
-    // Look backwards for title (first non-empty line above)
+    // ── Look backwards for title (Mode A) ──
     let title = "";
+    let autoTitle = false;
     for (let j = i - 1; j >= 0; j--) {
       if (lines[j].text && !lines[j].isArticle) {
-        // Skip if this line is content of a previous article (check if there's another Član between j and i)
         let belongsToPrevious = false;
         for (let k = j + 1; k < i; k++) {
           if (lines[k].isArticle) { belongsToPrevious = true; break; }
@@ -77,17 +92,14 @@ export function detectArticles(html: string): DetectedArticle[] {
       }
     }
 
-    // Collect content: everything after "Član X" until the next title-before-Član or end
+    // ── Collect content ──
     const contentParts: string[] = [];
     const plainParts: string[] = [];
     let nextBoundary = lines.length;
 
-    // Find next article's title line (or next article line)
     for (let j = i + 1; j < lines.length; j++) {
       if (lines[j].isArticle) {
-        // The boundary is the title above this next article (if any), otherwise the article itself
         nextBoundary = j;
-        // Check if line before is a title
         for (let k = j - 1; k > i; k--) {
           if (lines[k].text && !lines[k].isArticle) {
             nextBoundary = k;
@@ -105,6 +117,12 @@ export function detectArticles(html: string): DetectedArticle[] {
       }
     }
 
+    // ── Mode B: Auto-generate title from first words ──
+    if (!title && plainParts.length > 0) {
+      title = firstWords(plainParts[0], 6);
+      autoTitle = true;
+    }
+
     const contentHtml = contentParts.join("\n");
     const plainSnippet = `Član ${articleNum}\n${plainParts.join("\n")}`;
     const essayName = title
@@ -114,6 +132,7 @@ export function detectArticles(html: string): DetectedArticle[] {
     articles.push({
       articleNum,
       title,
+      autoTitle,
       essayName,
       contentHtml,
       plainSnippet,
