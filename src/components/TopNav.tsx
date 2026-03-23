@@ -24,7 +24,7 @@ import { useCardContext } from "@/contexts/AppContext";
 import { useState, useCallback, useRef, useEffect, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Zap, Home, GraduationCap, RotateCcw, BookOpen, Map, Brain, Network, Target, FolderOpen, Moon, Sun, Menu, X, Focus, Settings as SettingsIcon, BarChart3, FlaskConical, Database as DatabaseIcon, HelpCircle } from "lucide-react";
+import { Zap, Home, GraduationCap, RotateCcw, BookOpen, Map, Brain, Network, Target, Moon, Sun, Menu, X, Focus, Settings as SettingsIcon, BarChart3, FlaskConical, Database as DatabaseIcon, HelpCircle, Plus } from "lucide-react";
 import { setDarkMode } from "@/lib/app-settings";
 
 interface Props {
@@ -41,16 +41,20 @@ const PRIMARY_NAV = [
   { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
 ];
 
-const LAB_ITEMS = [
+const LAB_ANALYTICS = [
   { path: "/stats", icon: BarChart3, label: "Statistika", desc: "Pregled napretka i analitika" },
   { path: "/knowledge-map", icon: Map, label: "Mapa znanja", desc: "Vizuelna mapa savladanosti" },
   { path: "/metacognitive", icon: BookOpen, label: "Dnevnik", desc: "Metakognitivne refleksije" },
+];
+
+const LAB_TOOLS = [
   { path: "/mnemonic", icon: Brain, label: "Mnemo radionica", desc: "Tehnike pamćenja" },
   { path: "/planner", icon: Target, label: "Strateški planer", desc: "Planiranje učenja" },
   { path: "/speed-reader", icon: Zap, label: "Speed Reader", desc: "Brzo čitanje podkategorija" },
   { path: "/mind-map", icon: Network, label: "Mentalne mape", desc: "Vizuelizacija hijerarhija i postupaka" },
 ];
 
+const LAB_ITEMS = [...LAB_ANALYTICS, ...LAB_TOOLS];
 const LAB_PATHS = LAB_ITEMS.map(i => i.path);
 
 export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Props) {
