@@ -458,6 +458,17 @@ export function useCards() {
     patchCard(cardId, c => ({ ...c, errorLog: [] }));
   }, [patchCard]);
 
+  // O(1) addKeyPart — surgical
+  const addKeyPart = useCallback((cardId: string, text: string) => {
+    patchCard(cardId, c => {
+      const parts = c.keyParts || [];
+      // Avoid duplicates
+      const normalized = text.trim();
+      if (parts.some(p => p === normalized)) return c;
+      return { ...c, keyParts: [...parts, normalized] };
+    });
+  }, [patchCard]);
+
   const downloadFile = useCallback((blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
