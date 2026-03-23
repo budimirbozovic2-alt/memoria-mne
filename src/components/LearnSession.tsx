@@ -464,7 +464,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
         <AnimatePresence mode="wait">
           <motion.div key={card.id} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.3 }} className="space-y-4">
             {isFlash ? (
-              <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags}>
+              <TextSelectionTooltip cardId={card.id} question={card.question} category={card.category} subcategory={card.subcategory} tags={card.tags} onMarkKeyPart={onAddKeyPart ? (text: string) => onAddKeyPart(card.id, text) : undefined}>
               <div className="rounded-xl border bg-card overflow-hidden">
                 <button onClick={() => toggleSection(0)} className="w-full flex items-center gap-2 p-4 text-left hover:bg-secondary/30 transition-colors">
                   <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${expandedSections.has(0) ? "rotate-90" : ""}`} />
@@ -472,7 +472,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                 </button>
                 {expandedSections.has(0) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: card.sections[0]?.content || "" }} />
+                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightKeyParts(card.sections[0]?.content || "", card.keyParts) }} />
                   </motion.div>
                 )}
               </div>
