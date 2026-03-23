@@ -28,6 +28,7 @@ const FrequentErrorsPage = lazy(() => import("@/views/FrequentErrorsPage"));
 const MajorSystemPage = lazy(() => import("@/views/MajorSystemPage"));
 const DatabasePage = lazy(() => import("@/views/DatabasePage"));
 const SpeedReaderPage = lazy(() => import("@/views/SpeedReaderPage"));
+const MindMapPage = lazy(() => import("@/views/MindMapPage"));
 
 const queryClient = new QueryClient();
 
