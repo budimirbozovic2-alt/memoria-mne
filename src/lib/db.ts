@@ -5,16 +5,25 @@ import type { DiaryEntry, CalibrationEntry, LatencyEntry, SlippageEntry, Activit
 import type { PlannerConfig, DisciplineEntry } from "./planner-storage";
 
 // ─── Database Schema ────────────────────────────────────
+export interface SourceArticle {
+  id: string;
+  number: number;
+  title: string;
+  text: string;
+}
+
 export interface Source {
   id: string;
   label: string;
   date: string;           // ISO date string
   htmlContent: string;
   outline: { id: string; text: string; level: number }[];
+  articles: SourceArticle[];
   version: number;
   createdAt: number;
   updatedAt: number;
   previousVersionId?: string;
+  previousHtmlContent?: string; // stored for diff comparison
 }
 
 class MemoriaDB extends Dexie {
