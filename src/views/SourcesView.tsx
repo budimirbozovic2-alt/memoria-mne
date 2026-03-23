@@ -8,6 +8,7 @@ import { default as RefreshCw } from "lucide-react/dist/esm/icons/refresh-cw";
 import { default as Tag } from "lucide-react/dist/esm/icons/tag";
 import { default as AlertTriangle } from "lucide-react/dist/esm/icons/alert-triangle";
 import { default as GitCompare } from "lucide-react/dist/esm/icons/git-compare-arrows";
+import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,9 @@ export default function SourcesView() {
   const [readingSource, setReadingSource] = useState<Source | null>(null);
   const [versioningSourceId, setVersioningSourceId] = useState<string | null>(null);
   const [versionFile, setVersionFile] = useState<File | null>(null);
+  const [editingSource, setEditingSource] = useState<Source | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editGazette, setEditGazette] = useState("");
   const [diffView, setDiffView] = useState<{
     result: DiffResult;
     sourceName: string;
@@ -105,6 +109,26 @@ export default function SourcesView() {
     setSources(prev => prev.filter(s => s.id !== id));
     toast({ title: "Izvor obrisan", description: "Linkovi na karticama su očišćeni." });
   }, []);
+
+  const handleEditSource = useCallback((source: Source) => {
+    setEditingSource(source);
+    setEditLabel(source.label);
+    setEditGazette(source.officialGazetteInfo || "");
+  }, []);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editingSource || !editLabel.trim()) return;
+    const updated: Source = {
+      ...editingSource,
+      label: editLabel.trim(),
+      officialGazetteInfo: editGazette.trim() || undefined,
+      updatedAt: Date.now(),
+    };
+    await saveSource(updated);
+    setSources(prev => prev.map(s => s.id === updated.id ? updated : s));
+    setEditingSource(null);
+    toast({ title: "Izvor ažuriran" });
+  }, [editingSource, editLabel, editGazette]);
 
   const handleNewVersion = useCallback(async () => {
     if (!versionFile || !versioningSourceId) return;
@@ -291,7 +315,7 @@ export default function SourcesView() {
                     <div className="min-w-0">
                       <h3 className="font-medium text-sm truncate">{source.label}</h3>
                       {source.officialGazetteInfo && (
-                        <p className="text-[11px] italic text-muted-foreground/70 truncate mt-0.5">
+                        <p className="text-[11px] italic text-muted-foreground/70 mt-0.5 max-w-[260px] truncate" title={source.officialGazetteInfo}>
                           {source.officialGazetteInfo}
                         </p>
                       )}
@@ -322,6 +346,9 @@ export default function SourcesView() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Uredi izvor" onClick={() => handleEditSource(source)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setReadingSource(source)}>
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -467,6 +494,39 @@ export default function SourcesView() {
           <Button onClick={handleNewVersion} disabled={!versionFile} className="w-full">
             Uporedi i ažuriraj
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit source dialog */}
+      <Dialog open={!!editingSource} onOpenChange={v => { if (!v) setEditingSource(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Uredi izvor</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Naziv izvora</label>
+              <input
+                value={editLabel}
+                onChange={e => setEditLabel(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="npr. Zakon o obligacionim odnosima"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Službeni list (oznaka)</label>
+              <input
+                value={editGazette}
+                onChange={e => setEditGazette(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder='npr. "Sl. list CG", br. 47/2008'
+              />
+            </div>
+            <Button onClick={handleSaveEdit} disabled={!editLabel.trim()} className="w-full">
+              Sačuvaj izmjene
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
