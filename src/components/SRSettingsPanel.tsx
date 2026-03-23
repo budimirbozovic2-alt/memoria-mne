@@ -293,7 +293,7 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" size="sm" onClick={() => speak("Ovo je test govora. Memoria.")} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => speak("Ovo je test govora. CODEX.")} className="gap-1.5">
               Testiraj glas
             </Button>
           </div>
