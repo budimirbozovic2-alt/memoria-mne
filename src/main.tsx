@@ -22,7 +22,7 @@ setTimeout(() => {
 if (window.electronAPI) {
   const cleanup = window.electronAPI.onBackupRequested(async () => {
     try {
-      const [cards, categories, subcategories, reviewLog, srSettings] = await Promise.all([
+      const [cards, categories, subcategories, reviewLog, srSettings, sources, mindMaps] = await Promise.all([
         db.cards.toArray(),
         db.categories.toArray().then(rows => rows.map(r => r.name)),
         db.subcategories.toArray().then(rows => {
@@ -32,14 +32,20 @@ if (window.electronAPI) {
         }),
         db.reviewLog.toArray(),
         db.settings.get("srSettings").then(r => r?.value ?? null),
+        db.sources.toArray(),
+        db.mindMaps.toArray(),
       ]);
       const data: Record<string, unknown> = {
-        "sr-essay-cards": cards,
-        "sr-essay-categories": categories,
-        "sr-essay-subcategories": subcategories,
-        "sr-review-log": reviewLog,
+        version: 3,
+        type: "full",
+        cards,
+        categories,
+        subcategories,
+        reviewLog,
+        sources,
+        mindMaps,
       };
-      if (srSettings) data["sr-settings"] = srSettings;
+      if (srSettings) data["srSettings"] = srSettings;
       const json = JSON.stringify(data, null, 2);
       window.electronAPI!.requestBackup(json);
     } catch (_) {}
