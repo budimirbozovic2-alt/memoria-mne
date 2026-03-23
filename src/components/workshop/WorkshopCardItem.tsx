@@ -13,6 +13,8 @@ import { default as MapPin } from "lucide-react/dist/esm/icons/map-pin";
 import { default as Clock } from "lucide-react/dist/esm/icons/clock";
 import { default as List } from "lucide-react/dist/esm/icons/list";
 import { default as MoreHorizontal } from "lucide-react/dist/esm/icons/more-horizontal";
+import { default as Tag } from "lucide-react/dist/esm/icons/tag";
+import { default as Plus } from "lucide-react/dist/esm/icons/plus";
 import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
 import { default as Save } from "lucide-react/dist/esm/icons/save";
 import { default as X } from "lucide-react/dist/esm/icons/x";
@@ -48,6 +50,7 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editQuestion, setEditQuestion] = useState("");
   const [editSections, setEditSections] = useState<{ title: string; content: string }[]>([]);
+  const [newTag, setNewTag] = useState("");
 
   const statusConf = STATUS_CONFIG[card.mnemonicStatus];
   const StatusIcon = statusConf.icon;
@@ -342,6 +345,57 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="h-3 w-3" /> Oznake
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(card.tags || []).map(tag => (
+                    <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-xs font-medium">
+                      {tag}
+                      <button onClick={() => {
+                        const updated = (card.tags || []).filter(t => t !== tag);
+                        onUpdateCard(card.id, { tags: updated });
+                      }} className="text-muted-foreground hover:text-destructive">
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </span>
+                  ))}
+                  <div className="flex items-center gap-1">
+                    <input
+                      value={newTag}
+                      onChange={e => setNewTag(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && newTag.trim()) {
+                          const existing = card.tags || [];
+                          if (!existing.includes(newTag.trim())) {
+                            onUpdateCard(card.id, { tags: [...existing, newTag.trim()] });
+                          }
+                          setNewTag("");
+                        }
+                      }}
+                      placeholder="Novi tag..."
+                      className="w-24 px-2 py-0.5 rounded-md border bg-background text-[11px] focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <button
+                      onClick={() => {
+                        if (newTag.trim()) {
+                          const existing = card.tags || [];
+                          if (!existing.includes(newTag.trim())) {
+                            onUpdateCard(card.id, { tags: [...existing, newTag.trim()] });
+                          }
+                          setNewTag("");
+                        }
+                      }}
+                      className="p-0.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
                 </div>
               </div>
 

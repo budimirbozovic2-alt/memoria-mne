@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { idbLoadSettings } from "@/lib/db";
 import { useAppContext } from "@/contexts/AppContext";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AnimatePresence, motion } from "framer-motion";
@@ -44,6 +45,17 @@ export default function CardsView() {
     return id;
   });
   const [reorderMode, setReorderMode] = useState(false);
+  const [storedChapterOrder, setStoredChapterOrder] = useState<string[]>([]);
+
+  // Load stored chapter order from IDB when filter changes
+  useEffect(() => {
+    if (filterCategory && filterSubcategory) {
+      const key = `chapters-${filterCategory}-${filterSubcategory}`;
+      idbLoadSettings<string[]>(key, []).then(setStoredChapterOrder);
+    } else {
+      setStoredChapterOrder([]);
+    }
+  }, [filterCategory, filterSubcategory]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -374,17 +386,20 @@ export default function CardsView() {
           )}
 
           {filterSubcategory && (() => {
-            const chaptersInFilter = Array.from(new Set(
+            const chaptersSet = new Set(
               cards.filter(c => c.category === filterCategory && c.subcategory === filterSubcategory && c.chapter)
                 .map(c => c.chapter!)
-            )).sort();
-            if (chaptersInFilter.length === 0) return null;
+            );
+            // Use stored order from MentalSkeleton, append any new chapters
+            const ordered = [...storedChapterOrder].filter(ch => chaptersSet.has(ch));
+            chaptersSet.forEach(ch => { if (!ordered.includes(ch)) ordered.push(ch); });
+            if (ordered.length === 0) return null;
             return (
               <ScrollableRow className="pl-6 border-l-2 border-primary/10 ml-1">
                 <button onClick={() => setFilterChapter(null)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${!filterChapter ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
                   Sve glave
                 </button>
-                {chaptersInFilter.map(ch => (
+                {ordered.map(ch => (
                   <button key={ch} onClick={() => setFilterChapter(ch)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${filterChapter === ch ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
                     {ch}
                   </button>

@@ -70,6 +70,7 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
+  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
   const [cardIndex, setCardIndex] = useState(0);
   const [sectionIndex, setSectionIndex] = useState(0);
   const [randomIndex, setRandomIndex] = useState(0);
@@ -91,9 +92,11 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
     if (selectedChapter) filtered = filtered.filter((c) => c.chapter === selectedChapter);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (filterType === "essay") filtered = filtered.filter((c) => c.type === "essay");
+    else if (filterType === "flash") filtered = filtered.filter((c) => c.type === "flash");
     return filtered;
-  }, [dueCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent]);
+  }, [dueCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType]);
 
   // Apply same category/tag filters to allCards
   const filteredAllCards = useMemo(() => {
@@ -101,9 +104,11 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
     if (selectedChapter) filtered = filtered.filter((c) => c.chapter === selectedChapter);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (filterType === "essay") filtered = filtered.filter((c) => c.type === "essay");
+    else if (filterType === "flash") filtered = filtered.filter((c) => c.type === "flash");
     return filtered;
-  }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent]);
+  }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType]);
 
   // === MODE 1: Fokusirano Utvrđivanje (Stabilizacija) ===
   // Learning/Relearning sections with stability < 5, sorted by lowest stability
@@ -366,10 +371,12 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
           selectedChapter={selectedChapter}
           filterExamFrequent={filterExamFrequent}
           examFrequentCount={examFrequentCount}
+          filterType={filterType}
           onSelectCategory={(cat) => { setSelectedCategory(cat); setSelectedSubcategory(null); setSelectedChapter(null); }}
           onSelectSubcategory={(sub) => { setSelectedSubcategory(sub); setSelectedChapter(null); }}
           onSelectChapter={setSelectedChapter}
           onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
+          onFilterTypeChange={setFilterType}
         />
 
         <Button

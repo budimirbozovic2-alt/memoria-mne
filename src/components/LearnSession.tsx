@@ -47,6 +47,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">("order");
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
+  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
   const [started, setStarted] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -105,6 +106,11 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
     if (filterExamFrequent) {
       filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
     }
+    if (filterType === "essay") {
+      filtered = filtered.filter((c) => c.type === "essay");
+    } else if (filterType === "flash") {
+      filtered = filtered.filter((c) => c.type === "flash");
+    }
     if (learnMode === "chain") {
       filtered = filtered.filter((c) => c.type === "essay" && c.sections.length >= 3);
     }
@@ -123,7 +129,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
           return a.createdAt - b.createdAt;
         });
     }
-  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent]);
+  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent, filterType]);
 
   const card = sortedCards[currentIndex];
 
@@ -319,7 +325,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
 
     // Step 2: Category/subcategory filter + sort + start
     const sortOptions = [
-      { key: "order" as const, label: "Hronološki", desc: "Kronološkim redoslijedom", icon: ListOrdered },
+      { key: "order" as const, label: "Hronološki", desc: "Hronološkim redoslijedom", icon: ListOrdered },
       { key: "weakest" as const, label: "Najslabija", desc: "Najniži rezultat prvo", icon: TrendingDown },
       { key: "leastRead" as const, label: "Najmanje čitana", desc: "Nepročitana prvo", icon: Eye },
     ];
@@ -348,10 +354,12 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
           selectedChapter={selectedChapter}
           filterExamFrequent={filterExamFrequent}
           examFrequentCount={examFrequentCount}
+          filterType={filterType}
           onSelectCategory={(cat) => { setSelectedCategory(cat); setSelectedSubcategory(null); setSelectedChapter(null); }}
           onSelectSubcategory={(sub) => { setSelectedSubcategory(sub); setSelectedChapter(null); }}
           onSelectChapter={setSelectedChapter}
           onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
+          onFilterTypeChange={setFilterType}
         />
 
         <div className="space-y-2">
@@ -463,7 +471,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                 </button>
                 {expandedSections.has(0) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: card.sections[0]?.content || "" }} />
+                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: card.sections[0]?.content || "" }} />
                   </motion.div>
                 )}
               </div>
@@ -485,7 +493,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                     </button>
                     {expandedSections.has(i) && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                        <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: section.content }} />
+                        <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: section.content }} />
                       </motion.div>
                     )}
                   </div>
@@ -575,7 +583,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   {sections.map((section) => (
                     <div key={section.id} className="rounded-xl border bg-card p-4">
                       <p className="font-medium text-sm mb-2">{section.title}</p>
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: section.content }} />
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: section.content }} />
                     </div>
                   ))}
                 </div>
@@ -609,7 +617,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                   ) : (
                     <div className="space-y-4">
                       <div className="rounded-lg bg-secondary/50 p-4">
-                        <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sections[drillIndex].content }} />
+                        <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sections[drillIndex].content }} />
                       </div>
                       <GradeButtons onGrade={handleArGrade} hint="Ocijeni svoje znanje (samo 4 = napredak)" />
                     </div>
@@ -741,7 +749,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                       ) : (
                         <div className="space-y-4">
                           <div className="rounded-lg bg-secondary/50 p-4">
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sections[chainIndex].content }} />
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sections[chainIndex].content }} />
                           </div>
                           <GradeButtons onGrade={handleChainGrade} hint="Ocijeni (samo 4 = napredak)" />
                         </div>
@@ -770,7 +778,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
                       ) : (
                         <div className="space-y-4">
                           <div className="rounded-lg bg-secondary/50 p-4">
-                            <div className="text-sm leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: sections[chainReviewIndex].content }} />
+                            <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: sections[chainReviewIndex].content }} />
                           </div>
                           <GradeButtons onGrade={handleChainReviewGrade} hint="Bilo šta ispod 4 = reset na modul 1" />
                         </div>

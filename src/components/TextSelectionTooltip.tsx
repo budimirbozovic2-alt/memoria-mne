@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { default as Brain } from "lucide-react/dist/esm/icons/brain";
+import { default as Star } from "lucide-react/dist/esm/icons/star";
 import { createMnemonicCardFromSelection, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
 import { toast } from "@/hooks/use-toast";
 
@@ -10,9 +11,10 @@ interface Props {
   category: string;
   subcategory?: string;
   tags?: string[];
+  onMarkKeyPart?: (text: string) => void;
 }
 
-export default function TextSelectionTooltip({ children, cardId, question, category, subcategory, tags }: Props) {
+export default function TextSelectionTooltip({ children, cardId, question, category, subcategory, tags, onMarkKeyPart }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
@@ -65,6 +67,14 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
     window.getSelection()?.removeAllRanges();
   }, [tooltip, cardId, question, category, subcategory, tags]);
 
+  const handleKeyPart = useCallback(() => {
+    if (!tooltip || !onMarkKeyPart) return;
+    onMarkKeyPart(tooltip.text);
+    toast({ title: "Označeno kao ključni dio", description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
+    setTooltip(null);
+    window.getSelection()?.removeAllRanges();
+  }, [tooltip, onMarkKeyPart]);
+
   return (
     <div ref={containerRef} className="relative" onMouseUp={handleMouseUp}>
       {children}
@@ -74,13 +84,24 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
           className="absolute z-50 -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95 duration-150"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
-          <button
-            onClick={handleAdd}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
-          >
-            <Brain className="h-3.5 w-3.5" />
-            Mnemo kuka
-          </button>
+          <div className="flex items-center gap-1 mb-1">
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
+            >
+              <Brain className="h-3.5 w-3.5" />
+              Mnemo kuka
+            </button>
+            {onMarkKeyPart && (
+              <button
+                onClick={handleKeyPart}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-warning text-warning-foreground text-xs font-medium shadow-lg hover:bg-warning/90 transition-colors"
+              >
+                <Star className="h-3.5 w-3.5" />
+                Ključni dio
+              </button>
+            )}
+          </div>
           <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
         </div>
       )}
