@@ -346,6 +346,7 @@ export default function SourceReader({ source, onBack }: Props) {
       setExamQuestions(prev =>
         prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: 1 } : q)
       );
+      incrementDailyMapped(1);
 
       toast({
         title: "Esej kreiran",
