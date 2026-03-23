@@ -409,6 +409,7 @@ function MindMapCanvasInner({ doc, onBack }: Props) {
           onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
           onEdgeDoubleClick={onEdgeDoubleClick}
+          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           connectionMode={ConnectionMode.Loose}
