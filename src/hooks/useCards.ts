@@ -745,9 +745,42 @@ export function useCards() {
         }
       }
 
+      // Restore metacognitive + planner IDB tables (v4+)
+      const idbTables: { key: string; table: string }[] = [
+        { key: "diary", table: "diary" },
+        { key: "calibrationLog", table: "calibrationLog" },
+        { key: "latencyLog", table: "latencyLog" },
+        { key: "slippageLog", table: "slippageLog" },
+        { key: "activityLog", table: "activityLog" },
+        { key: "disciplineLog", table: "disciplineLog" },
+        { key: "pomodoroLog", table: "pomodoroLog" },
+      ];
+      const hasExtraTables = idbTables.some(t => Array.isArray(parsed[t.key]) && parsed[t.key].length > 0);
+      if (hasExtraTables) {
+        const { db } = await import("@/lib/db");
+        for (const { key, table } of idbTables) {
+          if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
+            if (strategy === "overwrite") {
+              await (db as any)[table].clear();
+            }
+            await (db as any)[table].bulkPut(parsed[key]);
+          }
+        }
+      }
+
+      // Restore localStorage data (v4+)
+      if (parsed.localStorageData && typeof parsed.localStorageData === "object") {
+        for (const [key, value] of Object.entries(parsed.localStorageData)) {
+          localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+        }
+      }
+
       const extraParts: string[] = [];
       if (Array.isArray(parsed.sources) && parsed.sources.length > 0) extraParts.push(`${parsed.sources.length} izvora`);
       if (Array.isArray(parsed.mindMaps) && parsed.mindMaps.length > 0) extraParts.push(`${parsed.mindMaps.length} mentalnih mapa`);
+      if (Array.isArray(parsed.diary) && parsed.diary.length > 0) extraParts.push(`${parsed.diary.length} dnevničkih zapisa`);
+      if (Array.isArray(parsed.disciplineLog) && parsed.disciplineLog.length > 0) extraParts.push("disciplinski log");
+      if (parsed.localStorageData) extraParts.push("podešavanja i planer");
       const extraMsg = extraParts.length > 0 ? ` + ${extraParts.join(", ")}` : "";
       toast.success(`Uspješno uvezeno ${importedCards.length} kartica${extraMsg}.`);
     } catch (err) {
