@@ -489,7 +489,7 @@ export default function SourceReader({ source, onBack }: Props) {
 
       {/* Essay creation dialog */}
       <Dialog open={essayDialogOpen} onOpenChange={setEssayDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Kreiraj esejsko pitanje</DialogTitle>
           </DialogHeader>
