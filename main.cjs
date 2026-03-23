@@ -206,7 +206,7 @@ function createWindow(splash) {
 }
 
 // ── Auto-Backup System ──
-const BACKUP_DIR = path.join(app.getPath('documents'), 'MemoriaBackups');
+const BACKUP_DIR = path.join(app.getPath('documents'), 'CodexBackups');
 const MAX_BACKUPS = 10;
 const BACKUP_INTERVAL_MS = 15 * 60 * 1000;
 
@@ -219,7 +219,7 @@ function ensureBackupDir() {
 function cleanOldBackups() {
   try {
     const files = fs.readdirSync(BACKUP_DIR)
-      .filter(f => f.startsWith('Memoria_AutoBackup_') && f.endsWith('.json'))
+      .filter(f => f.startsWith('Codex_AutoBackup_') && f.endsWith('.json'))
       .map(f => ({ name: f, time: fs.statSync(path.join(BACKUP_DIR, f)).mtimeMs }))
       .sort((a, b) => b.time - a.time);
     while (files.length > MAX_BACKUPS) {
@@ -234,7 +234,7 @@ function writeBackup(jsonString) {
     ensureBackupDir();
     const now = new Date();
     const ts = now.toISOString().replace(/[-:T]/g, '_').slice(0, 15);
-    const filename = `Memoria_AutoBackup_${ts}.json`;
+    const filename = `Codex_AutoBackup_${ts}.json`;
     fs.writeFileSync(path.join(BACKUP_DIR, filename), jsonString);
     cleanOldBackups();
     return true;

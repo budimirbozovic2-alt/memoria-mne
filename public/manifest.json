@@ -1,7 +1,7 @@
 {
-  "name": "Memoria — Sistem za ponavljanje",
-  "short_name": "Memoria",
-  "description": "Aplikacija za učenje esejskih pitanja pomoću SM-2 algoritma",
+  "name": "CODEX — Sistem za memorizaciju",
+  "short_name": "CODEX",
+  "description": "Aplikacija za učenje esejskih pitanja pomoću FSRS algoritma sa praćenjem znanja po cjelinama",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a1628",

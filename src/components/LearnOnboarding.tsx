@@ -19,7 +19,7 @@ const slides: OnboardingSlide[] = [
     icon: Sparkles,
     iconColor: "bg-primary/15 text-primary",
     title: "Tri režima učenja",
-    content: "Memoria koristi progresivan sistem učenja — od pasivnog čitanja do aktivne produkcije znanja na glas.",
+    content: "CODEX koristi progresivan sistem učenja — od pasivnog čitanja do aktivne produkcije znanja na glas.",
     bullets: [
       "Svaki režim odgovara drugom nivou spremnosti",
       "Počni od lakšeg i napreduj ka težem",

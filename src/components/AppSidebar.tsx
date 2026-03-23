@@ -93,13 +93,13 @@ export default function AppSidebar() {
         <div className="px-4 pb-2">
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="Memoria" className="h-7 w-7 rounded-md" />
-              <h1 className="text-lg font-serif italic tracking-tight text-primary">Memoria</h1>
+              <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="CODEX" className="h-7 w-7 rounded-md" />
+              <h1 className="text-lg font-serif italic tracking-tight text-primary">CODEX</h1>
             </div>
           )}
           {collapsed && (
             <div className="flex justify-center">
-              <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="Memoria" className="h-7 w-7 rounded-md" />
+              <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="CODEX" className="h-7 w-7 rounded-md" />
             </div>
           )}
         </div>
