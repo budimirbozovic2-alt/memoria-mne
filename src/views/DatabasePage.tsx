@@ -68,6 +68,10 @@ export default function DatabasePage() {
               <FolderOpen className="h-3.5 w-3.5" />
               Kategorije
             </TabsTrigger>
+            <TabsTrigger value="sources" className="flex-1 gap-1.5">
+              <BookOpen className="h-3.5 w-3.5" />
+              Izvori
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="cards" className="mt-4">
