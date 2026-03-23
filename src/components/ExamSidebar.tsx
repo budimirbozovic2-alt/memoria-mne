@@ -95,7 +95,7 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
 
   return (
     <>
-      <div className="w-72 flex-shrink-0 sticky top-20 self-start max-h-[calc(100vh-8rem)] flex flex-col">
+      <div data-exam-sidebar className="w-72 flex-shrink-0 sticky top-20 self-start max-h-[calc(100vh-8rem)] flex flex-col">
         <div className="rounded-lg border bg-card flex flex-col overflow-hidden h-full">
           {/* Header */}
           <div className="px-3 py-2.5 border-b bg-muted/30">
