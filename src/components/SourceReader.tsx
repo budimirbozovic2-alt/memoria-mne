@@ -78,6 +78,7 @@ export default function SourceReader({ source, onBack }: Props) {
   const [splitDone, setSplitDone] = useState(false);
   const [splitCreatedCount, setSplitCreatedCount] = useState(0);
   const [splitParentName, setSplitParentName] = useState("");
+  const [splitModules, setSplitModules] = useState<SelectionModule[]>([]);
   // Exam sidebar state
   const [examOpen, setExamOpen] = useState(false);
   const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
