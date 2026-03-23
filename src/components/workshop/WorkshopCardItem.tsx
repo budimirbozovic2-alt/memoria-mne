@@ -13,6 +13,8 @@ import { default as MapPin } from "lucide-react/dist/esm/icons/map-pin";
 import { default as Clock } from "lucide-react/dist/esm/icons/clock";
 import { default as List } from "lucide-react/dist/esm/icons/list";
 import { default as MoreHorizontal } from "lucide-react/dist/esm/icons/more-horizontal";
+import { default as Tag } from "lucide-react/dist/esm/icons/tag";
+import { default as Plus } from "lucide-react/dist/esm/icons/plus";
 import { default as Pencil } from "lucide-react/dist/esm/icons/pencil";
 import { default as Save } from "lucide-react/dist/esm/icons/save";
 import { default as X } from "lucide-react/dist/esm/icons/x";
