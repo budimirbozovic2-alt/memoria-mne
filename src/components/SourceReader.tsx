@@ -587,7 +587,7 @@ export default function SourceReader({ source, onBack }: Props) {
                 </p>
               </div>
 
-              <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
+              <div className="max-h-[400px] overflow-y-auto space-y-1 pr-1">
                 {splitModules.map((mod, i) => (
                   <div key={`${mod.articleNum}-${i}`} className="group flex items-start gap-1.5 rounded-md border bg-card px-2 py-2">
                     <div className="flex flex-col gap-0.5 flex-shrink-0 mt-0.5">
