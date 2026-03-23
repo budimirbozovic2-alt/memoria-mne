@@ -19,6 +19,7 @@ import {
   extractOutline, injectHeadingIds, extractArticles, type Source,
 } from "@/lib/sources-storage";
 import { compareVersions, getChangedArticleIds, matchAnchorToArticle, parseArticles, type DiffResult } from "@/lib/article-parser";
+import { parseDocxInWorker } from "@/lib/docx-parser";
 import { useAppContext } from "@/contexts/AppContext";
 import { db } from "@/lib/db";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
