@@ -6,11 +6,13 @@ import { default as Database } from "lucide-react/dist/esm/icons/database";
 import { default as FolderOpen } from "lucide-react/dist/esm/icons/folder-open";
 import { default as Download } from "lucide-react/dist/esm/icons/download";
 import { default as FileText } from "lucide-react/dist/esm/icons/file-text";
+import { default as BookOpen } from "lucide-react/dist/esm/icons/book-open";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 import InfoPanel from "@/components/InfoPanel";
 
 const CardsView = lazy(() => import("@/views/CardsView"));
 const CategoriesPage = lazy(() => import("@/views/CategoriesPage"));
+const SourcesView = lazy(() => import("@/views/SourcesView"));
 const ExportImportDialog = lazy(() => import("@/components/ExportImportDialog"));
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 
