@@ -91,10 +91,13 @@ function useGlobalPomodoro() {
   const appSettings = loadAppSettings();
   const workDuration = appSettings.pomodoro.workMinutes;
   const breakDuration = appSettings.pomodoro.breakMinutes;
+  const longBreakDuration = appSettings.pomodoro.longBreakMinutes;
+  const longBreakInterval = appSettings.pomodoro.longBreakInterval;
 
-  const [mode, setMode] = useState<"work" | "break">("work");
+  const [mode, setMode] = useState<"work" | "break" | "longBreak">("work");
   const [seconds, setSeconds] = useState(workDuration * 60);
   const [running, setRunning] = useState(false);
+  const [cycleCount, setCycleCount] = useState(0);
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -105,10 +108,18 @@ function useGlobalPomodoro() {
             setRunning(false);
             if (mode === "work") {
               addPomodoroEntry({ timestamp: Date.now(), type: "focus", durationMinutes: workDuration });
-              setMode("break");
-              return breakDuration * 60;
+              const newCycle = cycleCount + 1;
+              setCycleCount(newCycle);
+              if (longBreakInterval > 0 && newCycle % longBreakInterval === 0) {
+                setMode("longBreak");
+                return longBreakDuration * 60;
+              } else {
+                setMode("break");
+                return breakDuration * 60;
+              }
             } else {
-              addPomodoroEntry({ timestamp: Date.now(), type: "break", durationMinutes: breakDuration });
+              const dur = mode === "longBreak" ? longBreakDuration : breakDuration;
+              addPomodoroEntry({ timestamp: Date.now(), type: "break", durationMinutes: dur });
               setMode("work");
               return workDuration * 60;
             }
@@ -118,19 +129,21 @@ function useGlobalPomodoro() {
       }, 1000);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [running, mode, workDuration, breakDuration]);
+  }, [running, mode, workDuration, breakDuration, longBreakDuration, longBreakInterval, cycleCount]);
 
   const toggle = useCallback(() => setRunning(r => !r), []);
   const reset = useCallback(() => {
     setRunning(false);
-    setSeconds(mode === "work" ? workDuration * 60 : breakDuration * 60);
-  }, [mode, workDuration, breakDuration]);
+    if (mode === "work") setSeconds(workDuration * 60);
+    else if (mode === "longBreak") setSeconds(longBreakDuration * 60);
+    else setSeconds(breakDuration * 60);
+  }, [mode, workDuration, breakDuration, longBreakDuration]);
 
   return useMemo(() => ({
-    state: { mode, seconds, running } as PomodoroState,
+    state: { mode, seconds, running, cycleCount } as PomodoroState,
     toggle,
     reset,
-  }), [mode, seconds, running, toggle, reset]);
+  }), [mode, seconds, running, cycleCount, toggle, reset]);
 }
 
 // ═══════════════════════════════════════════════════════════

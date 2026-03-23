@@ -63,6 +63,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   pomodoro: {
     workMinutes: 25,
     breakMinutes: 5,
+    longBreakMinutes: 15,
+    longBreakInterval: 4,
   },
   notifications: {
     enabled: false,
