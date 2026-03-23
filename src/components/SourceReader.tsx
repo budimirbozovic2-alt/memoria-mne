@@ -235,50 +235,35 @@ export default function SourceReader({ source, onBack }: Props) {
 
         {/* Main content */}
         <div className="flex-1 min-w-0 relative">
-          {true ? (
-            <>
-              <div
-                ref={contentRef}
-                className="rounded-lg border bg-card p-6 prose prose-sm max-w-none
-                  prose-headings:text-foreground prose-p:text-foreground/90
-                  prose-strong:text-foreground prose-a:text-primary
-                  prose-ul:text-foreground/90 prose-ol:text-foreground/90
-                  prose-li:text-foreground/90"
-                onMouseUp={handleMouseUp}
-                dangerouslySetInnerHTML={{ __html: source.htmlContent }}
-              />
-              <div
-                ref={contentRef}
-                className="rounded-lg border bg-card p-6 prose prose-sm max-w-none
-                  prose-headings:text-foreground prose-p:text-foreground/90
-                  prose-strong:text-foreground prose-a:text-primary
-                  prose-ul:text-foreground/90 prose-ol:text-foreground/90
-                  prose-li:text-foreground/90"
-                onMouseUp={handleMouseUp}
-                dangerouslySetInnerHTML={{ __html: source.htmlContent }}
-              />
+          <div
+            ref={contentRef}
+            className="rounded-lg border bg-card p-6 prose prose-sm max-w-none
+              prose-headings:text-foreground prose-p:text-foreground/90
+              prose-strong:text-foreground prose-a:text-primary
+              prose-ul:text-foreground/90 prose-ol:text-foreground/90
+              prose-li:text-foreground/90"
+            onMouseUp={handleMouseUp}
+            dangerouslySetInnerHTML={{ __html: source.htmlContent }}
+          />
 
-              {/* Selection tooltip */}
-              {selection && (
-                <div
-                  data-source-tooltip
-                  className="absolute z-50 -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95 duration-150"
-                  style={{ left: selection.x, top: selection.y }}
-                >
-                  <button
-                    onClick={handleConvertToEssay}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
-                  >
-                    <PenSquare className="h-3.5 w-3.5" />
-                    Pretvori u esej
-                  </button>
-                  <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
-                </div>
-              )}
-            </>
+          {/* Selection tooltip */}
+          {selection && (
+            <div
+              data-source-tooltip
+              className="absolute z-50 -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95 duration-150"
+              style={{ left: selection.x, top: selection.y }}
+            >
+              <button
+                onClick={handleConvertToEssay}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
+              >
+                <PenSquare className="h-3.5 w-3.5" />
+                Pretvori u esej
+              </button>
+              <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
+            </div>
           )}
         </div>
-      </div>
 
       {/* Essay creation dialog */}
       <Dialog open={essayDialogOpen} onOpenChange={setEssayDialogOpen}>
