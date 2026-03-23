@@ -60,6 +60,31 @@ interface Props {
   onBack: () => void;
 }
 
+// ── Snap guide lines component (viewport-aware) ──
+function SnapGuideLines({ snapLines }: { snapLines: { x?: number; y?: number } }) {
+  const { getViewport } = useReactFlow();
+  if (snapLines.x === undefined && snapLines.y === undefined) return null;
+  const { x: tx, y: ty, zoom } = getViewport();
+  return (
+    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 1000 }}>
+      {snapLines.x !== undefined && (
+        <line
+          x1={snapLines.x * zoom + tx} y1={0}
+          x2={snapLines.x * zoom + tx} y2={9999}
+          stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="6 3" opacity={0.5}
+        />
+      )}
+      {snapLines.y !== undefined && (
+        <line
+          x1={0} y1={snapLines.y * zoom + ty}
+          x2={9999} y2={snapLines.y * zoom + ty}
+          stroke="hsl(var(--primary))" strokeWidth={1} strokeDasharray="6 3" opacity={0.5}
+        />
+      )}
+    </svg>
+  );
+}
+
 function MindMapCanvasInner({ doc, onBack }: Props) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -160,9 +185,30 @@ function MindMapCanvasInner({ doc, onBack }: Props) {
     if (changes.some(c => c.type !== "select")) setDirty(true);
   }, [onEdgesChange]);
 
-  // ── Snap nearly-aligned nodes to perfect alignment ──
-  const SNAP_THRESHOLD = 20; // px tolerance
+  // ── Snap guides & alignment ──
+  const SNAP_THRESHOLD = 20;
+  const [snapLines, setSnapLines] = useState<{ x?: number; y?: number }>({});
+
+  const onNodeDrag = useCallback((_event: React.MouseEvent, draggedNode: Node) => {
+    const others = nodes.filter(n => n.id !== draggedNode.id);
+    const { x, y } = draggedNode.position;
+    let snapX: number | undefined;
+    let snapY: number | undefined;
+
+    for (const other of others) {
+      if (snapX === undefined && Math.abs(other.position.x - x) <= SNAP_THRESHOLD) {
+        snapX = other.position.x;
+      }
+      if (snapY === undefined && Math.abs(other.position.y - y) <= SNAP_THRESHOLD) {
+        snapY = other.position.y;
+      }
+      if (snapX !== undefined && snapY !== undefined) break;
+    }
+    setSnapLines({ x: snapX, y: snapY });
+  }, [nodes]);
+
   const onNodeDragStop = useCallback((_event: React.MouseEvent, draggedNode: Node) => {
+    setSnapLines({});
     setNodes(nds => {
       const others = nds.filter(n => n.id !== draggedNode.id);
       let { x, y } = draggedNode.position;
@@ -388,6 +434,7 @@ function MindMapCanvasInner({ doc, onBack }: Props) {
           onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
           onEdgeDoubleClick={onEdgeDoubleClick}
+          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           connectionMode={ConnectionMode.Loose}
@@ -402,6 +449,8 @@ function MindMapCanvasInner({ doc, onBack }: Props) {
             animated: isProcedure,
           }}
         >
+          {/* Snap guide lines rendered in flow coordinates via viewport transform */}
+          <SnapGuideLines snapLines={snapLines} />
           <Controls className="!bg-card !border-border !shadow-md [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-muted" />
           <Background
             variant={isProcedure ? BackgroundVariant.Lines : BackgroundVariant.Dots}
