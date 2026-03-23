@@ -414,6 +414,81 @@ export default function SourceReader({ source, onBack }: Props) {
         </DialogContent>
       </Dialog>
 
+      {/* Smart-Split Summary Dialog */}
+      <Dialog open={splitSummaryOpen} onOpenChange={(o) => { if (!o) { setSplitSummaryOpen(false); setSplitResult(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wand2 className="h-5 w-5 text-primary" />
+              {splitDone ? "Generisanje završeno" : "Smart-Split pregled"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {splitDone ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-4">
+                <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <PenSquare className="h-4 w-4 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">
+                    Uspješno generisano 1 esejsko pitanje sa {splitCreatedCount} modula
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {splitResult?.rangeLabel} • Izvor: "{source.label}"
+                  </p>
+                </div>
+              </div>
+              <Button onClick={() => { setSplitSummaryOpen(false); setSplitResult(null); }} className="w-full">
+                Zatvori
+              </Button>
+            </div>
+          ) : splitResult ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border bg-muted/50 px-4 py-3">
+                <p className="text-sm">
+                  Detektovano <strong className="text-foreground">{splitResult.modules.length}</strong> članova ({splitResult.rangeLabel})
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Biće kreiran 1 esejsko pitanje sa {splitResult.modules.length} modula (cjelina).
+                </p>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto space-y-1 pr-1">
+                {splitResult.modules.map((mod, i) => (
+                  <div key={mod.articleNum} className="flex items-start gap-2 rounded-md border bg-card px-3 py-2">
+                    <Badge variant="outline" className="text-[10px] mt-0.5 flex-shrink-0">
+                      {i + 1}
+                    </Badge>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{mod.title}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {mod.contentText.slice(0, 100)}{mod.contentText.length > 100 ? "..." : ""}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
+                <Badge variant="outline" className="text-[10px]">Backlink</Badge>
+                <span>Svi moduli će biti automatski povezani sa izvorom "{source.label}"</span>
+              </div>
+
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => { setSplitSummaryOpen(false); setSplitResult(null); }} className="flex-1">
+                  Otkaži
+                </Button>
+                <Button onClick={handleSmartSplitConfirm} className="flex-1 gap-2">
+                  <Wand2 className="h-4 w-4" />
+                  Potvrdi
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       {/* Auto-Split Dialog */}
       <Suspense fallback={null}>
         {autoSplitOpen && (
