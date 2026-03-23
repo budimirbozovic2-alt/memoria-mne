@@ -801,6 +801,12 @@ function ReviewCard({
           )}
         </motion.div>
       </AnimatePresence>
+
+      {hasSource && snippetOpen && SourceSnippetDialog && (
+        <Suspense fallback={null}>
+          <SourceSnippetDialog card={card} open={snippetOpen} onOpenChange={setSnippetOpen} />
+        </Suspense>
+      )}
     </div>
   );
 }
