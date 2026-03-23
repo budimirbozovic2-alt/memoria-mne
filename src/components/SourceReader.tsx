@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "@/hooks/use-toast";
 import { useAppContext } from "@/contexts/AppContext";
 import { createTextAnchor, type Source } from "@/lib/sources-storage";
+import { incrementDailyMapped } from "@/lib/planner-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { analyzeCoverage } from "@/lib/coverage-analysis";
 import { splitSelection, type SelectionModule } from "@/lib/selection-split-engine";
@@ -223,6 +224,7 @@ export default function SourceReader({ source, onBack }: Props) {
 
     setSplitCreatedCount(modules.length);
     setSplitDone(true);
+    incrementDailyMapped(modules.length);
 
     toast({
       title: `Generisano 1 esej sa ${modules.length} modula`,
@@ -252,6 +254,7 @@ export default function SourceReader({ source, onBack }: Props) {
       description: `Povezano sa izvorom "${source.label}"`,
     });
     setEssayDialogOpen(false);
+    incrementDailyMapped(1);
   }, [essayQuestion, selectedText, essayCategory, source, addCard]);
 
   const scrollToHeading = useCallback((id: string) => {
@@ -314,10 +317,11 @@ export default function SourceReader({ source, onBack }: Props) {
         }
       );
 
-      // Mark question as done
+      // Mark question as done & sync planner
       setExamQuestions(prev =>
         prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: modules.length } : q)
       );
+      incrementDailyMapped(modules.length);
 
       toast({
         title: `Esej kreiran: ${modules.length} modula`,
@@ -342,6 +346,7 @@ export default function SourceReader({ source, onBack }: Props) {
       setExamQuestions(prev =>
         prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: 1 } : q)
       );
+      incrementDailyMapped(1);
 
       toast({
         title: "Esej kreiran",

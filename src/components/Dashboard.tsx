@@ -15,7 +15,8 @@ import { motion } from "framer-motion";
 import { Card as SRCard, SRSettings, getPendingFirstReviewCount, getSectionScore } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, getLastBackupTime } from "@/lib/storage";
 import { loadDiary, loadSlippageLog } from "@/lib/metacognitive-storage";
-import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, loadDisciplineLog } from "@/lib/planner-storage";
+import { loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus, getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt, recordDayDiscipline, loadDisciplineLog, calcPhaseProgress, getDailyMappedCount, autoRedistributeIfNeeded } from "@/lib/planner-storage";
+import ProgressRing from "@/components/ProgressRing";
 import { calcEnergyRecommendation } from "@/lib/cognitive-analytics";
 import { loadAppSettings } from "@/lib/app-settings";
 import { useMemo } from "react";
@@ -147,8 +148,23 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     const status = getPlannerStatus(estimated, planner.finalGoalDate, planner.bufferPercent ?? 15);
     const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
     const timeRec = suggestion ? calcDailyTimeRecommendation(suggestion.suggestedToday, velocity, stats.due) : null;
-    return { status, suggestion, timeRec, remaining, totalSections, learnedSections };
-  }, [stats, reviewLog]);
+
+    // Active phase progress
+    const phaseProgressList = planner.phases.map(p => ({ ...p, ...calcPhaseProgress(p, cards) }));
+    const activePhase = phaseProgressList.find(p => p.pct < 100) || phaseProgressList[0] || null;
+
+    // Daily mapped count
+    const dailyMapped = getDailyMappedCount();
+    const dailyQuota = suggestion?.suggestedToday ?? 0;
+
+    // Auto-redistribute check
+    const redistResult = autoRedistributeIfNeeded(cards, planner.finalGoalDate, planner.bufferPercent ?? 15);
+
+    return {
+      status, suggestion, timeRec, remaining, totalSections, learnedSections,
+      activePhase, dailyMapped, dailyQuota, redistResult,
+    };
+  }, [stats, reviewLog, cards]);
 
   const cognitiveDebt = useDeferredCompute(() => getCognitiveDebt(dailyGoal), [dailyGoal]);
 
@@ -305,7 +321,37 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
         </div>
       )}
 
-      {/* 3. Dnevni Briefing (Insight Box) */}
+      {/* 2.5 Progress Ring Widget */}
+      {wc.showProgressRing && plannerData && plannerData.activePhase && (
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
+          className="rounded-xl bg-card border p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-medium">Progres faze: {plannerData.activePhase.name}</h3>
+          </div>
+          <div className="flex items-center justify-around">
+            <ProgressRing
+              percent={plannerData.activePhase.pct}
+              label="Ukupno"
+              sublabel={`${plannerData.activePhase.learned}/${plannerData.activePhase.total}`}
+              colorClass="text-primary"
+            />
+            <ProgressRing
+              percent={plannerData.dailyQuota > 0 ? Math.min(100, Math.round((plannerData.dailyMapped / plannerData.dailyQuota) * 100)) : 0}
+              label="Danas"
+              sublabel={`${plannerData.dailyMapped}/${plannerData.dailyQuota}`}
+              colorClass={plannerData.dailyMapped >= plannerData.dailyQuota && plannerData.dailyQuota > 0 ? "text-success" : "text-warning"}
+            />
+          </div>
+          {plannerData.redistResult?.redistributed && (
+            <p className="text-xs text-warning mt-3 text-center">
+              ⚡ Kvota automatski redistribuirana: {plannerData.redistResult.newQuota} sekcija/dan
+            </p>
+          )}
+        </motion.div>
+      )}
+
+
       {wc.showBriefing && <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="rounded-xl bg-card border p-5 space-y-4">
         <div className="flex items-center gap-2">
