@@ -8,6 +8,7 @@ import {
   Background,
   MiniMap,
   Connection,
+  ConnectionMode,
   Edge,
   Node,
   BackgroundVariant,
