@@ -64,7 +64,6 @@ function MindMapCanvasInner({ doc, onBack }: Props) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
   const [title, setTitle] = useState(doc.title);
-  const [showTemplates, setShowTemplates] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [deletedStack, setDeletedStack] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
 
