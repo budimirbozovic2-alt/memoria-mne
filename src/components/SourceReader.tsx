@@ -330,6 +330,17 @@ export default function SourceReader({ source, onBack }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Auto-Split Dialog */}
+      <Suspense fallback={null}>
+        {autoSplitOpen && (
+          <AutoSplitDialog
+            open={autoSplitOpen}
+            onClose={() => setAutoSplitOpen(false)}
+            source={source}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
