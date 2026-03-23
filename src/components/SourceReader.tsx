@@ -75,6 +75,7 @@ export default function SourceReader({ source, onBack }: Props) {
   const [splitResult, setSplitResult] = useState<{ modules: SelectionModule[]; rangeLabel: string; parentName: string } | null>(null);
   const [splitDone, setSplitDone] = useState(false);
   const [splitCreatedCount, setSplitCreatedCount] = useState(0);
+  const [splitParentName, setSplitParentName] = useState("");
   // Coverage analysis (memoized)
   const coverage = useMemo(
     () => analyzeCoverage(source.id, source.htmlContent, cards),
@@ -130,6 +131,7 @@ export default function SourceReader({ source, onBack }: Props) {
     if (result.hasArticles && result.modules.length > 0) {
       // Smart-split: show summary and auto-create
       setSplitResult(result);
+      setSplitParentName(result.parentName);
       setSplitDone(false);
       setSplitCreatedCount(0);
       setSplitSummaryOpen(true);
@@ -144,7 +146,8 @@ export default function SourceReader({ source, onBack }: Props) {
   const handleSmartSplitConfirm = useCallback(() => {
     if (!splitResult) return;
     const category = source.label || categories[0] || "Opšte";
-    const { modules, parentName } = splitResult;
+    const { modules } = splitResult;
+    const parentName = splitParentName.trim() || splitResult.parentName;
 
     // Build sections and sourceModules for parent card
     const sections = modules.map((mod) => ({
@@ -187,7 +190,7 @@ export default function SourceReader({ source, onBack }: Props) {
       title: `Generisano 1 esej sa ${modules.length} modula`,
       description: `${splitResult.rangeLabel} iz "${source.label}"`,
     });
-  }, [splitResult, source, categories, addCard]);
+  }, [splitResult, splitParentName, source, categories, addCard]);
 
   const handleCreateEssay = useCallback(() => {
     if (!essayQuestion.trim() || !selectedText) return;
@@ -445,6 +448,16 @@ export default function SourceReader({ source, onBack }: Props) {
             </div>
           ) : splitResult ? (
             <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-medium">Naslov eseja</label>
+                <input
+                  value={splitParentName}
+                  onChange={e => setSplitParentName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Unesite naslov eseja..."
+                />
+              </div>
+
               <div className="rounded-lg border bg-muted/50 px-4 py-3">
                 <p className="text-sm">
                   Detektovano <strong className="text-foreground">{splitResult.modules.length}</strong> članova ({splitResult.rangeLabel})
