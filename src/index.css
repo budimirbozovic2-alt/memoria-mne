@@ -609,6 +609,20 @@
   --tw-prose-td-borders: hsl(var(--border));
 }
 
+/* Force override inline color styles from imported HTML (e.g. mammoth.js) */
+.dark .prose [style*="color"],
+.dark .prose span[style],
+.dark .prose p[style],
+.dark .prose div[style],
+.dark .prose td[style],
+.dark .prose th[style] {
+  color: hsl(var(--foreground) / 0.9) !important;
+}
+
+.dark .prose [style*="background-color"] {
+  background-color: transparent !important;
+}
+
 /* Themed scrollbars */
 * {
   scrollbar-width: thin;
