@@ -434,6 +434,7 @@ export default function CardsView() {
         onMoveCategory={handleMoveCategory}
         onAssignChapter={handleAssignChapter}
         onCloneToMnemonic={handleCloneToMnemonic}
+        onAddKeyPart={addKeyPart}
       />
     </div>
   );
