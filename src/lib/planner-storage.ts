@@ -368,3 +368,81 @@ export function getPhaseDisciplinePct(disciplineLog: DisciplineEntry[]): number 
   const diligent = recent.filter(e => e.status === "diligent").length;
   return Math.round((diligent / recent.length) * 100);
 }
+
+// ─── Daily Mapping Tracker (Auto-sync) ──────────────────
+
+const DAILY_MAPPED_KEY = "sr-daily-mapped";
+
+interface DailyMapped {
+  date: string;
+  count: number;
+}
+
+function getTodayKey(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function getDailyMappedCount(): number {
+  try {
+    const data = localStorage.getItem(DAILY_MAPPED_KEY);
+    if (!data) return 0;
+    const parsed: DailyMapped = JSON.parse(data);
+    return parsed.date === getTodayKey() ? parsed.count : 0;
+  } catch { return 0; }
+}
+
+export function incrementDailyMapped(amount: number = 1): number {
+  const today = getTodayKey();
+  const current = getDailyMappedCount();
+  const newCount = current + amount;
+  try {
+    localStorage.setItem(DAILY_MAPPED_KEY, JSON.stringify({ date: today, count: newCount }));
+  } catch {}
+  return newCount;
+}
+
+// ─── Auto-Redistribute (midnight check) ─────────────────
+
+export function autoRedistributeIfNeeded(
+  cards: SRCard[], goalDateStr: string | null, bufferPct: number
+): { redistributed: boolean; newQuota: number } | null {
+  if (!goalDateStr) return null;
+  const today = getTodayKey();
+  const REDIS_KEY = "sr-last-redistribute";
+  try {
+    const last = localStorage.getItem(REDIS_KEY);
+    if (last === today) return null; // already done today
+  } catch {}
+
+  // Check if yesterday had unmet quota
+  const log = loadDisciplineLog();
+  const yesterday = addDays(new Date(), -1).toISOString().slice(0, 10);
+  const entry = log.find(e => e.date === yesterday);
+  if (!entry || entry.planCompletion >= 90) {
+    // No debt or quota was met
+    try { localStorage.setItem(REDIS_KEY, today); } catch {}
+    return null;
+  }
+
+  // Redistribute
+  let total = 0, learned = 0;
+  cards.forEach(c => c.sections.forEach(s => { total++; if (s.lastReviewed) learned++; }));
+  const remaining = total - learned;
+  const result = calcRebalancedQuota(remaining, goalDateStr, bufferPct);
+  if (!result) return null;
+
+  try { localStorage.setItem(REDIS_KEY, today); } catch {}
+  return { redistributed: true, newQuota: result.newDailyQuota };
+}
+
+// ─── Phase-aware daily progress ─────────────────────────
+
+export interface DailyPhaseProgress {
+  phaseName: string;
+  phaseTotal: number;
+  phaseLearned: number;
+  phasePct: number;
+  dailyQuota: number;
+  dailyDone: number;
+  dailyPct: number;
+}

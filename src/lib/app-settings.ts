@@ -43,6 +43,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     showVelocity: true,
     showWeakCategories: true,
     showStatusIcons: true,
+    showProgressRing: true,
   },
 };
 
