@@ -98,14 +98,23 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
               <Brain className="h-3.5 w-3.5" />
               Mnemo kuka
             </button>
-            {onMarkKeyPart && (
-              <button
-                onClick={handleKeyPart}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-warning text-warning-foreground text-xs font-medium shadow-lg hover:bg-warning/90 transition-colors"
-              >
-                <Star className="h-3.5 w-3.5" />
-                Ključni dio
-              </button>
+            {onMarkKeyPart && tooltip && (
+              (() => {
+                const isMarked = (keyParts || []).some(p => p === tooltip.text.trim());
+                return (
+                  <button
+                    onClick={handleKeyPart}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shadow-lg transition-colors ${
+                      isMarked
+                        ? "bg-muted text-muted-foreground hover:bg-muted/80"
+                        : "bg-warning text-warning-foreground hover:bg-warning/90"
+                    }`}
+                  >
+                    <Star className="h-3.5 w-3.5" />
+                    {isMarked ? "Ukloni oznaku" : "Ključni dio"}
+                  </button>
+                );
+              })()
             )}
           </div>
           <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
