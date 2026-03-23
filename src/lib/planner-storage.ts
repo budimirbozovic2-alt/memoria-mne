@@ -404,7 +404,7 @@ export function incrementDailyMapped(amount: number = 1): number {
 // ─── Auto-Redistribute (midnight check) ─────────────────
 
 export function autoRedistributeIfNeeded(
-  cards: SRCard[], goalDateStr: string | null, bufferPct: number
+  cards: Card[], goalDateStr: string | null, bufferPct: number
 ): { redistributed: boolean; newQuota: number } | null {
   if (!goalDateStr) return null;
   const today = getTodayKey();
