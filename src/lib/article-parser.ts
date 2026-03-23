@@ -122,9 +122,9 @@ export function parseArticles(html: string): ParsedArticle[] {
     articles.push({
       id: articleId,
       number: matches[i].number,
-      title: `Član ${matches[i].number}`,
+      title: `Član ${articleSuffix}`,
       text,
-      html: "", // We'll extract HTML segments below
+      html: "",
     });
   }
 
