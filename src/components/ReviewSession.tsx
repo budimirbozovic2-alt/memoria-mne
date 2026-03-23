@@ -104,9 +104,11 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     if (selectedCategory) filtered = filtered.filter((c) => c.category === selectedCategory);
     if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategory === selectedSubcategory);
     if (selectedChapter) filtered = filtered.filter((c) => c.chapter === selectedChapter);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("často-na-ispitu"));
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (filterType === "essay") filtered = filtered.filter((c) => c.type === "essay");
+    else if (filterType === "flash") filtered = filtered.filter((c) => c.type === "flash");
     return filtered;
-  }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent]);
+  }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType]);
 
   // === MODE 1: Fokusirano Utvrđivanje (Stabilizacija) ===
   // Learning/Relearning sections with stability < 5, sorted by lowest stability
