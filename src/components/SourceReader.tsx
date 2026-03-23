@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, lazy, Suspense } from "react";
 import { default as ArrowLeft } from "lucide-react/dist/esm/icons/arrow-left";
 import { default as Calendar } from "lucide-react/dist/esm/icons/calendar";
 import { default as PenSquare } from "lucide-react/dist/esm/icons/pen-square";
@@ -6,6 +6,9 @@ import { default as List } from "lucide-react/dist/esm/icons/list";
 import { default as X } from "lucide-react/dist/esm/icons/x";
 import { default as Eye } from "lucide-react/dist/esm/icons/eye";
 import { default as BarChart3 } from "lucide-react/dist/esm/icons/bar-chart-3";
+import { default as Wand2 } from "lucide-react/dist/esm/icons/wand-2";
+
+const AutoSplitDialog = lazy(() => import("@/components/AutoSplitDialog"));
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -64,7 +67,7 @@ export default function SourceReader({ source, onBack }: Props) {
   const [essayQuestion, setEssayQuestion] = useState("");
   const [essayCategory, setEssayCategory] = useState(categories[0] ?? "Opšte");
   const [selectedText, setSelectedText] = useState("");
-
+  const [autoSplitOpen, setAutoSplitOpen] = useState(false);
   // Coverage analysis (memoized)
   const coverage = useMemo(
     () => analyzeCoverage(source.id, source.htmlContent, cards),
@@ -166,6 +169,18 @@ export default function SourceReader({ source, onBack }: Props) {
             <Badge variant="outline" className="text-[10px] px-1.5 py-0">v{source.version}</Badge>
           </div>
         </div>
+
+        {/* Auto-split button */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setAutoSplitOpen(true)}
+          className="gap-1.5"
+          title="Generiši eseje iz članova"
+        >
+          <Wand2 className="h-3.5 w-3.5" />
+          Auto-Split
+        </Button>
 
         {/* Mode toggle */}
         <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
@@ -315,6 +330,17 @@ export default function SourceReader({ source, onBack }: Props) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Auto-Split Dialog */}
+      <Suspense fallback={null}>
+        {autoSplitOpen && (
+          <AutoSplitDialog
+            open={autoSplitOpen}
+            onClose={() => setAutoSplitOpen(false)}
+            source={source}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
