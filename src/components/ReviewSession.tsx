@@ -18,6 +18,7 @@ import { default as Play } from "lucide-react/dist/esm/icons/play";
 import { default as Target } from "lucide-react/dist/esm/icons/target";
 import { default as Shield } from "lucide-react/dist/esm/icons/shield";
 import SessionFilters from "@/components/SessionFilters";
+import { default as Scale } from "lucide-react/dist/esm/icons/scale";
 import { Button } from "@/components/ui/button";
 
 import { useToast } from "@/hooks/use-toast";
