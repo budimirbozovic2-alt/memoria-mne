@@ -195,7 +195,7 @@ export default function SourcesView() {
     } catch {
       toast({ title: "Greška", description: "Nije moguće procesirati novu verziju.", variant: "destructive" });
     }
-  }, [versionFile, versioningSourceId, sources, cards, bulkFlagNeedsReview, exportData]);
+  }, [versionFile, versioningSourceId, sources, cards, bulkFlagNeedsReview]);
 
   const linkedCardCount = useCallback((sourceId: string) => {
     return cards.filter(c => c.sourceId === sourceId).length;
