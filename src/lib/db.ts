@@ -51,6 +51,7 @@ class MemoriaDB extends Dexie {
   disciplineLog!: Table<DisciplineEntry & { id?: number }, number>;
   // v3: sources
   sources!: Table<Source, string>;
+  mindMaps!: Table<MindMapDoc, string>;
 
   constructor() {
     super("MemoriaDB");
