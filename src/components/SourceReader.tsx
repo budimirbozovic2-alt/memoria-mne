@@ -206,8 +206,6 @@ export default function SourceReader({ source, onBack }: Props) {
       {isCoverage && (
         <CoverageStatsBar
           percent={coverage.percent}
-          coveredChars={coverage.coveredChars}
-          totalChars={coverage.totalChars}
           linkedCount={linkedCount}
         />
       )}
