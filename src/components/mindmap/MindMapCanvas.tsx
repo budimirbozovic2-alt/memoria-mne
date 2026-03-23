@@ -304,40 +304,32 @@ function MindMapCanvasInner({ doc, onBack }: Props) {
         <div className="flex-1" />
 
         {/* Quick-add templates */}
-        <div className="relative">
-          <Button variant="outline" size="sm" onClick={() => setShowTemplates(!showTemplates)}>
-            <Plus className="h-4 w-4 mr-1" />
-            {isProcedure ? "Dodaj korak" : "Dodaj čvor"}
-            <ChevronDown className="h-3 w-3 ml-1" />
-          </Button>
-          {showTemplates && (
-            <div
-              className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-popover p-2 shadow-xl animate-in fade-in-0 zoom-in-95 duration-150"
-              onPointerDown={e => e.stopPropagation()}
-              onMouseDown={e => e.stopPropagation()}
-            >
-              {templates.map(t => (
-                <button
-                  key={t.icon}
-                  onClick={() => addNodeFromTemplate(t)}
-                  className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors text-left"
-                >
-                  <span className="text-base">{t.label.split(" ")[0]}</span>
-                  <p className="font-medium text-foreground">{t.desc}</p>
-                </button>
-              ))}
-              <div className="border-t border-border mt-1 pt-1">
-                <button
-                  onClick={addBlankNode}
-                  className="flex items-center gap-2.5 w-full px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors text-muted-foreground"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Prazan čvor</span>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              {isProcedure ? "Dodaj korak" : "Dodaj čvor"}
+              <ChevronDown className="h-3 w-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {templates.map(t => (
+              <DropdownMenuItem
+                key={t.icon}
+                onClick={() => addNodeFromTemplate(t)}
+                className="flex items-center gap-2.5"
+              >
+                <span className="text-base">{t.label.split(" ")[0]}</span>
+                <span className="font-medium">{t.desc}</span>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={addBlankNode} className="text-muted-foreground">
+              <Plus className="h-4 w-4 mr-2" />
+              Prazan čvor
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Button size="sm" onClick={handleSave} variant={dirty ? "default" : "outline"}>
           <Save className="h-4 w-4 mr-1" />
