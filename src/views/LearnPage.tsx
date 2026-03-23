@@ -56,6 +56,7 @@ export default function LearnPage() {
         onReviewSection={handleReviewSection}
         onBack={handleBack}
         onEdit={handleEdit}
+        onAddKeyPart={addKeyPart}
         dueCount={stats.due}
       />
     </ErrorBoundary>
