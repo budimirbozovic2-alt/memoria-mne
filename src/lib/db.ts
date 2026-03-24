@@ -297,9 +297,19 @@ export async function idbLoadCards(): Promise<Card[]> {
 }
 
 export async function idbSaveCards(cards: Card[]): Promise<void> {
+  // Surgical upsert: bulkPut handles insert-or-update without clearing.
+  // Then remove any cards in IDB that aren't in the new set.
   await db.transaction("rw", db.cards, async () => {
-    await db.cards.clear();
-    await db.cards.bulkPut(cards);
+    if (cards.length > 0) {
+      await db.cards.bulkPut(cards);
+    }
+    // Remove stale cards not in the new set
+    const newIds = new Set(cards.map(c => c.id));
+    const allKeys = await db.cards.toCollection().primaryKeys();
+    const toDelete = allKeys.filter(k => !newIds.has(k as string));
+    if (toDelete.length > 0) {
+      await db.cards.bulkDelete(toDelete);
+    }
   });
 }
 
