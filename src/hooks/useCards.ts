@@ -146,6 +146,19 @@ export function useCards() {
     if (initialLoadDone.current) return;
     initialLoadDone.current = true;
 
+    // OSIGURAČ: Ako se aplikacija ne učita za 12s, forsiraj 'ready' stanje
+    const panicTimer = setTimeout(() => {
+      setReady((currentReady) => {
+        if (!currentReady) {
+          console.error("[boot] Panic timeout okidanje! Forsiram ready state.");
+          const splash = document.getElementById("app-splash");
+          if (splash) splash.remove();
+          return true;
+        }
+        return currentReady;
+      });
+    }, 12000);
+
     const splashProgress = (pct: number, label: string) => {
       const bar = document.getElementById("splash-progress");
       const status = document.getElementById("splash-status");
@@ -226,22 +239,28 @@ export function useCards() {
         splashProgress(100, "Pokretanje sa rezervnim stanjem…");
         showSplashError(error instanceof Error ? error.message : "Neočekivana greška pri učitavanju podataka.");
       } finally {
-        // Garantujemo da će ready biti true čak i ako sve ostalo padne
-        console.log("[boot] Initialization finished, forcing ready state");
+        // 1. Prvo postavljamo ready da React nastavi renderovanje
         setReady(true);
+        clearTimeout(panicTimer);
 
+        // 2. Bezbjedno uklanjanje splash screena
         const splash = document.getElementById("app-splash");
         if (splash) {
           splash.style.opacity = "0";
-          setTimeout(() => splash.remove(), 450);
+          // Koristimo direktno remove bez previše ugniježdenih timeouta radi sigurnosti
+          setTimeout(() => {
+            if (splash.parentNode) splash.remove();
+          }, 500);
         }
 
-        // Ako je u pitanju Electron splash, forsiraj gašenje
+        // 3. Obavještavamo Electron
         if (window.electronAPI?.notifyReady) {
           window.electronAPI.notifyReady();
         }
       }
     })();
+
+    return () => clearTimeout(panicTimer); // Čistimo tajmer ako se komponenta ugasi ranije
   }, []);
 
   // ── Derived: Card[] for consumers (memoized from map) ──
