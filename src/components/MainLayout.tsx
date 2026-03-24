@@ -1,7 +1,7 @@
-import { ReactNode, useState, useEffect, useRef, lazy, Suspense, useMemo } from "react";
+import { ReactNode, useState, useEffect, useRef, lazy, Suspense, useMemo, memo } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useLocation } from "react-router-dom";
-import { useAppContext } from "@/contexts/AppContext";
+import { useAppContext, useUIContext } from "@/contexts/AppContext";
 import ZenMode from "@/components/ZenMode";
 import TopNav from "@/components/TopNav";
 import { AnimatePresence } from "framer-motion";
@@ -17,9 +17,55 @@ const AppOnboarding = lazy(() => import("@/components/AppOnboarding"));
 // Routes where the user is actively working on source material
 const SOURCE_ROUTES = ["/database"];
 
+/** Isolated component for planner nudge — prevents MainLayout re-render on card changes */
+const NudgeWatcher = memo(function NudgeWatcher() {
+  const { cards } = useAppContext();
+  const { pathname } = useLocation();
+  const prevPathRef = useRef(pathname);
+  const nudgeShownRef = useRef(false);
+  const plannerRef = useRef<PlannerConfig | null>(null);
+
+  const getPlannerCached = () => {
+    if (!plannerRef.current) plannerRef.current = loadPlanner();
+    return plannerRef.current;
+  };
+
+  useEffect(() => {
+    if (pathname === "/planner") plannerRef.current = null;
+  }, [pathname]);
+
+  useEffect(() => {
+    const prevPath = prevPathRef.current;
+    prevPathRef.current = pathname;
+    if (!SOURCE_ROUTES.some(r => prevPath.startsWith(r))) return;
+    if (SOURCE_ROUTES.some(r => pathname.startsWith(r))) return;
+    if (nudgeShownRef.current) return;
+
+    try {
+      const planner = getPlannerCached();
+      if (!planner.finalGoalDate || planner.phases.length === 0) return;
+      const velocity = calcVelocity([], 7);
+      const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
+      if (!suggestion || suggestion.suggestedToday <= 0) return;
+      const dailyDone = getDailyMappedCount();
+      const remaining = suggestion.suggestedToday - dailyDone;
+      if (remaining > 0 && dailyDone < suggestion.suggestedToday) {
+        nudgeShownRef.current = true;
+        toast({
+          title: "📌 Ostani fokusiran",
+          description: `Preostalo ti je još ${remaining} od ${suggestion.suggestedToday} planiranih sekcija za danas.`,
+          duration: 5000,
+        });
+        setTimeout(() => { nudgeShownRef.current = false; }, 30 * 60 * 1000);
+      }
+    } catch {}
+  }, [pathname, cards]);
+
+  return null;
+});
+
 export default function MainLayout({ children }: { children: ReactNode }) {
-  const ctx = useAppContext();
-  const { setView, setEditingCard, cards, categories, importCards, addFlashCard } = ctx;
+  const { setView, setEditingCard, categories, importCards, addFlashCard } = useAppContext();
   const { pathname } = useLocation();
 
   const [docxOpen, setDocxOpen] = useState(false);
