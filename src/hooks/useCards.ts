@@ -145,9 +145,13 @@ export function useCards() {
     };
 
     (async () => {
+      const { markBootStep } = await import("@/lib/boot-trace");
       try {
+        markBootStep("cards:init-start");
         splashProgress(5, "Otvaranje baze…");
+        markBootStep("cards:db-open-start");
         const dbOk = await ensureDbOpen(6000);
+        markBootStep("cards:db-open-done", dbOk ? "ok" : "failed");
         if (!dbOk) {
           console.warn("[boot] DB unavailable — starting in fallback mode");
           splashProgress(100, "Pokretanje bez baze…");
@@ -155,10 +159,13 @@ export function useCards() {
           return;
         }
 
+        markBootStep("cards:migration-start");
         splashProgress(10, "Migracija podataka…");
         await migrateFromLocalStorage();
+        markBootStep("cards:migration-done");
 
         splashProgress(25, "Učitavanje kartica…");
+        markBootStep("cards:data-load-start");
         const c = await withTimeout(idbLoadCards(), 5000, "cards load", []);
 
         splashProgress(50, `${c.length} kartica učitano`);
@@ -177,6 +184,7 @@ export function useCards() {
           "settings load",
           DEFAULT_SR_SETTINGS,
         );
+        markBootStep("cards:data-load-done", `${c.length} cards`);
 
         setCardMapState(arrayToMap(c));
         setCategoriesState(cats);
@@ -185,8 +193,10 @@ export function useCards() {
         setSrSettingsState(settings);
 
         splashProgress(100, "Spremno!");
+        markBootStep("cards:ready");
       } catch (error) {
         console.error("[boot] useCards init:failed", error);
+        markBootStep("cards:init-error", error instanceof Error ? error.message : String(error));
         splashProgress(100, "Pokretanje sa rezervnim stanjem…");
         showSplashError(error instanceof Error ? error.message : "Neočekivana greška pri učitavanju podataka.");
       } finally {
