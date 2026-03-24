@@ -115,8 +115,6 @@ const DocxImporterWrapper = memo(function DocxImporterWrapper({
 });
 
 export default function MainLayout({ children }: { children: ReactNode }) {
-  // Only UI context — no cards dependency, preventing re-renders on card changes
-  const { setView } = useUIContext();
   const { pathname } = useLocation();
 
   const [docxOpen, setDocxOpen] = useState(false);
