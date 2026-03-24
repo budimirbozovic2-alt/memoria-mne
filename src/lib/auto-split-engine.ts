@@ -55,12 +55,15 @@ export function detectArticles(html: string): DetectedArticle[] {
   }
 
   const articleRegex = /^\s*(?:Č|č)(?:lan|LANAK|L(?:AN|ANAK)?\.?)\s+(\d+[a-z]?)\.?\s*$/i;
+  const headingTags = new Set(["H1", "H2", "H3"]);
 
   const lines: Line[] = [];
   for (const el of elements) {
     const text = (el.textContent || "").trim();
     const outerHtml = el.outerHTML || "";
-    const match = text.match(articleRegex);
+    // Skip heading elements — they are structural, not articles
+    const isHeading = headingTags.has(el.tagName);
+    const match = isHeading ? null : text.match(articleRegex);
     lines.push({
       text,
       html: outerHtml,
