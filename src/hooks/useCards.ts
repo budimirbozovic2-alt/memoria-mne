@@ -171,6 +171,7 @@ export function useCards() {
       } catch (error) {
         console.error("[boot] useCards init:failed", error);
         splashProgress(100, "Pokretanje sa rezervnim stanjem…");
+        showSplashError(error instanceof Error ? error.message : "Neočekivana greška pri učitavanju podataka.");
       } finally {
         const splash = document.getElementById("app-splash");
         if (splash) {
