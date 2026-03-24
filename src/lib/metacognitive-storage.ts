@@ -58,9 +58,9 @@ export function loadDiary(): DiaryEntry[] {
 
 export function saveDiary(entries: DiaryEntry[]) {
   _diaryCache = entries;
-  db.diary.clear().then(() => {
-    if (entries.length > 0) db.diary.bulkPut(entries).catch(() => {});
-  }).catch(() => {});
+  if (entries.length > 0) {
+    db.diary.bulkPut(entries).catch(() => {});
+  }
 }
 
 export function addDiaryEntry(entry: Omit<DiaryEntry, "id" | "createdAt">): DiaryEntry {
