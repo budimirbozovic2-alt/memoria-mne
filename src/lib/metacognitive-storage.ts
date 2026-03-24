@@ -1,6 +1,42 @@
 import { ReviewLogEntry, loadReviewLog } from "./storage";
 import { db } from "./db";
 
+// ─── IDB→localStorage hydration ─────────────────────────
+// Ensures localStorage cache stays in sync with IDB (source of truth).
+// Called once at boot after IDB is confirmed open.
+const HYDRATION_KEYS = {
+  diary: "sr-metacognitive-diary",
+  calibration: "sr-calibration-log",
+  latency: "sr-recall-latency",
+  slippage: "sr-slippage-log",
+  activity: "sr-activity-log",
+} as const;
+
+export async function hydrateLocalStorageFromIDB(): Promise<void> {
+  try {
+    const [diary, calibration, latency, slippage, activity] = await Promise.all([
+      db.diary.toArray(),
+      db.calibrationLog.toArray(),
+      db.latencyLog.toArray(),
+      db.slippageLog.toArray(),
+      db.activityLog.toArray(),
+    ]);
+    // Only hydrate if localStorage is empty but IDB has data
+    if (!localStorage.getItem(HYDRATION_KEYS.diary) && diary.length > 0)
+      localStorage.setItem(HYDRATION_KEYS.diary, JSON.stringify(diary));
+    if (!localStorage.getItem(HYDRATION_KEYS.calibration) && calibration.length > 0)
+      localStorage.setItem(HYDRATION_KEYS.calibration, JSON.stringify(calibration));
+    if (!localStorage.getItem(HYDRATION_KEYS.latency) && latency.length > 0)
+      localStorage.setItem(HYDRATION_KEYS.latency, JSON.stringify(latency));
+    if (!localStorage.getItem(HYDRATION_KEYS.slippage) && slippage.length > 0)
+      localStorage.setItem(HYDRATION_KEYS.slippage, JSON.stringify(slippage));
+    if (!localStorage.getItem(HYDRATION_KEYS.activity) && activity.length > 0)
+      localStorage.setItem(HYDRATION_KEYS.activity, JSON.stringify(activity));
+  } catch (err) {
+    console.warn("[hydrate] IDB→localStorage hydration failed", err);
+  }
+}
+
 // ─── Diary ───────────────────────────────────────────────
 const DIARY_KEY = "sr-metacognitive-diary";
 
