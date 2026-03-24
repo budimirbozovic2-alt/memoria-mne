@@ -162,17 +162,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       <AnimatePresence>
         <ZenMode active={zenMode} onToggle={() => setZenMode(false)} />
       </AnimatePresence>
-      <Suspense fallback={null}>
-        <GlobalSearch
-          cards={cards}
-          open={globalSearchOpen}
-          onClose={() => setGlobalSearchOpen(false)}
-          onNavigateToCard={(card) => {
-            setEditingCard(card);
-            setView("edit");
-          }}
-        />
-      </Suspense>
+      <GlobalSearchWrapper open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
       <AnimatePresence>
         {showAppOnboarding && (
           <Suspense fallback={null}>
