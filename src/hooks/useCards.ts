@@ -4,6 +4,7 @@ import { Card, createCard, createFlashCard, createSection, calculateNextReview, 
 import { loadAppSettings } from "@/lib/app-settings";
 import { ReviewLogEntry, setLastBackupTime } from "@/lib/storage";
 import {
+  ensureDbOpen,
   migrateFromLocalStorage,
   idbLoadCards, idbSaveCards,
   idbPutCard, idbDeleteCard, idbBulkPutCards,
