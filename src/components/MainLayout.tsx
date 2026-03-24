@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useRef, lazy, Suspense } from "react";
+import { ReactNode, useState, useEffect, useRef, lazy, Suspense, useMemo } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
@@ -8,7 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
 import { toast } from "@/hooks/use-toast";
-import { loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
+import { type PlannerConfig, loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
@@ -29,6 +29,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     () => !hasSeenOnboarding(APP_ONBOARDING_KEY)
   );
 
+  // Cache planner config — only re-parse when navigating away from source routes
+  const plannerRef = useRef<PlannerConfig | null>(null);
+  const getPlannerCached = () => {
+    if (!plannerRef.current) plannerRef.current = loadPlanner();
+    return plannerRef.current;
+  };
+
   // Track previous route for gentle nudge
   const prevPathRef = useRef(pathname);
   const nudgeShownRef = useRef(false);
@@ -44,6 +51,11 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Invalidate planner cache when visiting planner page (user may have changed settings)
+  useEffect(() => {
+    if (pathname === "/planner") plannerRef.current = null;
+  }, [pathname]);
+
   // Gentle nudge: show toast when leaving source/database route with unmet daily quota
   useEffect(() => {
     const prevPath = prevPathRef.current;
@@ -55,7 +67,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     if (nudgeShownRef.current) return;
 
     try {
-      const planner = loadPlanner();
+      const planner = getPlannerCached();
       if (!planner.finalGoalDate || planner.phases.length === 0) return;
 
       const velocity = calcVelocity([], 7); // lightweight check

@@ -10,7 +10,7 @@ import {
   idbPutCard, idbDeleteCard, idbBulkPutCards,
   idbLoadCategories, idbSaveCategories,
   idbLoadSubcategories, idbSaveSubcategories,
-  idbLoadReviewLog, idbAddReviewLogEntry,
+  idbLoadReviewLog, idbLoadRecentReviewLog, idbAddReviewLogEntry,
   idbLoadSettings, idbSaveSettings,
 } from "@/lib/db";
 
@@ -184,7 +184,9 @@ export function useCards() {
         const subs = await withTimeout(idbLoadSubcategories(), 2500, "subcategories load", {});
 
         splashProgress(80, "Učitavanje dnevnika…");
-        const log = await withTimeout(idbLoadReviewLog(), 2500, "review log load", []);
+        // Load only last 90 days of review log at boot for performance
+        // Full log is still available via idbLoadReviewLog() for export
+        const log = await withTimeout(idbLoadRecentReviewLog(90), 2500, "review log load", []);
 
         splashProgress(90, "Učitavanje podešavanja…");
         const settings = await withTimeout(
@@ -638,8 +640,8 @@ export function useCards() {
 
   const exportData = useCallback(async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
     onProgress(5, "Učitavanje svih podataka...");
-    const { db } = await import("@/lib/db");
-    const [sources, mindMaps, diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog] = await Promise.all([
+    const { db, idbLoadReviewLog: loadFullReviewLog } = await import("@/lib/db");
+    const [sources, mindMaps, diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog, fullReviewLog] = await Promise.all([
       db.sources.toArray(),
       db.mindMaps.toArray(),
       db.diary.toArray(),
@@ -649,6 +651,7 @@ export function useCards() {
       db.activityLog.toArray(),
       db.disciplineLog.toArray(),
       db.pomodoroLog.toArray(),
+      loadFullReviewLog(), // Full log for export, not the truncated in-memory version
     ]);
 
     // Collect key localStorage items
@@ -668,7 +671,7 @@ export function useCards() {
 
     const data = {
       version: 4, type: "full",
-      cards, categories, subcategories, reviewLog, srSettings,
+      cards, categories, subcategories, reviewLog: fullReviewLog, srSettings,
       sources, mindMaps,
       diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog,
       localStorageData,

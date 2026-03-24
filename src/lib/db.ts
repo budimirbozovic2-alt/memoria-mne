@@ -297,9 +297,19 @@ export async function idbLoadCards(): Promise<Card[]> {
 }
 
 export async function idbSaveCards(cards: Card[]): Promise<void> {
+  // Surgical upsert: bulkPut handles insert-or-update without clearing.
+  // Then remove any cards in IDB that aren't in the new set.
   await db.transaction("rw", db.cards, async () => {
-    await db.cards.clear();
-    await db.cards.bulkPut(cards);
+    if (cards.length > 0) {
+      await db.cards.bulkPut(cards);
+    }
+    // Remove stale cards not in the new set
+    const newIds = new Set(cards.map(c => c.id));
+    const allKeys = await db.cards.toCollection().primaryKeys();
+    const toDelete = allKeys.filter(k => !newIds.has(k as string));
+    if (toDelete.length > 0) {
+      await db.cards.bulkDelete(toDelete);
+    }
   });
 }
 
@@ -362,6 +372,17 @@ export async function idbSaveSubcategories(subs: Record<string, string[]>): Prom
 
 export async function idbLoadReviewLog(): Promise<ReviewLogEntry[]> {
   return db.reviewLog.toArray();
+}
+
+/** Load only recent review log entries (last N days) for faster boot */
+export async function idbLoadRecentReviewLog(days: number = 90): Promise<ReviewLogEntry[]> {
+  const cutoff = Date.now() - days * 86400000;
+  return db.reviewLog.where("timestamp").aboveOrEqual(cutoff).toArray();
+}
+
+/** Count total review log entries (for UI display without loading all) */
+export async function idbCountReviewLog(): Promise<number> {
+  return db.reviewLog.count();
 }
 
 export async function idbAddReviewLogEntry(entry: ReviewLogEntry): Promise<void> {
