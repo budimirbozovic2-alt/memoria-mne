@@ -10,7 +10,7 @@ import {
   idbPutCard, idbDeleteCard, idbBulkPutCards,
   idbLoadCategories, idbSaveCategories,
   idbLoadSubcategories, idbSaveSubcategories,
-  idbLoadReviewLog, idbAddReviewLogEntry,
+  idbLoadReviewLog, idbLoadRecentReviewLog, idbAddReviewLogEntry,
   idbLoadSettings, idbSaveSettings,
 } from "@/lib/db";
 
