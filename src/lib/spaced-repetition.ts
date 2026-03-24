@@ -199,8 +199,8 @@ export function calculateNextReview(section: Section, grade: number, targetReten
     }
   }
 
-  // Use passed retention or load from settings (cached by caller for batch operations)
-  const retention = targetRetention ?? loadAppSettings().targetRetention;
+  // Use passed retention or module-level cache
+  const retention = targetRetention ?? getCachedRetention();
   const interval = Math.max(calculateInterval(newStability, retention), 1 / (24 * 60)); // minimum 1 minute
 
   // Critical zone: grades 1-2 get priority short intervals (max 24h for grade 2, max 20min for grade 1)
