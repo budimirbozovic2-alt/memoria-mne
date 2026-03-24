@@ -1,4 +1,4 @@
-import { lazy, Suspense, memo } from "react";
+import { lazy, Suspense, memo, useCallback } from "react";
 import { useSourceLogic } from "@/hooks/useSourceLogic";
 import { SourceToolbar } from "@/components/source-reader/SourceToolbar";
 import ExamSidebar from "@/components/ExamSidebar";
