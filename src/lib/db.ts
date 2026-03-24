@@ -349,8 +349,13 @@ export async function idbLoadCategories(): Promise<string[]> {
 
 export async function idbSaveCategories(cats: string[]): Promise<void> {
   await db.transaction("rw", db.categories, async () => {
-    await db.categories.clear();
-    await db.categories.bulkPut(cats.map(name => ({ id: name, name })));
+    const newRows = cats.map(name => ({ id: name, name }));
+    await db.categories.bulkPut(newRows);
+    // Delete categories no longer in the list
+    const keepIds = new Set(cats);
+    const allKeys = await db.categories.toCollection().primaryKeys();
+    const toDelete = allKeys.filter(k => !keepIds.has(k as string));
+    if (toDelete.length > 0) await db.categories.bulkDelete(toDelete);
   });
 }
 
