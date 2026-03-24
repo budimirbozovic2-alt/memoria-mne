@@ -19,7 +19,7 @@ const SOURCE_ROUTES = ["/database"];
 
 /** Isolated component for planner nudge — prevents MainLayout re-render on card changes */
 const NudgeWatcher = memo(function NudgeWatcher() {
-  const { cards } = useAppContext();
+  const { cards } = useCardContext();
   const { pathname } = useLocation();
   const prevPathRef = useRef(pathname);
   const nudgeShownRef = useRef(false);
