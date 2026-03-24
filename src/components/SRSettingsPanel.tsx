@@ -558,7 +558,7 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
       </Tabs>
 
       {/* Action buttons — always visible */}
-      <div className="flex gap-3 pb-8">
+      <div className="flex gap-3 pb-4">
         <Button onClick={handleSave} disabled={!hasChanges} className="flex-1">
           Sačuvaj izmjene
         </Button>
@@ -566,6 +566,10 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
           <RotateCcw className="h-4 w-4 mr-2" /> Podrazumijevano
         </Button>
       </div>
+
+      {/* Health Monitor */}
+      <HealthMonitor />
+      <div className="pb-8" />
     </div>
   );
 }
