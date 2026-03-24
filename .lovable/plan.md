@@ -1,43 +1,45 @@
 
 
-## Plan: Dijagnostika i popravka Electron boot problema
+## Dijagnoza: Bijeli ekran u preview-u
 
-### Nalaz
-Boot tracing potvrdjuje da **web preview radi savrseno** (4.2s boot). Problem je iskljucivo u **Electron desktop buildu**. Splash-phase label vec radi i prikazuje fazu — kad se izgradi Electron verzija, vidjecemo tacno gdje staje.
+### Uzrok pronađen
 
-### Najvjerovatniji uzroci u Electron buildu
+Problem je u `src/main.tsx`, linije 34-43. Globalni error handleri `window.onerror` i `window.onunhandledrejection` pozivaju `showFatalBootError()` koja radi **`root.innerHTML = ...`** — ovo potpuno briše React stablo iz DOM-a.
 
-1. **Vite build asset paths** — iako je `base: './'` postavljen, mozda neki asset (font, ikona) ili chunk nije pronadjen pod `file://` protokolom
-2. **JS chunk loading failure** — `import("./App")` u production buildu postaje `import("./assets/App-HASH.js")` i ako path resolution ne radi pod `file://`, zastaje bez greske
-3. **IndexedDB ogranicenja** — neki Electron konfiguracije blokiraju IndexedDB
+Ovi handleri su registrovani pri startu i **nikad se ne uklanjaju**. To znači da bilo koja neuhvaćena greška ili odbijeni Promise tokom normalnog rada aplikacije (ne samo pri bootu) — npr. mrežni timeout, IndexedDB kvota, neuspjeli lazy import — triggeruje `showFatalBootError`, koji zamijeni cijeli `#root` sadržaj sa statičnim HTML-om greške. Ako je poruka greške kratka ili prazna, rezultat može izgledati kao bijeli ekran.
 
-### Koraci
+**Zašto se ovo ranije nije dešavalo**: ovi handleri su dodani nedavno kao dio boot dijagnostike. Prije toga, neuhvaćene greške nisu uništavale React stablo.
 
-1. **Dodati inline boot tracing u `index.html`** — cisto JavaScript logovanje PRIJE ucitavanja ijednog modula, direktno u HTML-u, da vidimo da li se `<script type="module">` uopste izvrsava u Electronu
+### Plan popravke
 
-2. **Izgraditi novu Electron verziju** sa boot tracingom i testirati
+**Jedna izmjena u `src/main.tsx`**: Nakon uspješnog React renderovanja, ukloniti destruktivne globalne handlere ili ih zamijeniti benignim verzijama.
 
-3. **Na osnovu rezultata** — ciljana popravka (asset paths, chunk loading, db fallback)
-
-### Tehnicko objasnjenje
-
-Problem: u production Electron buildu, Vite generise chunk fajlove sa hash imenima. `import("./App")` se transpajluje u nesto poput:
-```
-import("./assets/App-abc123.js")
-```
-Pod `file://` protokolom, dinamicki importi ponekad ne rade ako `<base>` tag ili document URL nije pravilno postavljen. Rjesenje je dodati `<script>` tag u `index.html` koji loguje PRIJE modula, i provjeriti da li se modul uopste ucitava.
-
-### Konkretne izmjene
-
-**index.html** — dodati inline `<script>` (ne module!) prije module scripta:
-```html
-<script>
-  window.__htmlBoot = Date.now();
-  console.log("[html-boot] inline script executed");
-</script>
+```typescript
+// Nakon linije 67 (markBootStep("main:react-render-done"))
+// Ukloniti destruktivne boot handlere — React ErrorBoundary preuzima odgovornost
+window.onerror = null;
+window.onunhandledrejection = null;
 ```
 
-**main.cjs (Electron main process)** — dodati DevTools otvaranje u development modu da vidimo console greske iz renderera
+Alternativno (bolje), zamijeniti ih sa handlerima koji samo loguju ali ne diraju DOM:
 
-**Rebuild** — `vite build` + `@electron/packager` sa novim kodom
+```typescript
+window.onerror = (_msg, _src, _ln, _col, err) => {
+  console.error("[runtime] uncaught error", err || _msg);
+};
+window.onunhandledrejection = (event) => {
+  console.error("[runtime] unhandled rejection", event.reason);
+};
+```
+
+### Tehnički detalji
+
+- `showFatalBootError` na liniji 13 radi `root.innerHTML = ...` što uništava React Virtual DOM stablo
+- ErrorBoundary komponenta već postoji i hvata runtime greške unutar React stabla
+- Jedini scenario kad `showFatalBootError` treba biti aktivan je **prije** `createRoot().render()` poziva
+- Nakon renderovanja, React ErrorBoundary preuzima kontrolu nad greškama
+
+### Obim izmjene
+
+Samo `src/main.tsx` — dodati 4-5 linija nakon uspješnog renderovanja.
 
