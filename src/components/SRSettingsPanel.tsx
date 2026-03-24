@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings, COLOR_THEMES, applyColorTheme, type ColorTheme } from "@/lib/app-settings";
 import { TTSSettings, DEFAULT_TTS_SETTINGS, loadTTSSettings, saveTTSSettings, getAvailableVoices, speak } from "@/lib/tts";
