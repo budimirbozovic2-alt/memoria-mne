@@ -65,7 +65,7 @@ const NudgeWatcher = memo(function NudgeWatcher() {
 });
 
 export default function MainLayout({ children }: { children: ReactNode }) {
-  const { setView, setEditingCard, categories, importCards, addFlashCard } = useAppContext();
+  const { setView, setEditingCard, cards, categories, importCards, addFlashCard } = useAppContext();
   const { pathname } = useLocation();
 
   const [docxOpen, setDocxOpen] = useState(false);
