@@ -1,126 +1,127 @@
 
 
-## Detaljna analiza: Preostali problemi, rizici i plan optimizacije
+## Analiza: Preostali problemi nakon prethodnih optimizacija
 
 ### Metodologija
-Pregledao sam sve ključne fajlove: `main.tsx`, `AppContext.tsx`, `useCards.ts`, `db.ts`, `metacognitive-storage.ts`, `planner-storage.ts`, `MainLayout.tsx`, `ErrorBoundary.tsx`, `app-settings.ts`, `ReviewSession.tsx` i ostale.
+Pregledao sam: `main.tsx`, `AppContext.tsx`, `useCards.ts`, `db.ts`, `metacognitive-storage.ts`, `planner-storage.ts`, `MainLayout.tsx`, `spaced-repetition.ts`, `app-settings.ts`, `sounds.ts`, `SRSettingsPanel.tsx`, `PomodoroTimer.tsx`, `ZenMode.tsx`, `ReviewSession.tsx`.
 
 ---
 
-### KRITIČNI PROBLEMI (P0)
+### STATUS PRETHODNO PRIJAVLJENIH PROBLEMA
 
-**1. Destructive clear()+bulkAdd() u metacognitive-storage.ts**
-`saveDiary()`, `saveCalibration()`, `saveLatency()` koriste `db.table.clear().then(() => bulkAdd(...))`. Ako aplikacija crashuje ili se tab zatvori između `clear()` i `bulkAdd()`, svi podaci su izgubljeni. Ovo je isti anti-pattern koji smo uklonili iz `idbSaveCards`, ali ostao je u metacognitive-storage.
-
-- Fajl: `src/lib/metacognitive-storage.ts`, linije 61-63, 92-94, 118-120
-- Popravka: zamijeni sa `bulkPut()` bez prethodnog `clear()`
-
-**2. loadAppSettings() u spaced-repetition.ts — fallback bez parametra**
-`calculateNextReview()` na liniji 190 poziva `loadAppSettings()` ako `targetRetention` nije proslijeđen. Ovo znači da svaki put kad se ova funkcija pozove bez parametra (npr. iz nekih putanja), radi se sinhronizovani localStorage parse. U `previewIntervals()` (linija 257) ovo se dešava za svaku od 4 ocjena po sekciji — potencijalno stotine poziva pri prikazu review sesije.
-
-- Popravka: proslijediti `targetRetention` kao obavezni parametar ili keširati na nivou modula
-
-**3. exportData čuva stale localStorage ključeve za planner**
-`exportData` (useCards.ts linija 658-669) i dalje čita `sr-planner-config`, `sr-daily-mapped-count` itd. iz localStorage. Ali mi smo te podatke migrirali u IDB. Backup će sadržavati **stare/prazne** localStorage podatke umjesto aktuelnih IDB podataka.
-
-- Popravka: čitati `plannerConfig`, `dailyMapped` iz `db.settings` umjesto localStorage
+| Problem | Status |
+|---------|--------|
+| clear()+bulkAdd() u metacognitive-storage | **RIJEŠEN** — koristi bulkPut() |
+| loadAppSettings() u spaced-repetition hot path | **RIJEŠEN** — getCachedRetention() |
+| exportData čita stale LS za planner | **RIJEŠEN** — čita iz IDB |
+| Metacognitive cache trimovanje 90 dana | **RIJEŠEN** |
+| NudgeWatcher izolacija | **RIJEŠEN** |
+| PomodoroTimer/ZenMode settings keš | **RIJEŠEN** — useMemo |
+| sounds.ts keš | **RIJEŠEN** — module-level cache |
+| SRSettingsPanel useRef | **RIJEŠEN** |
+| Destruktivni boot error handleri | **RIJEŠEN** — zamijenjeni benignim |
 
 ---
 
-### VISOKI PRIORITET (P1)
+### NOVI/PREOSTALI PROBLEMI
 
-**4. Unbounded cache rast u metacognitive-storage**
-`_calibrationCache`, `_latencyCache`, `_activityCache` rastu neograničeno — svaki `addCalibrationEntry()` dodaje u niz koji se nikad ne trimuje. Korisnik sa 2500+ kartica i 6 mjeseci korištenja može imati desetine hiljada unosa u memoriji.
+#### P0 — Kritično
 
-- Popravka: zadržati samo posljednjih 90 dana u keš-u, starije samo u IDB
+**1. Electron backup čita stale localStorage za planner (main.tsx:112-116)**
+Electron IPC backup handler na liniji 112-116 i dalje čita `sr-planner-config`, `sr-daily-mapped-count`, `sr-daily-mapped-date` iz localStorage. Ovo je ISTI bug koji smo popravili u `exportData`, ali Electron putanja ga nije dobila.
 
-**5. MainLayout koristi useAppContext() — uzrokuje re-render na svaku card promjenu**
-`MainLayout` destrukturiše `cards` iz `useAppContext()`, što znači da se CIJELI layout (TopNav, Breadcrumbs, svi children) re-renderuje kad god se bilo koja kartica promijeni. Ovo je glavni uzrok sluggishness-a.
+- Fajl: `src/main.tsx`, linije 112-123
+- Popravka: čitati planner podatke iz `db.settings` kao u exportData
 
-- Popravka: MainLayout treba koristiti `useCardContext()` i `useUIContext()` selektivno, ili izvući nudge logiku u odvojenu komponentu
+**2. idbSaveCategories i idbSaveSubcategories koriste clear()+bulkPut() (db.ts:350-371)**
+Ove dvije funkcije i dalje koriste `clear()` unutar transakcije. Ako se transakcija prekine nakon clear a prije bulkPut, kategorije su izgubljene.
 
-**6. PomodoroTimer.tsx poziva loadAppSettings() pri svakom renderu**
-Linija 17: `const pom = loadAppSettings().pomodoro;` — ovo se parsira svake sekunde dok tajmer radi jer `seconds` state izaziva re-render.
+- Fajl: `src/lib/db.ts`, linije 350-371
+- Popravka: koristiti bulkPut + delete viška (isti pattern kao idbSaveCards)
 
-- Popravka: keširati u `useMemo` ili `useRef`
+#### P1 — Performanse
 
-**7. ZenMode.tsx — isti problem sa loadAppSettings()**
-Linija 19: `const pom = loadAppSettings().pomodoro;` poziva se pri svakom renderu.
+**3. MainLayout i dalje koristi useAppContext() — uzrokuje re-render na card promjene**
+Linija 68: `const { setView, setEditingCard, cards, categories, importCards, addFlashCard } = useAppContext()` — NudgeWatcher je izolovan, ali sam MainLayout se i dalje re-renderuje jer destrukturiše `cards` (koristi se za GlobalSearch). Svaka promjena kartice re-renderuje TopNav, Breadcrumbs, ZenMode itd.
 
----
+- Popravka: MainLayout treba koristiti samo `useUIContext()` za navigaciju. `cards` i `categories` treba proslijediti samo komponentama koje ih trebaju (GlobalSearch, DocxImporter) putem useCardContext() unutar tih komponenti, ili ih lazy-loadati.
 
-### SREDNJI PRIORITET (P2)
+**4. useAppContext() kreira novi objekat pri svakom renderu oba konteksta**
+Linija 86: `useMemo(() => ({ ...card, ...ui }), [card, ui])` — spread kreira novi objekat svaki put kad se bilo koji kontekst promijeni. Svaka komponenta koja koristi `useAppContext()` se re-renderuje kad se BILO ŠTA promijeni.
 
-**8. ReviewSession.tsx — 812 linija, monolit**
-Ogromna komponenta sa kompleksnom stanje logikom. Svaka greška u bilo kojem dijelu ruši cijelu review sesiju.
+- Popravka: postepeno migrirati potrošače na `useCardContext()` ili `useUIContext()` umjesto `useAppContext()`
 
-**9. sounds.ts poziva loadAppSettings() pri svakom zvuku**
-`isSoundEnabled()` parsira localStorage svaki put kad se pokuša reproducirati zvuk.
+**5. ReviewSession.tsx — 812-linijski monolit bez ErrorBoundary zaštite**
+Jedna greška u bilo kojem dijelu (filtriranje, prikaz, ocjenjivanje) ruši cijelu sesiju. Nema mogućnosti za oporavak.
 
-**10. SRSettingsPanel hasChanges provjera**
-Linija 62: `JSON.stringify(app) !== JSON.stringify(loadAppSettings())` — radi duboku serijalizaciju I localStorage parse pri svakom renderu settings panela.
+- Popravka: razbiti na pod-komponente (ReviewSetup, ReviewCard, ReviewComplete) sa vlastitim error boundaryima
+
+#### P2 — Robusnost
+
+**6. app-settings.ts i dalje koristi isključivo localStorage**
+AppSettings su jedini preostali podatak koji živi samo u localStorage. Dok je mali (< 1KB), gubi se pri čišćenju browsera.
+
+- Popravka: dodati IDB backup za app-settings sa LS kao primarni (brz sinhroni čitač) i IDB kao fallback
+
+**7. Notification scheduler u UIProvider čita loadAppSettings() samo jednom**
+Linija 182: notification check interval čita settings jednom pri mount-u ali nikad ne osvježava ako korisnik promijeni notification settings. Mora re-mountati UIProvider.
+
+- Popravka: dodati `settings` u dependency ili koristiti ref koji se osvježava
 
 ---
 
 ### PLAN IMPLEMENTACIJE
 
-#### Faza 1 — Kritične popravke (P0)
+#### Faza 1 — Kritične popravke
 
-**Korak 1: Ukloni destructive clear()+bulkAdd() iz metacognitive-storage.ts**
-- Zamijeni `saveDiary`: `db.diary.clear() → bulkPut()` sa direktnim `db.diary.bulkPut(entries)` 
-- Isto za `saveCalibration` i `saveLatency`
-- Dodati brisanje viška ključeva ako je potrebno (kao surgical upsert pattern)
+**Korak 1: Popravi Electron backup localStorage čitanje**
+- `src/main.tsx` linije 112-123: dodati čitanje `plannerConfig`, `dailyMapped`, `dailyMappedDate` iz `db.settings`
+- Ukloniti `sr-planner-config`, `sr-daily-mapped-count`, `sr-daily-mapped-date` iz LS ključeva
 
-**Korak 2: Popravi exportData da čita planner podatke iz IDB**
-- Umjesto localStorage ključeva `sr-planner-config` itd., čitati iz `db.settings.get("plannerConfig")`, `db.settings.get("dailyMapped")`
-- Ukloniti stale LS ključeve iz export liste
+**Korak 2: Zamijeni clear()+bulkPut u idbSaveCategories/idbSaveSubcategories**
+- `src/lib/db.ts`: koristiti bulkPut + surgical delete umjesto clear()
 
-**Korak 3: Eliminisati nekeširan loadAppSettings() u spaced-repetition.ts**
-- `calculateNextReview`: učiniti `targetRetention` obaveznim parametrom ili dodati module-level keš
-- `previewIntervals`: proslijediti keširan retention
+#### Faza 2 — Performance
 
-#### Faza 2 — Performance (P1)
+**Korak 3: Izoluj cards zavisnost iz MainLayout**
+- MainLayout koristi `useUIContext()` + `useCardContext()` selektivno
+- GlobalSearch i DocxImporter dobijaju cards/categories kroz vlastiti useCardContext() hook unutar komponente, ne kroz prop iz MainLayout-a
+- Ovo eliminira re-render TopNav/Breadcrumbs na svaku card promjenu
 
-**Korak 4: Trimovanje metacognitive keševa**
-- U `initMetacognitiveCache()`, zadržati samo posljednjih 90 dana za calibration, latency, activity
-- Dodati `trimCache()` helper
+**Korak 4: Migracija ključnih potrošača sa useAppContext na specifične kontekste**
+- Identifikovati komponente koje koriste useAppContext() a trebaju samo UI ili samo Card dio
+- Postepena zamjena
 
-**Korak 5: Razbiti MainLayout re-render problem**
-- Izdvojiti nudge logiku u `<NudgeWatcher>` komponentu koja sama pristupa `useCardContext()`
-- MainLayout koristi samo `useUIContext()` za navigaciju
+#### Faza 3 — Robusnost
 
-**Korak 6: Keširati loadAppSettings u PomodoroTimer i ZenMode**
-- `useMemo(() => loadAppSettings().pomodoro, [])` u oba komponenta
+**Korak 5: Dodati IDB fallback za AppSettings**
+- `saveAppSettings` piše u LS + IDB
+- `loadAppSettings` čita LS, ako prazno pada na IDB
 
-#### Faza 3 — Čišćenje (P2)
+**Korak 6: Notification settings refresh**
+- UIProvider: osvježavati notification config kad se view promijeni na "settings" i nazad
 
-**Korak 7: Keširati settings provjeru u SRSettingsPanel**
-- Sačuvati inicijalni `loadAppSettings()` u `useRef` umjesto pozivanja pri svakom renderu
+---
 
-**Korak 8: Keširati isSoundEnabled u sounds.ts**
-- Module-level keš sa invalidacijom pri saveAppSettings()
-
-### Tehnički detalji
+### Tehnički pregled
 
 ```text
-P0 — Gubitak podataka / neispravni backup:
-  metacognitive-storage.ts  → clear()+bulkAdd() race condition
-  useCards.ts exportData     → čita stale localStorage za planner
-  spaced-repetition.ts      → nekeširan localStorage parse u hot path
+P0 — Integritet podataka:
+  main.tsx Electron backup     → stale LS za planner (isti bug kao exportData)
+  db.ts categories/subcats     → clear()+bulkPut() race condition
 
 P1 — Performance:
-  MainLayout                → re-render cascade na svaku card promjenu
-  PomodoroTimer/ZenMode     → loadAppSettings() svake sekunde
-  metacognitive caches      → neograničen rast u memoriji
+  MainLayout                   → useAppContext() re-renderuje sve na card change
+  useAppContext()              → spread merge kreira novi objekat svaki put
 
-P2 — Tech debt:
-  SRSettingsPanel            → nepotrebna serijalizacija pri renderu
-  sounds.ts                  → localStorage parse pri svakom zvuku
-  ReviewSession.tsx          → 812-linijski monolit
+P2 — Robusnost:
+  app-settings.ts              → samo localStorage, nema IDB backup
+  UIProvider notifications     → ne osvježava settings nakon promjene
+  ReviewSession.tsx            → 812-linijski monolit
 ```
 
 ### Obim rada
-- Faza 1: 3 fajla, ~40 linija izmjena
-- Faza 2: 4 fajla, ~60 linija izmjena
-- Faza 3: 3 fajla, ~20 linija izmjena
+- Faza 1: 2 fajla, ~30 linija izmjena
+- Faza 2: 3-5 fajlova, ~50 linija izmjena
+- Faza 3: 2 fajla, ~30 linija izmjena
 
