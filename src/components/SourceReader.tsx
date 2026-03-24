@@ -32,15 +32,25 @@ function CoverageStatsBar({ percent, linkedCount }: { percent: number; linkedCou
 
 // ── Memoized source content to avoid re-render on sidebar clicks ──
 const SourceContent = memo(function SourceContent({ html, onMouseUp, contentRef }: { html: string; onMouseUp: () => void; contentRef: React.RefObject<HTMLDivElement> }) {
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const heading = target.closest("h1, h2, h3");
+    if (heading && heading.id) {
+      heading.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, []);
+
   return (
     <div
       ref={contentRef}
       className="rounded-lg border bg-card p-6 prose prose-sm max-w-none
-        prose-headings:text-foreground prose-p:text-foreground/90
+        prose-headings:text-foreground prose-headings:cursor-pointer prose-headings:hover:text-primary prose-headings:transition-colors
+        prose-p:text-foreground/90
         prose-strong:text-foreground prose-a:text-primary
         prose-ul:text-foreground/90 prose-ol:text-foreground/90
         prose-li:text-foreground/90"
       onMouseUp={onMouseUp}
+      onClick={handleClick}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

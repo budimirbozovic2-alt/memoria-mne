@@ -47,9 +47,11 @@ function firstWords(text: string, n = 7): string {
 export function splitSelection(selectedText: string): SelectionSplitResult {
   const lines = selectedText.split(/\n/).map(l => l.trim()).filter(Boolean);
 
-  // Find all article boundaries
+  // Find all article boundaries (skip lines that are headings)
   const boundaries: { lineIndex: number; articleNum: string }[] = [];
   for (let i = 0; i < lines.length; i++) {
+    // Skip heading-like lines (from stripped h1/h2/h3 or markdown-style)
+    if (HEADING_LINE_REGEX.test(lines[i])) continue;
     const match = lines[i].match(ARTICLE_REGEX);
     if (match) {
       boundaries.push({ lineIndex: i, articleNum: match[1] });
