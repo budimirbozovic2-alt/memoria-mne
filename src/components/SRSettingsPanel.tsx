@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 
 import InfoPanel from "@/components/InfoPanel";
+import HealthMonitor from "@/components/HealthMonitor";
 import { ArrowLeft, RotateCcw, ChevronDown } from "lucide-react";
 
 interface Props {
