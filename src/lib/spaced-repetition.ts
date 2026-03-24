@@ -1,6 +1,19 @@
 // FSRS v5 Algorithm with per-section tracking, state machine, leech detection
 import { loadAppSettings } from "./app-settings";
 
+// Module-level cached retention to avoid repeated localStorage parse in hot paths
+let _cachedRetention: number | null = null;
+let _retentionCacheTime = 0;
+function getCachedRetention(): number {
+  const now = Date.now();
+  // Refresh cache every 10 seconds
+  if (_cachedRetention === null || now - _retentionCacheTime > 10000) {
+    _cachedRetention = loadAppSettings().targetRetention;
+    _retentionCacheTime = now;
+  }
+  return _cachedRetention;
+}
+
 export enum SectionState {
   New = 0,
   Learning = 1,
