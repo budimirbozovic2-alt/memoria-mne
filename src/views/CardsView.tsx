@@ -24,9 +24,9 @@ const CARDS_SHORTCUTS = [
 export default function CardsView() {
   const {
     cards, categories, subcategories,
-    deleteCard, handleToggleTag, bulkUpdateSubcategory, bulkUpdateChapter, reorderCards,
-    setView, setEditingCard, updateCard, addKeyPart,
-  } = useAppContext();
+    deleteCard, bulkUpdateSubcategory, bulkUpdateChapter, reorderCards, updateCard, addKeyPart,
+  } = useCardContext();
+  const { setView, setEditingCard, handleToggleTag } = useUIContext();
 
   const [filterCategory, setFilterCategory] = useState<string | null>(() => {
     const deeplink = sessionStorage.getItem("sr-deeplink-category");
