@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { PenSquare, BarChart3, Wand2, ChevronUp, ChevronDown } from "lucide-react";
+import { PenSquare, BarChart3, Wand2, ChevronUp, ChevronDown, Link as LinkIcon } from "lucide-react";
 import type { Source } from "@/lib/sources-storage";
 
 const AutoSplitDialog = lazy(() => import("@/components/AutoSplitDialog"));
