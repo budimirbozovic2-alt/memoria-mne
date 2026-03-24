@@ -158,24 +158,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <Suspense fallback={null}>
-        <DocxImporter
-          open={docxOpen}
-          onClose={() => setDocxOpen(false)}
-          categories={categories}
-          onImport={(docxCards, cat, cardType) => {
-            if (cardType === "flash") {
-              docxCards.forEach(c => {
-                const answer = c.sections.map(s => s.content).join("\n");
-                addFlashCard(c.question, answer, cat);
-              });
-            } else {
-              importCards(docxCards, cat);
-            }
-            setDocxOpen(false);
-          }}
-        />
-      </Suspense>
+      <DocxImporterWrapper open={docxOpen} onClose={() => setDocxOpen(false)} />
       <AnimatePresence>
         <ZenMode active={zenMode} onToggle={() => setZenMode(false)} />
       </AnimatePresence>
