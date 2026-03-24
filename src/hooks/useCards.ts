@@ -671,7 +671,7 @@ export function useCards() {
 
     const data = {
       version: 4, type: "full",
-      cards, categories, subcategories, reviewLog, srSettings,
+      cards, categories, subcategories, reviewLog: fullReviewLog, srSettings,
       sources, mindMaps,
       diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog,
       localStorageData,
