@@ -164,6 +164,15 @@ export function useCards() {
         await migrateFromLocalStorage();
         markBootStep("cards:migration-done");
 
+        // Hydrate localStorage from IDB (prevents data loss if LS was cleared)
+        splashProgress(15, "Sinhronizacija keša…");
+        const { hydrateLocalStorageFromIDB } = await import("@/lib/metacognitive-storage");
+        const { hydratePlannerFromIDB } = await import("@/lib/planner-storage");
+        await Promise.all([
+          hydrateLocalStorageFromIDB().catch(() => {}),
+          hydratePlannerFromIDB().catch(() => {}),
+        ]);
+
         splashProgress(25, "Učitavanje kartica…");
         markBootStep("cards:data-load-start");
         const c = await withTimeout(idbLoadCards(), 5000, "cards load", []);
