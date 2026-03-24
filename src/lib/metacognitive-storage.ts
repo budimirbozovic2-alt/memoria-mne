@@ -29,10 +29,12 @@ export async function initMetacognitiveCache(): Promise<void> {
       db.settings.get("appEntry"),
     ]);
     _diaryCache = diary;
-    _calibrationCache = calibration;
-    _latencyCache = latency;
+    // Trim caches to last 90 days to prevent unbounded memory growth
+    const cutoff90 = Date.now() - 90 * 86400000;
+    _calibrationCache = calibration.filter(e => e.timestamp >= cutoff90);
+    _latencyCache = latency.filter(e => e.timestamp >= cutoff90);
     _slippageCache = slippage;
-    _activityCache = activity;
+    _activityCache = activity.filter(e => e.timestamp >= cutoff90);
     _lastAnalysisDate = analysisRow?.value ?? null;
     _appEntry = appEntryRow?.value ?? null;
     _cacheReady = true;

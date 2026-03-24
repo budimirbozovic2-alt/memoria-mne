@@ -99,6 +99,9 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       {/* Breadcrumbs */}
       <Breadcrumbs />
 
+      {/* Nudge watcher — isolated to avoid re-renders */}
+      <NudgeWatcher />
+
       {/* Main content */}
       <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full">
         {children}

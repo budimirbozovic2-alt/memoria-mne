@@ -267,7 +267,7 @@ export function formatInterval(interval: number): string {
 }
 
 export function previewIntervals(section: Section): Record<number, string> {
-  const cachedRetention = loadAppSettings().targetRetention;
+  const cachedRetention = getCachedRetention();
   const result: Record<number, string> = {};
   for (const grade of [1, 2, 3, 4]) {
     const next = calculateNextReview(section, grade, cachedRetention);
