@@ -89,9 +89,9 @@ export function loadCalibration(): CalibrationEntry[] {
 
 export function saveCalibration(entries: CalibrationEntry[]) {
   _calibrationCache = entries;
-  db.calibrationLog.clear().then(() => {
-    if (entries.length > 0) db.calibrationLog.bulkAdd(entries).catch(() => {});
-  }).catch(() => {});
+  if (entries.length > 0) {
+    db.calibrationLog.bulkPut(entries).catch(() => {});
+  }
 }
 
 export function addCalibrationEntry(entry: CalibrationEntry) {
