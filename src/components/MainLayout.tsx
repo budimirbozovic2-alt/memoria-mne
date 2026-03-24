@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useRef, lazy, Suspense } from "react";
+import { ReactNode, useState, useEffect, useRef, lazy, Suspense, useMemo } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useLocation } from "react-router-dom";
 import { useAppContext } from "@/contexts/AppContext";
@@ -8,7 +8,7 @@ import { AnimatePresence } from "framer-motion";
 import { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
 import { toast } from "@/hooks/use-toast";
-import { loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
+import { type PlannerConfig, loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
