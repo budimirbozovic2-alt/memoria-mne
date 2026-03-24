@@ -125,6 +125,13 @@ export function useCards() {
       if (percent) percent.textContent = `${pct}%`;
     };
 
+    const showSplashError = (msg: string) => {
+      const el = document.getElementById("splash-error");
+      const msgEl = document.getElementById("splash-error-msg");
+      if (el) el.style.display = "block";
+      if (msgEl) msgEl.textContent = msg;
+    };
+
     (async () => {
       try {
         splashProgress(5, "Otvaranje baze…");
