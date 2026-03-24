@@ -184,7 +184,9 @@ export function useCards() {
         const subs = await withTimeout(idbLoadSubcategories(), 2500, "subcategories load", {});
 
         splashProgress(80, "Učitavanje dnevnika…");
-        const log = await withTimeout(idbLoadReviewLog(), 2500, "review log load", []);
+        // Load only last 90 days of review log at boot for performance
+        // Full log is still available via idbLoadReviewLog() for export
+        const log = await withTimeout(idbLoadRecentReviewLog(90), 2500, "review log load", []);
 
         splashProgress(90, "Učitavanje podešavanja…");
         const settings = await withTimeout(

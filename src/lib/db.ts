@@ -374,6 +374,17 @@ export async function idbLoadReviewLog(): Promise<ReviewLogEntry[]> {
   return db.reviewLog.toArray();
 }
 
+/** Load only recent review log entries (last N days) for faster boot */
+export async function idbLoadRecentReviewLog(days: number = 90): Promise<ReviewLogEntry[]> {
+  const cutoff = Date.now() - days * 86400000;
+  return db.reviewLog.where("timestamp").aboveOrEqual(cutoff).toArray();
+}
+
+/** Count total review log entries (for UI display without loading all) */
+export async function idbCountReviewLog(): Promise<number> {
+  return db.reviewLog.count();
+}
+
 export async function idbAddReviewLogEntry(entry: ReviewLogEntry): Promise<void> {
   await db.reviewLog.add(entry);
 }
