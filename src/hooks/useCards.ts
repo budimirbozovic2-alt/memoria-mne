@@ -17,6 +17,18 @@ import {
 // ─── Internal Map type for O(1) access ──────────────────
 type CardMap = Record<string, Card>;
 
+async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string, fallback: T): Promise<T> {
+  try {
+    return await Promise.race([
+      task,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs)),
+    ]);
+  } catch (error) {
+    console.warn(`[boot] ${label} failed`, error);
+    return fallback;
+  }
+}
+
 function arrayToMap(cards: Card[]): CardMap {
   const map: CardMap = {};
   for (const c of cards) map[c.id] = c;
@@ -147,19 +159,24 @@ export function useCards() {
         await migrateFromLocalStorage();
 
         splashProgress(25, "Učitavanje kartica…");
-        const c = await idbLoadCards();
+        const c = await withTimeout(idbLoadCards(), 5000, "cards load", []);
 
         splashProgress(50, `${c.length} kartica učitano`);
-        const cats = await idbLoadCategories();
+        const cats = await withTimeout(idbLoadCategories(), 2500, "categories load", ["Opšte"]);
 
         splashProgress(65, "Učitavanje kategorija…");
-        const subs = await idbLoadSubcategories();
+        const subs = await withTimeout(idbLoadSubcategories(), 2500, "subcategories load", {});
 
         splashProgress(80, "Učitavanje dnevnika…");
-        const log = await idbLoadReviewLog();
+        const log = await withTimeout(idbLoadReviewLog(), 2500, "review log load", []);
 
         splashProgress(90, "Učitavanje podešavanja…");
-        const settings = await idbLoadSettings<SRSettings>("srSettings", DEFAULT_SR_SETTINGS);
+        const settings = await withTimeout(
+          idbLoadSettings<SRSettings>("srSettings", DEFAULT_SR_SETTINGS),
+          2500,
+          "settings load",
+          DEFAULT_SR_SETTINGS,
+        );
 
         setCardMapState(arrayToMap(c));
         setCategoriesState(cats);
