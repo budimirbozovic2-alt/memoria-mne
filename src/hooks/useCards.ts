@@ -640,8 +640,8 @@ export function useCards() {
 
   const exportData = useCallback(async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
     onProgress(5, "Učitavanje svih podataka...");
-    const { db } = await import("@/lib/db");
-    const [sources, mindMaps, diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog] = await Promise.all([
+    const { db, idbLoadReviewLog: loadFullReviewLog } = await import("@/lib/db");
+    const [sources, mindMaps, diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog, fullReviewLog] = await Promise.all([
       db.sources.toArray(),
       db.mindMaps.toArray(),
       db.diary.toArray(),
@@ -651,6 +651,7 @@ export function useCards() {
       db.activityLog.toArray(),
       db.disciplineLog.toArray(),
       db.pomodoroLog.toArray(),
+      loadFullReviewLog(), // Full log for export, not the truncated in-memory version
     ]);
 
     // Collect key localStorage items
