@@ -7,14 +7,7 @@ import {
   createSection,
   SourceModule,
 } from "@/lib/spaced-repetition";
-
-type CardMap = Record<string, Card>;
-
-type PersistAction =
-  | { type: "put"; card: Card }
-  | { type: "delete"; id: string }
-  | { type: "bulk"; cards: Card[] }
-  | { type: "full"; map: CardMap };
+import { CardMap, PersistAction } from "@/lib/persist-queue";
 
 interface UseCardCRUDParams {
   categories: string[];

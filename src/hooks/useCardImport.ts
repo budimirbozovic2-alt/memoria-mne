@@ -1,8 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { Card, createCard, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
-
-type CardMap = Record<string, Card>;
+import { CardMap } from "@/lib/persist-queue";
 
 interface UseCardImportDeps {
   categories: string[];

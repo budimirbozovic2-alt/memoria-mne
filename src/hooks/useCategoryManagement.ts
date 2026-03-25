@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { Card } from "@/lib/spaced-repetition";
-
-type CardMap = Record<string, Card>;
+import { CardMap } from "@/lib/persist-queue";
 
 interface UseCategoryManagementParams {
   categories: string[];
