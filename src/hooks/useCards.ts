@@ -88,6 +88,15 @@ export function useCards() {
     addKeyPart, bulkFlagNeedsReview, reorderCards, bulkUpdateChapter,
   } = useCardAnnotations({ patchCard, setCardMapState, setReviewLog });
 
+  // ── Category management (extracted module) ──
+  const {
+    addCategory, renameCategory, deleteCategory,
+    addSubcategory, renameSubcategory, deleteSubcategory,
+    bulkUpdateSubcategory,
+  } = useCategoryManagement({
+    categories, setCategories, setSubcategories, setCardMap, setCardMapState, schedulePersist,
+  });
+
   // ── Export/Import (extracted to separate modules) ──
   const { exportData, exportTemplate } = useCardExport({ cards, categories, subcategories, reviewLog, srSettings });
   const { importData, importCards } = useCardImport({
