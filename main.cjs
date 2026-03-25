@@ -22,8 +22,8 @@ if (!gotLock) {
   app.quit();
 } else {
 
-const { createSplashWindow, createWindow } = require('./electron/window.cjs');
-const { setupBackupSystem } = require('./electron/backup.cjs');
+const { createSplashWindow, createWindow } = require(path.join(__dirname, 'electron', 'window.cjs'));
+const { setupBackupSystem } = require(path.join(__dirname, 'electron', 'backup.cjs'));
 
 let mainWindow = null;
 

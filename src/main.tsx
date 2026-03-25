@@ -143,7 +143,7 @@ setTimeout(() => {
         return JSON.stringify(data);
       };
 
-      // Register backup-requested listener
+      // Register periodic backup-requested listener
       const cleanup = window.electronAPI.onBackupRequested(async () => {
         try {
           const json = await buildBackupData();
@@ -151,15 +151,17 @@ setTimeout(() => {
         } catch (_) {}
       });
 
-      // Expose for before-quit await pattern (called from main process via executeJavaScript)
-      (window as any).__backupBeforeQuit = async () => {
+      // Register quit-backup listener (IPC pattern, no executeJavaScript)
+      const api = window.electronAPI as any;
+      const cleanupQuit = api.onQuitBackupRequested?.(async () => {
         try {
           const json = await buildBackupData();
           await window.electronAPI!.requestBackup(json);
         } catch (_) {}
-      };
+        api.notifyQuitBackupDone?.();
+      });
 
-      const doCleanup = () => cleanup();
+      const doCleanup = () => { cleanup(); cleanupQuit?.(); };
       window.addEventListener("beforeunload", doCleanup);
       window.addEventListener("unload", doCleanup);
     } catch {}

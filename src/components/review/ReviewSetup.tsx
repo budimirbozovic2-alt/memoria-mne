@@ -26,7 +26,7 @@ interface ReviewSetupProps {
   allCards: Card[];
   subcategories: Record<string, string[]>;
   srSettings: SRSettings;
-  onSelectMode: (mode: ReviewMode, category: string | null, subcategory: string | null, chapter: string | null, examFrequent: boolean, filterType: "all" | "essay" | "flash") => void;
+  onSelectMode: (mode: ReviewMode, category: string | null, subcategory: string | null, chapter: string | null, examFrequent: boolean, filterType: "all" | "essay" | "flash", items: DueItem[]) => void;
   onBack: () => void;
   savedSession: any;
   onResumeSession: () => void;
@@ -149,8 +149,11 @@ export default function ReviewSetup({
   };
 
   const handleStartSession = useCallback(() => {
-    onSelectMode(mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType);
-  }, [mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType, onSelectMode]);
+    const currentItems = mode === "stabilization" ? stabilizationItems
+      : mode === "critical" ? criticalItems
+      : hardestItems;
+    onSelectMode(mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType, currentItems);
+  }, [mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType, onSelectMode, stabilizationItems, criticalItems, hardestItems]);
 
   // ── Step 1: Choose mode ──
   if (setupStep === "mode") {

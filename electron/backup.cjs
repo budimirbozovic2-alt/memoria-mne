@@ -114,12 +114,12 @@ function setupBackupSystem({ app, getMainWindow, logCrash, isDev }) {
     performBeforeQuitBackup: () => {
       const mainWindow = getMainWindow();
       if (mainWindow && !mainWindow.isDestroyed()) {
-        // Use invoke pattern with timeout so we wait for backup to finish
         const QUIT_BACKUP_TIMEOUT = 5000;
         return Promise.race([
-          mainWindow.webContents.executeJavaScript(
-            `window.__backupBeforeQuit ? window.__backupBeforeQuit() : Promise.resolve()`
-          ).catch(() => {}),
+          new Promise(resolve => {
+            ipcMain.once('quit-backup-done', () => resolve(undefined));
+            mainWindow.webContents.send('quit-backup-requested');
+          }),
           new Promise(resolve => setTimeout(resolve, QUIT_BACKUP_TIMEOUT)),
         ]);
       }
