@@ -182,7 +182,8 @@ export default function SourcesView() {
       const arrayBuffer = await versionFile.arrayBuffer();
       const rawHtml = await parseDocxInWorker(arrayBuffer);
       const html = sanitizeHtml(rawHtml);
-      const htmlWithIds = injectHeadingIds(html);
+      const promoted = promoteHeadings(html);
+      const htmlWithIds = injectHeadingIds(promoted);
       const outline = extractOutline(htmlWithIds);
       const articles = extractArticles(htmlWithIds);
 
