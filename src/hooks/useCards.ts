@@ -482,6 +482,14 @@ export function useCards() {
     });
   }, []);
 
+  // O(1) markRead — surgical
+  const markRead = useCallback(
+    (id: string) => {
+      patchCard(id, (c) => ({ ...c, readCount: (c.readCount || 0) + 1 }));
+    },
+    [patchCard],
+  );
+
   // ── Category management (extracted module) ──
   const {
     addCategory, renameCategory, deleteCategory,
