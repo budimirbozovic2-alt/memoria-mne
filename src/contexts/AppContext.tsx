@@ -54,7 +54,7 @@ export function useCardContext() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// UI CONTEXT — navigation, editing, pomodoro (re-renders independently)
+// UI CONTEXT — navigation, editing (NO pomodoro — re-renders only on nav/edit)
 // ═══════════════════════════════════════════════════════════
 interface UIContextValue {
   view: View;
@@ -62,9 +62,6 @@ interface UIContextValue {
   editingCard: Card | null;
   setEditingCard: (c: Card | null) => void;
   handleToggleTag: (cardId: string, tag: string) => void;
-  pomodoro: PomodoroState;
-  pomodoroToggle: () => void;
-  pomodoroReset: () => void;
 }
 
 const UIContext = createContext<UIContextValue | null>(null);
@@ -76,7 +73,24 @@ export function useUIContext() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// BACKWARD-COMPAT: useAppContext merges both
+// POMODORO CONTEXT — isolated timer (re-renders only PomodoroTimer)
+// ═══════════════════════════════════════════════════════════
+interface PomodoroContextValue {
+  pomodoro: PomodoroState;
+  pomodoroToggle: () => void;
+  pomodoroReset: () => void;
+}
+
+const PomodoroContext = createContext<PomodoroContextValue | null>(null);
+
+export function usePomodoroContext() {
+  const ctx = useContext(PomodoroContext);
+  if (!ctx) throw new Error("usePomodoroContext must be used within PomodoroProvider");
+  return ctx;
+}
+
+// ═══════════════════════════════════════════════════════════
+// BACKWARD-COMPAT: useAppContext merges card + ui (NOT pomodoro)
 // ═══════════════════════════════════════════════════════════
 type AppContextValue = CardContextValue & UIContextValue;
 
@@ -88,22 +102,18 @@ export function useAppContext(): AppContextValue {
 
 // ─── Pomodoro hook ──────────────────────────────────────
 function useGlobalPomodoro() {
-  // Cache settings in ref — only re-read when user explicitly changes them
   const settingsRef = useRef(loadAppSettings().pomodoro);
-  const { workMinutes: workDuration, breakMinutes: breakDuration, longBreakMinutes: longBreakDuration, longBreakInterval } = settingsRef.current;
 
-  // Allow external refresh (e.g. after settings page save)
   const refreshSettings = useCallback(() => {
     settingsRef.current = loadAppSettings().pomodoro;
   }, []);
 
   const [mode, setMode] = useState<"work" | "break" | "longBreak">("work");
-  const [seconds, setSeconds] = useState(workDuration * 60);
+  const [seconds, setSeconds] = useState(settingsRef.current.workMinutes * 60);
   const [running, setRunning] = useState(false);
   const [cycleCount, setCycleCount] = useState(0);
   const intervalRef = useRef<number | null>(null);
 
-  // Store mutable values in refs to avoid re-creating the interval
   const modeRef = useRef(mode);
   modeRef.current = mode;
   const cycleRef = useRef(cycleCount);
@@ -166,18 +176,27 @@ function CardProvider({ children }: { children: ReactNode }) {
   return <CardContext.Provider value={cardsHook}>{children}</CardContext.Provider>;
 }
 
+function PomodoroProvider({ children }: { children: ReactNode }) {
+  const pom = useGlobalPomodoro();
+  const value = useMemo<PomodoroContextValue>(() => ({
+    pomodoro: pom.state,
+    pomodoroToggle: pom.toggle,
+    pomodoroReset: pom.reset,
+  }), [pom]);
+  return <PomodoroContext.Provider value={value}>{children}</PomodoroContext.Provider>;
+}
+
 function UIProvider({ children }: { children: ReactNode }) {
   const { cards, toggleTag } = useCardContext();
   const navigate = useNavigate();
   const view = useCurrentView();
 
   const [editingCard, setEditingCard] = useState<Card | null>(null);
-  const pom = useGlobalPomodoro();
 
   // Record app entry on mount
   useEffect(() => { recordAppEntry(); }, []);
 
-  // Notification reminder scheduler — re-reads settings each minute to pick up changes
+  // Notification reminder scheduler
   useEffect(() => {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
     const check = () => {
@@ -217,27 +236,26 @@ function UIProvider({ children }: { children: ReactNode }) {
     navigate(VIEW_TO_PATH[v]);
   }, [navigate]);
 
-  // Mnemonic cloning
   const handleToggleTag = useCallback((cardId: string, tag: string) => {
     toggleTag(cardId, tag);
   }, [toggleTag]);
 
   const value = useMemo<UIContextValue>(() => ({
-    view, setView, editingCard, setEditingCard,
-    handleToggleTag,
-    pomodoro: pom.state, pomodoroToggle: pom.toggle, pomodoroReset: pom.reset,
-  }), [view, setView, editingCard, handleToggleTag, pom]);
+    view, setView, editingCard, setEditingCard, handleToggleTag,
+  }), [view, setView, editingCard, handleToggleTag]);
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 }
 
-// Combined provider — wraps both in correct order
+// Combined provider — wraps all in correct order
 export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <CardProvider>
-      <UIProvider>
-        {children}
-      </UIProvider>
+      <PomodoroProvider>
+        <UIProvider>
+          {children}
+        </UIProvider>
+      </PomodoroProvider>
     </CardProvider>
   );
 }
