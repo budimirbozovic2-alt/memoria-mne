@@ -5,6 +5,7 @@
   "type": "module",
   "main": "main.cjs",
   "scripts": {
+    "prebuild": "rimraf dist release",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
@@ -24,12 +25,7 @@
       "output": "release",
       "buildResources": "build"
     },
-    "files": [
-      "dist/**/*",
-      "main.cjs",
-      "preload.cjs",
-      "package.json"
-    ],
+    "files": ["dist/**/*", "main.cjs", "preload.cjs", "package.json"],
     "win": {
       "target": "nsis",
       "icon": "public/icon.ico"
