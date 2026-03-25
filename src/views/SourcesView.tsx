@@ -19,6 +19,7 @@ import {
   loadSources, saveSource, deleteSource,
   extractOutline, injectHeadingIds, extractArticles, type Source,
 } from "@/lib/sources-storage";
+import { promoteHeadings, detectTitle } from "@/lib/heading-promotion";
 import { compareVersions, getChangedArticleIds, matchAnchorToArticle, parseArticles, type DiffResult } from "@/lib/article-parser";
 import { parseDocxInWorker } from "@/lib/docx-parser";
 import { useCardContext } from "@/contexts/AppContext";
