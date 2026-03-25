@@ -13,6 +13,8 @@ export interface ElectronAPI {
   getBackupInfo: () => Promise<BackupInfo>;
   notifyReady: () => void;
   onBackupRequested: (callback: () => void) => () => void;
+  onQuitBackupRequested: (callback: () => void) => () => void;
+  notifyQuitBackupDone: () => void;
   isElectron: true;
 }
 
