@@ -38,7 +38,8 @@ const queryClient = new QueryClient(); // rebuild trigger v2
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <div>
+      <div className="flex flex-col h-screen">
+        <TitleBar />
         <Toaster />
         <Sonner />
         <HashRouter>
