@@ -66,6 +66,14 @@ function htmlToText(html: string): string {
   return doc.body.textContent?.trim() || "";
 }
 
+/** Extract plain text from HTML, excluding heading elements (h1-h4) */
+function htmlToTextWithoutHeadings(html: string): string {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+  doc.querySelectorAll("h1, h2, h3, h4").forEach(h => h.remove());
+  return doc.body.textContent?.trim() || "";
+}
+
 /**
  * Parse HTML content into individual articles.
  * If no articles found, returns the entire text as a single article.
