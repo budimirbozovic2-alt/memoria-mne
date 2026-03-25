@@ -73,14 +73,8 @@ export function useCardExport({ cards, categories, subcategories, reviewLog, srS
 
       if (compress) {
         onProgress(85, "Kompresija...");
-        const JSZip = (await import("jszip")).default;
-        const zip = new JSZip();
-        zip.file(`codex-template-${dateStr}.json`, blob);
-        const zipBlob = await zip.generateAsync({
-          type: "blob",
-          compression: "DEFLATE",
-          compressionOptions: { level: 6 },
-        });
+        const { compressToZip } = await import("@/lib/zip-service");
+        const zipBlob = await compressToZip(`codex-template-${dateStr}.json`, blob);
         onProgress(100, "Preuzimanje...");
         downloadFile(zipBlob, `codex-template-${dateStr}.zip`);
         toast.success("Template uspješno exportovan.");
