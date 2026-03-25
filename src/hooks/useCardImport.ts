@@ -23,11 +23,8 @@ export function useCardImport({
       try {
         let jsonText: string;
         if (file.name.endsWith(".zip")) {
-          const JSZip = (await import("jszip")).default;
-          const zip = await JSZip.loadAsync(file);
-          const jsonFile = Object.keys(zip.files).find((n) => n.endsWith(".json"));
-          if (!jsonFile) { toast.error("ZIP ne sadrži JSON fajl."); return; }
-          jsonText = await zip.files[jsonFile].async("string");
+          const { decompressJsonFromZip } = await import("@/lib/zip-service");
+          jsonText = await decompressJsonFromZip(file);
         } else {
           jsonText = await file.text();
         }

@@ -91,11 +91,8 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
       if (file.name.endsWith(".zip")) {
         setProgressMsg("Dekompresija ZIP fajla...");
         setProgress(30);
-        const JSZip = (await import("jszip")).default;
-        const zip = await JSZip.loadAsync(file);
-        const jsonFile = Object.keys(zip.files).find(n => n.endsWith(".json"));
-        if (!jsonFile) throw new Error("ZIP ne sadrži JSON fajl.");
-        jsonText = await zip.files[jsonFile].async("string");
+        const { decompressJsonFromZip } = await import("@/lib/zip-service");
+        jsonText = await decompressJsonFromZip(file);
       } else {
         jsonText = await file.text();
       }
