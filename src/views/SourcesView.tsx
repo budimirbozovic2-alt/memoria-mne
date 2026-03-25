@@ -19,6 +19,7 @@ import {
   loadSources, saveSource, deleteSource,
   extractOutline, injectHeadingIds, extractArticles, type Source,
 } from "@/lib/sources-storage";
+import { promoteHeadings, detectTitle } from "@/lib/heading-promotion";
 import { compareVersions, getChangedArticleIds, matchAnchorToArticle, parseArticles, type DiffResult } from "@/lib/article-parser";
 import { parseDocxInWorker } from "@/lib/docx-parser";
 import { useCardContext } from "@/contexts/AppContext";
@@ -63,11 +64,19 @@ export default function SourcesView() {
 
   const handleFileSelect = useCallback(async (f: File) => {
     setImportFile(f);
-    setImportLabel(f.name.replace(/\.docx$/i, ""));
+    const fallbackLabel = f.name.replace(/\.docx$/i, "");
+    setImportLabel(fallbackLabel);
     try {
       const arrayBuffer = await f.arrayBuffer();
-      const html = await parseDocxInWorker(arrayBuffer);
-      setImportHtml(sanitizeHtml(html));
+      const rawHtml = await parseDocxInWorker(arrayBuffer);
+      const sanitized = sanitizeHtml(rawHtml);
+      const promoted = promoteHeadings(sanitized);
+      setImportHtml(promoted);
+      // Auto-detect title from document content
+      const detectedTitle = detectTitle(promoted);
+      if (detectedTitle && detectedTitle.length > 3) {
+        setImportLabel(detectedTitle);
+      }
     } catch {
       toast({ title: "Greška", description: "Nije moguće procesirati DOCX fajl.", variant: "destructive" });
     }
@@ -173,7 +182,8 @@ export default function SourcesView() {
       const arrayBuffer = await versionFile.arrayBuffer();
       const rawHtml = await parseDocxInWorker(arrayBuffer);
       const html = sanitizeHtml(rawHtml);
-      const htmlWithIds = injectHeadingIds(html);
+      const promoted = promoteHeadings(html);
+      const htmlWithIds = injectHeadingIds(promoted);
       const outline = extractOutline(htmlWithIds);
       const articles = extractArticles(htmlWithIds);
 
