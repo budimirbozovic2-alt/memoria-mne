@@ -1,35 +1,39 @@
 
 
-## Status: Sve faze implementirane
+## Plan: Popravka listener cleanup-a u preload.cjs
 
-### Riješeni problemi (kumulativno)
+### Problem
+`preload.cjs` koristi `removeAllListeners()` na linijama 16 i 21 za `backup-requested` i `quit-backup-requested` evente. Ovo briše SVE pretplate na te evente, ne samo onu koju je komponenta registrovala.
 
-| Problem | Status | Fajl |
-|---------|--------|------|
-| clear()+bulkAdd() u metacognitive-storage | ✅ bulkPut() | metacognitive-storage.ts |
-| loadAppSettings() u spaced-repetition hot path | ✅ getCachedRetention() | spaced-repetition.ts |
-| exportData čita stale LS za planner | ✅ čita iz IDB | useCards.ts |
-| Metacognitive cache trimovanje 90 dana | ✅ | metacognitive-storage.ts |
-| NudgeWatcher izolacija | ✅ | MainLayout.tsx |
-| PomodoroTimer/ZenMode settings keš | ✅ useMemo | PomodoroTimer.tsx, ZenMode.tsx |
-| sounds.ts keš | ✅ module-level cache | sounds.ts |
-| SRSettingsPanel useRef | ✅ | SRSettingsPanel.tsx |
-| Destruktivni boot error handleri | ✅ benigni loggeri | main.tsx |
-| Electron backup stale LS za planner | ✅ čita iz db.settings | main.tsx |
-| idbSaveCategories clear()+bulkPut() | ✅ surgical upsert | db.ts |
-| idbSaveSubcategories clear()+bulkPut() | ✅ surgical upsert | db.ts |
-| MainLayout useAppContext() re-render | ✅ izolovan u wrappere | MainLayout.tsx |
-| AppSettings samo u localStorage | ✅ IDB fallback | app-settings.ts |
-| Notification settings refresh | ✅ čita svake minute | AppContext.tsx |
-| Electron crash recovery beskonačna rekurzija | ✅ limit 3 u 60s | electron/window.cjs |
-| Electron before-quit fire-and-forget backup | ✅ čeka s timeoutom | electron/backup.cjs |
-| main.cjs 340-linijski monolit | ✅ razbijen na module | electron/window.cjs, electron/backup.cjs, main.cjs |
-| importData destructive clear() za sources/mindMaps | ✅ surgical upsert | useCards.ts |
-| ReviewSession.tsx 812-linijski monolit | ✅ dekomponovan | review/ReviewSetup, ReviewCard, ReviewComplete |
-| 21 komponenta koristi useAppContext() | ✅ migrirano 17 na specifične kontekste | views/*.tsx |
-| Electron CSP zaglavlja | ✅ dodana u produkciji | main.cjs |
+### Izmjena
+Jedan fajl: `preload.cjs`
 
-### Preostali tech debt (nizak prioritet)
-- useCards.ts — 910-linijski hook (razbijanje na useCardCRUD, useCardImport, useCardExport)
-- LearnSession.tsx — 342 linije (manji monolit)
-- 4 komponente još koriste useAppContext() (CardsView partial, GlobalSearch wrapper, DocxImporter wrapper, HealthMonitor)
+Zamijeniti `removeAllListeners` pattern sa specifičnim `removeListener` koji čuva referencu na wrapper funkciju:
+
+```javascript
+onBackupRequested: (callback) => {
+  const handler = () => callback();
+  ipcRenderer.on('backup-requested', handler);
+  return () => ipcRenderer.removeListener('backup-requested', handler);
+},
+onQuitBackupRequested: (callback) => {
+  const handler = () => callback();
+  ipcRenderer.on('quit-backup-requested', handler);
+  return () => ipcRenderer.removeListener('quit-backup-requested', handler);
+},
+```
+
+### Ostali predlozi iz dokumenta — zašto ih ne implementirati
+
+| Predlog | Status | Razlog |
+|---------|--------|--------|
+| Async `writeBackup` | Nepotrebno | Main process nema UI, sync write ne blokira ništa vidljivo |
+| `require` na vrhu fajla | Već urađeno | `window.cjs` ima require na vrhu |
+| Retry limit za load | Već postoji | `did-fail-load` handler + crash recovery sa 3/60s limitom |
+| Named listener cleanup | Već postoji | `showWindow` je imenovana funkcija u `window.cjs` |
+| 5 backupa umjesto 3 | Opciono | Stvar preference, ne utiče na stabilnost |
+
+### Obim
+- 1 fajl, ~6 linija izmjena
+- Nulti rizik regresije
+
