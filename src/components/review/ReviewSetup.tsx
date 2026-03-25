@@ -149,8 +149,11 @@ export default function ReviewSetup({
   };
 
   const handleStartSession = useCallback(() => {
-    onSelectMode(mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType);
-  }, [mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType, onSelectMode]);
+    const currentItems = mode === "stabilization" ? stabilizationItems
+      : mode === "critical" ? criticalItems
+      : hardestItems;
+    onSelectMode(mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType, currentItems);
+  }, [mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType, onSelectMode, stabilizationItems, criticalItems, hardestItems]);
 
   // ── Step 1: Choose mode ──
   if (setupStep === "mode") {

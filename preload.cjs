@@ -10,11 +10,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getBackupInfo: () => ipcRenderer.invoke('get-backup-info'),
   // Notify main process that the app is ready (DB loaded)
   notifyReady: () => ipcRenderer.send('renderer-ready'),
-  // Listen for backup-requested from main (e.g., before quit)
+  // Listen for backup-requested from main (e.g., periodic auto-backup)
   onBackupRequested: (callback) => {
     ipcRenderer.on('backup-requested', () => callback());
     return () => ipcRenderer.removeAllListeners('backup-requested');
   },
+  // Listen for quit-backup-requested from main (before-quit with await)
+  onQuitBackupRequested: (callback) => {
+    ipcRenderer.on('quit-backup-requested', () => callback());
+    return () => ipcRenderer.removeAllListeners('quit-backup-requested');
+  },
+  // Notify main that quit backup is done
+  notifyQuitBackupDone: () => ipcRenderer.send('quit-backup-done'),
   // Check if running in Electron
   isElectron: true,
 });
