@@ -62,9 +62,9 @@ const App = () => (
                       <Route path="/speed-reader" element={<ErrorBoundary label="Speed Reader"><SpeedReaderPage /></ErrorBoundary>} />
                       <Route path="/mind-map" element={<ErrorBoundary label="Mapa uma"><MindMapPage /></ErrorBoundary>} />
                       {/* Legacy redirects */}
-                      <Route path="/cards" element={<DatabasePage />} />
-                      <Route path="/categories" element={<DatabasePage />} />
-                      <Route path="*" element={<NotFound />} />
+                      <Route path="/cards" element={<ErrorBoundary label="Baza podataka"><DatabasePage /></ErrorBoundary>} />
+                      <Route path="/categories" element={<ErrorBoundary label="Baza podataka"><DatabasePage /></ErrorBoundary>} />
+                      <Route path="*" element={<ErrorBoundary label="404"><NotFound /></ErrorBoundary>} />
                     </Routes>
                   </Suspense>
                 </MainLayout>
