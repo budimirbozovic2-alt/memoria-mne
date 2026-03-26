@@ -84,8 +84,10 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(baseDir, 'preload.cjs'),
-      sandbox: true,
+      preload: isDev
+        ? path.join(baseDir, 'preload.cjs')
+        : path.join(baseDir, 'preload.cjs'),
+      sandbox: false,
     },
   });
 
@@ -105,6 +107,11 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
   win.on('unmaximize', () => { if (!win.isDestroyed()) win.webContents.send('window-maximized-changed', false); });
 
   onMainWindow(win);
+
+  // ── DevTools in production for debugging ──
+  if (!isDev && process.env.CODEX_DEBUG) {
+    win.webContents.openDevTools();
+  }
 
   // ── Production: remove menu & block shortcuts ──
   if (!isDev) {

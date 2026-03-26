@@ -45,9 +45,10 @@ window.onunhandledrejection = (event) => {
 markBootStep("main:error-handlers-registered");
 
 // ── Splash fallback timeout — always runs even if imports fail ──
+// Safety timer: forcefully remove splash after 8 seconds no matter what
 setTimeout(() => {
   hideSplashImmediately();
-}, 5000);
+}, 8000);
 
 // ── Guarded async bootstrap ──
 (async () => {
@@ -57,6 +58,7 @@ setTimeout(() => {
     initColorTheme();
     markBootStep("main:theme-init-done");
 
+    // Render React FIRST, before DB — UI must never be blocked by database
     markBootStep("main:app-import-start");
     const { default: App } = await import("./App");
     markBootStep("main:app-import-done");

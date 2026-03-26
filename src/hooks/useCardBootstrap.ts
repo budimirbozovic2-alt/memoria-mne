@@ -38,33 +38,39 @@ export function useCardBootstrap(setters: BootSetters) {
     if (initialLoadDone.current) return;
     initialLoadDone.current = true;
 
-    // OSIGURAČ: Ako se aplikacija ne učita za 12s, forsiraj 'ready' stanje
+    // OSIGURAČ: Ako se aplikacija ne učita za 8s, forsiraj 'ready' stanje
     const panicTimer = setTimeout(() => {
       setReady((currentReady) => {
         if (!currentReady) {
-          console.error("[boot] Panic timeout okidanje! Forsiram ready state.");
-          const splash = document.getElementById("app-splash");
-          if (splash) splash.remove();
+          console.error("[boot] Panic timeout (8s)! Forsiram ready state.");
+          try {
+            const splash = document.getElementById("app-splash");
+            if (splash) splash.remove();
+          } catch (e) { console.warn("[boot] splash cleanup failed", e); }
           return true;
         }
         return currentReady;
       });
-    }, 12000);
+    }, 8000);
 
     const splashProgress = (pct: number, label: string) => {
-      const bar = document.getElementById("splash-progress");
-      const status = document.getElementById("splash-status");
-      const percent = document.getElementById("splash-percent");
-      if (bar) bar.style.width = `${pct}%`;
-      if (status) status.textContent = label;
-      if (percent) percent.textContent = `${pct}%`;
+      try {
+        const bar = document.getElementById("splash-progress");
+        const status = document.getElementById("splash-status");
+        const percent = document.getElementById("splash-percent");
+        if (bar) bar.style.width = `${pct}%`;
+        if (status) status.textContent = label;
+        if (percent) percent.textContent = `${pct}%`;
+      } catch (e) { console.warn("[boot] splashProgress DOM error", e); }
     };
 
     const showSplashError = (msg: string) => {
-      const el = document.getElementById("splash-error");
-      const msgEl = document.getElementById("splash-error-msg");
-      if (el) el.style.display = "block";
-      if (msgEl) msgEl.textContent = msg;
+      try {
+        const el = document.getElementById("splash-error");
+        const msgEl = document.getElementById("splash-error-msg");
+        if (el) el.style.display = "block";
+        if (msgEl) msgEl.textContent = msg;
+      } catch (e) { console.warn("[boot] showSplashError DOM error", e); }
     };
 
     (async () => {
@@ -129,20 +135,24 @@ export function useCardBootstrap(setters: BootSetters) {
         splashProgress(100, "Pokretanje sa rezervnim stanjem…");
         showSplashError(error instanceof Error ? error.message : "Neočekivana greška pri učitavanju podataka.");
       } finally {
-        setReady(true);
+      setReady(true);
         clearTimeout(panicTimer);
 
-        const splash = document.getElementById("app-splash");
-        if (splash) {
-          splash.style.opacity = "0";
-          setTimeout(() => {
-            if (splash.parentNode) splash.remove();
-          }, 500);
-        }
+        try {
+          const splash = document.getElementById("app-splash");
+          if (splash) {
+            splash.style.opacity = "0";
+            setTimeout(() => {
+              try { if (splash.parentNode) splash.remove(); } catch (e) { console.warn("[boot] splash remove failed", e); }
+            }, 500);
+          }
+        } catch (e) { console.warn("[boot] splash cleanup failed", e); }
 
-        if (window.electronAPI?.notifyReady) {
-          window.electronAPI.notifyReady();
-        }
+        try {
+          if (window.electronAPI?.notifyReady) {
+            window.electronAPI.notifyReady();
+          }
+        } catch (e) { console.warn("[boot] notifyReady failed", e); }
       }
     })();
 
