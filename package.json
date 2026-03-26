@@ -29,6 +29,7 @@
       "dist/**/*",
       "main.cjs",
       "preload.cjs",
+      "electron/**/*.cjs",
       "package.json"
     ],
     "win": {
