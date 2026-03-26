@@ -135,20 +135,24 @@ export function useCardBootstrap(setters: BootSetters) {
         splashProgress(100, "Pokretanje sa rezervnim stanjem…");
         showSplashError(error instanceof Error ? error.message : "Neočekivana greška pri učitavanju podataka.");
       } finally {
-        setReady(true);
+      setReady(true);
         clearTimeout(panicTimer);
 
-        const splash = document.getElementById("app-splash");
-        if (splash) {
-          splash.style.opacity = "0";
-          setTimeout(() => {
-            if (splash.parentNode) splash.remove();
-          }, 500);
-        }
+        try {
+          const splash = document.getElementById("app-splash");
+          if (splash) {
+            splash.style.opacity = "0";
+            setTimeout(() => {
+              try { if (splash.parentNode) splash.remove(); } catch (e) { console.warn("[boot] splash remove failed", e); }
+            }, 500);
+          }
+        } catch (e) { console.warn("[boot] splash cleanup failed", e); }
 
-        if (window.electronAPI?.notifyReady) {
-          window.electronAPI.notifyReady();
-        }
+        try {
+          if (window.electronAPI?.notifyReady) {
+            window.electronAPI.notifyReady();
+          }
+        } catch (e) { console.warn("[boot] notifyReady failed", e); }
       }
     })();
 

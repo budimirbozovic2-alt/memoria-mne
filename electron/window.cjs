@@ -108,6 +108,11 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
 
   onMainWindow(win);
 
+  // ── DevTools in production for debugging ──
+  if (!isDev && process.env.CODEX_DEBUG) {
+    win.webContents.openDevTools();
+  }
+
   // ── Production: remove menu & block shortcuts ──
   if (!isDev) {
     Menu.setApplicationMenu(null);
