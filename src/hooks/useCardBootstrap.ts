@@ -54,12 +54,14 @@ export function useCardBootstrap(setters: BootSetters) {
     }, 8000);
 
     const splashProgress = (pct: number, label: string) => {
-      const bar = document.getElementById("splash-progress");
-      const status = document.getElementById("splash-status");
-      const percent = document.getElementById("splash-percent");
-      if (bar) bar.style.width = `${pct}%`;
-      if (status) status.textContent = label;
-      if (percent) percent.textContent = `${pct}%`;
+      try {
+        const bar = document.getElementById("splash-progress");
+        const status = document.getElementById("splash-status");
+        const percent = document.getElementById("splash-percent");
+        if (bar) bar.style.width = `${pct}%`;
+        if (status) status.textContent = label;
+        if (percent) percent.textContent = `${pct}%`;
+      } catch (e) { console.warn("[boot] splashProgress DOM error", e); }
     };
 
     const showSplashError = (msg: string) => {
