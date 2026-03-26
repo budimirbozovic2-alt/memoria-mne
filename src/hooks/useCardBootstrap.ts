@@ -38,18 +38,20 @@ export function useCardBootstrap(setters: BootSetters) {
     if (initialLoadDone.current) return;
     initialLoadDone.current = true;
 
-    // OSIGURAČ: Ako se aplikacija ne učita za 12s, forsiraj 'ready' stanje
+    // OSIGURAČ: Ako se aplikacija ne učita za 8s, forsiraj 'ready' stanje
     const panicTimer = setTimeout(() => {
       setReady((currentReady) => {
         if (!currentReady) {
-          console.error("[boot] Panic timeout okidanje! Forsiram ready state.");
-          const splash = document.getElementById("app-splash");
-          if (splash) splash.remove();
+          console.error("[boot] Panic timeout (8s)! Forsiram ready state.");
+          try {
+            const splash = document.getElementById("app-splash");
+            if (splash) splash.remove();
+          } catch (e) { console.warn("[boot] splash cleanup failed", e); }
           return true;
         }
         return currentReady;
       });
-    }, 12000);
+    }, 8000);
 
     const splashProgress = (pct: number, label: string) => {
       const bar = document.getElementById("splash-progress");
