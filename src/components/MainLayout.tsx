@@ -151,8 +151,10 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       {/* Nudge watcher — isolated to avoid re-renders */}
       <NudgeWatcher />
 
-      {/* Main content */}
-      <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full">
+      {/* Main content — full width for source routes, centered otherwise */}
+      <main className={`flex-1 px-4 md:px-8 py-6 w-full ${
+        SOURCE_ROUTES.some(r => pathname.startsWith(r)) ? "max-w-none" : "max-w-6xl mx-auto"
+      }`}>
         {children}
       </main>
 
