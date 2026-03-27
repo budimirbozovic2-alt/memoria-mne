@@ -50,7 +50,7 @@ interface Props {
   onClick?: () => void;
 }
 
-export const MonumentCard = memo(function MonumentCard({ monument, index }: Props) {
+export const MonumentCard = memo(function MonumentCard({ monument, index, onClick }: Props) {
   const style = MATERIAL_STYLES[monument.material];
 
   const pillarsCount = useMemo(() => {
