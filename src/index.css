@@ -27,6 +27,9 @@
      ═══════════════════════════════════════════ */
   :root,
   [data-theme="amber"] {
+    --font-display: 'Cinzel', 'Georgia', serif;
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 220 15% 12%;
 
