@@ -143,13 +143,12 @@ export function useCardCRUD({
   }, [setCardMapState, schedulePersist]);
 
   const splitCard = useCallback((id: string) => {
+    let newCards: Card[] = [];
     setCardMapState((prev) => {
       const card = prev[id];
       if (!card || card.sections.length <= 1) return prev;
       const next = { ...prev };
       delete next[id];
-      schedulePersist({ type: "delete", id });
-      const newCards: Card[] = [];
       card.sections.forEach((section) => {
         const newCard = {
           ...createCard(
@@ -163,9 +162,12 @@ export function useCardCRUD({
         next[newCard.id] = newCard;
         newCards.push(newCard);
       });
-      schedulePersist({ type: "bulk", cards: newCards });
       return next;
     });
+    if (newCards.length > 0) {
+      schedulePersist({ type: "delete", id });
+      schedulePersist({ type: "bulk", cards: newCards });
+    }
   }, [setCardMapState, schedulePersist]);
 
   return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard };
