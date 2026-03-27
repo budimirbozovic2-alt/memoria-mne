@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Card } from "@/lib/spaced-repetition";
-import { CardMap, schedulePersist as globalSchedulePersist } from "@/lib/persist-queue";
+import { CardMap, schedulePersist as globalSchedulePersist, bumpMapVersion } from "@/lib/persist-queue";
 
 interface UseCategoryManagementParams {
   categories: string[];
