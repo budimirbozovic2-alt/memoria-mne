@@ -1,4 +1,4 @@
-import { Database, FolderOpen, Download, FileText, BookOpen } from "lucide-react";
+import { Database, FolderOpen, Download, FileText, BookOpen, Library } from "lucide-react";
 import { useState, lazy, Suspense, useEffect } from "react";
 import { useCardContext, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -10,6 +10,7 @@ const CategoriesPage = lazy(() => import("@/views/CategoriesPage"));
 const SourcesView = lazy(() => import("@/views/SourcesView"));
 const ExportImportDialog = lazy(() => import("@/components/ExportImportDialog"));
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
+const SourceManager = lazy(() => import("@/components/SourceManager"));
 
 export default function DatabasePage() {
   const { cards, categories, exportData, exportTemplate, importData, importCards, addFlashCard } = useCardContext();
