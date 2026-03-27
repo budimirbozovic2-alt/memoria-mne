@@ -183,7 +183,7 @@ let _cachedFingerprint = "";
 let _cachedForumState: ForumState | null = null;
 
 /** Build a lightweight fingerprint from card states to detect real changes */
-function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: number): string {
+function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: number, registryVersion = 0): string {
   // O(n) but much cheaper than full rebuild — just counts + states
   let reviewSections = 0;
   let totalSections = 0;
@@ -195,7 +195,8 @@ function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: numb
       stabilitySum += sec.stability;
     }
   }
-  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}`;
+  // H1 fix: include registryVersion so alias/monument changes bust cache
+  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}:${registryVersion}`;
 }
 
 // ─── Main Calculator ────────────────────────────────────

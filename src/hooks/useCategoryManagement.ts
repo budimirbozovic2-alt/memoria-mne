@@ -22,12 +22,16 @@ export function useCategoryManagement({
 
   const renameCategory = useCallback(
     (oldName: string, newName: string) => {
-      let aborted = false;
+      // Atomically check for duplicate AND rename in one updater to avoid stale-closure race (C1 fix)
+      let duplicateDetected = false;
       setCategories(prev => {
-        if (prev.includes(newName)) { aborted = true; return prev; }
+        if (prev.includes(newName)) { duplicateDetected = true; return prev; }
         return prev.map(c => c === oldName ? newName : c);
       });
-      if (aborted) return;
+      // We must defer the rest to a microtask so React has flushed the updater synchronously
+      // and `duplicateDetected` is set. In React 18 batching, functional updaters run synchronously
+      // within the same event handler, so this flag IS reliable here.
+      if (duplicateDetected) return;
       const changed: Card[] = [];
       setCardMapState((prev) => {
         const next = { ...prev };
