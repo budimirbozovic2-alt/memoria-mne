@@ -1,32 +1,60 @@
 
 
-# Global Functional Wiring Audit — Post-Decomposition
+# Source Registry UI Enhancement
 
-## Audit Results
+## Overview
+Add "Unmapped Sources" section, improve category override UX, and ensure Forum cache invalidation on every registry save.
 
-After tracing all callback chains across the decomposed pages, the wiring is **fully intact**. The Proxy `ownKeys` fix in `AppContext.tsx` resolved the root cause that was breaking ALL action callbacks (not just import).
+## 1. Unmapped Sources Section (`SourceManager.tsx`)
 
-### 1. CardsPage.tsx — ✅ All wired correctly
-- **Import**: `importData` from `useCardContext()` → passed as `onImport` to `ExportImportDialog` → called in `handleImport()` at line 171. **Working.**
-- **Export**: `exportData` and `exportTemplate` → passed as `onExportFull` and `onExportTemplate`. **Working.**
-- **DOCX Import**: `importCards` and `addFlashCard` from context → used inline in `onImport` callback. **Working.**
+**New computed list**: Sources in `db.sources` whose `label` is NOT present in any `registry.aliases[].rawLabel` AND is not itself a `masterSource` target. These are "unrecognized" sources.
 
-### 2. CategoriesRoutePage.tsx / CategoriesPage.tsx — ✅ All wired correctly
-- `CategoriesPage` pulls `addCategory`, `renameCategory`, `deleteCategory`, `addSubcategory`, `renameSubcategory`, `deleteSubcategory` from `useCardContext()`.
-- All passed as props to `CategoryManager` which expects them as `onAdd`, `onRename`, `onDelete`, `onAddSub`, `onRenameSub`, `onDeleteSub`.
-- **No broken wires.** The Proxy fix ensures all these are real functions now.
+**UI**: New section between stats and the existing "Izvori" list:
+- Header: "Neprepoznati izvori" with warning icon and count badge
+- Each unmapped source shows label + card count + two action buttons:
+  - "Kreiraj Master" — creates a new master source (alias pointing rawLabel → itself, essentially a no-op but marks it as "recognized")
+  - "Dodaj u postojeći" — opens a small dropdown/dialog listing existing master sources to pick from, then creates an alias `rawLabel → selectedMaster`
 
-### 3. SourcesRoutePage.tsx & SourceRegistryPage.tsx — ✅ Self-contained
-- `SourcesView` imports storage functions directly (`saveSource`, `deleteSource` from `sources-storage.ts`) — no context dependency for CRUD.
-- `SourceManager` also uses direct imports (`loadSourceRegistry`, `saveSourceRegistry`).
-- Only `cards` and `bulkFlagNeedsReview` come from context — both are working after the Proxy fix.
+**Logic**: 
+- `unmappedLabels = allRawLabels.filter(l => !aliasMap.has(l.label) && !uniqueSources.some(u => u.masterSource === l.label && u.rawLabels.length > 1))`
+- Actually simpler: unmapped = labels where `aliasMap.get(label)` is undefined (the label has no explicit alias entry). The current list already shows all labels — we just split it into "mapped" and "unmapped" tabs/sections.
 
-### 4. Event Listeners — ✅ Clean
-- Search for `memoria-open-database-tab` and `sessionStorage.setItem.*database` returned **zero matches**. All stale event listeners were already removed in earlier cleanup rounds.
+## 2. Category Override Enhancement (`SourceManager.tsx`)
 
-## Conclusion
+Replace the cryptic toggle button with a clearer UI:
+- Label: "Prikaži ovaj izvor unutar spomenika: [Kategorija]"
+- Replace the A/B toggle with a more descriptive label showing what each mode means for that specific category
+- Add subtitle explaining the current state: "Automatski: Mod B (1 izvor)" or "Ručno: Mod A"
 
-**Zero broken wires found.** The single root cause was the Proxy missing `ownKeys`/`getOwnPropertyDescriptor` traps in `AppContext.tsx`, which made `{...actions}` spread to an empty object. This was already fixed in the previous session. All buttons (Import, Export, DOCX Import, Category CRUD, Source CRUD) are correctly connected.
+## 3. Forum Cache Invalidation (`SourceManager.tsx`)
 
-**No code changes needed.**
+In `persistRegistry()`, call `invalidateSourceRegistryCache()` after `saveSourceRegistry()`. Currently `saveSourceRegistry` updates the cache to the new value, but if Forum reads via `loadSourceRegistry()` it gets the cached version correctly. However, to be safe and trigger React re-reads, we should also dispatch a storage event or use the existing `_notify` pattern.
+
+**Actual fix**: The `saveSourceRegistry` already sets `_registryCache = registry`, so Forum will get fresh data on next `loadSourceRegistry()` call. The real issue is Forum doesn't re-render because it has no subscription. We add an event emitter pattern (like `onSourcesChanged`) to source-registry.ts:
+- `onRegistryChanged(fn)` / `_notifyRegistry()`
+- `saveSourceRegistry` calls `_notifyRegistry()`
+- `RomanForumPage` subscribes via `useEffect`
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/lib/source-registry.ts` | Add `onRegistryChanged` event emitter, call it from `saveSourceRegistry` |
+| `src/components/SourceManager.tsx` | Add unmapped sources section, "assign to master" dialog, improved category override labels |
+
+## Technical Details
+
+### source-registry.ts additions (~15 lines)
+- Add `_registryListeners` Set, `onRegistryChanged(fn)`, and `_notifyRegistry()` — same pattern as `sources-storage.ts`
+- Call `_notifyRegistry()` at end of `saveSourceRegistry()`
+
+### SourceManager.tsx changes (~80 lines net)
+- New `unmappedLabels` memo: filters `allRawLabels` to those without an alias entry
+- New `mappedLabels` memo: the rest
+- Split the source list into two sections: "Neprepoznati izvori" (unmapped, with yellow accent) and "Prepoznati izvori" (mapped)
+- Each unmapped item gets: "Kreiraj Master" button (creates alias rawLabel→rawLabel) and "Dodaj kao alias" button (opens merge dialog pre-filled)
+- Category override section: replace toggle button text with "L1: Izvor → L2: Potkategorija" / "L1: Potkategorija → L2: Glava" descriptive labels
+
+### RomanForumPage.tsx (~3 lines)
+- Subscribe to `onRegistryChanged` in existing `useEffect` to trigger re-render when registry changes
 
