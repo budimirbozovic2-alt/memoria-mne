@@ -86,7 +86,15 @@ export function useCardImport({
             else if (getLastReview(ic) > getLastReview(existing)) { nextMap[ic.id] = ic; merged.push(ic); }
           });
         } else if (strategy === "overwrite") {
+          // Full replace: start from empty map, not current map
+          for (const key of Object.keys(nextMap)) delete nextMap[key];
           importedCards.forEach((ic) => { nextMap[ic.id] = ic; merged.push(ic); });
+          // Delete orphaned cards from IDB
+          const { db: dbCards } = await import("@/lib/db");
+          const allCardKeys = await dbCards.cards.toCollection().primaryKeys();
+          const importedIdSet = new Set(importedCards.map(c => c.id));
+          const orphanKeys = allCardKeys.filter(k => !importedIdSet.has(k as string));
+          if (orphanKeys.length > 0) await dbCards.cards.bulkDelete(orphanKeys);
         } else {
           importedCards.forEach((ic) => { if (!nextMap[ic.id]) { nextMap[ic.id] = ic; merged.push(ic); } });
         }
