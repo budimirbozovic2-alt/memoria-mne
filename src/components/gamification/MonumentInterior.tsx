@@ -142,7 +142,7 @@ export const MonumentInterior = memo(function MonumentInterior({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {wing.children.map((child, ci) => (
-                    <ArchNode key={child.name} name={child.name} cardCount={child.cardCount} levels={child.levels} avgStability={computeAvgStability(child.cards)} index={wi * 10 + ci} onClick={() => setSelectedSub(child.name)} />
+                    <ArchNode key={child.name} name={child.name} cardCount={child.cardCount} levels={child.levels} avgStability={child.avgStability} index={wi * 10 + ci} onClick={() => setSelectedSub(child.name)} />
                   ))}
                 </div>
               </div>
