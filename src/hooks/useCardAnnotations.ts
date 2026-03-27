@@ -1,6 +1,5 @@
 import { useCallback } from "react";
-import { Card, calculateNextReview } from "@/lib/spaced-repetition";
-import { loadAppSettings } from "@/lib/app-settings";
+import { Card, calculateNextReview, getCachedRetention } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 import { idbAddReviewLogEntry } from "@/lib/db";
@@ -20,7 +19,7 @@ export function useCardAnnotations({
   // O(1) review — surgical IDB write (patchCard handles persist via Ref-Delta)
   const reviewSection = useCallback(
     (cardId: string, sectionId: string, grade: number) => {
-      const cachedRetention = loadAppSettings().targetRetention;
+      const cachedRetention = getCachedRetention();
       const entry: ReviewLogEntry = { timestamp: Date.now(), cardId, sectionId, grade, category: "" };
 
       patchCard(cardId, (c) => {
@@ -102,7 +101,7 @@ export function useCardAnnotations({
         }
         // Only penalize the specific section if sectionId is provided
         const sections = c.sections.map((s) => {
-          if (sectionId && s.id !== sectionId) return s;
+          if (!sectionId || s.id !== sectionId) return s;
           return {
             ...s,
             difficulty: Math.min(10, s.difficulty + 0.5),

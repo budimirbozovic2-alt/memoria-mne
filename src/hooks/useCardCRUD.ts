@@ -14,7 +14,7 @@ interface UseCardCRUDParams {
   categories: string[];
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   setCategories: (updater: (prev: string[]) => string[]) => void;
-  cardMapRef: React.RefObject<CardMap>;
+  cardMapRef: React.MutableRefObject<CardMap>;
 }
 
 export function useCardCRUD({
@@ -32,7 +32,7 @@ export function useCardCRUD({
     const card = cardMapRef.current![id];
     if (!card) return;
     const updated = { ...patcher(card), updatedAt: Date.now() };
-    // Surgical persist BEFORE state update — payload is pre-computed
+    cardMapRef.current = { ...cardMapRef.current, [id]: updated }; // Sync ref — prevents double-mutation race
     schedulePersist({ type: "put", card: updated });
     setCardMapState(prev => {
       if (!prev[id]) return prev;
@@ -64,7 +64,7 @@ export function useCardCRUD({
       if (extra?.originalSourceSnippet) card.originalSourceSnippet = extra.originalSourceSnippet;
       if (extra?.childCardIds) card.childCardIds = extra.childCardIds;
       if (extra?.sourceModules) card.sourceModules = extra.sourceModules;
-      // Surgical persist with pre-computed card
+      cardMapRef.current = { ...cardMapRef.current, [card.id]: card }; // Sync ref
       schedulePersist({ type: "put", card });
       setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
@@ -80,7 +80,7 @@ export function useCardCRUD({
     (question: string, answer: string, category: string, subcategory?: string) => {
       const card = createFlashCard(question, answer, category, subcategory);
       card.updatedAt = Date.now();
-      // Surgical persist with pre-computed card
+      cardMapRef.current = { ...cardMapRef.current, [card.id]: card }; // Sync ref
       schedulePersist({ type: "put", card });
       setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
@@ -142,16 +142,16 @@ export function useCardCRUD({
 
   // O(1) delete — surgical IDB delete
   const deleteCard = useCallback((id: string) => {
+    const nextRef = { ...cardMapRef.current }; delete nextRef[id]; cardMapRef.current = nextRef; // Sync ref
     setCardMapState((prev) => {
       const next = { ...prev };
       delete next[id];
       return next;
     });
     bumpMapVersion();
-    // Delete must be explicit — bulk persist only does bulkPut
     idbDeleteCard(id).catch(e => console.error("[deleteCard] IDB delete failed", e));
     toast.success("Kartica obrisana.");
-  }, [setCardMapState]);
+  }, [setCardMapState, cardMapRef]);
 
   // Split card — Ref-Delta: read from ref, pre-compute new cards, persist surgically
   const splitCard = useCallback((id: string) => {
@@ -167,7 +167,8 @@ export function useCardCRUD({
       sections: [{ ...section }],
       updatedAt: Date.now(),
     }));
-    // Surgical persist: save new cards + delete original
+    // Sync ref before state update
+    const nextRef = { ...cardMapRef.current }; delete nextRef[id]; newCards.forEach(c => { nextRef[c.id] = c; }); cardMapRef.current = nextRef;
     schedulePersist({ type: "bulk", cards: newCards });
     idbDeleteCard(id).catch(e => console.error("[splitCard] IDB delete failed", e));
     setCardMapState(prev => {
