@@ -168,44 +168,62 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     if (!over) return;
 
     const overId = over.id as string;
-    // Only accept drops on chapter headers
-    if (!overId.startsWith("chapter-drop-")) return;
+    const activeCardId = active.id as string;
 
-    const targetChapter = overId.replace("chapter-drop-", "");
-    const sourceChapter = findChapterForCard(active.id as string);
+    // Case 1: Dropped on a chapter header → cross-chapter move
+    if (overId.startsWith("chapter-drop-")) {
+      const targetChapter = overId.replace("chapter-drop-", "");
+      const sourceChapter = findChapterForCard(activeCardId);
+      if (sourceChapter === targetChapter) return;
 
-    // Don't do anything if dropped on same chapter
-    if (sourceChapter === targetChapter) return;
+      const movedCard = subCards.find(c => c.id === activeCardId);
+      if (!movedCard) return;
 
-    const movedCard = subCards.find(c => c.id === active.id);
-    if (!movedCard) return;
+      const targetChapterName = targetChapter === UNASSIGNED_CHAPTER ? "" : targetChapter;
+      const updates: { id: string; chapter: string; chapterOrder: number }[] = [];
 
-    const targetChapterName = targetChapter === UNASSIGNED_CHAPTER ? "" : targetChapter;
-    const updates: { id: string; chapter: string; chapterOrder: number }[] = [];
-
-    // Add card to end of target chapter
-    const targetCards = [...(cardsByChapter[targetChapter] || [])]
-      .filter(c => c.id !== active.id)
-      .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
-    targetCards.push(movedCard);
-    targetCards.forEach((c, i) => {
-      updates.push({ id: c.id, chapter: targetChapterName, chapterOrder: i });
-    });
-
-    // Re-index source chapter
-    const sourceCards = [...(cardsByChapter[sourceChapter] || [])]
-      .filter(c => c.id !== active.id)
-      .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
-    sourceCards.forEach((c, i) => {
-      updates.push({
-        id: c.id,
-        chapter: sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter,
-        chapterOrder: i,
+      const targetCards = [...(cardsByChapter[targetChapter] || [])]
+        .filter(c => c.id !== activeCardId)
+        .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
+      targetCards.push(movedCard);
+      targetCards.forEach((c, i) => {
+        updates.push({ id: c.id, chapter: targetChapterName, chapterOrder: i });
       });
-    });
 
+      const sourceCards = [...(cardsByChapter[sourceChapter] || [])]
+        .filter(c => c.id !== activeCardId)
+        .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
+      sourceCards.forEach((c, i) => {
+        updates.push({
+          id: c.id,
+          chapter: sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter,
+          chapterOrder: i,
+        });
+      });
+
+      onUpdateChapters(updates);
+      toast.success(`Premješteno u "${targetChapter === UNASSIGNED_CHAPTER ? "Nekategorisane" : targetChapter}"`);
+      return;
+    }
+
+    // Case 2: Dropped on another card → within-chapter reorder
+    const sourceChapter = findChapterForCard(activeCardId);
+    const overChapter = findChapterForCard(overId);
+
+    // Only reorder if both cards are in the same chapter
+    if (sourceChapter !== overChapter || activeCardId === overId) return;
+
+    const chapterCards = [...(cardsByChapter[sourceChapter] || [])]
+      .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
+
+    const oldIndex = chapterCards.findIndex(c => c.id === activeCardId);
+    const newIndex = chapterCards.findIndex(c => c.id === overId);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+    const reordered = arrayMove(chapterCards, oldIndex, newIndex);
+    const chapterName = sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter;
+    const updates = reordered.map((c, i) => ({ id: c.id, chapter: chapterName, chapterOrder: i }));
     onUpdateChapters(updates);
-    toast.success(`Premješteno u "${targetChapter === UNASSIGNED_CHAPTER ? "Nekategorisane" : targetChapter}"`);
   };
 
   const handleCardClick = (card: Card) => {
