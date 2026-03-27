@@ -63,8 +63,9 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.4 }}
+      onClick={onClick}
       className={`
-        glass-card relative overflow-hidden p-5
+        glass-card relative overflow-hidden p-5 cursor-pointer
         ${style.border} ${style.glow}
         ${monument.crumbling ? "animate-pulse" : ""}
         hover:scale-[1.02] transition-transform duration-200

@@ -57,6 +57,12 @@ export default function RomanForumPage() {
           </div>
         )}
       </div>
+      {/* Detail Dialog */}
+      <MonumentDetailDialog
+        monument={selectedCategory ? forumState.monuments.find((m) => m.category === selectedCategory) ?? null : null}
+        open={!!selectedCategory}
+        onClose={() => setSelectedCategory(null)}
+      />
     </div>
   );
 }
