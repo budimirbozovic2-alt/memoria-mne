@@ -36,7 +36,7 @@ export default function DatabasePage() {
   }, []);
 
   const handleTabChange = (value: string) => {
-    if (value === "cards" || value === "categories" || value === "sources") {
+    if (value === "cards" || value === "categories" || value === "sources" || value === "registry") {
       setActiveTab(value);
       sessionStorage.setItem("sr-database-tab", value);
     }
