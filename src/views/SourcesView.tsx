@@ -149,6 +149,7 @@ export default function SourcesView() {
     const updated: Source = {
       ...editingSource,
       label: editLabel.trim(),
+      date: editDate || editingSource.date,
       officialGazetteInfo: editGazette.trim() || undefined,
       updatedAt: Date.now(),
     };
@@ -156,7 +157,7 @@ export default function SourcesView() {
     setSources(prev => prev.map(s => s.id === updated.id ? updated : s));
     setEditingSource(null);
     toast({ title: "Izvor ažuriran" });
-  }, [editingSource, editLabel, editGazette]);
+  }, [editingSource, editLabel, editDate, editGazette]);
 
   const handleNewVersion = useCallback(async () => {
     if (!versionFile || !versioningSourceId) return;
