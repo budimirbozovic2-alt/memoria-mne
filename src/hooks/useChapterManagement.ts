@@ -27,23 +27,29 @@ export function useChapterManagement({
 
   // Load stored chapters from IDB (+ migrate legacy localStorage)
   useEffect(() => {
-    import("@/lib/db").then(({ idbLoadSettings }) => {
-      idbLoadSettings<string[]>(idbKey, []).then(setStoredChapters);
-    });
-    const oldKey = `memoria-chapters-${category}-${subcategory}`;
-    const old = localStorage.getItem(oldKey);
-    if (old) {
-      try {
-        const parsed = JSON.parse(old) as string[];
-        if (parsed.length > 0) {
-          import("@/lib/db").then(({ idbSaveSettings }) => {
-            idbSaveSettings(idbKey, parsed);
-          });
-          setStoredChapters(parsed);
-          localStorage.removeItem(oldKey);
-        }
-      } catch {}
+    async function init() {
+      const { idbLoadSettings, idbSaveSettings } = await import("@/lib/db");
+
+      // Migrate legacy localStorage first
+      const oldKey = `memoria-chapters-${category}-${subcategory}`;
+      const old = localStorage.getItem(oldKey);
+      if (old) {
+        try {
+          const parsed = JSON.parse(old) as string[];
+          if (parsed.length > 0) {
+            await idbSaveSettings(idbKey, parsed);
+            setStoredChapters(parsed);
+            localStorage.removeItem(oldKey);
+            return; // Migration done, skip default load
+          }
+        } catch {}
+      }
+
+      // No migration needed — load from IDB
+      const stored = await idbLoadSettings<string[]>(idbKey, []);
+      setStoredChapters(stored);
     }
+    init();
   }, [category, subcategory, idbKey]);
 
   // Preserve stored order, append any card-derived chapters not yet stored

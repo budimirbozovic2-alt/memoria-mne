@@ -167,9 +167,9 @@ function EdgeSettingsPanel({ edge, onUpdate, onDelete, onClose }: {
   onDelete: (edgeId: string) => void;
   onClose: () => void;
 }) {
-  const currentStyle = edge.style || {};
-  const currentDash = (currentStyle as any).strokeDasharray;
-  const currentColor = (currentStyle as any).stroke || "hsl(var(--primary))";
+  const currentStyle = edge.style || {} as React.CSSProperties;
+  const currentDash = (currentStyle as React.CSSProperties & { strokeDasharray?: string }).strokeDasharray;
+  const currentColor = (currentStyle as React.CSSProperties & { stroke?: string }).stroke || "hsl(var(--primary))";
   const currentType = edge.type || "smoothstep";
 
   return (

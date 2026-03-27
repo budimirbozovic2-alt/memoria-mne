@@ -370,8 +370,8 @@ export default function SpeedReader() {
   }, [totalWords, currentWordIdx, stopTts]);
 
   const handleReset = useCallback(() => { setPlaying(false); setCurrentWordIdx(0); stopTts(); }, [stopTts]);
-  const handlePrevWord = () => { setPlaying(false); stopTts(); setCurrentWordIdx(prev => Math.max(0, prev - 1)); };
-  const handleNextWord = () => { setPlaying(false); stopTts(); setCurrentWordIdx(prev => Math.min(totalWords - 1, prev + 1)); };
+  const handlePrevWord = useCallback(() => { setPlaying(false); stopTts(); setCurrentWordIdx(prev => Math.max(0, prev - 1)); }, [stopTts]);
+  const handleNextWord = useCallback(() => { setPlaying(false); stopTts(); setCurrentWordIdx(prev => Math.min(totalWords - 1, prev + 1)); }, [stopTts, totalWords]);
 
   // Jump to segment
   const jumpToSegment = (segIdx: number) => {
@@ -389,7 +389,7 @@ export default function SpeedReader() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [handlePlayPause]);
+  }, [handlePlayPause, handlePrevWord, handleNextWord]);
 
   const progress = totalWords > 0 ? ((currentWordIdx + 1) / totalWords) * 100 : 0;
 
