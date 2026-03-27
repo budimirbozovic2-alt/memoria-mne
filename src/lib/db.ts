@@ -67,6 +67,9 @@ export interface Source {
   officialGazetteInfo?: string; // e.g. "Službenom listu CG, br. 56/2014, 20/2015..."
 }
 
+// ─── Module-level blocked handler (registered once, no accumulation) ──
+let _blockedReject: ((err: Error) => void) | null = null;
+
 class MemoriaDB extends Dexie {
   cards!: Table<Card, string>;
   categories!: Table<{ id: string; name: string }, string>;
@@ -162,6 +165,12 @@ class MemoriaDB extends Dexie {
 
 export const db = new MemoriaDB();
 
+// Register blocked handler ONCE at module level (C1 fix)
+db.on("blocked", () => {
+  console.warn("[MemoriaDB] DB open blocked by another connection");
+  _blockedReject?.(new Error("DB_BLOCKED"));
+});
+
 // ─── Global DB error state (reactive signal for UI) ─────
 export let dbErrorState: { type: "version" | "timeout"; message: string } | null = null;
 
@@ -174,25 +183,20 @@ export function getDbErrorState() { return dbErrorState; }
  */
 export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let blockedReject: ((err: Error) => void) | undefined;
   try {
-    // Handle "blocked" state (another tab holds the DB open during HMR)
-    db.on("blocked", () => {
-      console.warn("[MemoriaDB] DB open blocked by another connection");
-      if (blockedReject) blockedReject(new Error("DB_BLOCKED"));
-    });
-
     await Promise.race([
       db.open(),
       new Promise<never>((_, reject) => {
-        blockedReject = reject;
+        _blockedReject = reject;
         timer = setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), timeoutMs);
       }),
     ]);
     clearTimeout(timer);
+    _blockedReject = null;
     return true;
   } catch (err: unknown) {
     clearTimeout(timer);
+    _blockedReject = null;
     const e = err instanceof Error ? err : new Error(String(err));
     console.error("[MemoriaDB] open failed:", e.name, e.message);
     if (e.name === "VersionError" || e.name === "UpgradeError") {
