@@ -1,10 +1,31 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Library, Merge, Search, Info, AlertTriangle, Plus, ArrowRight } from "lucide-react";
+import {
+  Library,
+  Search,
+  AlertTriangle,
+  Plus,
+  ArrowRight,
+  ChevronDown,
+  ChevronRight,
+  X,
+  Landmark,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useCardContext } from "@/contexts/AppContext";
 import { loadSources, type Source } from "@/lib/sources-storage";
 import {
@@ -18,17 +39,34 @@ import {
   type DepthMode,
 } from "@/lib/source-registry";
 
+/* ─── Monument type ─── */
+interface Monument {
+  name: string;
+  laws: { label: string; count: number }[];
+  totalCards: number;
+  mode: DepthMode;
+  override: "A" | "B" | null;
+  category: string | null;
+}
+
 export default function SourceManager() {
   const { cards, categories } = useCardContext();
   const [sources, setSources] = useState<Source[]>([]);
   const [registry, setRegistry] = useState<SourceRegistry>(loadSourceRegistry);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [mergeOpen, setMergeOpen] = useState(false);
-  const [mergeName, setMergeName] = useState("");
+
+  // Dialog state
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignLabel, setAssignLabel] = useState("");
   const [assignTarget, setAssignTarget] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [createLabel, setCreateLabel] = useState("");
+  const [addLawOpen, setAddLawOpen] = useState(false);
+  const [addLawMonument, setAddLawMonument] = useState("");
+
+  // Expanded monuments
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadSources().then(setSources);
@@ -37,12 +75,7 @@ export default function SourceManager() {
   const aliasMap = useMemo(() => buildAliasMap(registry), [registry]);
   const sourceMap = useMemo(() => buildSourceMap(sources), [sources]);
 
-  const uniqueSources = useMemo(
-    () => getUniqueSources(cards, sourceMap, aliasMap),
-    [cards, sourceMap, aliasMap],
-  );
-
-  // All raw labels across all cards (with source)
+  /* All raw labels with counts */
   const allRawLabels = useMemo(() => {
     const labels = new Map<string, number>();
     for (const card of cards) {
@@ -51,94 +84,119 @@ export default function SourceManager() {
       if (!src) continue;
       labels.set(src.label, (labels.get(src.label) || 0) + 1);
     }
-    return Array.from(labels.entries())
-      .map(([label, count]) => ({
-        label,
-        masterSource: aliasMap.get(label) || label,
-        count,
-      }))
-      .sort((a, b) => b.count - a.count);
-  }, [cards, sourceMap, aliasMap]);
+    return labels;
+  }, [cards, sourceMap]);
 
-  // Split into unmapped vs mapped
-  const unmappedLabels = useMemo(
-    () => allRawLabels.filter(l => !aliasMap.has(l.label)),
-    [allRawLabels, aliasMap],
+  /* Unmapped labels: those without an alias entry */
+  const unmappedLabels = useMemo(() => {
+    const result: { label: string; count: number }[] = [];
+    for (const [label, count] of allRawLabels) {
+      if (!aliasMap.has(label)) {
+        result.push({ label, count });
+      }
+    }
+    return result.sort((a, b) => b.count - a.count);
+  }, [allRawLabels, aliasMap]);
+
+  /* Monuments: group aliases by masterSource */
+  const monuments = useMemo(() => {
+    const groups = new Map<string, { label: string; count: number }[]>();
+    for (const alias of registry.aliases) {
+      const count = allRawLabels.get(alias.rawLabel) || 0;
+      if (!groups.has(alias.masterSource)) {
+        groups.set(alias.masterSource, []);
+      }
+      groups.get(alias.masterSource)!.push({ label: alias.rawLabel, count });
+    }
+
+    const uniqueSources = getUniqueSources(cards, sourceMap, aliasMap);
+    const result: Monument[] = [];
+
+    for (const [name, laws] of groups) {
+      const totalCards = laws.reduce((s, l) => s + l.count, 0);
+
+      // Find matching category for depth mode
+      const matchingCat = categories.find((cat) =>
+        cards.some((c) => {
+          if (c.category !== cat || !c.sourceId) return false;
+          const src = sourceMap.get(c.sourceId);
+          if (!src) return false;
+          const master = aliasMap.get(src.label) || src.label;
+          return master === name;
+        })
+      );
+
+      const override =
+        registry.overrides.find((o) => o.category === matchingCat)
+          ?.forcedMode || null;
+      const mode = matchingCat
+        ? getCategoryDepthMode(
+            matchingCat,
+            cards,
+            sourceMap,
+            aliasMap,
+            registry
+          )
+        : "A";
+
+      result.push({
+        name,
+        laws: laws.sort((a, b) => b.count - a.count),
+        totalCards,
+        mode,
+        override,
+        category: matchingCat || null,
+      });
+    }
+
+    return result.sort((a, b) => b.totalCards - a.totalCards);
+  }, [registry, allRawLabels, cards, sourceMap, aliasMap, categories]);
+
+  /* Master source names for assign dropdown */
+  const monumentNames = useMemo(
+    () => monuments.map((m) => m.name).sort(),
+    [monuments]
   );
 
-  const mappedLabels = useMemo(
-    () => allRawLabels.filter(l => aliasMap.has(l.label)),
-    [allRawLabels, aliasMap],
-  );
-
+  /* Filtered */
   const filteredUnmapped = useMemo(() => {
     if (!search) return unmappedLabels;
     const q = search.toLowerCase();
-    return unmappedLabels.filter(l => l.label.toLowerCase().includes(q));
+    return unmappedLabels.filter((l) => l.label.toLowerCase().includes(q));
   }, [unmappedLabels, search]);
 
-  const filteredMapped = useMemo(() => {
-    if (!search) return mappedLabels;
+  const filteredMonuments = useMemo(() => {
+    if (!search) return monuments;
     const q = search.toLowerCase();
-    return mappedLabels.filter(
-      l => l.label.toLowerCase().includes(q) || l.masterSource.toLowerCase().includes(q),
+    return monuments.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.laws.some((l) => l.label.toLowerCase().includes(q))
     );
-  }, [mappedLabels, search]);
+  }, [monuments, search]);
 
-  // Master source names for assign dropdown
-  const masterSourceNames = useMemo(
-    () => uniqueSources.map(u => u.masterSource).sort(),
-    [uniqueSources],
-  );
-
-  // Category depth info
-  const categoryDepths = useMemo(() => {
-    return categories
-      .filter(cat => cards.some(c => c.category === cat && c.sourceId))
-      .map(cat => ({
-        category: cat,
-        mode: getCategoryDepthMode(cat, cards, sourceMap, aliasMap, registry),
-        override: registry.overrides.find(o => o.category === cat)?.forcedMode || null,
-      }));
-  }, [categories, cards, sourceMap, aliasMap, registry]);
-
+  /* Persist helper */
   const persistRegistry = useCallback((next: SourceRegistry) => {
     setRegistry(next);
     saveSourceRegistry(next);
   }, []);
 
-  const handleMerge = useCallback(() => {
-    if (!mergeName.trim() || selected.size === 0) return;
-    const next = { ...registry, aliases: [...registry.aliases] };
-    next.aliases = next.aliases.filter(a => !selected.has(a.rawLabel));
-    for (const rawLabel of selected) {
-      next.aliases.push({ rawLabel, masterSource: mergeName.trim() });
-    }
-    persistRegistry(next);
-    setSelected(new Set());
-    setMergeOpen(false);
-    setMergeName("");
-  }, [registry, selected, mergeName, persistRegistry]);
+  /* Actions */
+  const handleCreateMonument = useCallback(
+    (rawLabel: string, monumentName?: string) => {
+      const name = monumentName?.trim() || rawLabel;
+      const next = { ...registry, aliases: [...registry.aliases] };
+      next.aliases = next.aliases.filter((a) => a.rawLabel !== rawLabel);
+      next.aliases.push({ rawLabel, masterSource: name });
+      persistRegistry(next);
+    },
+    [registry, persistRegistry]
+  );
 
-  const handleRemoveAlias = useCallback((rawLabel: string) => {
-    const next = {
-      ...registry,
-      aliases: registry.aliases.filter(a => a.rawLabel !== rawLabel),
-    };
-    persistRegistry(next);
-  }, [registry, persistRegistry]);
-
-  const handleCreateMaster = useCallback((rawLabel: string) => {
-    const next = { ...registry, aliases: [...registry.aliases] };
-    next.aliases = next.aliases.filter(a => a.rawLabel !== rawLabel);
-    next.aliases.push({ rawLabel, masterSource: rawLabel });
-    persistRegistry(next);
-  }, [registry, persistRegistry]);
-
-  const handleAssignToMaster = useCallback(() => {
+  const handleAssignToMonument = useCallback(() => {
     if (!assignLabel || !assignTarget) return;
     const next = { ...registry, aliases: [...registry.aliases] };
-    next.aliases = next.aliases.filter(a => a.rawLabel !== assignLabel);
+    next.aliases = next.aliases.filter((a) => a.rawLabel !== assignLabel);
     next.aliases.push({ rawLabel: assignLabel, masterSource: assignTarget });
     persistRegistry(next);
     setAssignOpen(false);
@@ -146,55 +204,80 @@ export default function SourceManager() {
     setAssignTarget("");
   }, [registry, assignLabel, assignTarget, persistRegistry]);
 
-  const handleToggleOverride = useCallback((category: string, currentMode: DepthMode) => {
-    const next = { ...registry, overrides: [...registry.overrides] };
-    const idx = next.overrides.findIndex(o => o.category === category);
-    const newMode: "A" | "B" | null =
-      currentMode === "A" ? "B" : currentMode === "B" ? null : "A";
+  const handleAddLawToMonument = useCallback(
+    (rawLabel: string) => {
+      if (!addLawMonument) return;
+      const next = { ...registry, aliases: [...registry.aliases] };
+      next.aliases = next.aliases.filter((a) => a.rawLabel !== rawLabel);
+      next.aliases.push({ rawLabel, masterSource: addLawMonument });
+      persistRegistry(next);
+    },
+    [registry, addLawMonument, persistRegistry]
+  );
 
-    if (idx >= 0) {
-      if (newMode === null) {
-        next.overrides.splice(idx, 1);
+  const handleRemoveLaw = useCallback(
+    (rawLabel: string) => {
+      const next = {
+        ...registry,
+        aliases: registry.aliases.filter((a) => a.rawLabel !== rawLabel),
+      };
+      persistRegistry(next);
+    },
+    [registry, persistRegistry]
+  );
+
+  const handleSetMode = useCallback(
+    (category: string | null, mode: "A" | "B") => {
+      if (!category) return;
+      const next = { ...registry, overrides: [...registry.overrides] };
+      const idx = next.overrides.findIndex((o) => o.category === category);
+      if (idx >= 0) {
+        next.overrides[idx] = { category, forcedMode: mode };
       } else {
-        next.overrides[idx] = { category, forcedMode: newMode };
+        next.overrides.push({ category, forcedMode: mode });
       }
-    } else if (newMode !== null) {
-      next.overrides.push({ category, forcedMode: newMode });
-    }
-    persistRegistry(next);
-  }, [registry, persistRegistry]);
+      persistRegistry(next);
+    },
+    [registry, persistRegistry]
+  );
 
-  const toggleSelect = (label: string) => {
-    setSelected(prev => {
+  const handleCreateDialog = useCallback(() => {
+    if (!createName.trim() || !createLabel) return;
+    handleCreateMonument(createLabel, createName.trim());
+    setCreateOpen(false);
+    setCreateName("");
+    setCreateLabel("");
+  }, [createName, createLabel, handleCreateMonument]);
+
+  const toggleExpand = (name: string) => {
+    setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
       return next;
     });
   };
 
   // Stats
-  const totalAliases = registry.aliases.length;
-  const modeACats = categoryDepths.filter(c => c.mode === "A").length;
-  const modeBCats = categoryDepths.filter(c => c.mode === "B").length;
+  const totalLaws = registry.aliases.length;
 
   return (
     <div className="space-y-6">
       {/* Stats summary */}
       <div className="grid grid-cols-3 gap-3">
         <div className="glass-card p-4 rounded-xl text-center">
-          <p className="text-2xl font-semibold">{uniqueSources.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">Master izvora</p>
+          <p className="text-2xl font-bold">{monuments.length}</p>
+          <p className="text-xs text-muted-foreground mt-1">Spomenika</p>
         </div>
         <div className="glass-card p-4 rounded-xl text-center">
-          <p className="text-2xl font-semibold">{totalAliases}</p>
-          <p className="text-xs text-muted-foreground mt-1">Alias mapiranja</p>
+          <p className="text-2xl font-bold">{totalLaws}</p>
+          <p className="text-xs text-muted-foreground mt-1">Zakona</p>
         </div>
         <div className="glass-card p-4 rounded-xl text-center">
-          <p className="text-2xl font-semibold">
-            {modeACats}A / {modeBCats}B
+          <p className="text-2xl font-bold text-yellow-500">
+            {unmappedLabels.length}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">Kategorija po modu</p>
+          <p className="text-xs text-muted-foreground mt-1">Neprepoznatih</p>
         </div>
       </div>
 
@@ -204,24 +287,27 @@ export default function SourceManager() {
         <input
           type="text"
           value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Pretraži izvore..."
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Pretraži izvore i spomenike..."
           className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
 
-      {/* Section: Unmapped Sources */}
+      {/* Unmapped Sources */}
       {filteredUnmapped.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-yellow-500" />
-            <h3 className="text-lg font-semibold">Neprepoznati izvori</h3>
-            <Badge variant="secondary" className="text-xs bg-yellow-500/10 text-yellow-600">
+            <h3 className="text-lg font-bold">Neprepoznati izvori</h3>
+            <Badge
+              variant="secondary"
+              className="text-xs bg-yellow-500/10 text-yellow-600"
+            >
               {filteredUnmapped.length}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            Ovi izvori postoje u bazi ali nisu mapirani na Master izvor. Prepoznaj ih da bi Forum pravilno grupisao podatke.
+            Ovi zakoni postoje u bazi ali nisu dodijeljeni nijednom spomeniku.
           </p>
           <div className="space-y-1 max-h-[300px] overflow-y-auto">
             {filteredUnmapped.map(({ label, count }) => (
@@ -230,19 +316,23 @@ export default function SourceManager() {
                 className="flex items-center gap-3 p-3 rounded-lg glass-card border-yellow-500/20"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{label}</p>
+                  <p className="text-sm font-semibold truncate">{label}</p>
                 </div>
                 <Badge variant="secondary" className="text-xs flex-shrink-0">
-                  {count} kartica
+                  {count} modula
                 </Badge>
                 <Button
                   size="sm"
                   variant="outline"
                   className="h-7 text-xs gap-1"
-                  onClick={() => handleCreateMaster(label)}
+                  onClick={() => {
+                    setCreateLabel(label);
+                    setCreateName(label);
+                    setCreateOpen(true);
+                  }}
                 >
                   <Plus className="h-3 w-3" />
-                  Kreiraj Master
+                  Kreiraj Spomenik
                 </Button>
                 <Button
                   size="sm"
@@ -255,7 +345,7 @@ export default function SourceManager() {
                   }}
                 >
                   <ArrowRight className="h-3 w-3" />
-                  Dodaj kao alias
+                  Dodaj u postojeći
                 </Button>
               </div>
             ))}
@@ -263,75 +353,173 @@ export default function SourceManager() {
         </div>
       )}
 
-      {/* Section: Mapped Sources */}
+      {/* Monuments */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Library className="h-4 w-4 text-primary" />
-            Prepoznati izvori
-            {mappedLabels.length > 0 && (
-              <Badge variant="secondary" className="text-xs">{mappedLabels.length}</Badge>
-            )}
-          </h3>
-          {selected.size > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setMergeName("");
-                setMergeOpen(true);
-              }}
-              className="gap-1.5"
-            >
-              <Merge className="h-3.5 w-3.5" />
-              Spoji ({selected.size})
-            </Button>
+        <h3 className="text-lg font-bold flex items-center gap-2">
+          <Landmark className="h-4 w-4 text-primary" />
+          Spomenici
+          {monuments.length > 0 && (
+            <Badge variant="secondary" className="text-xs">
+              {monuments.length}
+            </Badge>
           )}
-        </div>
+        </h3>
 
-        {filteredMapped.length === 0 && filteredUnmapped.length === 0 ? (
+        {filteredMonuments.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">
-            {cards.some(c => c.sourceId) ? "Nema rezultata pretrage" : "Kartice nemaju povezane izvore"}
-          </div>
-        ) : filteredMapped.length === 0 ? (
-          <div className="text-center py-4 text-muted-foreground text-sm italic">
-            Nema prepoznatih izvora. Koristi "Kreiraj Master" iznad.
+            {monuments.length === 0
+              ? 'Nema spomenika. Koristi "Kreiraj Spomenik" iznad.'
+              : "Nema rezultata pretrage."}
           </div>
         ) : (
-          <div className="space-y-1 max-h-[400px] overflow-y-auto">
-            {filteredMapped.map(({ label, masterSource, count }) => {
-              const isAliased = label !== masterSource;
-              const isSelected = selected.has(label);
+          <div className="space-y-3">
+            {filteredMonuments.map((monument) => {
+              const isExpanded = expanded.has(monument.name);
               return (
                 <div
-                  key={label}
-                  onClick={() => toggleSelect(label)}
-                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-                    isSelected ? "glass-card border-primary/30 bg-primary/10" : "glass-card hover:bg-secondary/40"
-                  }`}
+                  key={monument.name}
+                  className="glass-card rounded-xl border overflow-hidden"
                 >
-                  <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                    isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
-                  }`}>
-                    {isSelected && <div className="w-2 h-2 bg-primary-foreground rounded-sm" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{label}</p>
-                    {isAliased && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        → {masterSource}
-                        <button
-                          onClick={e => { e.stopPropagation(); handleRemoveAlias(label); }}
-                          className="ml-2 text-destructive hover:underline"
-                        >
-                          ukloni
-                        </button>
-                      </p>
+                  {/* Monument header */}
+                  <button
+                    onClick={() => toggleExpand(monument.name)}
+                    className="w-full flex items-center gap-3 p-4 text-left hover:bg-secondary/30 transition-colors"
+                  >
+                    {isExpanded ? (
+                      <ChevronDown className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                     )}
-                  </div>
-                  <Badge variant="secondary" className="text-xs flex-shrink-0">
-                    {count} kartica
-                  </Badge>
+                    <Landmark className="h-4 w-4 flex-shrink-0 text-primary" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold truncate">
+                        {monument.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {monument.laws.length}{" "}
+                        {monument.laws.length === 1 ? "zakon" : "zakona"} •{" "}
+                        {monument.totalCards} modula •{" "}
+                        {monument.mode === "A" ? "Grupni" : "Detaljni"} prikaz
+                        {monument.override ? " (ručno)" : ""}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={monument.mode === "A" ? "default" : "secondary"}
+                      className="text-xs flex-shrink-0"
+                    >
+                      Mod {monument.mode}
+                    </Badge>
+                  </button>
+
+                  {/* Expanded content */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4 space-y-4 border-t border-border/50">
+                      {/* Laws list */}
+                      <div className="mt-3 space-y-1">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                          Zakoni u ovom spomeniku
+                        </p>
+                        {monument.laws.map((law) => (
+                          <div
+                            key={law.label}
+                            className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-secondary/30 transition-colors group"
+                          >
+                            <span className="text-sm flex-1 truncate">
+                              {law.label}
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className="text-xs flex-shrink-0"
+                            >
+                              {law.count} modula
+                            </Badge>
+                            {monument.laws.length > 1 && (
+                              <button
+                                onClick={() => handleRemoveLaw(law.label)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive/80"
+                                title="Ukloni iz spomenika"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs gap-1 mt-1 text-muted-foreground"
+                          onClick={() => {
+                            setAddLawMonument(monument.name);
+                            setAddLawOpen(true);
+                          }}
+                        >
+                          <Plus className="h-3 w-3" />
+                          Dodaj novi zakon u ovaj spomenik
+                        </Button>
+                      </div>
+
+                      {/* A/B mode selector */}
+                      {monument.category && (
+                        <div className="space-y-2 pt-2 border-t border-border/30">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Prikaz unutar spomenika
+                          </p>
+                          <div className="flex flex-col gap-1.5">
+                            <label
+                              className={`flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer border transition-colors ${
+                                monument.mode === "A"
+                                  ? "border-primary/40 bg-primary/5"
+                                  : "border-transparent hover:bg-secondary/30"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`mode-${monument.name}`}
+                                checked={monument.mode === "A"}
+                                onChange={() =>
+                                  handleSetMode(monument.category, "A")
+                                }
+                                className="accent-[hsl(var(--primary))]"
+                              />
+                              <div>
+                                <p className="text-sm font-semibold">
+                                  Grupni prikaz (Više izvora)
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Svaki zakon je posebna kolona u spomeniku
+                                </p>
+                              </div>
+                            </label>
+                            <label
+                              className={`flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer border transition-colors ${
+                                monument.mode === "B"
+                                  ? "border-primary/40 bg-primary/5"
+                                  : "border-transparent hover:bg-secondary/30"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`mode-${monument.name}`}
+                                checked={monument.mode === "B"}
+                                onChange={() =>
+                                  handleSetMode(monument.category, "B")
+                                }
+                                className="accent-[hsl(var(--primary))]"
+                              />
+                              <div>
+                                <p className="text-sm font-semibold">
+                                  Detaljni prikaz (Jedan obiman izvor)
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Glave/poglavlja su kolone u spomeniku
+                                </p>
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -339,106 +527,145 @@ export default function SourceManager() {
         )}
       </div>
 
-      {/* Section: Category Depth Overrides */}
-      {categoryDepths.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Info className="h-4 w-4 text-primary" />
-            Dubina po kategoriji
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            Kako se izvor prikazuje unutar spomenika na Forumu.
-          </p>
-          <div className="space-y-1">
-            {categoryDepths.map(({ category, mode, override }) => (
-              <div
-                key={category}
-                className="flex items-center justify-between p-3 rounded-lg glass-card"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{category}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {override ? "Ručno" : "Automatski"}:{" "}
-                    {mode === "A"
-                      ? "L1: Izvor → L2: Potkategorija"
-                      : "L1: Potkategorija → L2: Glava"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleToggleOverride(category, mode)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border hover:bg-secondary transition-colors"
-                >
-                  Mod {mode}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Merge Dialog */}
-      <Dialog open={mergeOpen} onOpenChange={setMergeOpen}>
+      {/* Create Monument Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Spoji u Master izvor</DialogTitle>
+            <DialogTitle>Kreiraj novi spomenik</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Odabrani izvori ({selected.size}) će biti mapirani na jedan Master izvor:
+              Izvor{" "}
+              <span className="font-semibold text-foreground">
+                "{createLabel}"
+              </span>{" "}
+              će biti prvi zakon u novom spomeniku:
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {Array.from(selected).map(label => (
-                <Badge key={label} variant="outline" className="text-xs">
-                  {label}
-                </Badge>
-              ))}
-            </div>
             <Input
-              value={mergeName}
-              onChange={e => setMergeName(e.target.value)}
-              placeholder="Naziv Master izvora..."
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              placeholder="Naziv spomenika (npr. Upravno pravo)..."
               autoFocus
             />
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setMergeOpen(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCreateOpen(false)}
+              >
                 Otkaži
               </Button>
-              <Button size="sm" onClick={handleMerge} disabled={!mergeName.trim()}>
-                <Merge className="h-3.5 w-3.5 mr-1.5" />
-                Spoji
+              <Button
+                size="sm"
+                onClick={handleCreateDialog}
+                disabled={!createName.trim()}
+              >
+                <Landmark className="h-3.5 w-3.5 mr-1.5" />
+                Kreiraj
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Assign to existing Master Dialog */}
+      {/* Assign to existing monument dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Dodaj kao alias</DialogTitle>
+            <DialogTitle>Dodaj u postojeći spomenik</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Izvor <span className="font-medium text-foreground">"{assignLabel}"</span> će biti mapiran na postojeći Master izvor:
+              Zakon{" "}
+              <span className="font-semibold text-foreground">
+                "{assignLabel}"
+              </span>{" "}
+              će biti dodat u:
             </p>
             <Select value={assignTarget} onValueChange={setAssignTarget}>
               <SelectTrigger>
-                <SelectValue placeholder="Izaberi Master izvor..." />
+                <SelectValue placeholder="Izaberi spomenik..." />
               </SelectTrigger>
               <SelectContent>
-                {masterSourceNames.map(name => (
-                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                {monumentNames.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setAssignOpen(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAssignOpen(false)}
+              >
                 Otkaži
               </Button>
-              <Button size="sm" onClick={handleAssignToMaster} disabled={!assignTarget}>
+              <Button
+                size="sm"
+                onClick={handleAssignToMonument}
+                disabled={!assignTarget}
+              >
                 <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
                 Dodaj
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add law to monument dialog */}
+      <Dialog open={addLawOpen} onOpenChange={setAddLawOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dodaj zakon u „{addLawMonument}"</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {unmappedLabels.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Svi izvori su već prepoznati. Nema neprepoznatih zakona za
+                dodavanje.
+              </p>
+            ) : (
+              <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                {unmappedLabels.map(({ label, count }) => (
+                  <div
+                    key={label}
+                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-secondary/30 transition-colors"
+                  >
+                    <span className="text-sm flex-1 truncate">{label}</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {count} modula
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        handleAddLawToMonument(label);
+                        if (
+                          unmappedLabels.filter((u) => u.label !== label)
+                            .length === 0
+                        ) {
+                          setAddLawOpen(false);
+                        }
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Dodaj
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAddLawOpen(false)}
+              >
+                Zatvori
               </Button>
             </div>
           </div>
