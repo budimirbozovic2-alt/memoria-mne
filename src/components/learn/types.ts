@@ -1,5 +1,5 @@
 import { Card } from "@/lib/spaced-repetition";
-import { LearnMode, LearnCardProgress } from "@/lib/storage";
+import { LearnMode, LearnCardProgress, ReviewLogEntry } from "@/lib/storage";
 
 export type { LearnCardProgress };
 
@@ -47,4 +47,5 @@ export interface LearnSessionProps {
   onEdit?: (card: Card) => void;
   onAddKeyPart?: (cardId: string, text: string) => void;
   dueCount?: number;
+  reviewLog?: ReviewLogEntry[];
 }

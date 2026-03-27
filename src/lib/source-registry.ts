@@ -51,6 +51,31 @@ export function loadSourceRegistry(): SourceRegistry {
 
 export function saveSourceRegistry(registry: SourceRegistry): void {
   localStorage.setItem(REGISTRY_KEY, JSON.stringify(registry));
+  // Fire-and-forget IDB backup sync
+  syncSourceRegistryToIDB(registry);
+}
+
+/** Sync source registry to IDB for backup consistency */
+async function syncSourceRegistryToIDB(registry: SourceRegistry): Promise<void> {
+  try {
+    const { idbSaveSourceRegistry } = await import("./db");
+    await idbSaveSourceRegistry(registry);
+  } catch (err) {
+    console.warn("[sourceRegistry] IDB sync failed", err);
+  }
+}
+
+/** Migrate source registry from localStorage to IDB (one-time) */
+export async function migrateSourceRegistryToIDB(): Promise<void> {
+  try {
+    const raw = localStorage.getItem(REGISTRY_KEY);
+    if (raw) {
+      const { idbSaveSourceRegistry } = await import("./db");
+      await idbSaveSourceRegistry(JSON.parse(raw));
+    }
+  } catch (err) {
+    console.warn("[sourceRegistry] migration to IDB failed", err);
+  }
 }
 
 // ─── Resolution ─────────────────────────────────────────

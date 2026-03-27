@@ -39,7 +39,11 @@ function createPersistQueue() {
   async function flush() {
     timer = null;
     const actions = pending.splice(0);
-    if (actions.length === 0) return;
+    if (actions.length === 0) {
+      try { sessionStorage.removeItem("codex-flush-pending"); } catch {}
+      return;
+    }
+    try { sessionStorage.setItem("codex-flush-pending", "1"); } catch {}
 
     try {
       // Use the LAST full action (most recent snapshot), not the first
@@ -62,7 +66,9 @@ function createPersistQueue() {
 
       if (puts.length > 0) await idbBulkPutCards(puts);
       for (const id of deletes) await idbDeleteCard(id);
+      try { sessionStorage.removeItem("codex-flush-pending"); } catch {}
     } catch (err: unknown) {
+      try { sessionStorage.removeItem("codex-flush-pending"); } catch {}
       const e = err instanceof Error ? err : new Error(String(err));
       if (e.message === "QUOTA_EXCEEDED") {
         const { toast } = await import("sonner");
@@ -95,3 +101,13 @@ function createPersistQueue() {
 // Singleton persist queue — created once per module, safe for StrictMode double-mount
 export const persistQueue = createPersistQueue();
 export const schedulePersist = persistQueue.schedule;
+
+/** Check if previous session had interrupted writes */
+export function checkInterruptedFlush(): void {
+  try {
+    if (sessionStorage.getItem("codex-flush-pending") === "1") {
+      console.warn("[boot] Previous session had interrupted writes — data may be stale");
+      sessionStorage.removeItem("codex-flush-pending");
+    }
+  } catch {}
+}

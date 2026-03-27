@@ -48,7 +48,14 @@ export function useCardAnnotations({
       });
 
       // Persist review log OUTSIDE the state updater to avoid nested setState
-      idbAddReviewLogEntry(entry);
+      (async () => {
+        try { await idbAddReviewLogEntry(entry); }
+        catch (err) {
+          console.error("[reviewSection] log write failed", err);
+          const { toast } = await import("sonner");
+          toast.error("Memorija puna, istorija učenja se ne čuva!");
+        }
+      })();
       setReviewLog((log) => [...log, entry]);
     },
     [patchCard, setReviewLog],

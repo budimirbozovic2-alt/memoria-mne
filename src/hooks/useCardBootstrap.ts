@@ -10,7 +10,9 @@ import {
   idbLoadSubcategories,
   idbLoadRecentReviewLog,
   idbLoadSettings,
+  getDbErrorState,
 } from "@/lib/db";
+import { checkInterruptedFlush } from "@/lib/persist-queue";
 
 async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string, fallback: T): Promise<T> {
   try {
@@ -32,6 +34,7 @@ interface BootSetters {
 export function useCardBootstrap(setters: BootSetters) {
   const { setCardMapState, setCategoriesState, setSubcategoriesState, setReviewLogState, setSrSettingsState } = setters;
   const [ready, setReady] = useState(false);
+  const [dbError, setDbError] = useState<{ type: "version" | "timeout"; message: string } | null>(null);
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
@@ -82,9 +85,14 @@ export function useCardBootstrap(setters: BootSetters) {
         const dbOk = await ensureDbOpen(6000);
         markBootStep("cards:db-open-done", dbOk ? "ok" : "failed");
         if (!dbOk) {
-          console.warn("[boot] DB unavailable — starting in fallback mode");
-          splashProgress(100, "Pokretanje bez baze…");
-          showSplashError("IndexedDB nije dostupan ili je isteklo vrijeme čekanja.");
+          const errState = getDbErrorState();
+          if (errState) {
+            setDbError(errState);
+            splashProgress(100, "Greška baze podataka");
+          } else {
+            splashProgress(100, "Pokretanje bez baze…");
+            showSplashError("IndexedDB nije dostupan ili je isteklo vrijeme čekanja.");
+          }
           return;
         }
 
@@ -92,6 +100,9 @@ export function useCardBootstrap(setters: BootSetters) {
         splashProgress(10, "Migracija podataka…");
         await migrateFromLocalStorage();
         markBootStep("cards:migration-done");
+
+        // Check for interrupted writes from previous session
+        checkInterruptedFlush();
 
         // Initialize in-memory caches from IDB (replaces localStorage)
         splashProgress(15, "Inicijalizacija keša…");
@@ -159,5 +170,5 @@ export function useCardBootstrap(setters: BootSetters) {
     return () => clearTimeout(panicTimer);
   }, []);
 
-  return { ready };
+  return { ready, dbError };
 }

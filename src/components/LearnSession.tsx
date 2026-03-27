@@ -1,7 +1,7 @@
 import { ShieldAlert, Link2, BookOpen, Brain, ArrowLeft, ChevronRight, ListOrdered, TrendingDown, Eye, HelpCircle, AlertTriangle } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
 import { Card, getCardScore, getDueCards } from "@/lib/spaced-repetition";
-import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress, loadReviewLog } from "@/lib/storage";
+import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress, ReviewLogEntry } from "@/lib/storage";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
 import { recordDayDiscipline, getSmartSuggestion, calcVelocity, loadPlanner } from "@/lib/planner-storage";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +14,7 @@ const StudyModeFree = lazy(() => import("./learn/StudyModeFree"));
 const StudyModeRecall = lazy(() => import("./learn/StudyModeRecall"));
 const StudyModeChain = lazy(() => import("./learn/StudyModeChain"));
 
-export default function LearnSession({ cards, categories, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0 }: LearnSessionProps) {
+export default function LearnSession({ cards, categories, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0, reviewLog: reviewLogProp = [] }: LearnSessionProps) {
   const [setupStep, setSetupStep] = useState<"mode" | "filter" | "ready">("mode");
   const [learnMode, setLearnMode] = useState<LearnMode>("free");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -149,7 +149,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
             if (totalSections === 0) return null;
             const progress = Math.round((learnedSections / totalSections) * 100);
             const targetReviewPct = Math.max(5, progress);
-            const reviewLog = loadReviewLog();
+            const reviewLog = reviewLogProp;
             const todayStr = new Date().toISOString().slice(0, 10);
             const todayStart = new Date(todayStr).getTime();
             const todayEntries = reviewLog.filter(e => e.timestamp >= todayStart);
@@ -294,13 +294,12 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
       const activityType = learnMode === "free" ? "learn-free" as const : learnMode === "active-recall" ? "learn-active" as const : "learn-chain" as const;
       addActivityEntry({ timestamp: Date.now(), type: activityType, durationMs: elapsed });
       try {
-        const reviewLog = loadReviewLog();
         const plannerConfig = loadPlanner();
-        const velocity = calcVelocity(reviewLog, 7);
+        const velocity = calcVelocity(reviewLogProp, 7);
         const suggestion = getSmartSuggestion(null, cards, plannerConfig.finalGoalDate, velocity, plannerConfig.bufferPercent ?? 15);
         const dailyGoal = suggestion?.suggestedToday ?? 0;
         const today = new Date().toISOString().slice(0, 10);
-        const reviewsDoneToday = reviewLog.filter(e => new Date(e.timestamp).toISOString().slice(0, 10) === today).length;
+        const reviewsDoneToday = reviewLogProp.filter(e => new Date(e.timestamp).toISOString().slice(0, 10) === today).length;
         recordDayDiscipline(today, reviewsDoneToday, dailyGoal, null);
       } catch {}
     }

@@ -34,7 +34,7 @@ export function useCards() {
   }, []);
 
   // ── Boot (extracted module) ──
-  const { ready: bootstrapReady } = useCardBootstrap({
+  const { ready: bootstrapReady, dbError } = useCardBootstrap({
     setCardMapState, setCategoriesState, setSubcategoriesState, setReviewLogState, setSrSettingsState,
   });
 
@@ -157,6 +157,7 @@ export function useCards() {
     reviewLog,
     srSettings,
     ready,
+    dbError,
     addCard,
     addFlashCard,
     updateCard,
