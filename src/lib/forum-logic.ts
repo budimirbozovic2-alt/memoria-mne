@@ -165,9 +165,13 @@ export function calculateForumState(
     else byCategory.set(cat, [card]);
   }
 
+  const monumentTypes = loadMonumentTypes();
+
   const monuments: Monument[] = [];
   for (const [cat, catCards] of byCategory) {
-    monuments.push(buildMonument(cat, catCards));
+    const m = buildMonument(cat, catCards);
+    m.buildingType = monumentTypes[cat] || "insula";
+    monuments.push(m);
   }
 
   // Sort: highest mastery first
