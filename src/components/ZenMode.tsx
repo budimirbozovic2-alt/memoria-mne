@@ -28,7 +28,10 @@ export default function ZenMode({ active, onToggle }: Props) {
   const [cycleCount, setCycleCount] = useState(0);
   const [noiseOn, setNoiseOn] = useState(false);
   const [noiseVolume, setNoiseVolume] = useState(0.3);
-  const [pomodoroStats, setPomodoroStats] = useState(getPomodoroStats());
+  const [pomodoroStats, setPomodoroStats] = useState<Awaited<ReturnType<typeof getPomodoroStats>>>({ today: 0, todayMinutes: 0, week: 0, weekMinutes: 0, total: 0 });
+
+  // Load pomodoro stats on mount
+  useEffect(() => { getPomodoroStats().then(setPomodoroStats); }, []);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const totalForPhase = phase === "focus" ? FOCUS_DURATION : phase === "longBreak" ? LONG_BREAK_DURATION : BREAK_DURATION;
