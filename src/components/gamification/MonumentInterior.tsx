@@ -35,7 +35,7 @@ export const MonumentInterior = memo(function MonumentInterior({
 
   const catCards = useMemo(() => cards.filter((c) => c.category === monument.category), [cards, monument.category]);
 
-  const sourceHierarchy = useSourceHierarchy(allCards, sources, monument.category);
+  const sourceHierarchy = useSourceHierarchy(cards, sources, monument.category);
 
   const fallbackTree = useMemo<HierarchyNode[]>(() => {
     if (sourceHierarchy.hasSourceLinks) return [];
