@@ -134,7 +134,7 @@ export const MonumentInterior = memo(function MonumentInterior({
                 {/* Wing divider */}
                 <div className="flex items-center gap-3 px-1">
                   <div className="h-px flex-1 bg-border/40" />
-                  <span className="text-[10px] font-display text-muted-foreground uppercase tracking-[0.15em] shrink-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] shrink-0">
                     {wing.name}
                   </span>
                   <div className="h-px flex-1 bg-border/40" />
