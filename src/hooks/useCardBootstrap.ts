@@ -101,6 +101,9 @@ export function useCardBootstrap(setters: BootSetters) {
         await migrateFromLocalStorage();
         markBootStep("cards:migration-done");
 
+        // Check for interrupted writes from previous session
+        checkInterruptedFlush();
+
         // Initialize in-memory caches from IDB (replaces localStorage)
         splashProgress(15, "Inicijalizacija keša…");
         const { initMetacognitiveCache } = await import("@/lib/metacognitive-storage");
