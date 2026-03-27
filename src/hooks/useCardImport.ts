@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, MutableRefObject } from "react";
 import { toast } from "sonner";
 import { Card, createCard, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
@@ -13,6 +13,7 @@ interface UseCardImportDeps {
   updateSRSettings: (settings: SRSettings) => void;
   schedulePersist: (action: { type: string; cards?: Card[] }) => void;
   setCardMapState: (updater: (prev: CardMap) => CardMap) => void;
+  cardMapRef: MutableRefObject<CardMap>;
 }
 
 export function useCardImport({
