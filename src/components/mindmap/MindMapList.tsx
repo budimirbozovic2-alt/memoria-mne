@@ -18,8 +18,13 @@ interface Props {
 export default function MindMapList({ onOpen }: Props) {
   const [maps, setMaps] = useState<MindMapDoc[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = async () => setMaps(await loadMindMaps());
+  const refresh = async () => {
+    const result = await loadMindMaps();
+    setMaps(result);
+    setLoading(false);
+  };
   useEffect(() => { refresh(); }, []);
 
   const createNew = async (mode: MindMapMode) => {
