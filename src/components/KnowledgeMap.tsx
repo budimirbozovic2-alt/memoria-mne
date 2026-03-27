@@ -74,7 +74,6 @@ export default function KnowledgeMap({
 }: Props) {
   const [view, setView] = useState<ViewState>({ step: "categories" });
   const [searchQuery, setSearchQuery] = useState("");
-  const [detailMode, setDetailMode] = useState<"skeleton" | "kanban">("skeleton");
   const [reorderMode, setReorderMode] = useState(false);
   const directionRef = useRef(1);
 
