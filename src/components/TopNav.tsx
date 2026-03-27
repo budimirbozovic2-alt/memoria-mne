@@ -1,4 +1,4 @@
-import { Home, GraduationCap, RotateCcw, Moon, Sun, Menu, X, Focus, Settings as SettingsIcon, Database as DatabaseIcon, HelpCircle, Plus, Landmark, Wrench } from "lucide-react";
+import { Home, GraduationCap, RotateCcw, Moon, Sun, Focus, Settings as SettingsIcon, Database as DatabaseIcon, HelpCircle, Plus, Landmark, Wrench } from "lucide-react";
 import { useLocation } from "react-router-dom";
 
 import { NavLink } from "@/components/NavLink";
@@ -45,7 +45,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
   const { stats } = useCardContext();
   const { enterForum, unlocked: forumUnlocked } = useForumContext();
   const [dark, setDarkState] = useState(() => document.documentElement.classList.contains("dark"));
-  const [mobileOpen, setMobileOpen] = useState(false);
+  
   const [labOpen, setLabOpen] = useState(false);
   const labRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
@@ -114,7 +114,6 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
   // Close mega menu on route change
   useEffect(() => {
     setLabOpen(false);
-    setMobileOpen(false);
   }, [location.pathname]);
 
   const isToolsActive = TOOLS_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + "/"));
@@ -122,7 +121,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
   return (
     <nav className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md">
       {/* Desktop */}
-      <div className="hidden md:flex items-center h-11 px-4 gap-1 max-w-7xl mx-auto">
+      <div className="flex items-center h-11 px-4 gap-1 max-w-7xl mx-auto">
         <div className="flex items-center gap-2.5 mr-4 cursor-default" onClick={_handleBrandClick} onDoubleClick={() => setVersionOpen(true)}>
           <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="CODEX" className="h-6 w-6 rounded-full" />
           <span className="text-sm font-bold uppercase tracking-[0.2em] text-primary select-none">CODEX</span>
@@ -227,99 +226,6 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
         </div>
       </div>
 
-      {/* Mobile */}
-      <div className="md:hidden flex items-center h-11 px-3 justify-between">
-        <div className="flex items-center gap-2 cursor-default" onClick={_handleBrandClick} onDoubleClick={() => setVersionOpen(true)}>
-          <img src={`${import.meta.env.BASE_URL}logo-icon.png`} alt="CODEX" className="h-6 w-6 rounded-full" />
-          <span className="text-sm font-bold uppercase tracking-[0.2em] text-primary select-none">CODEX</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {onOpenOnboarding && (
-            <button onClick={onOpenOnboarding} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" title="Vodič">
-              <HelpCircle className="h-4 w-4" />
-            </button>
-          )}
-          <button onClick={onToggleZen} className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${zenActive ? "text-primary bg-primary/10" : "text-muted-foreground"}`} title="Zen Mode">
-            <Focus className="h-4 w-4" />
-          </button>
-          <button onClick={toggleDark} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground">
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
-          <button onClick={() => setMobileOpen(v => !v)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" aria-label={mobileOpen ? "Zatvori meni" : "Otvori meni"}>
-            {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-          </button>
-        </div>
-      </div>
-
-      {mobileOpen && (
-        <div className="md:hidden border-t bg-background px-3 py-2 space-y-0.5">
-          {PRIMARY_NAV.map(({ path, icon: Icon, label, badge }) => (
-            <NavLink
-              key={path}
-              to={path}
-              end={path === "/"}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-              activeClassName="bg-primary/10 text-primary font-medium"
-              onClick={() => setMobileOpen(false)}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              <span>{label}</span>
-              {badge && stats.due > 0 && (
-                <Badge variant="destructive" className="ml-auto text-[10px] h-5 min-w-[20px] px-1">
-                  {stats.due}
-                </Badge>
-              )}
-            </NavLink>
-          ))}
-
-          {/* Alati */}
-          <div className="pt-1.5 pb-0.5">
-            <span className="px-3 text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Alati</span>
-          </div>
-          {TOOLS_NAV.map(({ path, label }) => (
-            <NavLink key={path} to={path}
-              className="flex items-center gap-2.5 px-3 py-2 pl-6 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-              activeClassName="bg-primary/10 text-primary font-medium"
-              onClick={() => setMobileOpen(false)}
-            >
-              <Wrench className="h-4 w-4 flex-shrink-0" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-
-          <NavLink
-            to="/database"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-            activeClassName="bg-primary/10 text-primary font-medium"
-            onClick={() => setMobileOpen(false)}
-          >
-            <DatabaseIcon className="h-4 w-4 flex-shrink-0" />
-            <span>Baza podataka</span>
-          </NavLink>
-
-          <NavLink
-            to="/settings"
-            className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-            activeClassName="bg-primary/10 text-primary font-medium"
-            onClick={() => setMobileOpen(false)}
-          >
-            <SettingsIcon className="h-4 w-4 flex-shrink-0" />
-            <span>Podešavanja</span>
-          </NavLink>
-
-          {forumUnlocked && (
-            <NavLink
-              to="/forum"
-              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-gold hover:bg-gold/10 transition-colors"
-              activeClassName="bg-gold/15 font-medium"
-              onClick={() => setMobileOpen(false)}
-            >
-              <Landmark className="h-4 w-4 flex-shrink-0" />
-              <span className="font-display tracking-wide">Forum znanja</span>
-            </NavLink>
-          )}
-        </div>
-      )}
       <Dialog open={_sysInfoOpen} onOpenChange={_setSysInfoOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
