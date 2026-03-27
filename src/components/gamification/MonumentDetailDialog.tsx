@@ -25,7 +25,7 @@ interface Props {
 
 export const MonumentDetailDialog = memo(function MonumentDetailDialog({ monument, open, onClose }: Props) {
   const { cards } = useCardContext();
-
+  const navigate = useNavigate();
   const categoryCards = useMemo(() => {
     if (!monument) return [];
     const filtered = Object.values(cards).filter((c) => c.category === monument.category);
