@@ -28,13 +28,14 @@ export function useCardCRUD({
 
   // ── Surgical single-card update (O(1) state + O(1) IDB) ──
   const patchCard = useCallback((id: string, patcher: (card: Card) => Card) => {
+    let updated: Card | null = null;
     setCardMapState((prev) => {
       const card = prev[id];
       if (!card) return prev;
-      const updated = patcher(card);
-      schedulePersist({ type: "put", card: updated });
+      updated = patcher(card);
       return { ...prev, [id]: updated };
     });
+    if (updated) schedulePersist({ type: "put", card: updated });
   }, [setCardMapState, schedulePersist]);
 
   const addCard = useCallback(
