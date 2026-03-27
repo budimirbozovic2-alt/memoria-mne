@@ -80,10 +80,14 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
     switch (sortMode) {
       case "weakest": return filtered.sort((a, b) => getCardScore(a) - getCardScore(b));
       case "leastRead": return filtered.sort((a, b) => (a.readCount || 0) - (b.readCount || 0));
-      default: return filtered.sort((a, b) => {
-        if (a.chapter && b.chapter && a.chapter === b.chapter) return (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0);
-        return a.createdAt - b.createdAt;
-      });
+      default: {
+        const chPos = (c: Card) => chapterPositionMap[c.chapter ?? ""] ?? 999;
+        return filtered.sort((a, b) =>
+          chPos(a) - chPos(b)
+          || (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0)
+          || a.createdAt - b.createdAt
+        );
+      }
     }
   }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent, filterType]);
 
