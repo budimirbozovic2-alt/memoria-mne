@@ -32,7 +32,9 @@ export default function RomanForumPage() {
     : null;
 
   return (
-    <div className="relative max-w-6xl mx-auto px-6 py-8 min-h-[80vh]">
+    <div className="relative max-w-6xl mx-auto px-6 py-8 min-h-[80vh] forum-atmosphere-root"
+      style={{ perspective: "1200px" }}
+    >
       {/* Atmospheric background layer */}
       <ForumAtmosphere dayPhase={forumState.dayPhase} warmth={forumState.warmth} />
 
@@ -50,7 +52,7 @@ export default function RomanForumPage() {
         ) : (
           <div key="forum-grid" className="relative z-10">
             {/* Header */}
-            <div className="sticky top-0 glass-card px-6 py-4 mb-8 z-20">
+            <div className="sticky top-0 forum-stone px-6 py-4 mb-8 z-20">
               <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold tracking-[0.15em] text-gold font-display">
                   FORVM IVSTITIAE
@@ -68,7 +70,7 @@ export default function RomanForumPage() {
 
             {/* Monument Grid */}
             {forumState.monuments.length === 0 ? (
-              <div className="glass-card flex items-center justify-center min-h-[40vh] px-6">
+              <div className="forum-stone flex items-center justify-center min-h-[40vh] px-6">
                 <p className="text-muted-foreground text-sm italic font-display">
                   Nulla monumenta. Crea disciplinas ut Forum aedificētur.
                 </p>

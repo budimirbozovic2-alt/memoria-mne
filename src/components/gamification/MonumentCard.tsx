@@ -187,6 +187,12 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
         <div className="relative flex items-center justify-center h-32" aria-hidden>
           <MonumentSVG buildingType={monument.buildingType} tier={monument.material} />
           <MonumentEffects monument={monument} />
+          {/* Atmospheric light wash on buildings */}
+          <div
+            className="absolute inset-0 pointer-events-none mix-blend-overlay transition-colors duration-1000 rounded"
+            style={{ background: "var(--atmo-tint, transparent)" }}
+            aria-hidden
+          />
         </div>
 
         {/* Mastery progress */}

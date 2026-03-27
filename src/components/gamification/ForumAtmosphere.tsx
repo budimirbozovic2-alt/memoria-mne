@@ -9,20 +9,16 @@ interface Props {
 
 /**
  * Full-screen ambient gradient that reflects time-of-day and learning velocity.
- * Sits behind the monument grid as a subtle atmospheric layer.
+ * Also sets CSS custom properties so child components can react to the atmosphere.
  */
 export const ForumAtmosphere = memo(function ForumAtmosphere({ dayPhase, warmth }: Props) {
-  const gradient = useMemo(() => {
-    // Map dayPhase to a sun arc: 0=night, 0.5=noon, 1=night
-    const sunArc = Math.sin(dayPhase * Math.PI); // 0→1→0
+  const sunArc = Math.sin(dayPhase * Math.PI);
 
-    // Base hue shifts: night=230 (deep blue), noon=40 (warm amber)
-    const hue = 230 - sunArc * 190 * warmth; // cold when inactive, warm when active
+  const gradient = useMemo(() => {
+    const hue = 230 - sunArc * 190 * warmth;
     const saturation = 10 + sunArc * 25 + warmth * 15;
     const lightnessTop = 5 + sunArc * 4;
     const lightnessBottom = 8 + sunArc * 6;
-
-    // Opacity of the atmospheric overlay
     const opacity = 0.4 + sunArc * 0.2;
 
     return {
@@ -32,18 +28,38 @@ export const ForumAtmosphere = memo(function ForumAtmosphere({ dayPhase, warmth 
         hsla(${hue + 10}, ${saturation - 5}%, ${lightnessBottom}%, ${opacity * 0.6}) 100%
       )`,
     };
-  }, [dayPhase, warmth]);
+  }, [sunArc, warmth]);
 
-  // Gold accent glow at the horizon — intensity based on warmth
   const glowOpacity = useMemo(() => {
-    const sunArc = Math.sin(dayPhase * Math.PI);
-    // Strongest glow at sunrise/sunset (sunArc ~0.5) with high warmth
     const isTransition = 1 - Math.abs(sunArc - 0.5) * 2;
     return isTransition * warmth * 0.3;
-  }, [dayPhase, warmth]);
+  }, [sunArc, warmth]);
+
+  // Atmospheric tint color for buildings — warm golden during day, cool blue at night
+  const tintHue = 230 - sunArc * 190 * warmth;
+  const tintSat = 15 + warmth * 20;
+  const tintLight = 50 + sunArc * 15;
+  const tintOpacity = 0.06 + sunArc * 0.08 + warmth * 0.04;
 
   return (
     <>
+      {/* CSS custom properties for child components */}
+      <div
+        className="hidden"
+        aria-hidden
+        style={{
+          // @ts-ignore — setting CSS vars on root
+        }}
+      />
+      <style>{`
+        .forum-atmosphere-root {
+          --atmo-tint: hsla(${tintHue}, ${tintSat}%, ${tintLight}%, ${tintOpacity});
+          --atmo-glow: ${glowOpacity};
+          --atmo-sun: ${sunArc.toFixed(3)};
+          --atmo-warmth: ${warmth.toFixed(3)};
+        }
+      `}</style>
+
       {/* Ambient sky gradient */}
       <div
         className="pointer-events-none fixed inset-0 z-0 transition-all duration-1000"

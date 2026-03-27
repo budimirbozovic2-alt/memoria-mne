@@ -1,5 +1,5 @@
 import { memo, useMemo, useState, lazy, Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ArrowLeft, Play, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCardContext } from "@/contexts/AppContext";
@@ -26,16 +26,12 @@ interface Props {
   onReviewSection?: (cardId: string, sectionId: string, grade: number) => void;
 }
 
-/** Compute average stability for a set of cards */
 function computeAvgStability(cards: { sections: { stability: number }[] }[]): number {
   let total = 0;
   let count = 0;
   for (const card of cards) {
     for (const s of card.sections) {
-      if (s.stability > 0) {
-        total += s.stability;
-        count++;
-      }
+      if (s.stability > 0) { total += s.stability; count++; }
     }
   }
   return count > 0 ? total / count : 0;
@@ -60,7 +56,6 @@ export const MonumentInterior = memo(function MonumentInterior({
 
   const sourceHierarchy = useSourceHierarchy(allCards, sources, monument.category);
 
-  // Build fallback tree from subcategories if no source links
   const fallbackTree = useMemo<HierarchyNode[]>(() => {
     if (sourceHierarchy.hasSourceLinks) return [];
     const bySubcat = new Map<string, typeof catCards>();
@@ -73,12 +68,7 @@ export const MonumentInterior = memo(function MonumentInterior({
     for (const [name, subCards] of bySubcat) {
       const levels = [0, 0, 0, 0, 0, 0];
       for (const c of subCards) levels[getCardMasteryLevel(c)]++;
-      nodes.push({
-        name,
-        cardCount: subCards.length,
-        levels,
-        children: [],
-      });
+      nodes.push({ name, cardCount: subCards.length, levels, children: [] });
     }
     nodes.sort((a, b) => b.cardCount - a.cardCount);
     return nodes;
@@ -94,7 +84,7 @@ export const MonumentInterior = memo(function MonumentInterior({
     ).length;
   }, [catCards]);
 
-  // If drilled into a subcategory, show MentalSkeleton
+  // Drilled into subcategory → MentalSkeleton
   if (selectedSub && onUpdateChapters && onReviewSection) {
     return (
       <motion.div
@@ -126,28 +116,42 @@ export const MonumentInterior = memo(function MonumentInterior({
     <motion.div
       key="interior"
       layoutId={`monument-${monument.category}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.35, ease: "easeOut" }}
+      initial={{ opacity: 0, scale: 0.92, rotateX: 4 }}
+      animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+      exit={{ opacity: 0, scale: 0.95, rotateX: 2 }}
+      transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+      style={{ transformOrigin: "center top" }}
       className="space-y-6"
     >
-      {/* Header */}
-      <div className="glass-card p-5 border-gold/20">
-        <div className="flex items-center gap-4">
+      {/* Interior Header — stone wall with atmospheric tint */}
+      <div className="forum-stone p-5 relative overflow-hidden" style={{ borderColor: "hsl(var(--gold) / 0.2)" }}>
+        {/* Atmospheric light wash */}
+        <div
+          className="absolute inset-0 pointer-events-none transition-colors duration-1000"
+          style={{ background: "var(--atmo-tint, transparent)" }}
+          aria-hidden
+        />
+
+        <div className="relative z-10 flex items-center gap-4">
           <button
             onClick={onBack}
-            className="p-2 rounded-lg hover:bg-secondary transition-colors shrink-0"
+            className="p-2 rounded-lg hover:bg-secondary/50 transition-colors shrink-0"
           >
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </button>
 
-          <div className="shrink-0 h-16 w-16 flex items-center justify-center">
+          {/* Building thumbnail with atmospheric overlay */}
+          <div className="shrink-0 h-16 w-16 flex items-center justify-center relative">
             <MonumentSVG buildingType={monument.buildingType} tier={monument.material} />
+            <div
+              className="absolute inset-0 pointer-events-none rounded mix-blend-overlay transition-colors duration-1000"
+              style={{ background: "var(--atmo-tint, transparent)" }}
+              aria-hidden
+            />
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold font-display text-gold truncate">
+            <h2 className="text-xl font-bold font-display text-gold truncate tracking-wide">
               {materialIcon} {monument.category}
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -173,18 +177,19 @@ export const MonumentInterior = memo(function MonumentInterior({
         )}
       </div>
 
-      {/* Interior: Architectural nodes */}
+      {/* Interior Body */}
       <ScrollArea className="max-h-[calc(100vh-280px)]">
         {mode === "A" ? (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {tree.map((wing, wi) => (
               <div key={wing.name} className="space-y-3">
-                <div className="flex items-center gap-3 px-2">
-                  <div className="h-px flex-1 bg-gold/20" />
-                  <h3 className="text-xs font-display text-gold uppercase tracking-widest shrink-0">
+                {/* Wing header — stone lintel with golden inscriptions */}
+                <div className="flex items-center gap-3 px-2 py-1">
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+                  <h3 className="text-[11px] font-display text-gold uppercase tracking-[0.2em] shrink-0 px-3">
                     {wing.name}
                   </h3>
-                  <div className="h-px flex-1 bg-gold/20" />
+                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -236,7 +241,7 @@ export const MonumentInterior = memo(function MonumentInterior({
   );
 });
 
-/** Compact source mastery breakdown for interior header */
+/** Compact source mastery breakdown */
 function SourceBreakdown({ sources }: { sources: import("@/lib/forum-logic").MonumentSourceBreakdown[] }) {
   const [open, setOpen] = useState(false);
   const sorted = useMemo(
@@ -252,7 +257,7 @@ function SourceBreakdown({ sources }: { sources: import("@/lib/forum-logic").Mon
   }
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="mt-3 pt-3 border-t border-border/30">
+    <Collapsible open={open} onOpenChange={setOpen} className="relative z-10 mt-3 pt-3 border-t border-border/30">
       <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
         <span className="font-display uppercase tracking-wider">Fontes</span>
         <span className="tabular-nums">({sorted.length})</span>
