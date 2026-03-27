@@ -568,6 +568,15 @@ export default function SourcesView() {
               />
             </div>
             <div className="space-y-2">
+              <label className="text-xs font-medium">Datum donošenja/važenja</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={e => setEditDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-2">
               <label className="text-xs font-medium">Službeni list (oznaka)</label>
               <input
                 value={editGazette}
