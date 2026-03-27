@@ -49,8 +49,8 @@ export function useCardImport({
           }
         }
 
-        const { sanitizeHtml } = await import("@/lib/sanitize");
-        const migrateImported = (c: Record<string, unknown>): Card => ({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON migration requires flexible typing
+        const migrateImported = (c: any): Card => ({
           ...c,
           readCount: c.readCount || 0,
           type: c.type || "essay",
@@ -58,7 +58,7 @@ export function useCardImport({
           question: sanitizeHtml(c.question ?? ""),
           tags: c.tags || [],
           errorLog: c.errorLog || [],
-          sections: (Array.isArray(c.sections) ? c.sections : []).map((s: Record<string, unknown>) => ({
+          sections: (c.sections || []).map((s: any) => ({
             ...s,
             id: s.id || crypto.randomUUID(),
             state: s.state ?? 0,
@@ -74,7 +74,7 @@ export function useCardImport({
           })),
         });
 
-        const importedCards: Card[] = cardsArr.map(c => migrateImported(c as Record<string, unknown>));
+        const importedCards: Card[] = cardsArr.map(c => migrateImported(c));
         setCardMap((prev) => {
           const next = { ...prev };
           if (strategy === "newer") {
