@@ -395,12 +395,14 @@ export default function SourcesView() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => setReadingSource(source)}>
+                      <Eye className="h-3.5 w-3.5" />
+                      Čitaj
+                    </Button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="icon" className="h-8 w-8" title="Uredi izvor" onClick={() => handleEditSource(source)}>
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setReadingSource(source)}>
-                      <Eye className="h-4 w-4" />
                     </Button>
                     {source.previousHtmlContent && (
                       <Button
