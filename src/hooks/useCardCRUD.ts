@@ -142,7 +142,6 @@ export function useCardCRUD({
   }, [setCardMapState]);
 
   const splitCard = useCallback((id: string) => {
-    let newCards: Card[] = [];
     setCardMapState((prev) => {
       const card = prev[id];
       if (!card || card.sections.length <= 1) return prev;
@@ -160,16 +159,11 @@ export function useCardCRUD({
           updatedAt: Date.now(),
         };
         next[newCard.id] = newCard;
-        newCards.push(newCard);
       });
       return next;
     });
     bumpMapVersion();
-    if (newCards.length > 0) {
-      schedulePersist({ type: "delete", id });
-      schedulePersist({ type: "bulk", cards: newCards });
-    }
-  }, [setCardMapState, schedulePersist]);
+  }, [setCardMapState]);
 
   return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard };
 }

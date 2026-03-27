@@ -26,11 +26,11 @@ export default function ReviewPage() {
     reviewSection(cardId, sectionId, grade);
   }, [session, reviewSection]);
 
-  const handleLogError = useCallback((cardId: string, text: string) => {
+  const handleLogError = useCallback((cardId: string, text: string, sectionId?: string) => {
     if (session.isSessionActive) {
       session.queueError(cardId, text);
     }
-    logError(cardId, text);
+    logError(cardId, text, sectionId);
   }, [session, logError]);
 
   const handleBack = useCallback(() => {

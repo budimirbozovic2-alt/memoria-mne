@@ -130,20 +130,17 @@ export function useCategoryManagement({
   );
 
   const bulkUpdateSubcategory = useCallback((ids: string[], subcategory: string) => {
-    let updated: Card[] = [];
     setCardMapState((prev) => {
       const next = { ...prev };
       for (const id of ids) {
         if (next[id]) {
-          next[id] = { ...next[id], subcategory };
-          updated.push(next[id]);
+          next[id] = { ...next[id], subcategory, updatedAt: Date.now() };
         }
       }
       return next;
     });
     bumpMapVersion();
-    if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
-  }, [setCardMapState, schedulePersist]);
+  }, [setCardMapState]);
 
   return {
     addCategory,
