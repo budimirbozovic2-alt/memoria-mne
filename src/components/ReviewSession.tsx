@@ -8,6 +8,12 @@ import ReviewComplete from "./review/ReviewComplete";
 
 const SESSION_KEY = "sr-review-session";
 
+interface SavedSessionState {
+  mode: ReviewMode;
+  randomIndex: number;
+  timestamp: number;
+}
+
 export default function ReviewSession({ dueCards, allCards, subcategories, srSettings, onReviewSection, onLogError, onBack }: ReviewSessionProps) {
   const [mode, setMode] = useState<ReviewMode>(null);
   const [items, setItems] = useState<DueItem[]>([]);
@@ -15,7 +21,7 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
   const [showAnswer, setShowAnswer] = useState(false);
   const [finished, setFinished] = useState(false);
   const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
-  const [savedSession, setSavedSession] = useState<any>(null);
+  const [savedSession, setSavedSession] = useState<SavedSessionState | null>(null);
   const reviewStartRef = useRef(Date.now());
 
   // Check for saved session on mount
@@ -23,9 +29,14 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Date.now() - parsed.timestamp < 2 * 60 * 60 * 1000) {
-          setSavedSession(parsed);
+        const parsed: unknown = JSON.parse(raw);
+        if (
+          typeof parsed === "object" && parsed !== null &&
+          "timestamp" in parsed && typeof (parsed as Record<string, unknown>).timestamp === "number" &&
+          Number.isFinite((parsed as Record<string, unknown>).timestamp) &&
+          Date.now() - ((parsed as SavedSessionState).timestamp) < 2 * 60 * 60 * 1000
+        ) {
+          setSavedSession(parsed as SavedSessionState);
         } else {
           localStorage.removeItem(SESSION_KEY);
         }
@@ -59,10 +70,12 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
 
   const resumeSession = useCallback(() => {
     if (!savedSession) return;
-    let resumeMode = savedSession.mode;
-    if (resumeMode === "essay") resumeMode = "stabilization";
-    if (resumeMode === "random") resumeMode = "critical";
-    if (resumeMode === "difficult") resumeMode = "hardest";
+    let resumeMode: ReviewMode = savedSession.mode;
+    // Legacy migration: old mode names → new ones
+    const modeStr = resumeMode as string;
+    if (modeStr === "essay") resumeMode = "stabilization";
+    else if (modeStr === "random") resumeMode = "critical";
+    else if (modeStr === "difficult") resumeMode = "hardest";
     setMode(resumeMode);
     setRandomIndex(savedSession.randomIndex || 0);
     setSavedSession(null);
