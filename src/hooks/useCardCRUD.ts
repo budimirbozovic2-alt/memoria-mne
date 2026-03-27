@@ -7,7 +7,7 @@ import {
   createSection,
   SourceModule,
 } from "@/lib/spaced-repetition";
-import { CardMap, PersistAction } from "@/lib/persist-queue";
+import { CardMap, PersistAction, bumpMapVersion } from "@/lib/persist-queue";
 
 interface UseCardCRUDParams {
   categories: string[];

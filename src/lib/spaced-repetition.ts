@@ -73,6 +73,7 @@ export interface Card {
   chapter?: string;
   chapterOrder?: number;
   createdAt: number;
+  updatedAt?: number;
   readCount: number;
   type: "essay" | "flash";
   tags?: string[];
