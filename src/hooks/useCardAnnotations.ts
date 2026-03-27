@@ -170,18 +170,18 @@ export function useCardAnnotations({
 
   // Update chapter and chapterOrder (Mental Skeleton DnD)
   const bulkUpdateChapter = useCallback((updates: { id: string; chapter: string; chapterOrder: number }[]) => {
+    let changed: Card[] = [];
     setCardMapState((prev) => {
       const next = { ...prev };
-      const changed: Card[] = [];
       for (const u of updates) {
         if (next[u.id]) {
           next[u.id] = { ...next[u.id], chapter: u.chapter, chapterOrder: u.chapterOrder };
           changed.push(next[u.id]);
         }
       }
-      schedulePersist({ type: "bulk", cards: changed });
       return next;
     });
+    if (changed.length > 0) schedulePersist({ type: "bulk", cards: changed });
   }, [setCardMapState]);
 
   return {
