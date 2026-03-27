@@ -172,6 +172,7 @@ function calcWarmth(velocity: number): number {
 export function calculateForumState(
   cards: Card[],
   reviewLog: ReviewEntry[],
+  allSources?: Source[],
 ): ForumState {
   // Group cards by category
   const byCategory = new Map<string, Card[]>();
@@ -184,10 +185,42 @@ export function calculateForumState(
 
   const monumentTypes = loadMonumentTypes();
 
+  // Source registry for optional breakdown
+  let sourceMap: Map<string, Source> | null = null;
+  let aliasMap: Map<string, string> | null = null;
+  if (allSources && allSources.length > 0) {
+    const registry = loadSourceRegistry();
+    aliasMap = buildAliasMap(registry);
+    sourceMap = buildSourceMap(allSources);
+  }
+
   const monuments: Monument[] = [];
   for (const [cat, catCards] of byCategory) {
     const m = buildMonument(cat, catCards);
     m.buildingType = monumentTypes[cat] || "insula";
+
+    // Add source breakdown if sources available
+    if (sourceMap && aliasMap) {
+      const srcGroups = new Map<string, { count: number; reviewSections: number; totalSections: number }>();
+      for (const card of catCards) {
+        const master = card.sourceId && sourceMap.get(card.sourceId)
+          ? resolveMasterSource(sourceMap.get(card.sourceId)!.label, aliasMap)
+          : "Bez izvora";
+        if (!srcGroups.has(master)) srcGroups.set(master, { count: 0, reviewSections: 0, totalSections: 0 });
+        const g = srcGroups.get(master)!;
+        g.count++;
+        for (const sec of card.sections) {
+          g.totalSections++;
+          if (sec.state === SectionState.Review) g.reviewSections++;
+        }
+      }
+      m.sources = Array.from(srcGroups.entries()).map(([ms, g]) => ({
+        masterSource: ms,
+        cardCount: g.count,
+        mastery: g.totalSections > 0 ? Math.round((g.reviewSections / g.totalSections) * 1000) / 10 : 0,
+      }));
+    }
+
     monuments.push(m);
   }
 
