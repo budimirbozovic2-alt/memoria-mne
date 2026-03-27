@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, MutableRefObject } from "react";
 import { toast } from "sonner";
 import { Card, createCard, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
@@ -13,11 +13,12 @@ interface UseCardImportDeps {
   updateSRSettings: (settings: SRSettings) => void;
   schedulePersist: (action: { type: string; cards?: Card[] }) => void;
   setCardMapState: (updater: (prev: CardMap) => CardMap) => void;
+  cardMapRef: MutableRefObject<CardMap>;
 }
 
 export function useCardImport({
   categories, setCardMap, setCategories, setSubcategories,
-  setReviewLog, updateSRSettings, schedulePersist: _schedulePersist, setCardMapState,
+  setReviewLog, updateSRSettings, schedulePersist: _schedulePersist, setCardMapState, cardMapRef,
 }: UseCardImportDeps) {
   const importData = useCallback(
     async (file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {
@@ -76,25 +77,26 @@ export function useCardImport({
         });
 
         const importedCards: Card[] = cardsArr.map(c => migrateImported(c));
-        // Accumulator: collect merged cards for surgical persist
+        // H2 fix: Pre-compute merged array outside React updater using cardMapRef
+        const currentMap = cardMapRef.current;
         const merged: Card[] = [];
-        setCardMap((prev) => {
-          const next = { ...prev };
-          if (strategy === "newer") {
-            const getLastReview = (c: Card) => c.sections.reduce((max, s) => Math.max(max, s.lastReviewed || 0), 0);
-            importedCards.forEach((ic) => {
-              const existing = next[ic.id];
-              if (!existing) { next[ic.id] = ic; merged.push(ic); }
-              else if (getLastReview(ic) > getLastReview(existing)) { next[ic.id] = ic; merged.push(ic); }
-            });
-          } else if (strategy === "overwrite") {
-            importedCards.forEach((ic) => { next[ic.id] = ic; merged.push(ic); });
-          } else {
-            importedCards.forEach((ic) => { if (!next[ic.id]) { next[ic.id] = ic; merged.push(ic); } });
-          }
-          return next;
-        }, "full");
+        const nextMap = { ...currentMap };
+        if (strategy === "newer") {
+          const getLastReview = (c: Card) => c.sections.reduce((max, s) => Math.max(max, s.lastReviewed || 0), 0);
+          importedCards.forEach((ic) => {
+            const existing = nextMap[ic.id];
+            if (!existing) { nextMap[ic.id] = ic; merged.push(ic); }
+            else if (getLastReview(ic) > getLastReview(existing)) { nextMap[ic.id] = ic; merged.push(ic); }
+          });
+        } else if (strategy === "overwrite") {
+          importedCards.forEach((ic) => { nextMap[ic.id] = ic; merged.push(ic); });
+        } else {
+          importedCards.forEach((ic) => { if (!nextMap[ic.id]) { nextMap[ic.id] = ic; merged.push(ic); } });
+        }
         if (merged.length > 0) schedulePersist({ type: "bulk", cards: merged });
+        cardMapRef.current = nextMap;
+        setCardMapState(() => nextMap);
+        bumpMapVersion();
 
         if (Array.isArray(data.categories)) {
           setCategories((prev) => [...new Set([...prev, ...(data.categories as string[])])]);
@@ -188,6 +190,11 @@ export function useCardImport({
             localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
           }
         }
+        // C1 fix: Invalidate in-memory caches after localStorage restore
+        const { invalidateSourceRegistryCache } = await import("@/lib/source-registry");
+        const { invalidateMonumentTypesCache } = await import("@/lib/forum-logic");
+        invalidateSourceRegistryCache();
+        invalidateMonumentTypesCache();
 
         const extraParts: string[] = [];
         if (Array.isArray(data.sources) && (data.sources as unknown[]).length > 0) extraParts.push(`${(data.sources as unknown[]).length} izvora`);
@@ -201,7 +208,7 @@ export function useCardImport({
         toast.error(`Greška pri uvozu: ${err instanceof Error ? err.message : "Neispravan format fajla."}`);
       }
     },
-    [setCardMap, setCategories, setSubcategories, setReviewLog, updateSRSettings],
+    [setCardMapState, setCategories, setSubcategories, setReviewLog, updateSRSettings, cardMapRef],
   );
 
   const importCards = useCallback(

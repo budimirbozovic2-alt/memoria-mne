@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, MutableRefObject } from "react";
 import { Card, calculateNextReview, getCachedRetention } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
@@ -8,12 +8,14 @@ interface UseCardAnnotationsParams {
   patchCard: (id: string, patcher: (card: Card) => Card) => void;
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   setReviewLog: (updater: (prev: ReviewLogEntry[]) => ReviewLogEntry[]) => void;
+  cardMapRef: MutableRefObject<CardMap>;
 }
 
 export function useCardAnnotations({
   patchCard,
   setCardMapState,
   setReviewLog,
+  cardMapRef,
 }: UseCardAnnotationsParams) {
 
   // O(1) review — surgical IDB write (patchCard handles persist via Ref-Delta)
@@ -149,13 +151,14 @@ export function useCardAnnotations({
           const u = { ...next[id], needsReview: true, updatedAt: Date.now() };
           next[id] = u;
           updated.push(u);
+          cardMapRef.current[id] = u;
         }
       }
       return next;
     });
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
     bumpMapVersion();
-  }, [setCardMapState]);
+  }, [setCardMapState, cardMapRef]);
 
   // Reorder cards — accumulator pattern for surgical persist
   const reorderCards = useCallback((orderedIds: string[]) => {
@@ -167,13 +170,14 @@ export function useCardAnnotations({
           const u = { ...next[id], sortOrder: index, updatedAt: Date.now() };
           next[id] = u;
           updated.push(u);
+          cardMapRef.current[id] = u;
         }
       });
       return next;
     });
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
     bumpMapVersion();
-  }, [setCardMapState]);
+  }, [setCardMapState, cardMapRef]);
 
   // Update chapter and chapterOrder — accumulator pattern for surgical persist
   const bulkUpdateChapter = useCallback((updates: { id: string; chapter: string; chapterOrder: number }[]) => {
@@ -185,13 +189,14 @@ export function useCardAnnotations({
           const c = { ...next[u.id], chapter: u.chapter, chapterOrder: u.chapterOrder, updatedAt: Date.now() };
           next[u.id] = c;
           changed.push(c);
+          cardMapRef.current[u.id] = c;
         }
       }
       return next;
     });
     if (changed.length > 0) schedulePersist({ type: "bulk", cards: changed });
     bumpMapVersion();
-  }, [setCardMapState]);
+  }, [setCardMapState, cardMapRef]);
 
   return {
     reviewSection,
