@@ -221,6 +221,8 @@
      THEME: Forest — deep green earth tones
      ═══════════════════════════════════════════ */
   [data-theme="forest"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 150 12% 12%;
 
