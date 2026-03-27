@@ -27,6 +27,9 @@
      ═══════════════════════════════════════════ */
   :root,
   [data-theme="amber"] {
+    --font-display: 'Cinzel', 'Georgia', serif;
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 220 15% 12%;
 
@@ -74,6 +77,8 @@
 
   .dark,
   .dark[data-theme="amber"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 220 15% 8%;
     --foreground: 40 15% 90%;
 
@@ -121,6 +126,8 @@
      THEME: Slate — cool neutral monochrome
      ═══════════════════════════════════════════ */
   [data-theme="slate"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 220 14% 10%;
 
@@ -165,6 +172,8 @@
   }
 
   .dark[data-theme="slate"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 220 16% 7%;
     --foreground: 210 15% 90%;
 
@@ -212,6 +221,8 @@
      THEME: Forest — deep green earth tones
      ═══════════════════════════════════════════ */
   [data-theme="forest"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 150 12% 12%;
 
@@ -256,6 +267,8 @@
   }
 
   .dark[data-theme="forest"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 150 14% 7%;
     --foreground: 80 12% 88%;
 
@@ -303,6 +316,8 @@
      THEME: Ocean — deep blue calm
      ═══════════════════════════════════════════ */
   [data-theme="ocean"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 220 20% 10%;
 
@@ -347,6 +362,8 @@
   }
 
   .dark[data-theme="ocean"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 220 18% 7%;
     --foreground: 210 18% 90%;
 
@@ -394,6 +411,8 @@
      THEME: Rose — warm rose/dusty pink
      ═══════════════════════════════════════════ */
   [data-theme="rose"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 340 15% 12%;
 
@@ -438,6 +457,8 @@
   }
 
   .dark[data-theme="rose"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 340 14% 7%;
     --foreground: 350 14% 88%;
 
@@ -485,6 +506,8 @@
      THEME: Midnight — pure dark-first theme
      ═══════════════════════════════════════════ */
   [data-theme="midnight"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 230 15% 12%;
 
@@ -529,6 +552,8 @@
   }
 
   .dark[data-theme="midnight"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 230 18% 5%;
     --foreground: 230 12% 88%;
 
@@ -652,6 +677,20 @@
 
 *::-webkit-scrollbar-thumb:hover {
   background-color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* ─── Display Font ────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* ─── Glassmorphism Card ─────────────────────────── */
+.glass-card {
+  background: hsl(var(--card) / 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: var(--radius);
 }
 
 /* ─── Key Part Highlights ─────────────────────────── */
