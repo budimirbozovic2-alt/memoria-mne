@@ -14,12 +14,40 @@ export interface SourceArticle {
 
 export type MindMapMode = "hierarchy" | "procedure";
 
+export interface MindMapNodeData {
+  label?: string;
+  shape?: string;
+  colorTheme?: string;
+  [key: string]: unknown;
+}
+
+export interface MindMapNodeRecord {
+  id: string;
+  type?: string;
+  position: { x: number; y: number };
+  data: MindMapNodeData;
+  style?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface MindMapEdgeRecord {
+  id: string;
+  source: string;
+  target: string;
+  type?: string;
+  label?: string;
+  style?: Record<string, unknown>;
+  animated?: boolean;
+  data?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface MindMapDoc {
   id: string;
   title: string;
   mode: MindMapMode;
-  nodes: any[];
-  edges: any[];
+  nodes: MindMapNodeRecord[];
+  edges: MindMapEdgeRecord[];
   createdAt: number;
   updatedAt: number;
 }
@@ -45,7 +73,7 @@ class MemoriaDB extends Dexie {
   subcategories!: Table<{ id: string; category: string; subs: string[] }, string>;
   reviewLog!: Table<ReviewLogEntry & { id?: number }, number>;
   pomodoroLog!: Table<PomodoroLogEntry & { id?: number }, number>;
-  settings!: Table<{ key: string; value: any }, string>;
+  settings!: Table<{ key: string; value: unknown }, string>;
   // v2: metacognitive + planner tables
   diary!: Table<DiaryEntry, string>;
   calibrationLog!: Table<CalibrationEntry & { id?: number }, number>;
@@ -402,10 +430,10 @@ export async function idbAddReviewLogEntry(entry: ReviewLogEntry): Promise<void>
 
 export async function idbLoadSettings<T>(key: string, fallback: T): Promise<T> {
   const row = await db.settings.get(key);
-  return row ? row.value : fallback;
+  return row ? (row.value as T) : fallback;
 }
 
-export async function idbSaveSettings(key: string, value: any): Promise<void> {
+export async function idbSaveSettings(key: string, value: unknown): Promise<void> {
   await db.settings.put({ key, value });
 }
 

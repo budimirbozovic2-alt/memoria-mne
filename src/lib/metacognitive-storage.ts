@@ -35,8 +35,8 @@ export async function initMetacognitiveCache(): Promise<void> {
     _latencyCache = latency.filter(e => e.timestamp >= cutoff90);
     _slippageCache = slippage;
     _activityCache = activity.filter(e => e.timestamp >= cutoff90);
-    _lastAnalysisDate = analysisRow?.value ?? null;
-    _appEntry = appEntryRow?.value ?? null;
+    _lastAnalysisDate = (analysisRow?.value as string) ?? null;
+    _appEntry = (appEntryRow?.value as typeof _appEntry) ?? null;
     _cacheReady = true;
   } catch (err) {
     console.warn("[metacognitive] cache init failed, using empty defaults", err);
