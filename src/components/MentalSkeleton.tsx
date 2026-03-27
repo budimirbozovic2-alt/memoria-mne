@@ -122,27 +122,25 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     });
   }, []);
 
-  // Initialize chapters: hydrate from storage or expand all on first visit
+  // Sync new/removed chapters into expandedChapters without resetting user collapses
   useEffect(() => {
     const allChapterNames = new Set([UNASSIGNED_CHAPTER, ...chapters]);
-    try {
-      const stored = localStorage.getItem(EXPANDED_KEY);
-      if (stored) {
-        const arr = JSON.parse(stored);
-        if (Array.isArray(arr)) {
-          // Keep only valid chapters, add new ones as expanded
-          const valid = new Set<string>(arr.filter((ch: string) => allChapterNames.has(ch)));
-          // New chapters not in stored state → expand them
-          for (const ch of allChapterNames) {
-            if (!arr.includes(ch)) valid.add(ch);
-          }
-          setExpandedChapters(valid);
-          return;
-        }
+    setExpandedChapters(prev => {
+      // If first visit (sentinel __all__), expand everything
+      if (prev.has("__all__")) return allChapterNames;
+      // Otherwise only add genuinely new chapters
+      const next = new Set(prev);
+      let changed = false;
+      for (const ch of allChapterNames) {
+        if (!next.has(ch) && !prev.has(ch)) { next.add(ch); changed = true; }
       }
-    } catch {}
-    setExpandedChapters(allChapterNames);
-  }, [chapters.length, EXPANDED_KEY]);
+      // Remove stale chapters
+      for (const ch of next) {
+        if (!allChapterNames.has(ch)) { next.delete(ch); changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, [chapters, EXPANDED_KEY]);
 
   // Sync expanded state to localStorage
   useEffect(() => {

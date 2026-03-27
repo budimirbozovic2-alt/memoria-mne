@@ -199,11 +199,15 @@ function UIProvider({ children }: { children: ReactNode }) {
   // Notification reminder scheduler
   useEffect(() => {
     if (!("Notification" in window) || Notification.permission !== "granted") return;
+    let lastSentDate = "";
     const check = () => {
       const settings = loadAppSettings();
       if (!settings.notifications.enabled) return;
       const now = new Date();
+      const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
       if (now.getHours() === settings.notifications.reminderHour && now.getMinutes() === settings.notifications.reminderMinute) {
+        if (lastSentDate === todayKey) return; // Already sent today
+        lastSentDate = todayKey;
         new Notification("Memoria — Podsjetnik", {
           body: "Vrijeme je za ponavljanje! Imaš kartice koje čekaju.",
           icon: `${import.meta.env.BASE_URL}placeholder.svg`,
