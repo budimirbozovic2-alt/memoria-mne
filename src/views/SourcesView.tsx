@@ -51,6 +51,7 @@ export default function SourcesView() {
   const [editingSource, setEditingSource] = useState<Source | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editGazette, setEditGazette] = useState("");
+  const [editDate, setEditDate] = useState("");
   const [diffView, setDiffView] = useState<{
     result: DiffResult;
     sourceName: string;
