@@ -13,10 +13,9 @@ import { motion, AnimatePresence } from "framer-motion";
 
 
 import { TabSkeleton } from "@/components/ui/page-skeleton";
-import { ArrowLeft, ChevronRight, Search, BookOpen, BarChart3, HelpCircle, ArrowUp, ArrowDown, ListOrdered, Columns3 as Kanban, List } from "lucide-react";
+import { ArrowLeft, ChevronRight, Search, BookOpen, BarChart3, HelpCircle, ArrowUp, ArrowDown, ListOrdered } from "lucide-react";
 
 const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
-const KanbanBoard = lazy(() => import("@/components/KanbanBoard"));
 
 interface Props {
   cards: Card[];
