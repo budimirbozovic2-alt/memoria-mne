@@ -51,8 +51,9 @@ function createPersistQueue() {
 
       if (puts.length > 0) await idbBulkPutCards(puts);
       for (const id of deletes) await idbDeleteCard(id);
-    } catch (err: any) {
-      if (err?.message === "QUOTA_EXCEEDED") {
+    } catch (err: unknown) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      if (e.message === "QUOTA_EXCEEDED") {
         const { toast } = await import("sonner");
         toast.error("Memorija browsera je puna! Exportuj backup i očisti nepotrebne podatke.");
       } else {
