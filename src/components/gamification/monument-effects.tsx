@@ -33,7 +33,7 @@ function IvyOverlay({ stability }: { stability: number }) {
   );
 }
 
-function TorchOverlay({ mastery, tier }: { mastery: number; tier: string }) {
+function TorchOverlay({ mastery, tier, id }: { mastery: number; tier: string; id: string }) {
   const count = tier === "gold" ? 4 : tier === "marble" ? 3 : tier === "stone" ? 2 : 1;
   const positions = [
     { x: 55, y: 80 },
