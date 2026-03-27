@@ -1,13 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useCardContext } from "@/contexts/AppContext";
 import { loadReviewLog } from "@/lib/storage";
 import { calculateForumState } from "@/lib/forum-logic";
 import { ForumAtmosphere } from "@/components/gamification/ForumAtmosphere";
 import { MonumentCard } from "@/components/gamification/MonumentCard";
+import { MonumentDetailDialog } from "@/components/gamification/MonumentDetailDialog";
 import { Progress } from "@/components/ui/progress";
 
 export default function RomanForumPage() {
   const { cards } = useCardContext();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const forumState = useMemo(() => {
     const reviewLog = loadReviewLog();
