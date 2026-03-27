@@ -39,7 +39,11 @@ function createPersistQueue() {
   async function flush() {
     timer = null;
     const actions = pending.splice(0);
-    if (actions.length === 0) return;
+    if (actions.length === 0) {
+      try { sessionStorage.removeItem("codex-flush-pending"); } catch {}
+      return;
+    }
+    try { sessionStorage.setItem("codex-flush-pending", "1"); } catch {}
 
     try {
       // Use the LAST full action (most recent snapshot), not the first
