@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useCardContext } from "@/contexts/AppContext";
 import { loadReviewLog } from "@/lib/storage";
 import { calculateForumState } from "@/lib/forum-logic";
@@ -6,18 +6,25 @@ import { ForumAtmosphere } from "@/components/gamification/ForumAtmosphere";
 import { MonumentCard } from "@/components/gamification/MonumentCard";
 import { MonumentDetailDialog } from "@/components/gamification/MonumentDetailDialog";
 import { Progress } from "@/components/ui/progress";
+import { loadSources, type Source } from "@/lib/sources-storage";
 
 export default function RomanForumPage() {
   const { cards } = useCardContext();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [sources, setSources] = useState<Source[]>([]);
+
+  useEffect(() => {
+    loadSources().then(setSources);
+  }, []);
 
   const forumState = useMemo(() => {
     const reviewLog = loadReviewLog();
     return calculateForumState(
       Object.values(cards),
       reviewLog,
+      sources,
     );
-  }, [cards]);
+  }, [cards, sources]);
 
   return (
     <div className="relative max-w-6xl mx-auto px-6 py-8 min-h-[80vh]">
