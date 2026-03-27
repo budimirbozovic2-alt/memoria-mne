@@ -47,4 +47,5 @@ export interface LearnSessionProps {
   onEdit?: (card: Card) => void;
   onAddKeyPart?: (cardId: string, text: string) => void;
   dueCount?: number;
+  reviewLog?: ReviewLogEntry[];
 }

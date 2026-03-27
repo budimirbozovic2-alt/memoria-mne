@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { useCardContext } from "@/contexts/AppContext";
-import { loadReviewLog } from "@/lib/storage";
+import { idbLoadReviewLog } from "@/lib/db";
+import { ReviewLogEntry } from "@/lib/storage";
 import { calculateForumState } from "@/lib/forum-logic";
 import { ForumAtmosphere } from "@/components/gamification/ForumAtmosphere";
 import { MonumentCard } from "@/components/gamification/MonumentCard";
@@ -13,15 +14,16 @@ export default function RomanForumPage() {
   const { cards, bulkUpdateChapter, reviewSection } = useCardContext();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [reviewLog, setReviewLog] = useState<ReviewLogEntry[]>([]);
 
   useEffect(() => {
     loadSources().then(setSources);
+    idbLoadReviewLog().then(setReviewLog);
   }, []);
 
   const forumState = useMemo(() => {
-    const reviewLog = loadReviewLog();
-    return calculateForumState(Object.values(cards), reviewLog, sources);
-  }, [cards, sources]);
+    return calculateForumState(cards, reviewLog, sources);
+  }, [cards, sources, reviewLog]);
 
   const selectedMonument = selectedCategory
     ? forumState.monuments.find((m) => m.category === selectedCategory) ?? null

@@ -462,3 +462,15 @@ export async function idbCountByType(type: string): Promise<number> {
 export async function idbCountReviewLogSince(since: number): Promise<number> {
   return db.reviewLog.where("timestamp").aboveOrEqual(since).count();
 }
+
+// ─── Source Registry IDB helpers (backup sync) ──────────
+const SOURCE_REGISTRY_IDB_KEY = "sourceRegistry";
+
+export async function idbLoadSourceRegistry(): Promise<unknown | null> {
+  const row = await db.settings.get(SOURCE_REGISTRY_IDB_KEY);
+  return row ? row.value : null;
+}
+
+export async function idbSaveSourceRegistry(data: unknown): Promise<void> {
+  await db.settings.put({ key: SOURCE_REGISTRY_IDB_KEY, value: data });
+}

@@ -54,6 +54,7 @@ export default function LearnPage() {
         onEdit={handleEdit}
         onAddKeyPart={addKeyPart}
         dueCount={stats.due}
+        reviewLog={reviewLog}
       />
     </ErrorBoundary>
   );

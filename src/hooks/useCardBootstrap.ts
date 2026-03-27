@@ -170,5 +170,5 @@ export function useCardBootstrap(setters: BootSetters) {
     return () => clearTimeout(panicTimer);
   }, []);
 
-  return { ready };
+  return { ready, dbError };
 }

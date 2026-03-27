@@ -157,6 +157,7 @@ export function useCards() {
     reviewLog,
     srSettings,
     ready,
+    dbError,
     addCard,
     addFlashCard,
     updateCard,

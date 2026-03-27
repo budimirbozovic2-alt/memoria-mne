@@ -101,3 +101,13 @@ function createPersistQueue() {
 // Singleton persist queue — created once per module, safe for StrictMode double-mount
 export const persistQueue = createPersistQueue();
 export const schedulePersist = persistQueue.schedule;
+
+/** Check if previous session had interrupted writes */
+export function checkInterruptedFlush(): void {
+  try {
+    if (sessionStorage.getItem("codex-flush-pending") === "1") {
+      console.warn("[boot] Previous session had interrupted writes — data may be stale");
+      sessionStorage.removeItem("codex-flush-pending");
+    }
+  } catch {}
+}
