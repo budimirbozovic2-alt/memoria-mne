@@ -362,6 +362,8 @@
   }
 
   .dark[data-theme="ocean"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 220 18% 7%;
     --foreground: 210 18% 90%;
 
