@@ -1,26 +1,15 @@
-import { ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
-
 export default function RomanForumPage() {
   return (
     <div className="max-w-6xl mx-auto px-6 py-12">
-      <div className="flex items-center gap-3 mb-8">
-        <Link
-          to="/"
-          className="p-2 rounded-md hover:bg-secondary text-muted-foreground transition-colors"
-          aria-label="Nazad"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+      <div className="sticky top-0 z-10 glass-card px-6 py-4 mb-6">
         <h1
-          className="text-2xl font-bold tracking-[0.15em] text-foreground"
-          style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
+          className="text-2xl font-bold tracking-[0.15em] text-gold font-display"
         >
           FORVM IVSTITIAE
         </h1>
       </div>
 
-      <div className="flex items-center justify-center min-h-[50vh] rounded-xl border border-dashed border-border">
+      <div className="glass-card flex items-center justify-center min-h-[50vh] px-6">
         <p className="text-muted-foreground text-sm italic">
           Monumenta aedificantur… (Phase 2)
         </p>

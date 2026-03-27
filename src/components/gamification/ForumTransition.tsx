@@ -45,8 +45,8 @@ export default function ForumTransition() {
       <h1
         className="select-none pointer-events-none"
         style={{
-          fontFamily: "'Georgia', 'Times New Roman', serif",
-          color: "#d4a843",
+          fontFamily: "var(--font-display)",
+          color: "hsl(var(--gold))",
           fontSize: "clamp(1.5rem, 4vw, 3rem)",
           letterSpacing: "0.3em",
           textTransform: "uppercase",

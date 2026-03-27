@@ -679,6 +679,20 @@
   background-color: hsl(var(--muted-foreground) / 0.5);
 }
 
+/* ─── Display Font ────────────────────────────────── */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* ─── Glassmorphism Card ─────────────────────────── */
+.glass-card {
+  background: hsl(var(--card) / 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: var(--radius);
+}
+
 /* ─── Key Part Highlights ─────────────────────────── */
 .key-part-highlight {
   background-color: hsl(var(--accent) / 0.35);
