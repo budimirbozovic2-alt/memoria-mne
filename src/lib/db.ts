@@ -178,11 +178,11 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
     ]);
     clearTimeout(timer);
     return true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTimeout(timer);
-    console.error("[MemoriaDB] open failed:", err?.name, err?.message);
-    // VersionError = schema downgrade or corruption — delete and retry once
-    if (err?.name === "VersionError" || err?.name === "UpgradeError") {
+    const e = err instanceof Error ? err : new Error(String(err));
+    console.error("[MemoriaDB] open failed:", e.name, e.message);
+    if (e.name === "VersionError" || e.name === "UpgradeError") {
       try {
         await db.delete();
         await db.open();
@@ -347,8 +347,9 @@ export async function idbSaveCards(cards: Card[]): Promise<void> {
 export async function idbPutCard(card: Card): Promise<void> {
   try {
     await db.cards.put(card);
-  } catch (err: any) {
-    if (err?.name === "QuotaExceededError" || err?.inner?.name === "QuotaExceededError") {
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    if (e.name === "QuotaExceededError" || (err as any)?.inner?.name === "QuotaExceededError") {
       console.error("[MemoriaDB] Storage quota exceeded", err);
       throw new Error("QUOTA_EXCEEDED");
     }
@@ -360,8 +361,9 @@ export async function idbBulkPutCards(cards: Card[]): Promise<void> {
   if (cards.length === 0) return;
   try {
     await db.cards.bulkPut(cards);
-  } catch (err: any) {
-    if (err?.name === "QuotaExceededError" || err?.inner?.name === "QuotaExceededError") {
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    if (e.name === "QuotaExceededError" || (err as any)?.inner?.name === "QuotaExceededError") {
       console.error("[MemoriaDB] Storage quota exceeded during bulk write", err);
       throw new Error("QUOTA_EXCEEDED");
     }
