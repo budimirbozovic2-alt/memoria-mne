@@ -4,7 +4,7 @@ import { ArrowLeft, Play, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCardContext } from "@/contexts/AppContext";
 import type { Monument } from "@/lib/forum-logic";
-import { MATERIAL_ICONS } from "@/lib/forum-logic";
+import { PHASE_LABELS } from "@/lib/forum-logic";
 import { MonumentSVG } from "./monument-buildings";
 import { ArchNode } from "./ArchNode";
 import { useSourceHierarchy, type HierarchyNode } from "@/hooks/useSourceHierarchy";
@@ -75,7 +75,7 @@ export const MonumentInterior = memo(function MonumentInterior({
     );
   }
 
-  const materialIcon = MATERIAL_ICONS[monument.material];
+  const phaseLabel = PHASE_LABELS[monument.material];
   const modeLabel = mode === "A" ? "po izvoru" : "po potkategoriji";
 
   return (
@@ -100,8 +100,8 @@ export const MonumentInterior = memo(function MonumentInterior({
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-semibold font-display text-foreground truncate tracking-wide">
-              {materialIcon} {monument.category}
+            <h2 className="text-lg font-semibold text-foreground truncate tracking-wide">
+              {monument.category}
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
               {catCards.length} kartica · {tree.length} {mode === "A" ? "izvora" : "grupa"} ({modeLabel}) · {monument.mastery}%
@@ -112,7 +112,7 @@ export const MonumentInterior = memo(function MonumentInterior({
             <Button
               size="sm"
               onClick={() => navigate(`/review?category=${encodeURIComponent(monument.category)}`)}
-              className="gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground font-display shrink-0"
+              className="gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground shrink-0"
             >
               <Play className="h-3.5 w-3.5" />
               {overdueCount}
@@ -134,7 +134,7 @@ export const MonumentInterior = memo(function MonumentInterior({
                 {/* Wing divider */}
                 <div className="flex items-center gap-3 px-1">
                   <div className="h-px flex-1 bg-border/40" />
-                  <span className="text-[10px] font-display text-muted-foreground uppercase tracking-[0.15em] shrink-0">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] shrink-0">
                     {wing.name}
                   </span>
                   <div className="h-px flex-1 bg-border/40" />
@@ -178,7 +178,7 @@ function SourceBreakdown({ sources }: { sources: import("@/lib/forum-logic").Mon
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="mt-3 pt-3 border-t border-border/30">
       <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
-        <span className="font-display uppercase tracking-wider text-[10px]">Izvori</span>
+        <span className="uppercase tracking-wider text-[10px]">Izvori</span>
         <span className="tabular-nums">({sorted.length})</span>
         <ChevronDown className={`h-3 w-3 ml-auto transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
       </CollapsibleTrigger>

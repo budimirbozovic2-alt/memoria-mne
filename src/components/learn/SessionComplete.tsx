@@ -49,7 +49,7 @@ const SessionComplete = React.memo(function SessionComplete({
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-md mx-auto space-y-8 py-16">
       <div className="text-center space-y-3">
-        <div className="inline-flex p-4 rounded-2xl bg-gold/10 mb-2 achievement-glow">
+        <div className="inline-flex p-4 rounded-2xl bg-gold/10 mb-2">
           <Trophy className="h-10 w-10 text-gold" />
         </div>
         <h2 className="text-4xl font-display">Svaka čast!</h2>

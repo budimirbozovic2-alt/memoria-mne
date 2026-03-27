@@ -42,7 +42,7 @@ export const ArchNode = memo(function ArchNode({
       transition={{ delay: index * 0.03, duration: 0.2 }}
       onClick={onClick}
       className={`
-        group relative overflow-hidden text-left forum-tablet
+        group relative overflow-hidden text-left glass-card
         ${allMastered ? "!border-gold/30" : isWeak ? "!border-destructive/20" : ""}
         hover:bg-card/60 hover:shadow-md transition-all duration-150
       `}
@@ -50,7 +50,7 @@ export const ArchNode = memo(function ArchNode({
       {/* Content */}
       <div className="relative z-10 p-4">
         <div className="flex items-center justify-between mb-2">
-          <h4 className="font-display text-sm text-foreground truncate max-w-[200px] tracking-wide">
+          <h4 className="text-sm font-semibold text-foreground truncate max-w-[200px] tracking-wide">
             {name}
           </h4>
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
