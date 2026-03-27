@@ -174,10 +174,18 @@ export function getDbErrorState() { return dbErrorState; }
  */
 export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let blockedReject: ((err: Error) => void) | undefined;
   try {
+    // Handle "blocked" state (another tab holds the DB open during HMR)
+    db.on("blocked", () => {
+      console.warn("[MemoriaDB] DB open blocked by another connection");
+      if (blockedReject) blockedReject(new Error("DB_BLOCKED"));
+    });
+
     await Promise.race([
       db.open(),
-      new Promise((_, reject) => {
+      new Promise<never>((_, reject) => {
+        blockedReject = reject;
         timer = setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), timeoutMs);
       }),
     ]);
@@ -190,8 +198,10 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
     if (e.name === "VersionError" || e.name === "UpgradeError") {
       dbErrorState = { type: "version", message: e.message };
       console.error("[MemoriaDB] CRITICAL: DB schema version mismatch.", e.message);
-    } else if (e.message === "DB_OPEN_TIMEOUT") {
-      dbErrorState = { type: "timeout", message: "Baza podataka se nije otvorila u predviđenom roku." };
+    } else if (e.message === "DB_OPEN_TIMEOUT" || e.message === "DB_BLOCKED") {
+      dbErrorState = { type: "timeout", message: e.message === "DB_BLOCKED"
+        ? "Baza je blokirana od strane drugog taba. Zatvorite ostale tabove i osvježite."
+        : "Baza podataka se nije otvorila u predviđenom roku." };
     }
     return false;
   }
