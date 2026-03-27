@@ -172,6 +172,8 @@
   }
 
   .dark[data-theme="slate"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 220 16% 7%;
     --foreground: 210 15% 90%;
 
