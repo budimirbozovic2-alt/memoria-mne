@@ -77,6 +77,25 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     return map;
   }, [subCards, chapters]);
 
+  const {
+    allChapters,
+    addingChapter, setAddingChapter,
+    newChapterName, setNewChapterName,
+    renamingChapter, setRenamingChapter,
+    renameValue, setRenameValue,
+    handleAddChapter,
+    handleRenameChapter,
+    submitRename,
+    handleDeleteChapter,
+    handleMoveChapter,
+  } = useChapterManagement({
+    category,
+    subcategory,
+    cardsByChapter,
+    cardDerivedChapters: chapters,
+    onUpdateChapters,
+  });
+
    // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
