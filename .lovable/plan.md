@@ -1,147 +1,76 @@
 
 
-# Step 3: Architectural Refactoring & Decoupling — Refactoring Map
+# Deep Loading Diagnostics — Analysis & Fix Plan
 
-## Summary of Current State
+## Boot Sequence Trace (Current Flow)
 
-Most of the heavy decomposition work has **already been done** in previous phases. MentalSkeleton already has ChapterBox, DraggableCardTile, LearnModal, AuditorDetailPanel extracted. CardList has CardBadges and CardContextMenu extracted. StrategicPlanner uses usePlannerData hook and tab sub-components. CardForm delegates to useCardActions hook and EditorSection/MetadataSection. The data layer uses a boot-load-all CardMap pattern (intentionally no `useLiveQuery`). No `TouchSensor` exists. No `use-mobile` hook exists.
+```text
+index.html         → splash DOM visible (10s auto-retry timer)
+main.tsx           → 8s splash removal safety timer
+                   → React render (App.tsx)
+  App.tsx          → CardProvider → useCards() → useCardBootstrap()
+    bootstrap      → ensureDbOpen(6000ms timeout)
+                   → migrateFromLocalStorage()
+                   → initMetacognitiveCache() + initPlannerCache()
+                   → idbLoadCards/Categories/Subcategories/ReviewLog/Settings
+                   → setReady(true) in finally block
+  useCards.ts      → 5s forceReady safety net
+```
 
-**What remains** is targeted cleanup, not wholesale restructuring.
+## Findings
 
----
+### No Critical Hang Bugs Found
+The boot sequence has **3 layers of protection** already working correctly:
+1. `useCardBootstrap` panic timer (8s)
+2. `useCards` forceReady timer (5s)  
+3. `main.tsx` splash removal timer (8s)
+4. `index.html` 10s boot-fallback with auto-retry
 
-## TASK 1: Large File Decomposition
+The `finally` block in `useCardBootstrap` **always** runs `setReady(true)`, even on error. The `dbOk === false` path does `return` but `finally` still executes.
 
-### Files > 300 lines
+### What's Likely Happening in Sandbox
+The Lovable sandbox has restricted/slow IndexedDB. The `ensureDbOpen(6000)` call may hang for up to 6 seconds. Combined with cache init and data loading, the total can approach 8+ seconds before UI shows.
 
-| File | Lines | Status | Action Required |
-|------|-------|--------|-----------------|
-| `KnowledgeMap.tsx` | 494 | Partially modular | Extract `Header`, `SearchBar`, `EmptyMessage` + category/subcategory step views |
-| `CardList.tsx` | 437 | Already has CardRowInner memoized | Extract `VirtualRow` + reorder-drag logic into hook |
-| `MyStats.tsx` | 438 | Monolithic stats page | Extract tab contents into `stats/` subdirectory files |
-| `LearnSession.tsx` | 365 | Study modes already lazy-loaded | Extract setup screens (mode picker, filter screen) into `learn/LearnSetup.tsx` |
-| `TopNav.tsx` | 363 | Contains mobile nav dead code | Remove mobile section (Task 4), reduces to ~240 lines |
-| `RichTextEditor.tsx` | 322 | Self-contained editor | No extraction needed — single responsibility |
-| `SourceManager.tsx` | 313 | Moderate | Extract registry dialog into `SourceRegistryDialog.tsx` |
-| `SourceReader.tsx` | 303 | Already uses useSourceLogic hook | Extract `CoverageStatsBar` (already inline) — minor |
-| `MetacognitiveCenter.tsx` | 302 | Tab-based | Extract diary form + analysis tab into sub-files |
+### Real Issues Found (Minor-to-Medium)
 
-### Extraction Plan (Priority Order)
+**1. Missing `onblocked` handler on Dexie** — If another tab has the DB open during HMR, Dexie can enter a "blocked" state that never resolves within the 6s timeout. No handler exists to detect this.
 
-**Batch 1 — KnowledgeMap.tsx (494 → ~280 lines)**
-- Extract `Header`, `SearchBar`, `EmptyMessage` → `src/components/knowledge-map/SharedWidgets.tsx`
-- Extract category list view (lines 317-434) → `src/components/knowledge-map/CategoryList.tsx`
-- Extract subcategory list view (lines 180-314) → `src/components/knowledge-map/SubcategoryList.tsx`
-- KnowledgeMap.tsx becomes an orchestrator with view state + routing
+**2. No timeout on `migrateFromLocalStorage()`** — Line 101 in bootstrap awaits migration with no timeout wrapper. If any `bulkAdd` call hangs (e.g., QuotaExceededError on a large review log), it blocks indefinitely until the 8s panic timer fires.
 
-**Batch 2 — MyStats.tsx (438 → ~120 lines)**
-- Already has `CalibrationTab`, `EfficiencyTab`, `LatencyTab`, `PredictionTab`, `ResistanceTab` in `stats/`
-- Extract the overview/summary tab (the main content before tabs) → `stats/OverviewTab.tsx`
-- Extract shared chart data computation → `useStatsData` hook
+**3. No timeout on `initMetacognitiveCache()` + `initPlannerCache()`** — These are wrapped in `.catch()` but not in `withTimeout()`. If `db.diary.toArray()` or similar hangs, it blocks until panic.
 
-**Batch 3 — LearnSession.tsx (365 → ~180 lines)**
-- Extract mode selection screen (lines 121-233) → `learn/ModeSelector.tsx`
-- Extract filter/sort screen (lines 236-286) → `learn/FilterSetup.tsx`
-- LearnSession becomes: setup orchestrator + delegation to lazy study modes
+**4. `RomanForumPage` calls `idbLoadReviewLog()` independently** — This loads ALL review log entries (no day filter) every time the Forum page mounts, duplicating data already in context. For large logs this is slow and wasteful.
 
-**Batch 4 — TopNav.tsx (363 → ~240 lines after mobile removal)**
-- Remove mobile nav entirely (Task 4 below)
-- Extract version dialog → `VersionDialog.tsx` or inline simplification
+**5. Splash removal race** — `main.tsx` line 42 removes splash after 8s. `useCardBootstrap` panic timer also removes splash after 8s. Both can race. Not harmful but messy.
 
----
+## Fix Plan
 
-## TASK 2: Separation of Concerns
+### Fix 1: `src/lib/db.ts` — Add `onblocked` handler
+- On `db.open()`, Dexie supports `db.on('blocked', callback)`. Register a handler that logs a warning and triggers the timeout reject early, preventing indefinite "blocked" state.
 
-### DB Imports in Components (Current State)
-Components importing `@/lib/db` directly:
-- `MindMapList.tsx` — imports types only + uses `mindmap-storage` functions
-- `MindMapCanvas.tsx` — imports types only + uses `mindmap-storage` functions  
-- `MonumentInterior.tsx` — imports `Source` type only
-- `SourceSnippetDialog.tsx` — imports `db` directly for a query
-- `GlobalSearch.tsx` — imports types only
-- `HealthMonitor.tsx` — imports `db` directly for health checks
-- `KnowledgeMap.tsx` — imports `Source` type only
+### Fix 2: `src/hooks/useCardBootstrap.ts` — Wrap migration + cache init in withTimeout
+- Wrap `migrateFromLocalStorage()` in `withTimeout(…, 3000, "migration", undefined)`
+- Wrap the `Promise.all([initMetacognitiveCache, initPlannerCache])` in `withTimeout(…, 3000, "cache init", undefined)`
+- This ensures every async step has a bounded execution time
 
-**Action needed:**
-- `SourceSnippetDialog.tsx` — move the direct `db` query into `sources-storage.ts` as a helper function
-- `HealthMonitor.tsx` — acceptable (it IS a database diagnostic tool)
-- All others — type-only imports, no change needed
+### Fix 3: `src/views/RomanForumPage.tsx` — Use context reviewLog
+- Replace `idbLoadReviewLog().then(setReviewLog)` with the `reviewLog` already available from `useCardContext()`
+- Eliminates redundant full-table scan on every Forum mount
 
-### Database Indexing Analysis
-Current Dexie schema (v4):
-- `cards`: `id, category, subcategory, type, createdAt, sourceId`
-- Missing indexes: `chapter` (used in chapter-based filtering), `[category+subcategory]` compound index
+### Fix 4: `src/hooks/useCardBootstrap.ts` — Add diagnostic console markers
+- Add `console.log("[boot:diag] step N: description")` at each stage boundary
+- These are lightweight and help diagnose any future stalls
 
-**Action:** Add compound index `[category+subcategory]` in a v5 schema migration. The `chapter` field is filtered in-memory from the boot-loaded CardMap, which is acceptable for <10k cards.
+## Files Changed
 
-### useLiveQuery Decision
-Per the memory note: the app **intentionally** uses boot-load-all pattern, not `useLiveQuery`. This is correct for an offline-first Electron app with <10k cards. **No change.**
-
-### Business Logic Already Extracted
-- FSRS calculations → `spaced-repetition.ts` (untouched per guardrail)
-- Dashboard stats → `useDashboardData` hook
-- Planner calculations → `usePlannerData` hook
-- Card CRUD → `useCardCRUD` hook
-- Card annotations → `useCardAnnotations` hook
-
-**One remaining extraction:**
-- `LearnSession.tsx` lines 146-185: inline review-ratio calculation → extract to `lib/learn-analytics.ts` as `calcReviewPriorityWarning()`
-
----
-
-## TASK 3: Performance Optimization
-
-### Current Memoization Audit
-| Component | `React.memo` | Stable callbacks | Status |
-|-----------|:---:|:---:|--------|
-| `DraggableCardTile` | ✅ | ✅ | Good |
-| `ChapterBox` | ✅ | N/A | Good |
-| `CardRowInner` (CardList) | ✅ | ✅ | Good |
-| `SourceContent` (SourceReader) | ✅ | ✅ | Good |
-| `SubcategoryCard` | Need to check | — | **Verify** |
-
-**Action:** Verify `SubcategoryCard` is memoized. If not, wrap with `React.memo`.
-
-### Re-render Risks Identified
-1. **KnowledgeMap subcategory view**: `handleMoveSub` is created inline inside render branch → wrap in `useCallback`
-2. **LearnSession**: `updateProgress` depends on `learnMode` which changes during setup → stable, no issue
-3. **CardList VirtualRow**: receives `rowProps` object literal on every render → memoize the `rowProps` object with `useMemo`
-
----
-
-## TASK 4: Desktop-Only Cleanup
-
-### TopNav.tsx Mobile Code (lines 230-321)
-- `mobileOpen` state variable
-- `md:hidden` mobile header div (lines 231-252)
-- Mobile dropdown menu (lines 254-321)
-- `Menu` and `X` icon imports (used only for mobile hamburger)
-
-**Action:** Remove all of the above. Remove `Menu` import. Keep the `hidden md:flex` desktop nav as the only nav. Simplify to always-visible desktop layout (remove `hidden md:flex` → just `flex`).
-
-### Other Mobile Patterns
-- No `TouchSensor` found
-- No `use-mobile` hook found
-- No other `md:hidden` patterns found outside TopNav
-- Responsive CSS (`sm:grid-cols-2`, `lg:grid-cols-3`) preserved for desktop window resizing
-
----
-
-## Execution Order (One batch per response)
-
-1. **TopNav mobile cleanup** — smallest, lowest risk, immediate line reduction
-2. **KnowledgeMap decomposition** — largest file, highest impact
-3. **MyStats decomposition** — extract overview tab + useStatsData hook
-4. **LearnSession setup extraction** — ModeSelector + FilterSetup
-5. **Minor fixes** — SourceSnippetDialog db import, SubcategoryCard memo check, CardList rowProps memoization, Dexie v5 compound index
-6. **LearnSession analytics extraction** — `calcReviewPriorityWarning()` to lib
-
----
+| File | Change |
+|------|--------|
+| `src/lib/db.ts` | Add `db.on('blocked')` handler in `ensureDbOpen` |
+| `src/hooks/useCardBootstrap.ts` | Wrap migration + cache init in `withTimeout`; add diagnostic markers |
+| `src/views/RomanForumPage.tsx` | Use `reviewLog` from context instead of separate IDB load |
 
 ## Risk Assessment
-
-- **KnowledgeMap split**: Medium risk — view-state routing logic must stay coordinated. The `useSourceHierarchy` hook is called conditionally (only in subcategory view) which React rules require staying in the same component or being restructured.
-- **MyStats split**: Low risk — tab contents are already independent.
-- **TopNav mobile removal**: Very low risk — pure deletion of dead code for desktop-only app.
-- **Dexie v5 migration**: Low risk — additive index, no data migration needed.
+- All changes are additive safety nets — no existing logic altered
+- Forum page change removes a redundant IDB call (pure improvement)
+- No FSRS, UI style, or boot timer changes
 
