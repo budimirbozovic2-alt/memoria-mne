@@ -144,16 +144,18 @@ function ChapterBoxInner({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="pl-4 pr-2 py-3">
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-              {sortedCards.map(card => (
-                <DraggableCardTile
-                  key={card.id}
-                  card={card}
-                  mode={mode}
-                  onClick={() => onCardClick(card)}
-                />
-              ))}
-            </div>
+            <SortableContext items={sortedCards.map(c => c.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                {sortedCards.map(card => (
+                  <DraggableCardTile
+                    key={card.id}
+                    card={card}
+                    mode={mode}
+                    onClick={() => onCardClick(card)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
             {cards.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">Prevuci kartice ovdje</p>
             )}

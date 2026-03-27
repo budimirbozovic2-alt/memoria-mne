@@ -107,6 +107,7 @@ export default function CardsView() {
   const exitSelectionMode = () => {
     setSelectionMode(false);
     setSelectedIds(new Set());
+    setBulkCategory("");
     setBulkSubcategory("");
     setBulkChapter("");
     setNewBulkChapter("");
