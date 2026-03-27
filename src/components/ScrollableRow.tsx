@@ -40,6 +40,7 @@ const ScrollableRow = forwardRef<HTMLDivElement, Props>(function ScrollableRow({
       {canScrollLeft && (
         <button
           onClick={() => scroll("left")}
+          aria-label="Pomjeri lijevo"
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-card border shadow-sm text-muted-foreground hover:text-foreground transition-opacity opacity-0 group-hover:opacity-100"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
