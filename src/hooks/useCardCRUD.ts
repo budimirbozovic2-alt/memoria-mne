@@ -166,6 +166,8 @@ export function useCardCRUD({
       return next;
     });
     bumpMapVersion();
+    // Delete original — useEffect bulk persist only does bulkPut, can't detect removals
+    idbDeleteCard(id).catch(e => console.error("[splitCard] IDB delete failed", e));
   }, [setCardMapState]);
 
   return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard };
