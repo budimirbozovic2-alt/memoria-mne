@@ -118,7 +118,7 @@ export const ArchNode = memo(function ArchNode({
         </div>
 
         <p className="text-xs text-muted-foreground mb-2">
-          {cardCount} {cardCount === 1 ? "kartica" : "kartica"}
+          {cardCount} kartica
           {avgStability > 0 && <span className="ml-2 tabular-nums">S̄ {avgStability.toFixed(0)}d</span>}
         </p>
 

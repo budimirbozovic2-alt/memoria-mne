@@ -88,6 +88,7 @@ export default function RomanForumPage() {
           </div>
         )}
       </AnimatePresence>
+      </LayoutGroup>
     </div>
   );
 }
