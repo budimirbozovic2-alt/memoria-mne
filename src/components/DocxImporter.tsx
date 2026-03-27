@@ -191,7 +191,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
     <Dialog open={open} onOpenChange={(o) => !o && handleReset()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">Uvezi iz DOCX fajla</DialogTitle>
+          <DialogTitle className="text-2xl font-semibold">Uvezi iz DOCX fajla</DialogTitle>
         </DialogHeader>
 
         {step === "upload" && (
