@@ -88,15 +88,30 @@
       </style>
     </div>
     <script>
-      setTimeout(function(){
-        var root=document.getElementById("root");
-        var splash=document.getElementById("app-splash");
-        var fallback=document.getElementById("boot-fallback");
-        var appMounted=root&&root.querySelector("[data-app-mounted]");
-        if(appMounted)return;
-        if(splash){splash.style.transition="opacity 0.3s";splash.style.opacity="0";setTimeout(function(){if(splash.parentNode)splash.remove();},400);}
-        if(fallback){fallback.style.display="flex";}
-      },10000);
+      (function(){
+        var MAX_RETRIES=2;
+        var RETRY_KEY="__codex_boot_retries";
+        var retries=parseInt(sessionStorage.getItem(RETRY_KEY)||"0",10);
+
+        setTimeout(function(){
+          var root=document.getElementById("root");
+          var appMounted=root&&root.querySelector("[data-app-mounted]");
+          if(appMounted){sessionStorage.removeItem(RETRY_KEY);return;}
+
+          if(retries<MAX_RETRIES){
+            sessionStorage.setItem(RETRY_KEY,String(retries+1));
+            var status=document.getElementById("splash-status");
+            if(status)status.textContent="Pokušaj "+(retries+2)+" od "+(MAX_RETRIES+1)+"…";
+            setTimeout(function(){window.location.reload();},800);
+          }else{
+            sessionStorage.removeItem(RETRY_KEY);
+            var splash=document.getElementById("app-splash");
+            var fallback=document.getElementById("boot-fallback");
+            if(splash){splash.style.transition="opacity 0.3s";splash.style.opacity="0";setTimeout(function(){if(splash.parentNode)splash.remove();},400);}
+            if(fallback){fallback.style.display="flex";}
+          }
+        },10000);
+      })();
     </script>
     <script type="module" src="./src/main.tsx"></script>
   </body>
