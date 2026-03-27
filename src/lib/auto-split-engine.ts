@@ -52,6 +52,7 @@ export function detectArticles(html: string): DetectedArticle[] {
     html: string;
     isArticle: boolean;
     articleNum: string;
+    isHeading: boolean;
   }
 
   const articleRegex = /^\s*(?:Č|č)(?:lan|LANAK|L(?:AN|ANAK)?\.?)\s+(\d+[a-z]?)\.?\s*$/i;
