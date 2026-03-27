@@ -22,6 +22,10 @@ export function useCardCRUD({
   setCategories,
   schedulePersist,
 }: UseCardCRUDParams) {
+  // Keep a ref to categories to avoid stale closures in addCard/addFlashCard
+  const categoriesRef = useRef(categories);
+  categoriesRef.current = categories;
+
   // ── Surgical single-card update (O(1) state + O(1) IDB) ──
   const patchCard = useCallback((id: string, patcher: (card: Card) => Card) => {
     setCardMapState((prev) => {
@@ -59,12 +63,12 @@ export function useCardCRUD({
         schedulePersist({ type: "put", card });
         return { ...prev, [card.id]: card };
       });
-      if (!categories.includes(category)) {
+      if (!categoriesRef.current.includes(category)) {
         setCategories((prev) => [...prev, category]);
       }
       return card;
     },
-    [categories, setCategories, setCardMapState, schedulePersist],
+    [setCategories, setCardMapState, schedulePersist],
   );
 
   const addFlashCard = useCallback(
