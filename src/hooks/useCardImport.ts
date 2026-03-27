@@ -190,6 +190,11 @@ export function useCardImport({
             localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
           }
         }
+        // C1 fix: Invalidate in-memory caches after localStorage restore
+        const { invalidateSourceRegistryCache } = await import("@/lib/source-registry");
+        const { invalidateMonumentTypesCache } = await import("@/lib/forum-logic");
+        invalidateSourceRegistryCache();
+        invalidateMonumentTypesCache();
 
         const extraParts: string[] = [];
         if (Array.isArray(data.sources) && (data.sources as unknown[]).length > 0) extraParts.push(`${(data.sources as unknown[]).length} izvora`);

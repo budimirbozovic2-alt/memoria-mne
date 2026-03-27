@@ -115,7 +115,7 @@ export function useCards() {
   const { importData, importCards } = useCardImport({
     categories, setCardMap, setCategories, setSubcategories,
     setReviewLog: setReviewLogState, updateSRSettings,
-    schedulePersist, setCardMapState,
+    schedulePersist, setCardMapState, cardMapRef,
   });
 
   // ── Single-pass derived data (B2+B5 fix: 4×O(n) → 1×O(n)) ──
