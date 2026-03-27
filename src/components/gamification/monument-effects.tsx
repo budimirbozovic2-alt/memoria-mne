@@ -45,7 +45,7 @@ function TorchOverlay({ mastery, tier, id }: { mastery: number; tier: string; id
   return (
     <g>
       <defs>
-        <radialGradient id="torch-glow">
+        <radialGradient id={`torch-glow-${id}`}>
           <stop offset="0%" stopColor="hsl(45,90%,60%)" stopOpacity={0.6} />
           <stop offset="100%" stopColor="hsl(45,90%,60%)" stopOpacity={0} />
         </radialGradient>
