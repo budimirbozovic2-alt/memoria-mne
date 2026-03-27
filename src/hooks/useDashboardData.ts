@@ -1,5 +1,5 @@
 import { ShieldAlert, AlertTriangle, Download, HardDrive } from "lucide-react";
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Card as SRCard, SRSettings, getPendingFirstReviewCount } from "@/lib/spaced-repetition";
 import { ReviewLogEntry, getStorageUsage, getLastBackupTime } from "@/lib/storage";
 import { loadSlippageLog } from "@/lib/metacognitive-storage";
