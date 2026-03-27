@@ -347,8 +347,9 @@ export async function idbSaveCards(cards: Card[]): Promise<void> {
 export async function idbPutCard(card: Card): Promise<void> {
   try {
     await db.cards.put(card);
-  } catch (err: any) {
-    if (err?.name === "QuotaExceededError" || err?.inner?.name === "QuotaExceededError") {
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    if (e.name === "QuotaExceededError" || (err as any)?.inner?.name === "QuotaExceededError") {
       console.error("[MemoriaDB] Storage quota exceeded", err);
       throw new Error("QUOTA_EXCEEDED");
     }
