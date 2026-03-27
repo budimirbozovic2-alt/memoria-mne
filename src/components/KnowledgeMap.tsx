@@ -169,11 +169,69 @@ export default function KnowledgeMap({
     );
   }
 
+  // ── Source hierarchy for current subcategory view ──
+  const hierarchyCat = view.step === "subcategories" ? view.category : "";
+  const sourceHierarchy = useSourceHierarchy(cards, sources, hierarchyCat);
+
   // ── Step 2: Subcategory list ──
   if (view.step === "subcategories") {
     const cat = view.category;
-    const subs = subcategories[cat] || [];
     const catCards = cards.filter((c) => c.category === cat);
+
+    // Use source hierarchy if available, otherwise fall back to subcategories
+    if (sourceHierarchy.hasSourceLinks) {
+      const { mode, tree } = sourceHierarchy;
+      const q = searchQuery.toLowerCase();
+      const filtered = q ? tree.filter((n) => n.name.toLowerCase().includes(q)) : tree;
+      const modeLabel = mode === "A" ? "po izvoru" : "po potkategoriji";
+
+      return (
+        <motion.div
+          key="subcategories-source"
+          custom={directionRef.current}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          transition={transition}
+          className="space-y-6"
+        >
+          <Header
+            title={cat}
+            subtitle={`${catCards.length} kartica • ${tree.length} grupa (${modeLabel})`}
+            onBack={() => navigate({ step: "categories" })}
+          />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Pretraži..." />
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {filtered.map(({ name, cardCount, levels }, i) => (
+              <SubcategoryCard
+                key={name}
+                name={name}
+                count={cardCount}
+                levels={levels}
+                index={i}
+                realIndex={i}
+                subsLength={tree.length}
+                reorderMode={false}
+                isOstalo={name === "Bez izvora" || name === "Ostalo"}
+                onNavigate={() => {
+                  if (onUpdateChapters && onReviewSection) {
+                    navigate({ step: "detail", category: cat, subcategory: name });
+                  }
+                }}
+                onMoveUp={() => {}}
+                onMoveDown={() => {}}
+              />
+            ))}
+          </div>
+
+          {filtered.length === 0 && <EmptyMessage text={searchQuery ? "Nema rezultata pretrage" : "Nema podataka"} />}
+        </motion.div>
+      );
+    }
+
+    // Fallback: original subcategory system
+    const subs = subcategories[cat] || [];
 
     const subsWithStats = subs
       .map((sub) => {
