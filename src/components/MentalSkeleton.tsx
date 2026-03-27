@@ -2,30 +2,16 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, SectionState, calculateNextReview } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { motion, AnimatePresence } from "framer-motion";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import {
   DndContext, PointerSensor, useSensor, useSensors,
-  DragEndEvent, DragOverlay, DragStartEvent, useDroppable, useDraggable,
+  DragEndEvent, DragOverlay, DragStartEvent,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowUp, ArrowDown, Eye, Compass, Plus, GripVertical, X, Edit3, Trash2, BookOpen, ChevronDown, AlertTriangle, CheckCircle } from "lucide-react";
-
-type Mode = "navigator" | "auditor";
+import { ArrowLeft, Eye, Compass, Plus, X, BookOpen, AlertTriangle, CheckCircle } from "lucide-react";
+import ChapterBox from "./mental-skeleton/ChapterBox";
+import DraggableCardTile from "./mental-skeleton/DraggableCardTile";
+import { Mode, UNASSIGNED_CHAPTER } from "./mental-skeleton/types";
 
 interface Props {
   cards: Card[];
