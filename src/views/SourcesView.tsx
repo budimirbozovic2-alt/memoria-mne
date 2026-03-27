@@ -51,6 +51,7 @@ export default function SourcesView() {
   const [editingSource, setEditingSource] = useState<Source | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editGazette, setEditGazette] = useState("");
+  const [editDate, setEditDate] = useState("");
   const [diffView, setDiffView] = useState<{
     result: DiffResult;
     sourceName: string;
@@ -139,6 +140,7 @@ export default function SourcesView() {
   const handleEditSource = useCallback((source: Source) => {
     setEditingSource(source);
     setEditLabel(source.label);
+    setEditDate(source.date || "");
     setEditGazette(source.officialGazetteInfo || "");
   }, []);
 
@@ -147,6 +149,7 @@ export default function SourcesView() {
     const updated: Source = {
       ...editingSource,
       label: editLabel.trim(),
+      date: editDate || editingSource.date,
       officialGazetteInfo: editGazette.trim() || undefined,
       updatedAt: Date.now(),
     };
@@ -154,7 +157,7 @@ export default function SourcesView() {
     setSources(prev => prev.map(s => s.id === updated.id ? updated : s));
     setEditingSource(null);
     toast({ title: "Izvor ažuriran" });
-  }, [editingSource, editLabel, editGazette]);
+  }, [editingSource, editLabel, editDate, editGazette]);
 
   const handleNewVersion = useCallback(async () => {
     if (!versionFile || !versioningSourceId) return;
@@ -392,12 +395,14 @@ export default function SourcesView() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => setReadingSource(source)}>
+                      <Eye className="h-3.5 w-3.5" />
+                      Čitaj
+                    </Button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button variant="ghost" size="icon" className="h-8 w-8" title="Uredi izvor" onClick={() => handleEditSource(source)}>
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setReadingSource(source)}>
-                      <Eye className="h-4 w-4" />
                     </Button>
                     {source.previousHtmlContent && (
                       <Button
@@ -425,6 +430,7 @@ export default function SourcesView() {
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(source.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -559,6 +565,15 @@ export default function SourcesView() {
                 className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="npr. Zakon o obligacionim odnosima"
                 autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Datum donošenja/važenja</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={e => setEditDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div className="space-y-2">
