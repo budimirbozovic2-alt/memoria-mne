@@ -5,6 +5,14 @@
  * Pure functions, no side effects, no React imports.
  */
 import { Card, SectionState } from "./spaced-repetition";
+import {
+  loadSourceRegistry,
+  buildAliasMap,
+  buildSourceMap,
+  resolveMasterSource,
+  type MasterSourceInfo,
+} from "./source-registry";
+import type { Source } from "./db";
 
 // ─── Types ──────────────────────────────────────────────
 
