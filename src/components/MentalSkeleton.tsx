@@ -51,7 +51,17 @@ function extractChapterNum(name: string): number | null {
 // ══════════════════════════════════════════════════════════
 export default function MentalSkeleton({ cards, subcategory, category, onBack, onUpdateChapters, onReviewSection }: Props) {
   const [mode, setMode] = useState<Mode>("navigator");
-  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set(["__all__"]));
+  const EXPANDED_KEY = `codex-nav-expanded-${category}-${subcategory}`;
+  const [expandedChapters, setExpandedChapters] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem(EXPANDED_KEY);
+      if (stored) {
+        const arr = JSON.parse(stored);
+        if (Array.isArray(arr) && arr.length > 0) return new Set<string>(arr);
+      }
+    } catch {}
+    return new Set(["__all__"]);
+  });
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
