@@ -36,4 +36,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   // Check if running in Electron
   isElectron: true,
+  // Log error to file via main process
+  logError: (message) => ipcRenderer.invoke('log-error', message),
 });
