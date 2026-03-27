@@ -14,6 +14,7 @@ import DraggableCardTile from "./mental-skeleton/DraggableCardTile";
 import LearnModal from "./mental-skeleton/LearnModal";
 import AuditorDetailPanel from "./mental-skeleton/AuditorDetailPanel";
 import { Mode, UNASSIGNED_CHAPTER } from "./mental-skeleton/types";
+import { useChapterManagement } from "@/hooks/useChapterManagement";
 
 interface Props {
   cards: Card[];
@@ -51,11 +52,6 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set(["__all__"]));
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [addingChapter, setAddingChapter] = useState(false);
-  const [newChapterName, setNewChapterName] = useState("");
-  const [renamingChapter, setRenamingChapter] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [storedChapters, setStoredChapters] = useState<string[]>([]);
 
   // Filter cards for this subcategory
   const subCards = useMemo(() =>
@@ -80,6 +76,25 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     });
     return map;
   }, [subCards, chapters]);
+
+  const {
+    allChapters,
+    addingChapter, setAddingChapter,
+    newChapterName, setNewChapterName,
+    renamingChapter, setRenamingChapter,
+    renameValue, setRenameValue,
+    handleAddChapter,
+    handleRenameChapter,
+    submitRename,
+    handleDeleteChapter,
+    handleMoveChapter,
+  } = useChapterManagement({
+    category,
+    subcategory,
+    cardsByChapter,
+    cardDerivedChapters: chapters,
+    onUpdateChapters,
+  });
 
    // DnD sensors
   const sensors = useSensors(
@@ -172,116 +187,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     setSelectedCard(null);
   };
 
-  const handleAddChapter = () => {
-    const name = newChapterName.trim();
-    if (!name) return;
-    toast.success(`Glava "${name}" kreirana. Prevuci kartice u nju.`);
-    setNewChapterName("");
-    setAddingChapter(false);
 
-    // Update local state immediately
-    setStoredChapters(prev => prev.includes(name) ? prev : [...prev, name]);
-
-    // Fix #7: Store chapters in IndexedDB settings instead of localStorage
-    const key = `chapters-${category}-${subcategory}`;
-    import("@/lib/db").then(({ idbLoadSettings, idbSaveSettings }) => {
-      idbLoadSettings<string[]>(key, []).then(existing => {
-        if (!existing.includes(name)) {
-          idbSaveSettings(key, [...existing, name]);
-        }
-      });
-    });
-  };
-
-  const handleRenameChapter = (oldName: string) => {
-    setRenamingChapter(oldName);
-    setRenameValue(oldName);
-  };
-
-  const submitRename = () => {
-    if (!renamingChapter || !renameValue.trim()) return;
-    const chapterCards = cardsByChapter[renamingChapter] || [];
-    const updates = chapterCards.map((c, i) => ({
-      id: c.id,
-      chapter: renameValue.trim(),
-      chapterOrder: c.chapterOrder ?? i,
-    }));
-    onUpdateChapters(updates);
-
-    // Fix #7: Update IDB instead of localStorage
-    const key = `chapters-${category}-${subcategory}`;
-    import("@/lib/db").then(({ idbLoadSettings, idbSaveSettings }) => {
-      idbLoadSettings<string[]>(key, []).then(existing => {
-        const updated = existing.map(ch => ch === renamingChapter ? renameValue.trim() : ch);
-        idbSaveSettings(key, updated);
-      });
-    });
-
-    toast.success(`Preimenovano u "${renameValue.trim()}"`);
-    setRenamingChapter(null);
-  };
-
-  const handleDeleteChapter = (name: string) => {
-    const chapterCards = cardsByChapter[name] || [];
-    const updates = chapterCards.map((c, i) => ({ id: c.id, chapter: "", chapterOrder: 0 }));
-    onUpdateChapters(updates);
-
-    // Fix #7: Update IDB instead of localStorage
-    const key = `chapters-${category}-${subcategory}`;
-    import("@/lib/db").then(({ idbLoadSettings, idbSaveSettings }) => {
-      idbLoadSettings<string[]>(key, []).then(existing => {
-        idbSaveSettings(key, existing.filter(ch => ch !== name));
-      });
-    });
-
-    toast.success(`Glava "${name}" obrisana, kartice vraćene u neraspoređene`);
-  };
-
-  // Fix #7: Load stored chapters from IDB instead of localStorage
-  useEffect(() => {
-    const key = `chapters-${category}-${subcategory}`;
-    import("@/lib/db").then(({ idbLoadSettings }) => {
-      idbLoadSettings<string[]>(key, []).then(setStoredChapters);
-    });
-    // Also migrate from old localStorage key if exists
-    const oldKey = `memoria-chapters-${category}-${subcategory}`;
-    const old = localStorage.getItem(oldKey);
-    if (old) {
-      try {
-        const parsed = JSON.parse(old) as string[];
-        if (parsed.length > 0) {
-          const key2 = `chapters-${category}-${subcategory}`;
-          import("@/lib/db").then(({ idbSaveSettings }) => {
-            idbSaveSettings(key2, parsed);
-          });
-          setStoredChapters(parsed);
-          localStorage.removeItem(oldKey);
-        }
-      } catch {}
-    }
-  }, [category, subcategory]);
-
-  // Preserve stored order, append any card-derived chapters not yet stored
-  const allChapters = useMemo(() => {
-    const ordered = [...storedChapters];
-    chapters.forEach(ch => {
-      if (!ordered.includes(ch)) ordered.push(ch);
-    });
-    return ordered;
-  }, [chapters, storedChapters]);
-
-  const handleMoveChapter = useCallback((index: number, direction: -1 | 1) => {
-    const newIndex = index + direction;
-    if (newIndex < 0 || newIndex >= allChapters.length) return;
-    const reordered = [...allChapters];
-    const [item] = reordered.splice(index, 1);
-    reordered.splice(newIndex, 0, item);
-    setStoredChapters(reordered);
-    const key = `chapters-${category}-${subcategory}`;
-    import("@/lib/db").then(({ idbSaveSettings }) => {
-      idbSaveSettings(key, reordered);
-    });
-  }, [allChapters, category, subcategory]);
 
   // Legend counts
   const levelCounts = useMemo(() => {
