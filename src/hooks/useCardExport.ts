@@ -107,7 +107,7 @@ export function useCardExport({ cards, categories, subcategories, reviewLog, srS
         loadFullReviewLog(),
       ]);
 
-      const localStorageData: Record<string, any> = {};
+      const localStorageData: Record<string, unknown> = {};
       const lsKeys = [
         "sr-app-settings", "sr-mnemonic-workshop", "sr-mnemonic-associations",
         "sr-major-system-map", "sr-learn-progress", "sr-last-backup",

@@ -1,31 +1,32 @@
-import { useCardContext, useUIContext } from "@/contexts/AppContext";
+import { useCardContext, useUIContext, type View } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import CardForm from "@/components/CardForm";
 import { useEffect, useRef } from "react";
+import type { Card } from "@/lib/spaced-repetition";
 
 export default function EditPage() {
   const { categories, subcategories, updateCard } = useCardContext();
   const { setView, editingCard, setEditingCard } = useUIContext();
-  const previousViewRef = useRef<string | null>(null);
+  const previousViewRef = useRef<View | null>(null);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("sr-edit-return-view");
-    if (stored) previousViewRef.current = stored;
+    if (stored) previousViewRef.current = stored as View;
   }, []);
 
   const handleCancel = () => {
     const returnTo = previousViewRef.current || "cards";
     setEditingCard(null);
     sessionStorage.removeItem("sr-edit-return-view");
-    setView(returnTo as any);
+    setView(returnTo);
   };
 
-  const handleUpdate = (id: string, u: any) => {
+  const handleUpdate = (id: string, u: Partial<Card>) => {
     updateCard(id, u);
     setEditingCard(null);
     const returnTo = previousViewRef.current || "cards";
     sessionStorage.removeItem("sr-edit-return-view");
-    setView(returnTo as any);
+    setView(returnTo);
   };
 
   return (

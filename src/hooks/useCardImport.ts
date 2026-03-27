@@ -169,11 +169,11 @@ export function useCardImport({
         }
 
         const extraParts: string[] = [];
-        if (Array.isArray(parsed.sources) && parsed.sources.length > 0) extraParts.push(`${parsed.sources.length} izvora`);
-        if (Array.isArray(parsed.mindMaps) && parsed.mindMaps.length > 0) extraParts.push(`${parsed.mindMaps.length} mentalnih mapa`);
-        if (Array.isArray(parsed.diary) && parsed.diary.length > 0) extraParts.push(`${parsed.diary.length} dnevničkih zapisa`);
-        if (Array.isArray(parsed.disciplineLog) && parsed.disciplineLog.length > 0) extraParts.push("disciplinski log");
-        if (parsed.localStorageData) extraParts.push("podešavanja i planer");
+        if (Array.isArray(data.sources) && (data.sources as unknown[]).length > 0) extraParts.push(`${(data.sources as unknown[]).length} izvora`);
+        if (Array.isArray(data.mindMaps) && (data.mindMaps as unknown[]).length > 0) extraParts.push(`${(data.mindMaps as unknown[]).length} mentalnih mapa`);
+        if (Array.isArray(data.diary) && (data.diary as unknown[]).length > 0) extraParts.push(`${(data.diary as unknown[]).length} dnevničkih zapisa`);
+        if (Array.isArray(data.disciplineLog) && (data.disciplineLog as unknown[]).length > 0) extraParts.push("disciplinski log");
+        if (data.localStorageData) extraParts.push("podešavanja i planer");
         const extraMsg = extraParts.length > 0 ? ` + ${extraParts.join(", ")}` : "";
         toast.success(`Uspješno uvezeno ${importedCards.length} kartica${extraMsg}.`);
       } catch (err) {

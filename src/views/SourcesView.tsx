@@ -162,7 +162,7 @@ export default function SourcesView() {
 
     try {
       // Pre-version auto backup (Electron only, best-effort)
-      const electronAPI = (window as any).electronAPI;
+      const electronAPI = window.electronAPI;
       if (electronAPI?.requestBackup) {
         try {
           const [bCards, bCats, bSubs, bLog, bSr] = await Promise.all([

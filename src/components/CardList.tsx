@@ -365,7 +365,7 @@ export default function CardList({
         rowHeight={getRowHeight}
         overscanCount={8}
         rowComponent={VirtualRow}
-        listRef={listRef as any}
+        listRef={listRef as React.RefObject<{ scrollToRow: (config: { index: number; align?: string }) => void }>}
         rowProps={{
           filteredCards: filtered,
           expandedId,
