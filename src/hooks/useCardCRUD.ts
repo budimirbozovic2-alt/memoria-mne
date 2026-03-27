@@ -61,9 +61,9 @@ export function useCardCRUD({
       if (extra?.childCardIds) card.childCardIds = extra.childCardIds;
       if (extra?.sourceModules) card.sourceModules = extra.sourceModules;
       setCardMapState((prev) => {
-        schedulePersist({ type: "put", card });
         return { ...prev, [card.id]: card };
       });
+      schedulePersist({ type: "put", card });
       if (!categoriesRef.current.includes(category)) {
         setCategories((prev) => [...prev, category]);
       }
