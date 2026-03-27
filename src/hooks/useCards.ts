@@ -58,12 +58,7 @@ export function useCards() {
   const cardMapRef = useRef<CardMap>({});
   useEffect(() => { cardMapRef.current = cardMap; }, [cardMap]);
 
-  // ── Setters with inline persistence (no useEffect-based persistence) ──
-  const setCardMap = useCallback((updater: (prev: CardMap) => CardMap, _persist?: "surgical" | "full") => {
-    setCardMapState(updater);
-    bumpMapVersion();
-    // Card persistence handled by callers with pre-computed data
-  }, []);
+
 
   const setCategories = useCallback((updater: (prev: string[]) => string[]) => {
     setCategoriesState(prev => {

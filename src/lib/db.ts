@@ -342,15 +342,8 @@ export async function idbLoadCards(): Promise<Card[]> {
   return db.cards.toArray();
 }
 
-/**
- * @deprecated Use idbBulkPutCards for upserts or db.cards.clear()+bulkPut for full restore.
- * This function previously deleted cards not in the input array — that logic has been removed (C2 fix).
- */
-export async function idbSaveCards(cards: Card[]): Promise<void> {
-  if (cards.length > 0) {
-    await db.cards.bulkPut(cards);
-  }
-}
+
+
 
 function hasInnerQuotaError(err: unknown): boolean {
   if (typeof err !== "object" || err === null || !("inner" in err)) return false;
