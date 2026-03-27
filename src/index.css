@@ -267,6 +267,8 @@
   }
 
   .dark[data-theme="forest"] {
+    --gold: 43 74% 55%;
+    --gold-foreground: 0 0% 100%;
     --background: 150 14% 7%;
     --foreground: 80 12% 88%;
 
