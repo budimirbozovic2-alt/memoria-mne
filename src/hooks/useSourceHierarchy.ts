@@ -15,6 +15,7 @@ export interface HierarchyNode {
   name: string;
   cardCount: number;
   levels: number[]; // mastery level distribution [0..5]
+  avgStability: number;
   children: HierarchyLeaf[];
 }
 
@@ -23,6 +24,7 @@ export interface HierarchyLeaf {
   cards: Card[];
   cardCount: number;
   levels: number[];
+  avgStability: number;
 }
 
 export interface SourceHierarchyResult {
