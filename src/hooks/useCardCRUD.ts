@@ -136,9 +136,9 @@ export function useCardCRUD({
     setCardMapState((prev) => {
       const next = { ...prev };
       delete next[id];
-      schedulePersist({ type: "delete", id });
       return next;
     });
+    schedulePersist({ type: "delete", id });
     toast.success("Kartica obrisana.");
   }, [setCardMapState, schedulePersist]);
 
