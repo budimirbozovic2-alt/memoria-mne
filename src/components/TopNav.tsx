@@ -341,6 +341,18 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
             <SettingsIcon className="h-4 w-4 flex-shrink-0" />
             <span>Podešavanja</span>
           </NavLink>
+
+          {forumUnlocked && (
+            <NavLink
+              to="/forum"
+              className="flex items-center gap-2.5 px-3 py-2 rounded-md text-sm text-gold hover:bg-gold/10 transition-colors"
+              activeClassName="bg-gold/15 font-medium"
+              onClick={() => setMobileOpen(false)}
+            >
+              <Landmark className="h-4 w-4 flex-shrink-0" />
+              <span className="font-display tracking-wide">Forum Iustitiae</span>
+            </NavLink>
+          )}
         </div>
       )}
       <Dialog open={_sysInfoOpen} onOpenChange={_setSysInfoOpen}>
