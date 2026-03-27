@@ -1,79 +1,72 @@
 
 
-# UI Cleanup & Database Page Decomposition
+# Desktop UI Cleanup — Stale Links, Breadcrumbs, Glass-Card, ReviewCard
 
-## Overview
-Three workstreams: (1) strip misused `font-display` from Forum UI labels/descriptions, (2) split the monolithic DatabasePage into separate routed tabs, (3) restructure nav to group database sub-pages under "Baza" dropdown.
+## 6 surgical edits, all CSS/className/JSX only
 
-## 1. Forum UI — Typography Cleanup
+### 1. Fix stale `/database` links
 
-Strip `font-display` from non-title elements. Only keep it on major page titles (h1).
+**`src/components/dashboard/CoreStats.tsx` line 24**
+Change `<Link to="/database">` → `<Link to="/cards">`
 
-### Files to edit:
-- **`src/views/RomanForumPage.tsx`** line 64: remove `font-display` from "Napredak" label; line 75: remove `font-display` from empty-state paragraph
-- **`src/components/gamification/ForumTransition.tsx`** line 46: keep `font-display` (this IS a title)
-- **`src/components/gamification/MonumentInterior.tsx`**: no `font-display` found — no changes
+**`src/components/dashboard/QuickActions.tsx` lines 30-34**
+Replace:
+```jsx
+<Link to="/database"
+  onClick={() => {
+    sessionStorage.setItem("sr-database-tab", "sources");
+  }}
+  className="...">
+```
+With:
+```jsx
+<Link to="/sources"
+  className="...">
+```
+(Remove the onClick + sessionStorage setter entirely)
 
-The monument-effects.tsx, monument-buildings.tsx, monument-svg.tsx, ArchNode.tsx, MonumentCard.tsx have no `font-display` — no changes needed.
+**`src/components/CardForm.tsx` lines 43-45**
+Replace:
+```js
+sessionStorage.setItem("sr-open-source-id", editCard.sourceId!);
+sessionStorage.setItem("sr-database-tab", "sources");
+window.location.hash = "/database";
+```
+With:
+```js
+sessionStorage.setItem("sr-open-source-id", editCard.sourceId!);
+window.location.hash = "#/sources";
+```
 
-Forum animations are already clean (simple opacity fades, 200ms transitions, no particles). No animation changes needed.
+### 2. Breadcrumbs full-width for source routes
 
-## 2. Database Page Decomposition
+**`src/components/Breadcrumbs.tsx` line 50**
+Replace the static `max-w-6xl` with conditional logic:
+```jsx
+<nav className={`flex items-center gap-1 px-4 md:px-8 pt-2 mx-auto w-full text-xs text-muted-foreground ${
+  ["/cards", "/categories", "/sources", "/source-registry"].includes(pathname) ? "max-w-none" : "max-w-6xl"
+}`}>
+```
 
-Current DatabasePage has 4 tabs: Kartice, Kategorije, Izvori, Registar izvora. Plus modal-based DOCX import and Export/Import dialogs.
+### 3. Glass-card border radius bump
 
-**Approach**: Split into 4 dedicated route pages. Each page gets its own route and renders one tab's content. Export/Import and DOCX Import become accessible from the Kartice page (their primary context).
+**`src/index.css` line 691**
+Change `border-radius: var(--radius);` → `border-radius: calc(var(--radius) + 4px);`
 
-### New files:
-- **`src/views/CardsPage.tsx`** — renders CardsView + Export/Import + DOCX Import buttons
-- **`src/views/CategoriesRoutePage.tsx`** — renders CategoriesPage
-- **`src/views/SourcesRoutePage.tsx`** — renders SourcesView
-- **`src/views/SourceRegistryPage.tsx`** — renders SourceManager
+### 4. ReviewCard section padding
 
-### Remove:
-- **`src/views/DatabasePage.tsx`** — delete (logic moves to new files)
+**`src/components/review/ReviewCard.tsx` line 217**
+Change `p-8` → `p-5`
 
-### Update:
-- **`src/App.tsx`** — replace `/database` route with 4 new routes:
-  - `/cards` → CardsPage
-  - `/categories` → CategoriesRoutePage  
-  - `/sources` → SourcesRoutePage
-  - `/source-registry` → SourceRegistryPage
-  - Keep `/database` as redirect to `/cards` for backward compat
-
-## 3. Navigation — "Baza" Dropdown
-
-### `src/components/TopNav.tsx`
-- Replace the single "Baza podataka" NavLink with a dropdown similar to existing "Alati" pattern
-- Label: "Baza"
-- Items: Kartice (`/cards`), Kategorije (`/categories`), Izvori (`/sources`), Registar izvora (`/source-registry`)
-- Same clean popover style as Alati dropdown
-
-### Update event listener
-- The custom event `memoria-open-database-tab` is used in a few places to programmatically switch tabs. Search for this event and update dispatchers to navigate to the correct new route instead.
-
-## 4. Breadcrumbs & References
-
-- **`src/components/Breadcrumbs.tsx`** — add route labels for new paths
-- **`src/components/MainLayout.tsx`** — update `SOURCE_ROUTES` array to include new route paths if needed for full-width layout
-
-## Files Changed Summary
-
-| File | Action |
+## Files touched
+| File | Change |
 |------|--------|
-| `src/views/RomanForumPage.tsx` | Remove 2 `font-display` from non-title elements |
-| `src/views/CardsPage.tsx` | **New** — cards tab + export/import/docx buttons |
-| `src/views/CategoriesRoutePage.tsx` | **New** — categories wrapper |
-| `src/views/SourcesRoutePage.tsx` | **New** — sources wrapper |
-| `src/views/SourceRegistryPage.tsx` | **New** — source manager wrapper |
-| `src/views/DatabasePage.tsx` | Delete or redirect |
-| `src/App.tsx` | Register 4 new routes, redirect old `/database` |
-| `src/components/TopNav.tsx` | Replace single DB link with "Baza" dropdown |
-| `src/components/Breadcrumbs.tsx` | Add labels for new routes |
-| `src/components/MainLayout.tsx` | Update SOURCE_ROUTES if needed |
+| `CoreStats.tsx` | `/database` → `/cards` |
+| `QuickActions.tsx` | `/database` → `/sources`, remove sessionStorage |
+| `CardForm.tsx` | hash nav → `#/sources` |
+| `Breadcrumbs.tsx` | Conditional `max-w-none` for source routes |
+| `index.css` | glass-card radius bump |
+| `ReviewCard.tsx` | `p-8` → `p-5` |
 
-## Guardrails
-- Zero changes to hooks, persist-queue, db.ts, or FSRS
-- Each new page file is a thin wrapper importing existing lazy components
-- No logic rewrite — just visual reorganization
+Zero logic/hook/handler changes. Desktop only.
 
