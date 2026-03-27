@@ -121,7 +121,7 @@ export function detectArticles(html: string): DetectedArticle[] {
         // if there are multiple content lines between articles
         const contentLinesBetween = [];
         for (let k = i + 1; k < j; k++) {
-          if (lines[k].text && !lines[k].isArticle) {
+          if (lines[k].text && !lines[k].isArticle && !lines[k].isHeading) {
             contentLinesBetween.push(k);
           }
         }
