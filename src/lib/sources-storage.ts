@@ -3,6 +3,11 @@ import { parseArticles } from "./article-parser";
 
 export type { Source };
 
+/** Confirm a card's review flag (clear needsReview) */
+export async function confirmCardReview(cardId: string): Promise<void> {
+  await db.cards.update(cardId, { needsReview: undefined });
+}
+
 export async function loadSources(): Promise<Source[]> {
   return db.sources.toArray();
 }
