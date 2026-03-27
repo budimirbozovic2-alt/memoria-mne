@@ -4,7 +4,7 @@ import { ArrowLeft, Play, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCardContext } from "@/contexts/AppContext";
 import type { Monument } from "@/lib/forum-logic";
-import { MATERIAL_ICONS } from "@/lib/forum-logic";
+import { PHASE_LABELS } from "@/lib/forum-logic";
 import { MonumentSVG } from "./monument-buildings";
 import { ArchNode } from "./ArchNode";
 import { useSourceHierarchy, type HierarchyNode } from "@/hooks/useSourceHierarchy";
