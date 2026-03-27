@@ -272,32 +272,17 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
             </NavLink>
           ))}
 
-          {/* Analitika group */}
-          <div className="pt-1.5 pb-0.5">
-            <span className="px-3 text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Analitika</span>
-          </div>
-          {LAB_ANALYTICS.map(({ path, icon: Icon, label }) => (
-            <NavLink key={path} to={path}
-              className="flex items-center gap-2.5 px-3 py-2 pl-6 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
-              activeClassName="bg-primary/10 text-primary font-medium"
-              onClick={() => setMobileOpen(false)}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" />
-              <span>{label}</span>
-            </NavLink>
-          ))}
-
-          {/* Alati group */}
+          {/* Alati */}
           <div className="pt-1.5 pb-0.5">
             <span className="px-3 text-[10px] uppercase tracking-widest text-muted-foreground/60 font-medium">Alati</span>
           </div>
-          {LAB_TOOLS.map(({ path, icon: Icon, label }) => (
+          {TOOLS_NAV.map(({ path, label }) => (
             <NavLink key={path} to={path}
               className="flex items-center gap-2.5 px-3 py-2 pl-6 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
               activeClassName="bg-primary/10 text-primary font-medium"
               onClick={() => setMobileOpen(false)}
             >
-              <Icon className="h-4 w-4 flex-shrink-0" />
+              <Wrench className="h-4 w-4 flex-shrink-0" />
               <span>{label}</span>
             </NavLink>
           ))}
