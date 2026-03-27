@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Card } from "@/lib/spaced-repetition";
-import { CardMap } from "@/lib/persist-queue";
+import { CardMap, schedulePersist as globalSchedulePersist } from "@/lib/persist-queue";
 
 interface UseCategoryManagementParams {
   categories: string[];
@@ -30,13 +30,19 @@ export function useCategoryManagement({
     (oldName: string, newName: string) => {
       if (categories.includes(newName)) return;
       setCategories((prev) => prev.map((c) => (c === oldName ? newName : c)));
-      setCardMap((prev) => {
-        const next: CardMap = {};
-        for (const [id, c] of Object.entries(prev)) {
-          next[id] = c.category === oldName ? { ...c, category: newName } : c;
+      // Surgical: only update cards in the renamed category
+      setCardMapState((prev) => {
+        const next = { ...prev };
+        const updated: Card[] = [];
+        for (const [id, c] of Object.entries(next)) {
+          if (c.category === oldName) {
+            next[id] = { ...c, category: newName };
+            updated.push(next[id]);
+          }
         }
+        if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
         return next;
-      }, "full");
+      });
       setSubcategories((prev) => {
         const next = { ...prev };
         if (next[oldName]) {
@@ -46,26 +52,32 @@ export function useCategoryManagement({
         return next;
       });
     },
-    [categories, setCategories, setCardMap, setSubcategories],
+    [categories, setCategories, setCardMapState, setSubcategories],
   );
 
   const deleteCategory = useCallback(
     (name: string) => {
       setCategories((prev) => prev.filter((c) => c !== name));
-      setCardMap((prev) => {
-        const next: CardMap = {};
-        for (const [id, c] of Object.entries(prev)) {
-          next[id] = c.category === name ? { ...c, category: "Opšte", subcategory: "" } : c;
+      // Surgical: only update cards in the deleted category
+      setCardMapState((prev) => {
+        const next = { ...prev };
+        const updated: Card[] = [];
+        for (const [id, c] of Object.entries(next)) {
+          if (c.category === name) {
+            next[id] = { ...c, category: "Opšte", subcategory: "" };
+            updated.push(next[id]);
+          }
         }
+        if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
         return next;
-      }, "full");
+      });
       setSubcategories((prev) => {
         const next = { ...prev };
         delete next[name];
         return next;
       });
     },
-    [setCategories, setCardMap, setSubcategories],
+    [setCategories, setCardMapState, setSubcategories],
   );
 
   const addSubcategory = useCallback(
@@ -86,29 +98,41 @@ export function useCategoryManagement({
         if (list.includes(newName)) return prev;
         return { ...prev, [category]: list.map((s) => (s === oldName ? newName : s)) };
       });
-      setCardMap((prev) => {
-        const next: CardMap = {};
-        for (const [id, c] of Object.entries(prev)) {
-          next[id] = c.category === category && c.subcategory === oldName ? { ...c, subcategory: newName } : c;
+      // Surgical: only update cards with the old subcategory
+      setCardMapState((prev) => {
+        const next = { ...prev };
+        const updated: Card[] = [];
+        for (const [id, c] of Object.entries(next)) {
+          if (c.category === category && c.subcategory === oldName) {
+            next[id] = { ...c, subcategory: newName };
+            updated.push(next[id]);
+          }
         }
+        if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
         return next;
-      }, "full");
+      });
     },
-    [setSubcategories, setCardMap],
+    [setSubcategories, setCardMapState],
   );
 
   const deleteSubcategory = useCallback(
     (category: string, subcategory: string) => {
       setSubcategories((prev) => ({ ...prev, [category]: (prev[category] || []).filter((s) => s !== subcategory) }));
-      setCardMap((prev) => {
-        const next: CardMap = {};
-        for (const [id, c] of Object.entries(prev)) {
-          next[id] = c.category === category && c.subcategory === subcategory ? { ...c, subcategory: "" } : c;
+      // Surgical: only update cards with the deleted subcategory
+      setCardMapState((prev) => {
+        const next = { ...prev };
+        const updated: Card[] = [];
+        for (const [id, c] of Object.entries(next)) {
+          if (c.category === category && c.subcategory === subcategory) {
+            next[id] = { ...c, subcategory: "" };
+            updated.push(next[id]);
+          }
         }
+        if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
         return next;
-      }, "full");
+      });
     },
-    [setSubcategories, setCardMap],
+    [setSubcategories, setCardMapState],
   );
 
   const bulkUpdateSubcategory = useCallback((ids: string[], subcategory: string) => {

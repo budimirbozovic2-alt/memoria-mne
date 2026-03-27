@@ -94,10 +94,14 @@ export function usePomodoroContext() {
 // ═══════════════════════════════════════════════════════════
 type AppContextValue = CardContextValue & UIContextValue;
 
+// Stable merged reference — only changes when card or ui identity changes
 export function useAppContext(): AppContextValue {
   const card = useCardContext();
   const ui = useUIContext();
-  return useMemo(() => ({ ...card, ...ui }), [card, ui]);
+  return useMemo<AppContextValue>(() => {
+    const merged = Object.assign({} as AppContextValue, card, ui);
+    return merged;
+  }, [card, ui]);
 }
 
 // ─── Pomodoro hook ──────────────────────────────────────
