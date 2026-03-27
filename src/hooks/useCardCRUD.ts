@@ -58,17 +58,14 @@ export function useCardCRUD({
       if (extra?.originalSourceSnippet) card.originalSourceSnippet = extra.originalSourceSnippet;
       if (extra?.childCardIds) card.childCardIds = extra.childCardIds;
       if (extra?.sourceModules) card.sourceModules = extra.sourceModules;
-      setCardMapState((prev) => {
-        return { ...prev, [card.id]: card };
-      });
+      setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
-      schedulePersist({ type: "put", card });
       if (!categoriesRef.current.includes(category)) {
         setCategories((prev) => [...prev, category]);
       }
       return card;
     },
-    [setCategories, setCardMapState, schedulePersist],
+    [setCategories, setCardMapState],
   );
 
   const addFlashCard = useCallback(
