@@ -411,6 +411,8 @@
      THEME: Rose — warm rose/dusty pink
      ═══════════════════════════════════════════ */
   [data-theme="rose"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 340 15% 12%;
 
