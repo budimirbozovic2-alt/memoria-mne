@@ -182,7 +182,7 @@ export default function ReviewSetup({
 
         {/* Resume saved session */}
         {savedSession && (
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-3">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-xl border-primary/30 p-4 flex items-center gap-3">
             <Play className="h-5 w-5 text-primary shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium">Sačuvana sesija</p>

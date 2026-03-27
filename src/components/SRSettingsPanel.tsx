@@ -114,7 +114,7 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
           </div>
 
           {/* Ponavljanje */}
-          <div className="rounded-xl border bg-card p-5 space-y-4">
+          <div className="glass-card rounded-xl p-5 space-y-4">
             <h3 className="text-sm font-semibold">Ponavljanje (FSRS)</h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
