@@ -93,12 +93,15 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
   const [upgraded, setUpgraded] = useState(false);
   const [particles, setParticles] = useState<ReturnType<typeof generateParticles>>([]);
 
+  // Detect phase upgrades AND downgrades
   useEffect(() => {
     const prevIdx = PHASE_ORDER.indexOf(prevPhaseRef.current);
     const currIdx = PHASE_ORDER.indexOf(monument.material);
 
-    if (currIdx > prevIdx && prevIdx >= 0) {
-      setParticles(generateParticles(monument.material));
+    if (currIdx !== prevIdx && prevIdx >= 0) {
+      if (currIdx > prevIdx) {
+        setParticles(generateParticles(monument.material));
+      }
       setUpgraded(true);
       const timer = setTimeout(() => setUpgraded(false), 2000);
       prevPhaseRef.current = monument.material;
