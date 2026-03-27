@@ -107,7 +107,7 @@ export function useCards() {
     addSubcategory, renameSubcategory, deleteSubcategory,
     bulkUpdateSubcategory,
   } = useCategoryManagement({
-    categories, setCategories, setSubcategories, setCardMap, setCardMapState,
+    setCategories, setSubcategories, setCardMapState,
   });
 
   // ── Export/Import (extracted to separate modules) ──
