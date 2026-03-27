@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Library, Merge, ToggleLeft, ToggleRight, Search, Info } from "lucide-react";
+import { Library, Merge, Search, Info, AlertTriangle, Plus, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCardContext } from "@/contexts/AppContext";
 import { loadSources, type Source } from "@/lib/sources-storage";
 import {
@@ -25,6 +26,9 @@ export default function SourceManager() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeName, setMergeName] = useState("");
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignLabel, setAssignLabel] = useState("");
+  const [assignTarget, setAssignTarget] = useState("");
 
   useEffect(() => {
     loadSources().then(setSources);
@@ -56,13 +60,36 @@ export default function SourceManager() {
       .sort((a, b) => b.count - a.count);
   }, [cards, sourceMap, aliasMap]);
 
-  const filteredLabels = useMemo(() => {
-    if (!search) return allRawLabels;
+  // Split into unmapped vs mapped
+  const unmappedLabels = useMemo(
+    () => allRawLabels.filter(l => !aliasMap.has(l.label)),
+    [allRawLabels, aliasMap],
+  );
+
+  const mappedLabels = useMemo(
+    () => allRawLabels.filter(l => aliasMap.has(l.label)),
+    [allRawLabels, aliasMap],
+  );
+
+  const filteredUnmapped = useMemo(() => {
+    if (!search) return unmappedLabels;
     const q = search.toLowerCase();
-    return allRawLabels.filter(
+    return unmappedLabels.filter(l => l.label.toLowerCase().includes(q));
+  }, [unmappedLabels, search]);
+
+  const filteredMapped = useMemo(() => {
+    if (!search) return mappedLabels;
+    const q = search.toLowerCase();
+    return mappedLabels.filter(
       l => l.label.toLowerCase().includes(q) || l.masterSource.toLowerCase().includes(q),
     );
-  }, [allRawLabels, search]);
+  }, [mappedLabels, search]);
+
+  // Master source names for assign dropdown
+  const masterSourceNames = useMemo(
+    () => uniqueSources.map(u => u.masterSource).sort(),
+    [uniqueSources],
+  );
 
   // Category depth info
   const categoryDepths = useMemo(() => {
@@ -83,7 +110,6 @@ export default function SourceManager() {
   const handleMerge = useCallback(() => {
     if (!mergeName.trim() || selected.size === 0) return;
     const next = { ...registry, aliases: [...registry.aliases] };
-    // Remove existing aliases for selected labels, then add new ones
     next.aliases = next.aliases.filter(a => !selected.has(a.rawLabel));
     for (const rawLabel of selected) {
       next.aliases.push({ rawLabel, masterSource: mergeName.trim() });
@@ -101,6 +127,24 @@ export default function SourceManager() {
     };
     persistRegistry(next);
   }, [registry, persistRegistry]);
+
+  const handleCreateMaster = useCallback((rawLabel: string) => {
+    const next = { ...registry, aliases: [...registry.aliases] };
+    next.aliases = next.aliases.filter(a => a.rawLabel !== rawLabel);
+    next.aliases.push({ rawLabel, masterSource: rawLabel });
+    persistRegistry(next);
+  }, [registry, persistRegistry]);
+
+  const handleAssignToMaster = useCallback(() => {
+    if (!assignLabel || !assignTarget) return;
+    const next = { ...registry, aliases: [...registry.aliases] };
+    next.aliases = next.aliases.filter(a => a.rawLabel !== assignLabel);
+    next.aliases.push({ rawLabel: assignLabel, masterSource: assignTarget });
+    persistRegistry(next);
+    setAssignOpen(false);
+    setAssignLabel("");
+    setAssignTarget("");
+  }, [registry, assignLabel, assignTarget, persistRegistry]);
 
   const handleToggleOverride = useCallback((category: string, currentMode: DepthMode) => {
     const next = { ...registry, overrides: [...registry.overrides] };
@@ -154,12 +198,80 @@ export default function SourceManager() {
         </div>
       </div>
 
-      {/* Section 1: Source labels */}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Pretraži izvore..."
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+
+      {/* Section: Unmapped Sources */}
+      {filteredUnmapped.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <h3 className="text-lg font-semibold">Neprepoznati izvori</h3>
+            <Badge variant="secondary" className="text-xs bg-yellow-500/10 text-yellow-600">
+              {filteredUnmapped.length}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Ovi izvori postoje u bazi ali nisu mapirani na Master izvor. Prepoznaj ih da bi Forum pravilno grupisao podatke.
+          </p>
+          <div className="space-y-1 max-h-[300px] overflow-y-auto">
+            {filteredUnmapped.map(({ label, count }) => (
+              <div
+                key={label}
+                className="flex items-center gap-3 p-3 rounded-lg glass-card border-yellow-500/20"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{label}</p>
+                </div>
+                <Badge variant="secondary" className="text-xs flex-shrink-0">
+                  {count} kartica
+                </Badge>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => handleCreateMaster(label)}
+                >
+                  <Plus className="h-3 w-3" />
+                  Kreiraj Master
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => {
+                    setAssignLabel(label);
+                    setAssignTarget("");
+                    setAssignOpen(true);
+                  }}
+                >
+                  <ArrowRight className="h-3 w-3" />
+                  Dodaj kao alias
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Section: Mapped Sources */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Library className="h-4 w-4 text-primary" />
-            Izvori
+            Prepoznati izvori
+            {mappedLabels.length > 0 && (
+              <Badge variant="secondary" className="text-xs">{mappedLabels.length}</Badge>
+            )}
           </h3>
           {selected.size > 0 && (
             <Button
@@ -177,24 +289,17 @@ export default function SourceManager() {
           )}
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Pretraži izvore..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-
-        {filteredLabels.length === 0 ? (
+        {filteredMapped.length === 0 && filteredUnmapped.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground text-sm">
             {cards.some(c => c.sourceId) ? "Nema rezultata pretrage" : "Kartice nemaju povezane izvore"}
           </div>
+        ) : filteredMapped.length === 0 ? (
+          <div className="text-center py-4 text-muted-foreground text-sm italic">
+            Nema prepoznatih izvora. Koristi "Kreiraj Master" iznad.
+          </div>
         ) : (
           <div className="space-y-1 max-h-[400px] overflow-y-auto">
-            {filteredLabels.map(({ label, masterSource, count }) => {
+            {filteredMapped.map(({ label, masterSource, count }) => {
               const isAliased = label !== masterSource;
               const isSelected = selected.has(label);
               return (
@@ -234,7 +339,7 @@ export default function SourceManager() {
         )}
       </div>
 
-      {/* Section 2: Category Depth Overrides */}
+      {/* Section: Category Depth Overrides */}
       {categoryDepths.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -242,7 +347,7 @@ export default function SourceManager() {
             Dubina po kategoriji
           </h3>
           <p className="text-xs text-muted-foreground">
-            Mod A = Više izvora (L1: Izvor → L2: Potkategorija). Mod B = Duboki pregled (L1: Potkategorija → L2: Glava).
+            Kako se izvor prikazuje unutar spomenika na Forumu.
           </p>
           <div className="space-y-1">
             {categoryDepths.map(({ category, mode, override }) => (
@@ -251,20 +356,18 @@ export default function SourceManager() {
                 className="flex items-center justify-between p-3 rounded-lg glass-card"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{category}</p>
+                  <p className="text-sm font-semibold truncate">{category}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {override ? `Ručno: Mod ${mode}` : `Auto: Mod ${mode}`}
+                    {override ? "Ručno" : "Automatski"}:{" "}
+                    {mode === "A"
+                      ? "L1: Izvor → L2: Potkategorija"
+                      : "L1: Potkategorija → L2: Glava"}
                   </p>
                 </div>
                 <button
                   onClick={() => handleToggleOverride(category, mode)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border hover:bg-secondary transition-colors"
                 >
-                  {mode === "A" ? (
-                    <ToggleRight className="h-4 w-4 text-primary" />
-                  ) : (
-                    <ToggleLeft className="h-4 w-4 text-muted-foreground" />
-                  )}
                   Mod {mode}
                 </button>
               </div>
@@ -303,6 +406,39 @@ export default function SourceManager() {
               <Button size="sm" onClick={handleMerge} disabled={!mergeName.trim()}>
                 <Merge className="h-3.5 w-3.5 mr-1.5" />
                 Spoji
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign to existing Master Dialog */}
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Dodaj kao alias</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Izvor <span className="font-medium text-foreground">"{assignLabel}"</span> će biti mapiran na postojeći Master izvor:
+            </p>
+            <Select value={assignTarget} onValueChange={setAssignTarget}>
+              <SelectTrigger>
+                <SelectValue placeholder="Izaberi Master izvor..." />
+              </SelectTrigger>
+              <SelectContent>
+                {masterSourceNames.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setAssignOpen(false)}>
+                Otkaži
+              </Button>
+              <Button size="sm" onClick={handleAssignToMaster} disabled={!assignTarget}>
+                <ArrowRight className="h-3.5 w-3.5 mr-1.5" />
+                Dodaj
               </Button>
             </div>
           </div>
