@@ -1,5 +1,5 @@
-import { X, ChevronDown, Check } from "lucide-react";
-import { useState } from "react";
+import { X, ChevronDown, Check, AlertTriangle } from "lucide-react";
+import { useState, useCallback } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, getMasteryColor } from "@/components/KnowledgeMap";
 import { motion, AnimatePresence } from "framer-motion";
