@@ -69,7 +69,7 @@ export const MonumentInterior = memo(function MonumentInterior({
     return (
       <motion.div key="detail" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.2 }} className="space-y-3">
         <Suspense fallback={<TabSkeleton />}>
-          <MentalSkeleton cards={allCards} category={monument.category} subcategory={selectedSub} onBack={() => setSelectedSub(null)} onUpdateChapters={onUpdateChapters} onReviewSection={onReviewSection} />
+          <MentalSkeleton cards={cards} category={monument.category} subcategory={selectedSub} onBack={() => setSelectedSub(null)} onUpdateChapters={onUpdateChapters} onReviewSection={onReviewSection} />
         </Suspense>
       </motion.div>
     );
