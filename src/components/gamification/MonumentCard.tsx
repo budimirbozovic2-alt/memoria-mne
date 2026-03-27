@@ -192,7 +192,7 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
         {/* Mastery progress */}
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[10px]">
-            <span className="text-muted-foreground">Dominatio</span>
+            <span className="text-muted-foreground">Savladanost</span>
             <span className="font-medium tabular-nums text-foreground">{monument.mastery}%</span>
           </div>
           <Progress value={monument.mastery} className="h-1.5" />
