@@ -70,10 +70,12 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
 
   const resumeSession = useCallback(() => {
     if (!savedSession) return;
-    let resumeMode = savedSession.mode;
-    if (resumeMode === "essay") resumeMode = "stabilization";
-    if (resumeMode === "random") resumeMode = "critical";
-    if (resumeMode === "difficult") resumeMode = "hardest";
+    let resumeMode: ReviewMode = savedSession.mode;
+    // Legacy migration: old mode names → new ones
+    const modeStr = resumeMode as string;
+    if (modeStr === "essay") resumeMode = "stabilization";
+    else if (modeStr === "random") resumeMode = "critical";
+    else if (modeStr === "difficult") resumeMode = "hardest";
     setMode(resumeMode);
     setRandomIndex(savedSession.randomIndex || 0);
     setSavedSession(null);
