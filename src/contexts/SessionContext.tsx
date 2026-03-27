@@ -68,6 +68,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const reviewQueue = useRef<QueuedReview[]>([]);
   const errorQueue = useRef<QueuedError[]>([]);
   const readQueue = useRef<QueuedMarkRead[]>([]);
+  const [queueSize, setQueueSize] = useState(0);
 
   const startSession = useCallback((cards: Card[], reviewLog: ReviewLogEntry[]) => {
     // Take immutable snapshot
@@ -75,6 +76,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     reviewQueue.current = [];
     errorQueue.current = [];
     readQueue.current = [];
+    setQueueSize(0);
     setIsSessionActive(true);
   }, []);
 
