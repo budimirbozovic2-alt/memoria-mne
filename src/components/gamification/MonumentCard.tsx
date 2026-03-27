@@ -110,6 +110,7 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
 
   return (
     <motion.div
+      layoutId={`monument-${monument.category}`}
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.4 }}
