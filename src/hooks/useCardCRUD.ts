@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { idbDeleteCard } from "@/lib/db";
 import { toast } from "sonner";
 import {
   Card,
