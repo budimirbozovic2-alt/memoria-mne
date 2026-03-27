@@ -36,7 +36,8 @@ export default function RomanForumPage() {
       {/* Atmospheric background layer */}
       <ForumAtmosphere dayPhase={forumState.dayPhase} warmth={forumState.warmth} />
 
-      <AnimatePresence mode="wait">
+      <LayoutGroup>
+      <AnimatePresence>
         {selectedMonument ? (
           <MonumentInterior
             key="interior"
