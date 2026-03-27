@@ -14,7 +14,7 @@ interface UseCardCRUDParams {
   categories: string[];
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   setCategories: (updater: (prev: string[]) => string[]) => void;
-  cardMapRef: React.RefObject<CardMap>;
+  cardMapRef: React.MutableRefObject<CardMap>;
 }
 
 export function useCardCRUD({
