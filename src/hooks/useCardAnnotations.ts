@@ -164,12 +164,13 @@ export function useCardAnnotations({
       const next = { ...prev };
       orderedIds.forEach((id, index) => {
         if (next[id]) {
-          next[id] = { ...next[id], sortOrder: index };
+          next[id] = { ...next[id], sortOrder: index, updatedAt: Date.now() };
           updated.push(next[id]);
         }
       });
       return next;
     });
+    bumpMapVersion();
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
   }, [setCardMapState]);
 
