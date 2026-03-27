@@ -144,6 +144,7 @@ export default function SpeedReader() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const ttsPlayingRef = useRef(false);
+  const ttsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ttsSegIdxRef = useRef(-1);
   // Load voices
   useEffect(() => {
