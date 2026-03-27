@@ -87,6 +87,11 @@ export const MonumentDetailDialog = memo(function MonumentDetailDialog({ monumen
           </DialogTitle>
         </DialogHeader>
 
+        {/* Source Breakdown */}
+        {monument.sources && monument.sources.length > 1 && (
+          <SourceBreakdown sources={monument.sources} />
+        )}
+
         <ScrollArea className="flex-1 min-h-0 px-6 py-4">
           {categoryCards.length === 0 ? (
             <p className="text-sm text-muted-foreground italic py-8 text-center">Nulla carta in hac disciplina.</p>
