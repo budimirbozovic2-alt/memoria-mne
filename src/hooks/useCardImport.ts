@@ -143,17 +143,19 @@ export function useCardImport({
           { key: "activityLog", table: "activityLog" }, { key: "disciplineLog", table: "disciplineLog" },
           { key: "pomodoroLog", table: "pomodoroLog" },
         ];
-        const hasExtraTables = idbTables.some((t) => Array.isArray(parsed[t.key]) && parsed[t.key].length > 0);
+        const hasExtraTables = idbTables.some((t) => Array.isArray(data[t.key]) && (data[t.key] as unknown[]).length > 0);
         if (hasExtraTables) {
-          const { db } = await import("@/lib/db");
+          const { db: dbInst } = await import("@/lib/db");
+          const dbRecord = dbInst as unknown as Record<string, { bulkPut: (items: unknown[]) => Promise<void>; toCollection: () => { primaryKeys: () => Promise<unknown[]> }; bulkDelete: (keys: unknown[]) => Promise<void> }>;
           for (const { key, table } of idbTables) {
-            if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
-              await (db as any)[table].bulkPut(parsed[key]);
+            const arr = data[key];
+            if (Array.isArray(arr) && arr.length > 0) {
+              await dbRecord[table].bulkPut(arr);
               if (strategy === "overwrite") {
-                const importedIds = new Set(parsed[key].map((r: any) => r.id));
-                const allKeys = await (db as any)[table].toCollection().primaryKeys();
-                const toDelete = allKeys.filter((k: any) => !importedIds.has(k));
-                if (toDelete.length > 0) await (db as any)[table].bulkDelete(toDelete);
+                const importedIds = new Set((arr as Record<string, unknown>[]).map((r) => r.id));
+                const allKeys = await dbRecord[table].toCollection().primaryKeys();
+                const toDelete = allKeys.filter((k) => !importedIds.has(k));
+                if (toDelete.length > 0) await dbRecord[table].bulkDelete(toDelete);
               }
             }
           }
