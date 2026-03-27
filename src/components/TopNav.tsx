@@ -72,6 +72,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
   const [mappingFlash, setMappingFlash] = useState(false);
   const mappingCountRef = useRef(0);
 
+  const [versionOpen, setVersionOpen] = useState(false);
   const [_sysInfoOpen, _setSysInfoOpen] = useState(false);
   const [_sysPayload, _setSysPayload] = useState("");
   const _seqRef = useRef<{ phase: number; timer: ReturnType<typeof setTimeout> | null }>({ phase: 0, timer: null });
