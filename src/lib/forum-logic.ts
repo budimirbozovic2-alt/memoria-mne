@@ -183,7 +183,7 @@ let _cachedFingerprint = "";
 let _cachedForumState: ForumState | null = null;
 
 /** Build a lightweight fingerprint from card states to detect real changes */
-function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: number): string {
+function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: number, registryVersion = 0): string {
   // O(n) but much cheaper than full rebuild — just counts + states
   let reviewSections = 0;
   let totalSections = 0;
@@ -195,7 +195,8 @@ function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: numb
       stabilitySum += sec.stability;
     }
   }
-  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}`;
+  // H1 fix: include registryVersion so alias/monument changes bust cache
+  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}:${registryVersion}`;
 }
 
 // ─── Main Calculator ────────────────────────────────────
@@ -204,9 +205,10 @@ export function calculateForumState(
   cards: Card[],
   reviewLog: ReviewEntry[],
   allSources?: Source[],
+  registryVersion = 0,
 ): ForumState {
   // B2: Skip full O(n*s) rebuild if fingerprint matches
-  const fp = buildFingerprint(cards, reviewLog.length, allSources?.length ?? 0);
+  const fp = buildFingerprint(cards, reviewLog.length, allSources?.length ?? 0, registryVersion);
   if (fp === _cachedFingerprint && _cachedForumState) {
     return _cachedForumState;
   }

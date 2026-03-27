@@ -140,7 +140,7 @@ export function useCardAnnotations({
     [patchCard],
   );
 
-  // Bulk flag cards as needsReview — accumulator pattern for surgical persist
+  // Bulk flag cards as needsReview — C2 fix: ref mutation moved OUTSIDE setState updater
   const bulkFlagNeedsReview = useCallback((cardIds: string[]) => {
     if (cardIds.length === 0) return;
     const updated: Card[] = [];
@@ -151,16 +151,17 @@ export function useCardAnnotations({
           const u = { ...next[id], needsReview: true, updatedAt: Date.now() };
           next[id] = u;
           updated.push(u);
-          cardMapRef.current[id] = u;
         }
       }
       return next;
     });
+    // Sync ref AFTER updater — safe because React processes updaters synchronously within the batch
+    for (const u of updated) cardMapRef.current[u.id] = u;
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);
 
-  // Reorder cards — accumulator pattern for surgical persist
+  // Reorder cards — C2 fix: ref mutation moved OUTSIDE setState updater
   const reorderCards = useCallback((orderedIds: string[]) => {
     const updated: Card[] = [];
     setCardMapState((prev) => {
@@ -170,16 +171,16 @@ export function useCardAnnotations({
           const u = { ...next[id], sortOrder: index, updatedAt: Date.now() };
           next[id] = u;
           updated.push(u);
-          cardMapRef.current[id] = u;
         }
       });
       return next;
     });
+    for (const u of updated) cardMapRef.current[u.id] = u;
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);
 
-  // Update chapter and chapterOrder — accumulator pattern for surgical persist
+  // Update chapter and chapterOrder — C2 fix: ref mutation moved OUTSIDE setState updater
   const bulkUpdateChapter = useCallback((updates: { id: string; chapter: string; chapterOrder: number }[]) => {
     const changed: Card[] = [];
     setCardMapState((prev) => {
@@ -189,11 +190,11 @@ export function useCardAnnotations({
           const c = { ...next[u.id], chapter: u.chapter, chapterOrder: u.chapterOrder, updatedAt: Date.now() };
           next[u.id] = c;
           changed.push(c);
-          cardMapRef.current[u.id] = c;
         }
       }
       return next;
     });
+    for (const c of changed) cardMapRef.current[c.id] = c;
     if (changed.length > 0) schedulePersist({ type: "bulk", cards: changed });
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);

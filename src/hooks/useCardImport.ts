@@ -110,7 +110,10 @@ export function useCardImport({
             setCategories((prev) => [...new Set([...prev, ...(data.categories as string[])])]);
           }
         }
-        if (data.subcategories && typeof data.subcategories === "object") {
+        if (strategy === "overwrite" && (!data.subcategories || Object.keys(data.subcategories as object).length === 0)) {
+          // C3 fix: Clear subcategories on overwrite when backup has none
+          setSubcategories(() => ({}));
+        } else if (data.subcategories && typeof data.subcategories === "object") {
           if (strategy === "overwrite") {
             setSubcategories(() => data.subcategories as Record<string, string[]>);
           } else {
