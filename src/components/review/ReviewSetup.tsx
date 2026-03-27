@@ -211,7 +211,7 @@ export default function ReviewSetup({
               key={key}
               onClick={() => { if (count > 0) { setMode(key); setSetupStep("filter"); } }}
               disabled={count === 0}
-              className={`rounded-xl border bg-card p-6 text-left transition-colors group ${count > 0 ? `hover:border-${color}` : "opacity-50 cursor-not-allowed"}`}
+              className={`glass-card rounded-xl p-6 text-left transition-colors group ${count > 0 ? `hover:border-${color}` : "opacity-50 cursor-not-allowed"}`}
             >
               <div className="flex items-center gap-3 mb-3">
                 <div className={`p-2.5 rounded-lg bg-${color}/10 text-${color}`}>
