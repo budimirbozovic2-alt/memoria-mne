@@ -27,32 +27,20 @@ interface Props {
 }
 
 function computeAvgStability(cards: { sections: { stability: number }[] }[]): number {
-  let total = 0;
-  let count = 0;
-  for (const card of cards) {
-    for (const s of card.sections) {
-      if (s.stability > 0) { total += s.stability; count++; }
-    }
-  }
+  let total = 0, count = 0;
+  for (const card of cards) for (const s of card.sections) if (s.stability > 0) { total += s.stability; count++; }
   return count > 0 ? total / count : 0;
 }
 
 export const MonumentInterior = memo(function MonumentInterior({
-  monument,
-  sources,
-  onBack,
-  onUpdateChapters,
-  onReviewSection,
+  monument, sources, onBack, onUpdateChapters, onReviewSection,
 }: Props) {
   const { cards } = useCardContext();
   const navigate = useNavigate();
   const [selectedSub, setSelectedSub] = useState<string | null>(null);
 
   const allCards = useMemo(() => Object.values(cards), [cards]);
-  const catCards = useMemo(
-    () => allCards.filter((c) => c.category === monument.category),
-    [allCards, monument.category],
-  );
+  const catCards = useMemo(() => allCards.filter((c) => c.category === monument.category), [allCards, monument.category]);
 
   const sourceHierarchy = useSourceHierarchy(allCards, sources, monument.category);
 
@@ -79,31 +67,14 @@ export const MonumentInterior = memo(function MonumentInterior({
 
   const overdueCount = useMemo(() => {
     const now = Date.now();
-    return catCards.filter((c: any) =>
-      c.sections.some((s: any) => s.nextReview && s.nextReview <= now),
-    ).length;
+    return catCards.filter((c: any) => c.sections.some((s: any) => s.nextReview && s.nextReview <= now)).length;
   }, [catCards]);
 
-  // Drilled into subcategory → MentalSkeleton
   if (selectedSub && onUpdateChapters && onReviewSection) {
     return (
-      <motion.div
-        key="detail"
-        initial={{ opacity: 0, x: 60 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -60 }}
-        transition={{ duration: 0.25 }}
-        className="space-y-3"
-      >
+      <motion.div key="detail" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.2 }} className="space-y-3">
         <Suspense fallback={<TabSkeleton />}>
-          <MentalSkeleton
-            cards={allCards}
-            category={monument.category}
-            subcategory={selectedSub}
-            onBack={() => setSelectedSub(null)}
-            onUpdateChapters={onUpdateChapters}
-            onReviewSection={onReviewSection}
-          />
+          <MentalSkeleton cards={allCards} category={monument.category} subcategory={selectedSub} onBack={() => setSelectedSub(null)} onUpdateChapters={onUpdateChapters} onReviewSection={onReviewSection} />
         </Suspense>
       </motion.div>
     );
@@ -116,46 +87,29 @@ export const MonumentInterior = memo(function MonumentInterior({
     <motion.div
       key="interior"
       layoutId={`monument-${monument.category}`}
-      initial={{ opacity: 0, scale: 0.92, rotateX: 4 }}
-      animate={{ opacity: 1, scale: 1, rotateX: 0 }}
-      exit={{ opacity: 0, scale: 0.95, rotateX: 2 }}
-      transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-      style={{ transformOrigin: "center top" }}
-      className="space-y-6"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="space-y-5"
     >
-      {/* Interior Header — stone wall with atmospheric tint */}
-      <div className="forum-stone p-5 relative overflow-hidden" style={{ borderColor: "hsl(var(--gold) / 0.2)" }}>
-        {/* Atmospheric light wash */}
-        <div
-          className="absolute inset-0 pointer-events-none transition-colors duration-1000"
-          style={{ background: "var(--atmo-tint, transparent)" }}
-          aria-hidden
-        />
-
-        <div className="relative z-10 flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-lg hover:bg-secondary/50 transition-colors shrink-0"
-          >
+      {/* Header */}
+      <div className="glass-card p-5" style={{ borderColor: "hsl(var(--gold) / 0.15)" }}>
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-2 rounded-lg hover:bg-secondary transition-colors shrink-0">
             <ArrowLeft className="h-5 w-5 text-muted-foreground" />
           </button>
 
-          {/* Building thumbnail with atmospheric overlay */}
-          <div className="shrink-0 h-16 w-16 flex items-center justify-center relative">
+          <div className="shrink-0 h-14 w-14 flex items-center justify-center opacity-80">
             <MonumentSVG buildingType={monument.buildingType} tier={monument.material} />
-            <div
-              className="absolute inset-0 pointer-events-none rounded mix-blend-overlay transition-colors duration-1000"
-              style={{ background: "var(--atmo-tint, transparent)" }}
-              aria-hidden
-            />
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold font-display text-gold truncate tracking-wide">
+            <h2 className="text-lg font-semibold font-display text-foreground truncate tracking-wide">
               {materialIcon} {monument.category}
             </h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {catCards.length} kartica • {tree.length} {mode === "A" ? "izvora" : "grupa"} ({modeLabel}) • Dominatio {monument.mastery}%
+            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+              {catCards.length} kartica · {tree.length} {mode === "A" ? "izvora" : "grupa"} ({modeLabel}) · {monument.mastery}%
             </p>
           </div>
 
@@ -171,38 +125,28 @@ export const MonumentInterior = memo(function MonumentInterior({
           )}
         </div>
 
-        {/* Source Breakdown */}
         {monument.sources && monument.sources.length > 1 && (
           <SourceBreakdown sources={monument.sources} />
         )}
       </div>
 
-      {/* Interior Body */}
-      <ScrollArea className="max-h-[calc(100vh-280px)]">
+      {/* Body */}
+      <ScrollArea className="max-h-[calc(100vh-260px)]">
         {mode === "A" ? (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {tree.map((wing, wi) => (
               <div key={wing.name} className="space-y-3">
-                {/* Wing header — stone lintel with golden inscriptions */}
-                <div className="flex items-center gap-3 px-2 py-1">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
-                  <h3 className="text-[11px] font-display text-gold uppercase tracking-[0.2em] shrink-0 px-3">
+                {/* Wing divider */}
+                <div className="flex items-center gap-3 px-1">
+                  <div className="h-px flex-1 bg-border/40" />
+                  <span className="text-[10px] font-display text-muted-foreground uppercase tracking-[0.15em] shrink-0">
                     {wing.name}
-                  </h3>
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gold/30 to-transparent" />
+                  </span>
+                  <div className="h-px flex-1 bg-border/40" />
                 </div>
-
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {wing.children.map((child, ci) => (
-                    <ArchNode
-                      key={child.name}
-                      name={child.name}
-                      cardCount={child.cardCount}
-                      levels={child.levels}
-                      avgStability={computeAvgStability(child.cards)}
-                      index={wi * 10 + ci}
-                      onClick={() => setSelectedSub(child.name)}
-                    />
+                    <ArchNode key={child.name} name={child.name} cardCount={child.cardCount} levels={child.levels} avgStability={computeAvgStability(child.cards)} index={wi * 10 + ci} onClick={() => setSelectedSub(child.name)} />
                   ))}
                 </div>
               </div>
@@ -211,29 +155,14 @@ export const MonumentInterior = memo(function MonumentInterior({
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {tree.map((node, i) => {
-              const nodeCards = catCards.filter(
-                (c: any) => (c.subcategory || "Ostalo") === node.name,
-              );
-              return (
-                <ArchNode
-                  key={node.name}
-                  name={node.name}
-                  cardCount={node.cardCount}
-                  levels={node.levels}
-                  avgStability={computeAvgStability(nodeCards)}
-                  index={i}
-                  onClick={() => setSelectedSub(node.name)}
-                />
-              );
+              const nodeCards = catCards.filter((c: any) => (c.subcategory || "Ostalo") === node.name);
+              return <ArchNode key={node.name} name={node.name} cardCount={node.cardCount} levels={node.levels} avgStability={computeAvgStability(nodeCards)} index={i} onClick={() => setSelectedSub(node.name)} />;
             })}
           </div>
         )}
-
         {tree.length === 0 && (
           <div className="flex items-center justify-center min-h-[20vh]">
-            <p className="text-sm text-muted-foreground italic font-display">
-              Nulla structura in hoc monumento.
-            </p>
+            <p className="text-sm text-muted-foreground italic">Nulla structura in hoc monumento.</p>
           </div>
         )}
       </ScrollArea>
@@ -241,13 +170,9 @@ export const MonumentInterior = memo(function MonumentInterior({
   );
 });
 
-/** Compact source mastery breakdown */
 function SourceBreakdown({ sources }: { sources: import("@/lib/forum-logic").MonumentSourceBreakdown[] }) {
   const [open, setOpen] = useState(false);
-  const sorted = useMemo(
-    () => [...sources].sort((a, b) => b.mastery - a.mastery),
-    [sources],
-  );
+  const sorted = useMemo(() => [...sources].sort((a, b) => b.mastery - a.mastery), [sources]);
 
   function tierColor(m: number) {
     if (m >= 95) return "hsl(var(--gold))";
@@ -257,11 +182,11 @@ function SourceBreakdown({ sources }: { sources: import("@/lib/forum-logic").Mon
   }
 
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="relative z-10 mt-3 pt-3 border-t border-border/30">
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-3 pt-3 border-t border-border/30">
       <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
-        <span className="font-display uppercase tracking-wider">Fontes</span>
+        <span className="font-display uppercase tracking-wider text-[10px]">Fontes</span>
         <span className="tabular-nums">({sorted.length})</span>
-        <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3 w-3 ml-auto transition-transform duration-150 ${open ? "rotate-180" : ""}`} />
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="mt-2 space-y-1.5">
@@ -270,15 +195,9 @@ function SourceBreakdown({ sources }: { sources: import("@/lib/forum-logic").Mon
               <span className="truncate flex-1 min-w-0 text-foreground">{s.masterSource}</span>
               <span className="tabular-nums text-muted-foreground shrink-0">{s.cardCount}</span>
               <div className="w-16 shrink-0">
-                <Progress
-                  value={s.mastery}
-                  className="h-1"
-                  style={{ "--progress-color": tierColor(s.mastery) } as React.CSSProperties}
-                />
+                <Progress value={s.mastery} className="h-1" style={{ "--progress-color": tierColor(s.mastery) } as React.CSSProperties} />
               </div>
-              <span className="tabular-nums w-8 text-right shrink-0" style={{ color: tierColor(s.mastery) }}>
-                {s.mastery}%
-              </span>
+              <span className="tabular-nums w-8 text-right shrink-0" style={{ color: tierColor(s.mastery) }}>{s.mastery}%</span>
             </div>
           ))}
         </div>
