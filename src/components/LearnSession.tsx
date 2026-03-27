@@ -14,7 +14,7 @@ const StudyModeFree = lazy(() => import("./learn/StudyModeFree"));
 const StudyModeRecall = lazy(() => import("./learn/StudyModeRecall"));
 const StudyModeChain = lazy(() => import("./learn/StudyModeChain"));
 
-export default function LearnSession({ cards, categories, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0 }: LearnSessionProps) {
+export default function LearnSession({ cards, categories, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0, reviewLog: reviewLogProp = [] }: LearnSessionProps) {
   const [setupStep, setSetupStep] = useState<"mode" | "filter" | "ready">("mode");
   const [learnMode, setLearnMode] = useState<LearnMode>("free");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
