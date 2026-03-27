@@ -121,6 +121,8 @@ export function useCardImport({
               ...src, htmlContent: sanitizeHtml(src.htmlContent ?? ""),
             }));
             await db.sources.bulkPut(sanitizedSources);
+            const { invalidateSourcesCache } = await import("@/lib/sources-storage");
+            invalidateSourcesCache();
             if (strategy === "overwrite") {
               const importedIds = new Set(sanitizedSources.map((s: { id: string }) => s.id));
               const allKeys = await db.sources.toCollection().primaryKeys();
