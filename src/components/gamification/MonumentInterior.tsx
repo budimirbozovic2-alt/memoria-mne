@@ -1,6 +1,6 @@
 import { memo, useMemo, useState, lazy, Suspense } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Play } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Play, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCardContext } from "@/contexts/AppContext";
 import type { Monument } from "@/lib/forum-logic";
