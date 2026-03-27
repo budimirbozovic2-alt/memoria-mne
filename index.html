@@ -73,7 +73,22 @@
     <script>
       setTimeout(function(){
         var s=document.getElementById("app-splash");
-        if(s){s.style.transition="opacity 0.3s";s.style.opacity="0";setTimeout(function(){if(s.parentNode)s.remove()},400);}
+        if(!s)return;
+        var status=document.getElementById("splash-status");
+        var bar=document.getElementById("splash-progress");
+        var pct=document.getElementById("splash-percent");
+        if(status)status.textContent="Učitavanje traje duže nego obično…";
+        if(bar)bar.style.width="100%";
+        if(pct)pct.textContent="";
+        var errBox=document.getElementById("splash-error");
+        var errMsg=document.getElementById("splash-error-msg");
+        if(errBox)errBox.style.display="block";
+        if(errMsg)errMsg.textContent="Aplikacija se nije uspjela pokrenuti u očekivanom roku.";
+        var retry=document.createElement("button");
+        retry.textContent="Pokušaj ponovo";
+        retry.style.cssText="margin-top:12px;padding:8px 20px;background:linear-gradient(90deg,#3882dc,#5ba0f5);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.02em;";
+        retry.onclick=function(){location.reload();};
+        if(errBox)errBox.appendChild(retry);
       },10000);
     </script>
     <script type="module" src="./src/main.tsx"></script>
