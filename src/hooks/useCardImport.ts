@@ -162,8 +162,8 @@ export function useCardImport({
         }
 
         // Restore localStorage data (v4+)
-        if (parsed.localStorageData && typeof parsed.localStorageData === "object") {
-          for (const [key, value] of Object.entries(parsed.localStorageData)) {
+        if (data.localStorageData && typeof data.localStorageData === "object") {
+          for (const [key, value] of Object.entries(data.localStorageData as Record<string, unknown>)) {
             localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
           }
         }
