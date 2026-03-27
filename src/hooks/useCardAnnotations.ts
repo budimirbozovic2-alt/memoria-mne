@@ -19,7 +19,7 @@ export function useCardAnnotations({
   // O(1) review — surgical IDB write (patchCard handles persist via Ref-Delta)
   const reviewSection = useCallback(
     (cardId: string, sectionId: string, grade: number) => {
-      const cachedRetention = loadAppSettings().targetRetention;
+      const cachedRetention = getCachedRetention();
       const entry: ReviewLogEntry = { timestamp: Date.now(), cardId, sectionId, grade, category: "" };
 
       patchCard(cardId, (c) => {
