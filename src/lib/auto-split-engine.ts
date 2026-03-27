@@ -35,6 +35,17 @@ function firstWords(text: string, n = 6): string {
   return words.length > n ? slice + "..." : slice;
 }
 
+const STRUCTURAL_KEYWORDS = /^\s*(DIO|GLAVA|POGLAVLJE|ODJELJAK|CZĘŚĆ|TYTUŁ)\b/i;
+
+/** Detect structural legal headings that should be excluded from card body */
+function isStructuralLine(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 120) return false;
+  if (trimmed.length <= 80 && trimmed === trimmed.toUpperCase() && /[A-ZČĆŽŠĐ]/.test(trimmed)) return true;
+  if (STRUCTURAL_KEYWORDS.test(trimmed)) return true;
+  return false;
+}
+
 /**
  * Parse source HTML and detect legal articles with titles.
  *
@@ -138,7 +149,7 @@ export function detectArticles(html: string): DetectedArticle[] {
     }
 
     for (let j = i + 1; j < nextBoundary; j++) {
-      if (lines[j].text && !lines[j].isHeading) {
+      if (lines[j].text && !lines[j].isHeading && !isStructuralLine(lines[j].text)) {
         contentParts.push(lines[j].html);
         plainParts.push(lines[j].text);
       }

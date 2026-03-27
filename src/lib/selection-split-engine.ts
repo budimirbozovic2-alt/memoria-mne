@@ -32,6 +32,17 @@ const ARTICLE_REGEX = /^(?:Č|č)(?:lan|LANAK|L(?:AN|ANAK)?\.?)\s+(\d+[a-z]?)\.?
 /** Detect lines that look like HTML headings in plain text (from stripped h1-h3) */
 const HEADING_LINE_REGEX = /^#{1,3}\s+/;
 
+const STRUCTURAL_KEYWORDS = /^\s*(DIO|GLAVA|POGLAVLJE|ODJELJAK|CZĘŚĆ|TYTUŁ)\b/i;
+
+/** Detect structural legal headings that should be excluded from card body */
+function isStructuralLine(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length > 120) return false;
+  if (trimmed.length <= 80 && trimmed === trimmed.toUpperCase() && /[A-ZČĆŽŠĐ]/.test(trimmed)) return true;
+  if (STRUCTURAL_KEYWORDS.test(trimmed)) return true;
+  return false;
+}
+
 /** Extract first N words from text for fallback title */
 function firstWords(text: string, n = 7): string {
   const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
@@ -114,7 +125,7 @@ export function splitSelection(selectedText: string): SelectionSplitResult {
 
     const contentLines: string[] = [];
     for (let j = lineIndex + 1; j < contentEnd; j++) {
-      if (lines[j].trim() && !HEADING_LINE_REGEX.test(lines[j])) contentLines.push(lines[j]);
+      if (lines[j].trim() && !HEADING_LINE_REGEX.test(lines[j]) && !isStructuralLine(lines[j])) contentLines.push(lines[j]);
     }
 
     // Fallback title from first 7 words
