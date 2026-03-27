@@ -201,8 +201,8 @@ export default function SourceManager() {
                 <div
                   key={label}
                   onClick={() => toggleSelect(label)}
-                  className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    isSelected ? "bg-primary/10 border-primary/30" : "bg-card hover:bg-secondary/40"
+                  className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
+                    isSelected ? "glass-card border-primary/30 bg-primary/10" : "glass-card hover:bg-secondary/40"
                   }`}
                 >
                   <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
