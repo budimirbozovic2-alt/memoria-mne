@@ -6,8 +6,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { useEffect, useState } from "react";
 
-import { getSource, type Source } from "@/lib/sources-storage";
-import { db } from "@/lib/db";
+import { getSource, confirmCardReview, type Source } from "@/lib/sources-storage";
 import { toast } from "sonner";
 interface Props {
   card: Card;
@@ -33,8 +32,7 @@ export default function SourceSnippetDialog({ card, open, onOpenChange, onReview
   const handleConfirmReview = async () => {
     setConfirming(true);
     try {
-      // Update in IndexedDB directly
-      await db.cards.update(card.id, { needsReview: undefined });
+      await confirmCardReview(card.id);
       onReviewConfirmed?.(card.id);
       toast.success("Kartica potvrđena — oznaka za provjeru uklonjena.");
       onOpenChange(false);
