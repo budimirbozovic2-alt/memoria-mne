@@ -154,18 +154,18 @@ export function useCardAnnotations({
 
   // Reorder cards by setting sortOrder
   const reorderCards = useCallback((orderedIds: string[]) => {
+    let updated: Card[] = [];
     setCardMapState((prev) => {
       const next = { ...prev };
-      const updated: Card[] = [];
       orderedIds.forEach((id, index) => {
         if (next[id]) {
           next[id] = { ...next[id], sortOrder: index };
           updated.push(next[id]);
         }
       });
-      schedulePersist({ type: "bulk", cards: updated });
       return next;
     });
+    if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
   }, [setCardMapState]);
 
   // Update chapter and chapterOrder (Mental Skeleton DnD)
