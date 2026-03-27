@@ -139,6 +139,8 @@ export function useCardCRUD({
       return next;
     });
     bumpMapVersion();
+    // Delete must be explicit — useEffect bulk persist only does bulkPut
+    idbDeleteCard(id).catch(e => console.error("[deleteCard] IDB delete failed", e));
     toast.success("Kartica obrisana.");
   }, [setCardMapState]);
 
