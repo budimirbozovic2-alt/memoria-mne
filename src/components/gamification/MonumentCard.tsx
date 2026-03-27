@@ -59,15 +59,41 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
     >
       {/* Content */}
       <div className="relative z-10 space-y-3">
-        {/* Header: category */}
+        {/* Header: category + source tooltip */}
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-foreground truncate max-w-[160px]">
-            {monument.category}
-          </h3>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <h3 className="text-sm font-semibold text-foreground truncate max-w-[160px] cursor-default">
+                  {monument.category}
+                </h3>
+              </TooltipTrigger>
+              {monument.sources && monument.sources.length > 0 && (
+                <TooltipContent side="bottom" className="max-w-[260px] space-y-1 text-xs">
+                  <p className="font-semibold text-foreground mb-1">Izvori u ovom spomeniku:</p>
+                  {monument.sources.map(s => (
+                    <div key={s.masterSource} className="flex justify-between gap-3">
+                      <span className="truncate text-muted-foreground">{s.masterSource}</span>
+                      <span className="tabular-nums text-foreground whitespace-nowrap">{s.cardCount} · {s.mastery}%</span>
+                    </div>
+                  ))}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <span className={`text-[10px] font-medium tracking-wider uppercase ${style.accent}`}>
             {PHASE_LABELS[monument.material]}
           </span>
         </div>
+        {/* Source subtitle */}
+        {monument.sources && monument.sources.filter(s => s.masterSource !== "Bez izvora").length > 0 && (
+          <p className="text-[10px] text-muted-foreground truncate -mt-1.5">
+            {monument.sources
+              .filter(s => s.masterSource !== "Bez izvora")
+              .map(s => s.masterSource)
+              .join(" · ")}
+          </p>
+        )}
 
         {/* SVG Building Visualization — fast crossfade */}
         <div className="relative flex items-center justify-center h-32 overflow-hidden" aria-hidden>
