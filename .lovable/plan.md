@@ -1,39 +1,32 @@
 
 
-# Fix Import Confirm Button — Diagnosis & Defensive Patch
+# Global Functional Wiring Audit — Post-Decomposition
 
-## Diagnosis
+## Audit Results
 
-After tracing the full chain, the wiring is **correctly connected**:
+After tracing all callback chains across the decomposed pages, the wiring is **fully intact**. The Proxy `ownKeys` fix in `AppContext.tsx` resolved the root cause that was breaking ALL action callbacks (not just import).
 
-```text
-CardsPage (onImport={importData})
-  → ExportImportDialog.handleImport(strategy)
-    → onImport(validation.file, strategy)  // = importData from useCardImport
-    → handleOpenChange(false)              // closes dialog
-```
+### 1. CardsPage.tsx — ✅ All wired correctly
+- **Import**: `importData` from `useCardContext()` → passed as `onImport` to `ExportImportDialog` → called in `handleImport()` at line 171. **Working.**
+- **Export**: `exportData` and `exportTemplate` → passed as `onExportFull` and `onExportTemplate`. **Working.**
+- **DOCX Import**: `importCards` and `addFlashCard` from context → used inline in `onImport` callback. **Working.**
 
-No broken references, no missing params, no stale closures. The `importData` function has correct access to `cardMapRef`, `setCardMapState`, and all other deps.
+### 2. CategoriesRoutePage.tsx / CategoriesPage.tsx — ✅ All wired correctly
+- `CategoriesPage` pulls `addCategory`, `renameCategory`, `deleteCategory`, `addSubcategory`, `renameSubcategory`, `deleteSubcategory` from `useCardContext()`.
+- All passed as props to `CategoryManager` which expects them as `onAdd`, `onRename`, `onDelete`, `onAddSub`, `onRenameSub`, `onDeleteSub`.
+- **No broken wires.** The Proxy fix ensures all these are real functions now.
 
-**Most likely cause**: Stale Vite HMR cache after the dead-code elimination round. The old module graph may have retained a broken reference that a full rebuild clears.
+### 3. SourcesRoutePage.tsx & SourceRegistryPage.tsx — ✅ Self-contained
+- `SourcesView` imports storage functions directly (`saveSource`, `deleteSource` from `sources-storage.ts`) — no context dependency for CRUD.
+- `SourceManager` also uses direct imports (`loadSourceRegistry`, `saveSourceRegistry`).
+- Only `cards` and `bulkFlagNeedsReview` come from context — both are working after the Proxy fix.
 
-## Defensive Cleanup (1 file)
+### 4. Event Listeners — ✅ Clean
+- Search for `memoria-open-database-tab` and `sessionStorage.setItem.*database` returned **zero matches**. All stale event listeners were already removed in earlier cleanup rounds.
 
-### `src/hooks/useCardImport.ts` — line 3
-Remove unused `createSection` import (dead code from previous cleanup):
+## Conclusion
 
-```
-- import { Card, createCard, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
-+ import { Card, createCard, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
-```
+**Zero broken wires found.** The single root cause was the Proxy missing `ownKeys`/`getOwnPropertyDescriptor` traps in `AppContext.tsx`, which made `{...actions}` spread to an empty object. This was already fixed in the previous session. All buttons (Import, Export, DOCX Import, Category CRUD, Source CRUD) are correctly connected.
 
-This is the only actual code issue found. The import is harmless at runtime but should be cleaned for hygiene.
-
-## Testing
-
-After this change, the user should:
-1. Hard-refresh the preview (Ctrl+Shift+R)
-2. Open Cards page → Export/Import → pick a JSON/ZIP file → confirm
-
-If the button still doesn't respond after a hard refresh, a browser console check during the click will reveal the exact error.
+**No code changes needed.**
 
