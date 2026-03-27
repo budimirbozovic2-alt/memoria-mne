@@ -36,10 +36,11 @@ interface ReviewSetupProps {
 export default function ReviewSetup({
   dueCards, allCards, subcategories, srSettings,
   onSelectMode, onBack, savedSession, onResumeSession, onClearSavedSession,
+  preSelectedCategory,
 }: ReviewSetupProps) {
   const [setupStep, setSetupStep] = useState<"mode" | "filter">("mode");
   const [mode, setMode] = useState<ReviewMode>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(preSelectedCategory ?? null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
