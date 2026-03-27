@@ -77,25 +77,26 @@ export function useCardImport({
         });
 
         const importedCards: Card[] = cardsArr.map(c => migrateImported(c));
-        // Accumulator: collect merged cards for surgical persist
+        // H2 fix: Pre-compute merged array outside React updater using cardMapRef
+        const currentMap = cardMapRef.current;
         const merged: Card[] = [];
-        setCardMap((prev) => {
-          const next = { ...prev };
-          if (strategy === "newer") {
-            const getLastReview = (c: Card) => c.sections.reduce((max, s) => Math.max(max, s.lastReviewed || 0), 0);
-            importedCards.forEach((ic) => {
-              const existing = next[ic.id];
-              if (!existing) { next[ic.id] = ic; merged.push(ic); }
-              else if (getLastReview(ic) > getLastReview(existing)) { next[ic.id] = ic; merged.push(ic); }
-            });
-          } else if (strategy === "overwrite") {
-            importedCards.forEach((ic) => { next[ic.id] = ic; merged.push(ic); });
-          } else {
-            importedCards.forEach((ic) => { if (!next[ic.id]) { next[ic.id] = ic; merged.push(ic); } });
-          }
-          return next;
-        }, "full");
+        const nextMap = { ...currentMap };
+        if (strategy === "newer") {
+          const getLastReview = (c: Card) => c.sections.reduce((max, s) => Math.max(max, s.lastReviewed || 0), 0);
+          importedCards.forEach((ic) => {
+            const existing = nextMap[ic.id];
+            if (!existing) { nextMap[ic.id] = ic; merged.push(ic); }
+            else if (getLastReview(ic) > getLastReview(existing)) { nextMap[ic.id] = ic; merged.push(ic); }
+          });
+        } else if (strategy === "overwrite") {
+          importedCards.forEach((ic) => { nextMap[ic.id] = ic; merged.push(ic); });
+        } else {
+          importedCards.forEach((ic) => { if (!nextMap[ic.id]) { nextMap[ic.id] = ic; merged.push(ic); } });
+        }
         if (merged.length > 0) schedulePersist({ type: "bulk", cards: merged });
+        cardMapRef.current = nextMap;
+        setCardMapState(() => nextMap);
+        bumpMapVersion();
 
         if (Array.isArray(data.categories)) {
           setCategories((prev) => [...new Set([...prev, ...(data.categories as string[])])]);
