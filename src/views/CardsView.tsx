@@ -225,16 +225,46 @@ export default function CardsView() {
             <span className="text-sm font-medium">{selectedIds.size} označeno</span>
             <button
               onClick={() => {
-                const allFiltered = cards.filter(c => {
+                const visible = cards.filter(c => {
                   if (filterCategory && c.category !== filterCategory) return false;
-                  if (filterSubcategory && c.subcategory !== filterSubcategory) return false;
+                  if (filterSubcategory) {
+                    if (filterSubcategory === "__none__" ? c.subcategory : c.subcategory !== filterSubcategory) return false;
+                  }
+                  if (filterChapter && c.chapter !== filterChapter) return false;
+                  if (filterType === "essay" && c.sections.length <= 1) return false;
+                  if (filterType === "flash" && c.sections.length > 1) return false;
+                  if (filterTag && !c.tags?.includes(filterTag)) return false;
+                  if (debouncedSearch) {
+                    const q = debouncedSearch.toLowerCase();
+                    if (!c.question.toLowerCase().includes(q) && !c.sections.some(s => s.content.toLowerCase().includes(q))) return false;
+                  }
                   return true;
                 });
-                setSelectedIds(new Set(allFiltered.map(c => c.id)));
+                const visibleIds = new Set(visible.map(c => c.id));
+                const allSelected = visible.length > 0 && visible.every(c => selectedIds.has(c.id));
+                setSelectedIds(allSelected ? new Set() : visibleIds);
               }}
               className="text-xs text-primary hover:underline"
             >
-              Označi sve
+              {(() => {
+                const visible = cards.filter(c => {
+                  if (filterCategory && c.category !== filterCategory) return false;
+                  if (filterSubcategory) {
+                    if (filterSubcategory === "__none__" ? c.subcategory : c.subcategory !== filterSubcategory) return false;
+                  }
+                  if (filterChapter && c.chapter !== filterChapter) return false;
+                  if (filterType === "essay" && c.sections.length <= 1) return false;
+                  if (filterType === "flash" && c.sections.length > 1) return false;
+                  if (filterTag && !c.tags?.includes(filterTag)) return false;
+                  if (debouncedSearch) {
+                    const q = debouncedSearch.toLowerCase();
+                    if (!c.question.toLowerCase().includes(q) && !c.sections.some(s => s.content.toLowerCase().includes(q))) return false;
+                  }
+                  return true;
+                });
+                const allSelected = visible.length > 0 && visible.every(c => selectedIds.has(c.id));
+                return allSelected ? "Poništi sve" : "Označi sve";
+              })()}
             </button>
             <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted-foreground hover:underline">
               Poništi
