@@ -1,5 +1,5 @@
 import { PenSquare, BarChart3, Wand2, ChevronUp, ChevronDown, Link as LinkIcon } from "lucide-react";
-import { lazy, Suspense, memo, useCallback } from "react";
+import { lazy, Suspense, memo, useCallback, useState, useEffect } from "react";
 import { useSourceLogic } from "@/hooks/useSourceLogic";
 import { SourceToolbar } from "@/components/source-reader/SourceToolbar";
 import ExamSidebar from "@/components/ExamSidebar";
@@ -74,6 +74,18 @@ const SourceContent = memo(function SourceContent({ html, onMouseUp, contentRef 
   );
 });
 
+type ReaderWidth = "S" | "M" | "L" | "XL" | "Full";
+
+const WIDTH_CLASSES: Record<ReaderWidth, string> = {
+  S: "max-w-2xl",
+  M: "max-w-4xl",
+  L: "max-w-6xl",
+  XL: "max-w-7xl",
+  Full: "max-w-none",
+};
+
+const STORAGE_KEY = "codex-source-reader-width";
+
 interface Props {
   source: Source;
   onBack: () => void;
@@ -82,6 +94,15 @@ interface Props {
 export default function SourceReader({ source, onBack }: Props) {
   const logic = useSourceLogic(source);
   const isCoverage = logic.viewMode === "coverage";
+
+  const [readerWidth, setReaderWidth] = useState<ReaderWidth>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return (saved && saved in WIDTH_CLASSES) ? saved as ReaderWidth : "M";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, readerWidth);
+  }, [readerWidth]);
 
   const handleOpenCoveredCard = (cardId: string) => {
     sessionStorage.setItem("sr-scroll-to-card", cardId);
@@ -103,6 +124,8 @@ export default function SourceReader({ source, onBack }: Props) {
         outlineOpen={logic.outlineOpen}
         setOutlineOpen={logic.setOutlineOpen}
         onAutoSplit={() => logic.setAutoSplitOpen(true)}
+        readerWidth={readerWidth}
+        setReaderWidth={setReaderWidth}
       />
 
       {isCoverage && <CoverageStatsBar percent={logic.coverage.percent} linkedCount={logic.linkedCount} />}
@@ -126,7 +149,7 @@ export default function SourceReader({ source, onBack }: Props) {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 relative">
+        <div className={cn("flex-1 min-w-0 relative mx-auto px-6", WIDTH_CLASSES[readerWidth])}>
           {isCoverage ? (
             <CoverageArticleList source={source} cards={logic.cards} onOpenCard={handleOpenCoveredCard} />
           ) : (

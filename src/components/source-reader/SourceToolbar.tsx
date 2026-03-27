@@ -6,6 +6,10 @@ import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/sources-storage";
 import type { ExamQuestion } from "@/components/ExamSidebar";
 
+type ReaderWidth = "S" | "M" | "L" | "XL" | "Full";
+
+const WIDTH_OPTIONS: ReaderWidth[] = ["S", "M", "L", "XL", "Full"];
+
 interface Props {
   source: Source;
   onBack: () => void;
@@ -17,11 +21,14 @@ interface Props {
   outlineOpen: boolean;
   setOutlineOpen: (v: boolean) => void;
   onAutoSplit: () => void;
+  readerWidth: ReaderWidth;
+  setReaderWidth: (w: ReaderWidth) => void;
 }
 
 export const SourceToolbar = memo(function SourceToolbar({
   source, onBack, viewMode, setViewMode, examOpen, setExamOpen,
   examQuestions, outlineOpen, setOutlineOpen, onAutoSplit,
+  readerWidth, setReaderWidth,
 }: Props) {
   const isCoverage = viewMode === "coverage";
   const pendingCount = examQuestions.filter(q => !q.done).length;
@@ -68,6 +75,21 @@ export const SourceToolbar = memo(function SourceToolbar({
           <BarChart3 className="h-3.5 w-3.5" />
           Pokrivenost
         </button>
+      </div>
+
+      <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
+        {WIDTH_OPTIONS.map(w => (
+          <button
+            key={w}
+            onClick={() => setReaderWidth(w)}
+            className={cn(
+              "px-2 py-1 rounded-md text-xs font-medium transition-colors",
+              readerWidth === w ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {w}
+          </button>
+        ))}
       </div>
 
       <Button
