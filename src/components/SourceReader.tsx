@@ -124,6 +124,8 @@ export default function SourceReader({ source, onBack }: Props) {
         outlineOpen={logic.outlineOpen}
         setOutlineOpen={logic.setOutlineOpen}
         onAutoSplit={() => logic.setAutoSplitOpen(true)}
+        readerWidth={readerWidth}
+        setReaderWidth={setReaderWidth}
       />
 
       {isCoverage && <CoverageStatsBar percent={logic.coverage.percent} linkedCount={logic.linkedCount} />}
