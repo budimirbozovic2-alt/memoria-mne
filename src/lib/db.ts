@@ -67,6 +67,9 @@ export interface Source {
   officialGazetteInfo?: string; // e.g. "Službenom listu CG, br. 56/2014, 20/2015..."
 }
 
+// ─── Module-level blocked handler (registered once, no accumulation) ──
+let _blockedReject: ((err: Error) => void) | null = null;
+
 class MemoriaDB extends Dexie {
   cards!: Table<Card, string>;
   categories!: Table<{ id: string; name: string }, string>;
