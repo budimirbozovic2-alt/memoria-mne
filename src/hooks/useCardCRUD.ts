@@ -78,12 +78,12 @@ export function useCardCRUD({
         schedulePersist({ type: "put", card });
         return { ...prev, [card.id]: card };
       });
-      if (!categories.includes(category)) {
+      if (!categoriesRef.current.includes(category)) {
         setCategories((prev) => [...prev, category]);
       }
       return card;
     },
-    [categories, setCategories, setCardMapState, schedulePersist],
+    [setCategories, setCardMapState, schedulePersist],
   );
 
   // O(1) direct update — surgical IDB write
