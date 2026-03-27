@@ -144,6 +144,7 @@ export default function SpeedReader() {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const ttsPlayingRef = useRef(false);
+  const ttsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ttsSegIdxRef = useRef(-1);
   // Load voices
   useEffect(() => {
@@ -202,6 +203,7 @@ export default function SpeedReader() {
 
   // TTS "natural" mode: speak entire text, TTS boundary events drive highlight
   const speakSegment = useCallback((segIdx: number, startLocal: number) => {
+    if (!ttsPlayingRef.current) return;
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
 
@@ -212,7 +214,7 @@ export default function SpeedReader() {
     if (remainingWords.length === 0) {
       if (segIdx + 1 < segments.length) {
         ttsSegIdxRef.current = segIdx + 1;
-        setTimeout(() => speakSegment(segIdx + 1, 0), 50);
+        ttsTimeoutRef.current = setTimeout(() => speakSegment(segIdx + 1, 0), 50);
       } else {
         setPlaying(false);
         ttsPlayingRef.current = false;
@@ -224,7 +226,7 @@ export default function SpeedReader() {
     if (!ttsText) {
       if (segIdx + 1 < segments.length) {
         ttsSegIdxRef.current = segIdx + 1;
-        setTimeout(() => speakSegment(segIdx + 1, 0), 50);
+        ttsTimeoutRef.current = setTimeout(() => speakSegment(segIdx + 1, 0), 50);
       } else {
         setPlaying(false);
         ttsPlayingRef.current = false;
@@ -258,7 +260,7 @@ export default function SpeedReader() {
       if (nextIdx < segments.length) {
         ttsSegIdxRef.current = nextIdx;
         setCurrentWordIdx(segments[nextIdx].globalStartIdx);
-        setTimeout(() => speakSegment(nextIdx, 0), 100);
+        ttsTimeoutRef.current = setTimeout(() => speakSegment(nextIdx, 0), 100);
       } else {
         setPlaying(false);
         ttsPlayingRef.current = false;
@@ -271,7 +273,7 @@ export default function SpeedReader() {
       if (nextIdx < segments.length) {
         ttsSegIdxRef.current = nextIdx;
         setCurrentWordIdx(segments[nextIdx].globalStartIdx);
-        setTimeout(() => speakSegment(nextIdx, 0), 100);
+        ttsTimeoutRef.current = setTimeout(() => speakSegment(nextIdx, 0), 100);
       } else {
         setPlaying(false);
         ttsPlayingRef.current = false;
@@ -345,6 +347,7 @@ export default function SpeedReader() {
   }, [currentWordIdx]);
 
   const stopTts = useCallback(() => {
+    if (ttsTimeoutRef.current) { clearTimeout(ttsTimeoutRef.current); ttsTimeoutRef.current = null; }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     ttsUtteranceRef.current = null;
     ttsPlayingRef.current = false;
