@@ -1,10 +1,18 @@
-import { Edit2, Trash2, Check, X, Plus, FolderOpen, ChevronDown, ChevronRight, Tag } from "lucide-react";
+import { Edit2, Trash2, Check, X, Plus, FolderOpen, ChevronDown, ChevronRight, Tag, Landmark } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion, AnimatePresence } from "framer-motion";
+import type { BuildingType } from "@/lib/forum-logic";
+import { loadMonumentTypes, saveMonumentType } from "@/lib/forum-logic";
+import { BUILDING_LABELS, MonumentSVG } from "@/components/gamification/monument-buildings";
+
+const ALL_BUILDING_TYPES: BuildingType[] = [
+  "amphitheatrum", "basilica", "tabularium", "rostra",
+  "curia", "macellum", "argentaria", "templum", "arcus", "insula",
+];
+
 interface Props {
   categories: string[];
   subcategories: Record<string, string[]>;
@@ -33,6 +41,7 @@ export default function CategoryManager({
   const [editSubValue, setEditSubValue] = useState("");
   const [addingSubFor, setAddingSubFor] = useState<string | null>(null);
   const [newSubName, setNewSubName] = useState("");
+  const [monumentTypes, setMonumentTypes] = useState<Record<string, BuildingType>>(loadMonumentTypes);
 
   const startEdit = (cat: string) => {
     setEditingCat(cat);
@@ -76,6 +85,11 @@ export default function CategoryManager({
     }
   };
 
+  const handleSetBuildingType = (cat: string, type: BuildingType) => {
+    saveMonumentType(cat, type);
+    setMonumentTypes(prev => ({ ...prev, [cat]: type }));
+  };
+
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between">
@@ -92,6 +106,7 @@ export default function CategoryManager({
             const isEditing = editingCat === cat;
             const isExpanded = expandedCat === cat;
             const subs = subcategories[cat] || [];
+            const currentBuilding = monumentTypes[cat] || "insula";
 
             return (
               <motion.div
@@ -138,6 +153,37 @@ export default function CategoryManager({
                         )}
                       </div>
                       <div className="flex gap-1">
+                        {/* Building type picker */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="p-1.5 hover:bg-secondary rounded-lg" title="Tip monumenta">
+                              <Landmark className="h-3.5 w-3.5 text-gold" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[280px] p-3" align="end">
+                            <p className="text-xs font-display text-muted-foreground mb-2 uppercase tracking-wider">Tip zgrade</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {ALL_BUILDING_TYPES.map(bt => (
+                                <button
+                                  key={bt}
+                                  onClick={() => handleSetBuildingType(cat, bt)}
+                                  className={`flex flex-col items-center gap-1 p-2 rounded-lg border transition-colors ${
+                                    currentBuilding === bt
+                                      ? "border-gold bg-gold/10"
+                                      : "border-border hover:border-gold/50"
+                                  }`}
+                                >
+                                  <div className="w-12 h-10">
+                                    <MonumentSVG buildingType={bt} tier="stone" />
+                                  </div>
+                                  <span className="text-[9px] font-display text-muted-foreground leading-tight text-center">
+                                    {BUILDING_LABELS[bt]}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
                         <button onClick={() => startEdit(cat)} className="p-1.5 hover:bg-secondary rounded-lg">
                           <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>

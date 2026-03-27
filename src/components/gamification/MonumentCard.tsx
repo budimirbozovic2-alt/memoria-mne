@@ -1,8 +1,10 @@
-import { memo, useMemo, useRef, useState, useEffect } from "react";
+import { memo, useRef, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Monument, MaterialTier } from "@/lib/forum-logic";
 import { MATERIAL_LABELS, MATERIAL_ICONS } from "@/lib/forum-logic";
 import { Progress } from "@/components/ui/progress";
+import { MonumentSVG } from "./monument-buildings";
+import { MonumentEffects } from "./monument-effects";
 
 // ─── Tier ordering for upgrade detection ─────────────────
 const TIER_ORDER: MaterialTier[] = ["wood", "brick", "stone", "marble", "gold"];
@@ -23,8 +25,6 @@ const SHIMMER_COLORS: Record<MaterialTier, string> = {
   marble: "hsla(210, 20%, 90%, 0.4)",
   gold: "hsla(45, 90%, 55%, 0.4)",
 };
-
-// ─── Material color mapping (using design tokens) ───────
 
 const MATERIAL_STYLES: Record<MaterialTier, {
   border: string;
@@ -64,7 +64,6 @@ const MATERIAL_STYLES: Record<MaterialTier, {
   },
 };
 
-// ─── Generate random particles ───────────────────────────
 function generateParticles(material: MaterialTier) {
   const count = 10;
   const color = PARTICLE_COLORS[material];
@@ -108,10 +107,6 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
 
     prevMaterialRef.current = monument.material;
   }, [monument.material]);
-
-  const pillarsCount = useMemo(() => {
-    return Math.max(2, Math.min(6, Math.floor(monument.mastery / 20) + 2));
-  }, [monument.mastery]);
 
   return (
     <motion.div
@@ -161,19 +156,11 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
               <motion.div
                 key={p.id}
                 className="absolute rounded-full"
-                style={{
-                  width: 4,
-                  height: 4,
-                  backgroundColor: p.color,
-                }}
+                style={{ width: 4, height: 4, backgroundColor: p.color }}
                 initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
                 animate={{ x: p.x, y: p.y, opacity: 0, scale: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{
-                  duration: p.duration,
-                  delay: p.delay,
-                  ease: "easeOut",
-                }}
+                transition={{ duration: p.duration, delay: p.delay, ease: "easeOut" }}
               />
             ))}
           </div>
@@ -195,31 +182,10 @@ export const MonumentCard = memo(function MonumentCard({ monument, index, onClic
           </span>
         </div>
 
-        {/* Pillar visualization */}
-        <div className="flex items-end justify-center gap-1 h-10" aria-hidden>
-          {Array.from({ length: pillarsCount }).map((_, i) => {
-            const height = 16 + (monument.mastery / 100) * 24;
-            const heightVariance = Math.sin(i * 1.5) * 4;
-            return (
-              <motion.div
-                key={i}
-                initial={{ height: 0 }}
-                animate={{ height: height + heightVariance }}
-                transition={{ delay: index * 0.08 + i * 0.05, duration: 0.5, ease: "easeOut" }}
-                className={`w-1.5 rounded-t-sm ${
-                  monument.material === "gold"
-                    ? "bg-gold"
-                    : monument.material === "marble"
-                    ? "bg-slate-400 dark:bg-slate-500"
-                    : monument.material === "stone"
-                    ? "bg-stone-500 dark:bg-stone-400"
-                    : monument.material === "brick"
-                    ? "bg-orange-700 dark:bg-orange-500"
-                    : "bg-amber-800 dark:bg-amber-600"
-                }`}
-              />
-            );
-          })}
+        {/* SVG Building Visualization */}
+        <div className="relative flex items-center justify-center h-32" aria-hidden>
+          <MonumentSVG buildingType={monument.buildingType} tier={monument.material} />
+          <MonumentEffects monument={monument} />
         </div>
 
         {/* Mastery progress */}
