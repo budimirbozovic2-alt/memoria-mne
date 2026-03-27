@@ -33,8 +33,7 @@ export const MonumentInterior = memo(function MonumentInterior({
   const navigate = useNavigate();
   const [selectedSub, setSelectedSub] = useState<string | null>(null);
 
-  const allCards = useMemo(() => Object.values(cards), [cards]);
-  const catCards = useMemo(() => allCards.filter((c) => c.category === monument.category), [allCards, monument.category]);
+  const catCards = useMemo(() => cards.filter((c) => c.category === monument.category), [cards, monument.category]);
 
   const sourceHierarchy = useSourceHierarchy(allCards, sources, monument.category);
 
