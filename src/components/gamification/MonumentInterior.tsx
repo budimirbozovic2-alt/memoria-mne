@@ -75,7 +75,7 @@ export const MonumentInterior = memo(function MonumentInterior({
     );
   }
 
-  const materialIcon = MATERIAL_ICONS[monument.material];
+  const phaseLabel = PHASE_LABELS[monument.material];
   const modeLabel = mode === "A" ? "po izvoru" : "po potkategoriji";
 
   return (
