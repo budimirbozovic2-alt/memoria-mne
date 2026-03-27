@@ -32,7 +32,7 @@ export function useCardCRUD({
     const card = cardMapRef.current![id];
     if (!card) return;
     const updated = { ...patcher(card), updatedAt: Date.now() };
-    // Surgical persist BEFORE state update — payload is pre-computed
+    cardMapRef.current = { ...cardMapRef.current, [id]: updated }; // Sync ref — prevents double-mutation race
     schedulePersist({ type: "put", card: updated });
     setCardMapState(prev => {
       if (!prev[id]) return prev;
