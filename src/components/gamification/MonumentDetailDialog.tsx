@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from "react";
+import React, { memo, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCardContext } from "@/contexts/AppContext";
 import { MATERIAL_ICONS } from "@/lib/forum-logic";
@@ -7,7 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle2, Play } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { AlertTriangle, CheckCircle2, ChevronDown, Play } from "lucide-react";
 import { formatDistanceToNow, isPast } from "date-fns";
 
 const STATE_LABELS: Record<number, { label: string; cls: string }> = {
