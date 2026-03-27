@@ -89,7 +89,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
         );
       }
     }
-  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent, filterType]);
+  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent, filterType, chapterPositionMap]);
 
   const card = sortedCards[currentIndex];
 
