@@ -74,7 +74,6 @@ function buildMonument(category: string, cards: Card[]): Monument {
       category, totalCards: 0, masteredCards: 0, mastery: 0,
       material: "wood", avgStability: 0, avgDifficulty: 5,
       leechCount: 0, crumbling: false, buildingType: "insula",
-      leechCount: 0, crumbling: false,
     };
   }
 
