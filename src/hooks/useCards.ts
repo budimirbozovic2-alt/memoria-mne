@@ -62,6 +62,7 @@ export function useCards() {
       snapshot = next;
       return next;
     });
+    bumpMapVersion();
     // Side-effect OUTSIDE the updater (C3 fix)
     if (persist === "full") {
       const bulkCards = Object.values(snapshot);
