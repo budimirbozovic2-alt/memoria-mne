@@ -128,6 +128,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
               </div>
             </div>
           </Link>
+          </motion.div>
         </motion.div>
       )}
     </div>

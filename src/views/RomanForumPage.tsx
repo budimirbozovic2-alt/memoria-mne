@@ -66,7 +66,7 @@ export default function RomanForumPage() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
               {/* Monument Grid */}
               {forumState.monuments.length === 0 ? (
