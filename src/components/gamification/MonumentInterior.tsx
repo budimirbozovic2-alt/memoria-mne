@@ -112,7 +112,7 @@ export const MonumentInterior = memo(function MonumentInterior({
             <Button
               size="sm"
               onClick={() => navigate(`/review?category=${encodeURIComponent(monument.category)}`)}
-              className="gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground font-display shrink-0"
+              className="gap-1.5 bg-gold hover:bg-gold/90 text-gold-foreground shrink-0"
             >
               <Play className="h-3.5 w-3.5" />
               {overdueCount}
