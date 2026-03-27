@@ -443,7 +443,7 @@ function MindMapCanvasInner({ doc, onBack }: { doc: MindMapDoc; onBack: () => vo
 
   // ── Edge update handler ──
   const updateEdge = useCallback((edgeId: string, updates: Partial<Edge>) => {
-    setEdges(eds => eds.map(e => e.id === edgeId ? { ...e, ...updates } : e));
+    setEdges(eds => eds.map(e => e.id === edgeId ? { ...e, ...updates } as MindMapEdgeRecord : e));
     setDirty(true);
   }, [setEdges]);
 

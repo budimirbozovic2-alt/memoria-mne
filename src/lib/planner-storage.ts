@@ -61,27 +61,27 @@ export async function initPlannerCache(): Promise<void> {
     ]);
 
     if (plannerRow?.value) {
-      const parsed = plannerRow.value;
+      const parsed = plannerRow.value as Record<string, unknown>;
       // Migrate old decades → phases
-      if (parsed.decades && !parsed.phases) {
-        parsed.phases = (parsed.decades as StudyDecade[]).map((d: StudyDecade) => ({
+      if ((parsed as any).decades && !(parsed as any).phases) {
+        (parsed as any).phases = ((parsed as any).decades as StudyDecade[]).map((d: StudyDecade) => ({
           id: d.id,
           name: d.name,
           expectedDays: d.durationDays,
           categories: d.categories,
         }));
-        delete parsed.decades;
+        delete (parsed as any).decades;
       }
-      _plannerCache = { ...DEFAULT_CONFIG, ...parsed };
+      _plannerCache = { ...DEFAULT_CONFIG, ...(parsed as Partial<PlannerConfig>) };
     }
 
     _disciplineCache = disciplineLog;
 
     if (dailyMappedRow?.value) {
-      _dailyMapped = dailyMappedRow.value;
+      _dailyMapped = dailyMappedRow.value as { date: string; count: number };
     }
     if (redistRow?.value) {
-      _lastRedistributeDate = redistRow.value;
+      _lastRedistributeDate = redistRow.value as string;
     }
   } catch (err) {
     console.warn("[planner] cache init failed, using defaults", err);

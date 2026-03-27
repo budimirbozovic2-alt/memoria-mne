@@ -430,7 +430,7 @@ export async function idbAddReviewLogEntry(entry: ReviewLogEntry): Promise<void>
 
 export async function idbLoadSettings<T>(key: string, fallback: T): Promise<T> {
   const row = await db.settings.get(key);
-  return row ? row.value : fallback;
+  return row ? (row.value as T) : fallback;
 }
 
 export async function idbSaveSettings(key: string, value: unknown): Promise<void> {
