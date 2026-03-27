@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { Card, calculateNextReview } from "@/lib/spaced-repetition";
 import { loadAppSettings } from "@/lib/app-settings";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap, PersistAction, schedulePersist, bumpMapVersion } from "@/lib/persist-queue";
+import { CardMap, bumpMapVersion } from "@/lib/persist-queue";
 import { idbAddReviewLogEntry } from "@/lib/db";
 
 interface UseCardAnnotationsParams {
@@ -142,53 +142,44 @@ export function useCardAnnotations({
   // Bulk flag cards as needsReview
   const bulkFlagNeedsReview = useCallback((cardIds: string[]) => {
     if (cardIds.length === 0) return;
-    let updated: Card[] = [];
     setCardMapState((prev) => {
       const next = { ...prev };
       for (const id of cardIds) {
         if (next[id]) {
           next[id] = { ...next[id], needsReview: true, updatedAt: Date.now() };
-          updated.push(next[id]);
         }
       }
       return next;
     });
     bumpMapVersion();
-    if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
   }, [setCardMapState]);
 
   // Reorder cards by setting sortOrder
   const reorderCards = useCallback((orderedIds: string[]) => {
-    let updated: Card[] = [];
     setCardMapState((prev) => {
       const next = { ...prev };
       orderedIds.forEach((id, index) => {
         if (next[id]) {
           next[id] = { ...next[id], sortOrder: index, updatedAt: Date.now() };
-          updated.push(next[id]);
         }
       });
       return next;
     });
     bumpMapVersion();
-    if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
   }, [setCardMapState]);
 
   // Update chapter and chapterOrder (Mental Skeleton DnD)
   const bulkUpdateChapter = useCallback((updates: { id: string; chapter: string; chapterOrder: number }[]) => {
-    let changed: Card[] = [];
     setCardMapState((prev) => {
       const next = { ...prev };
       for (const u of updates) {
         if (next[u.id]) {
           next[u.id] = { ...next[u.id], chapter: u.chapter, chapterOrder: u.chapterOrder, updatedAt: Date.now() };
-          changed.push(next[u.id]);
         }
       }
       return next;
     });
     bumpMapVersion();
-    if (changed.length > 0) schedulePersist({ type: "bulk", cards: changed });
   }, [setCardMapState]);
 
   return {

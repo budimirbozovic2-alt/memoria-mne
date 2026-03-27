@@ -100,7 +100,7 @@ export function useCards() {
 
   // ── CRUD (extracted module) ──
   const { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard } = useCardCRUD({
-    categories, setCardMapState, setCategories, schedulePersist,
+    categories, setCardMapState, setCategories,
   });
 
   // ── Annotations (extracted module) ──
@@ -115,7 +115,7 @@ export function useCards() {
     addSubcategory, renameSubcategory, deleteSubcategory,
     bulkUpdateSubcategory,
   } = useCategoryManagement({
-    categories, setCategories, setSubcategories, setCardMap, setCardMapState, schedulePersist,
+    categories, setCategories, setSubcategories, setCardMap, setCardMapState,
   });
 
   // ── Export/Import (extracted to separate modules) ──

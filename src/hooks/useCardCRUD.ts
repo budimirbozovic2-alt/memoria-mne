@@ -1,4 +1,5 @@
 import { useCallback, useRef } from "react";
+import { idbDeleteCard } from "@/lib/db";
 import { toast } from "sonner";
 import {
   Card,
@@ -7,20 +8,18 @@ import {
   createSection,
   SourceModule,
 } from "@/lib/spaced-repetition";
-import { CardMap, PersistAction, bumpMapVersion } from "@/lib/persist-queue";
+import { CardMap, bumpMapVersion } from "@/lib/persist-queue";
 
 interface UseCardCRUDParams {
   categories: string[];
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   setCategories: (updater: (prev: string[]) => string[]) => void;
-  schedulePersist: (action: PersistAction) => void;
 }
 
 export function useCardCRUD({
   categories,
   setCardMapState,
   setCategories,
-  schedulePersist,
 }: UseCardCRUDParams) {
   // Keep a ref to categories to avoid stale closures in addCard/addFlashCard
   const categoriesRef = useRef(categories);
@@ -28,16 +27,14 @@ export function useCardCRUD({
 
   // ── Surgical single-card update (O(1) state + O(1) IDB) ──
   const patchCard = useCallback((id: string, patcher: (card: Card) => Card) => {
-    let updated: Card | null = null;
     setCardMapState((prev) => {
       const card = prev[id];
       if (!card) return prev;
-      updated = { ...patcher(card), updatedAt: Date.now() };
+      const updated = { ...patcher(card), updatedAt: Date.now() };
       return { ...prev, [id]: updated };
     });
     bumpMapVersion();
-    if (updated) schedulePersist({ type: "put", card: updated });
-  }, [setCardMapState, schedulePersist]);
+  }, [setCardMapState]);
 
   const addCard = useCallback(
     (
@@ -62,34 +59,28 @@ export function useCardCRUD({
       if (extra?.originalSourceSnippet) card.originalSourceSnippet = extra.originalSourceSnippet;
       if (extra?.childCardIds) card.childCardIds = extra.childCardIds;
       if (extra?.sourceModules) card.sourceModules = extra.sourceModules;
-      setCardMapState((prev) => {
-        return { ...prev, [card.id]: card };
-      });
+      setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
-      schedulePersist({ type: "put", card });
       if (!categoriesRef.current.includes(category)) {
         setCategories((prev) => [...prev, category]);
       }
       return card;
     },
-    [setCategories, setCardMapState, schedulePersist],
+    [setCategories, setCardMapState],
   );
 
   const addFlashCard = useCallback(
     (question: string, answer: string, category: string, subcategory?: string) => {
       const card = createFlashCard(question, answer, category, subcategory);
       card.updatedAt = Date.now();
-      setCardMapState((prev) => {
-        return { ...prev, [card.id]: card };
-      });
+      setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
-      schedulePersist({ type: "put", card });
       if (!categoriesRef.current.includes(category)) {
         setCategories((prev) => [...prev, category]);
       }
       return card;
     },
-    [setCategories, setCardMapState, schedulePersist],
+    [setCategories, setCardMapState],
   );
 
   // O(1) direct update — surgical IDB write
@@ -148,12 +139,12 @@ export function useCardCRUD({
       return next;
     });
     bumpMapVersion();
-    schedulePersist({ type: "delete", id });
+    // Delete must be explicit — useEffect bulk persist only does bulkPut
+    idbDeleteCard(id).catch(e => console.error("[deleteCard] IDB delete failed", e));
     toast.success("Kartica obrisana.");
-  }, [setCardMapState, schedulePersist]);
+  }, [setCardMapState]);
 
   const splitCard = useCallback((id: string) => {
-    let newCards: Card[] = [];
     setCardMapState((prev) => {
       const card = prev[id];
       if (!card || card.sections.length <= 1) return prev;
@@ -171,16 +162,13 @@ export function useCardCRUD({
           updatedAt: Date.now(),
         };
         next[newCard.id] = newCard;
-        newCards.push(newCard);
       });
       return next;
     });
     bumpMapVersion();
-    if (newCards.length > 0) {
-      schedulePersist({ type: "delete", id });
-      schedulePersist({ type: "bulk", cards: newCards });
-    }
-  }, [setCardMapState, schedulePersist]);
+    // Delete original — useEffect bulk persist only does bulkPut, can't detect removals
+    idbDeleteCard(id).catch(e => console.error("[splitCard] IDB delete failed", e));
+  }, [setCardMapState]);
 
   return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard };
 }

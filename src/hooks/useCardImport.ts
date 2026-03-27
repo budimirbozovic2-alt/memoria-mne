@@ -215,11 +215,9 @@ export function useCardImport({
         return next;
       });
       bumpMapVersion();
-      // Side-effect OUTSIDE the updater (C1 fix)
-      schedulePersist({ type: "bulk", cards: created });
       setCategories((prev) => prev.includes(category) ? prev : [...prev, category]);
     },
-    [setCategories, setCardMapState, schedulePersist],
+    [setCategories, setCardMapState],
   );
 
   return { importData, importCards };
