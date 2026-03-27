@@ -1,100 +1,147 @@
 
 
-# Phase 4: Architectural Blueprint & Construction Evolution
+# Step 3: Architectural Refactoring & Decoupling — Refactoring Map
 
-## Overview
-Replace the 5-material-tier system (Wood→Gold) with a 5-phase construction evolution (Temelji→Imperijalna) driven by mastery %. Redesign all SVG primitives and buildings as high-end architectural line art — gold lines on slate-950 background, frosted glass surfaces, no filled colored shapes.
+## Summary of Current State
 
-## Architecture Changes
+Most of the heavy decomposition work has **already been done** in previous phases. MentalSkeleton already has ChapterBox, DraggableCardTile, LearnModal, AuditorDetailPanel extracted. CardList has CardBadges and CardContextMenu extracted. StrategicPlanner uses usePlannerData hook and tab sub-components. CardForm delegates to useCardActions hook and EditorSection/MetadataSection. The data layer uses a boot-load-all CardMap pattern (intentionally no `useLiveQuery`). No `TouchSensor` exists. No `use-mobile` hook exists.
 
-### 1. Type System — `src/lib/forum-logic.ts`
-- Rename `MaterialTier` to `ConstructionPhase` (type alias kept for backward compat)
-- Values: `"foundation" | "skeleton" | "construction" | "complete" | "imperial"`
-- Update `getMaterialTier()` → `getConstructionPhase()`:
-  - 0-10% → `"foundation"`
-  - 11-30% → `"skeleton"`
-  - 31-60% → `"construction"`
-  - 61-90% → `"complete"`
-  - 91-100% → `"imperial"`
-- Update `MATERIAL_LABELS` → `PHASE_LABELS`:
-  - `foundation: "Temelji"`, `skeleton: "Skele"`, `construction: "Građenje"`, `complete: "Kompletna"`, `imperial: "Imperijalna"`
-- Update `MATERIAL_ICONS`:
-  - `foundation: "📐"`, `skeleton: "🏗️"`, `construction: "🔨"`, `complete: "🏛️"`, `imperial: "✨"`
-- Keep `MaterialTier` as a type alias: `export type MaterialTier = ConstructionPhase;` for backward compat
-- Keep `material` field on `Monument` interface (references same type)
+**What remains** is targeted cleanup, not wholesale restructuring.
 
-### 2. SVG Primitives — `src/components/gamification/monument-svg.tsx`
-Full rewrite. New color system:
-- `TIER_FILLS` replaced with `PHASE_PALETTE`:
-  - `foundation`: very faint gold lines (`hsl(45,60%,40%)` at 30% opacity), dashed strokes
-  - `skeleton`: medium gold lines, scaffolding style, dotted structural hints
-  - `construction`: solid gold primary lines, partial fills with `white/8` glass
-  - `complete`: full gold lines, clean glass surfaces (`white/10` → `white/5` gradient), sharp geometry
-  - `imperial`: bright gold (`hsl(45,90%,55%)`), decorative details, subtle glow filter
+---
 
-Primitives redesigned:
-- **Column**: Line-art only for foundation/skeleton; partial fill for construction; full entasis for complete/imperial
-- **Wall**: Dashed outline (foundation) → scaffolding grid (skeleton) → partial solid (construction) → full with glass fill (complete) → decorated (imperial)
-- **Roof**: Blueprint lines only until construction phase; solid from complete onward
-- **Base**: Excavation marks (foundation) → stepped outline (skeleton onward)
-- **Arch**: Dotted arc (foundation) → wireframe (skeleton) → voussoir detail (complete+)
+## TASK 1: Large File Decomposition
 
-All strokes use `hsl(var(--gold))` or gold HSL values. Fills use `rgba(255,255,255,0.05-0.1)` frosted glass. Borders use `border-gold/20`.
+### Files > 300 lines
 
-### 3. Building Compositions — `src/components/gamification/monument-buildings.tsx`
-Each of the 10 buildings gets phase-aware rendering. Instead of 50 separate components (10×5), each building function receives `phase` and conditionally renders:
+| File | Lines | Status | Action Required |
+|------|-------|--------|-----------------|
+| `KnowledgeMap.tsx` | 494 | Partially modular | Extract `Header`, `SearchBar`, `EmptyMessage` + category/subcategory step views |
+| `CardList.tsx` | 437 | Already has CardRowInner memoized | Extract `VirtualRow` + reorder-drag logic into hook |
+| `MyStats.tsx` | 438 | Monolithic stats page | Extract tab contents into `stats/` subdirectory files |
+| `LearnSession.tsx` | 365 | Study modes already lazy-loaded | Extract setup screens (mode picker, filter screen) into `learn/LearnSetup.tsx` |
+| `TopNav.tsx` | 363 | Contains mobile nav dead code | Remove mobile section (Task 4), reduces to ~240 lines |
+| `RichTextEditor.tsx` | 322 | Self-contained editor | No extraction needed — single responsibility |
+| `SourceManager.tsx` | 313 | Moderate | Extract registry dialog into `SourceRegistryDialog.tsx` |
+| `SourceReader.tsx` | 303 | Already uses useSourceLogic hook | Extract `CoverageStatsBar` (already inline) — minor |
+| `MetacognitiveCenter.tsx` | 302 | Tab-based | Extract diary form + analysis tab into sub-files |
 
-- **Phase 1 (Temelji)**: Only the `Base` primitive + dashed outline of the building footprint
-- **Phase 2 (Skele)**: Base + scaffolding lines + column bases (no capitals, no walls)
-- **Phase 3 (Građenje)**: Columns rising, walls at 60% height, no roof, construction marks
-- **Phase 4 (Kompletna)**: Full geometry — all walls, columns, roof, arches — but no decorative details
-- **Phase 5 (Imperijalna)**: Full + tympanum reliefs, acroteria, inscription panels, statue placeholders
+### Extraction Plan (Priority Order)
 
-The `MonumentSVG` component signature stays the same (`buildingType`, `tier`) — `tier` now maps to construction phase internally.
+**Batch 1 — KnowledgeMap.tsx (494 → ~280 lines)**
+- Extract `Header`, `SearchBar`, `EmptyMessage` → `src/components/knowledge-map/SharedWidgets.tsx`
+- Extract category list view (lines 317-434) → `src/components/knowledge-map/CategoryList.tsx`
+- Extract subcategory list view (lines 180-314) → `src/components/knowledge-map/SubcategoryList.tsx`
+- KnowledgeMap.tsx becomes an orchestrator with view state + routing
 
-### 4. Effects — `src/components/gamification/monument-effects.tsx`
-Update effect triggers to match new phase system:
-- **Foundation/Skeleton**: No effects (no torches, no fountain)
-- **Construction**: Scaffolding overlay active (new: thin diagonal cross-bracing lines)
-- **Complete**: Torches active (count based on phase)
-- **Imperial**: Torches (4) + Fountain + Golden glow overlay (new: subtle radial gradient behind building)
-- **Cracks**: Same trigger (leech ratio > 0.2), but rendered as crisp gold-tinted structural fault lines
-- **Ivy**: Same trigger (stability < 10), rendered with `border-gold/30` tinted lines instead of green
+**Batch 2 — MyStats.tsx (438 → ~120 lines)**
+- Already has `CalibrationTab`, `EfficiencyTab`, `LatencyTab`, `PredictionTab`, `ResistanceTab` in `stats/`
+- Extract the overview/summary tab (the main content before tabs) → `stats/OverviewTab.tsx`
+- Extract shared chart data computation → `useStatsData` hook
 
-### 5. MonumentCard — `src/components/gamification/MonumentCard.tsx`
-- Update `TIER_ORDER` → `PHASE_ORDER`: `["foundation", "skeleton", "construction", "complete", "imperial"]`
-- Update `PARTICLE_COLORS` to gold spectrum (all phases use gold variants)
-- Update `SHIMMER_COLORS` to gold
-- Update `MATERIAL_STYLES` → `PHASE_STYLES`:
-  - All phases use gold-based border/glow/accent classes
-  - `foundation`: `border-gold/10`, no glow
-  - `imperial`: `border-gold/50`, `shadow-lg shadow-gold/20`
-- References to `MATERIAL_LABELS`/`MATERIAL_ICONS` updated to new exports
+**Batch 3 — LearnSession.tsx (365 → ~180 lines)**
+- Extract mode selection screen (lines 121-233) → `learn/ModeSelector.tsx`
+- Extract filter/sort screen (lines 236-286) → `learn/FilterSetup.tsx`
+- LearnSession becomes: setup orchestrator + delegation to lazy study modes
 
-### 6. Downstream Consumers
-Files that reference `MaterialTier`, `MATERIAL_LABELS`, `MATERIAL_ICONS`:
-- `MonumentInterior.tsx` — uses `MATERIAL_LABELS[monument.material]` → works via alias
-- `ForumContext.tsx` — building type selector → labels unchanged
-- `MonumentCard.tsx` — primary consumer, updated above
+**Batch 4 — TopNav.tsx (363 → ~240 lines after mobile removal)**
+- Remove mobile nav entirely (Task 4 below)
+- Extract version dialog → `VersionDialog.tsx` or inline simplification
 
-The type alias `MaterialTier = ConstructionPhase` ensures all existing imports compile without changes.
+---
 
-## Files Changed
+## TASK 2: Separation of Concerns
 
-| File | Scope |
-|------|-------|
-| `src/lib/forum-logic.ts` | New `ConstructionPhase` type, phase thresholds, Serbian labels |
-| `src/components/gamification/monument-svg.tsx` | Full rewrite — blueprint line-art primitives |
-| `src/components/gamification/monument-buildings.tsx` | Phase-aware rendering for all 10 buildings |
-| `src/components/gamification/monument-effects.tsx` | Phase-synced effects, gold-tinted decay |
-| `src/components/gamification/MonumentCard.tsx` | Phase-based styles, particles, shimmer |
+### DB Imports in Components (Current State)
+Components importing `@/lib/db` directly:
+- `MindMapList.tsx` — imports types only + uses `mindmap-storage` functions
+- `MindMapCanvas.tsx` — imports types only + uses `mindmap-storage` functions  
+- `MonumentInterior.tsx` — imports `Source` type only
+- `SourceSnippetDialog.tsx` — imports `db` directly for a query
+- `GlobalSearch.tsx` — imports types only
+- `HealthMonitor.tsx` — imports `db` directly for health checks
+- `KnowledgeMap.tsx` — imports `Source` type only
 
-## Guardrails
-- `MaterialTier` kept as type alias — zero breaking changes downstream
-- `Monument.material` field name unchanged
-- `BuildingType` enum values unchanged
-- viewBox stays `0 0 200 160`
-- No FSRS changes
-- All Phase 1-3 audit fixes preserved
-- Serbian Latin for all labels
+**Action needed:**
+- `SourceSnippetDialog.tsx` — move the direct `db` query into `sources-storage.ts` as a helper function
+- `HealthMonitor.tsx` — acceptable (it IS a database diagnostic tool)
+- All others — type-only imports, no change needed
+
+### Database Indexing Analysis
+Current Dexie schema (v4):
+- `cards`: `id, category, subcategory, type, createdAt, sourceId`
+- Missing indexes: `chapter` (used in chapter-based filtering), `[category+subcategory]` compound index
+
+**Action:** Add compound index `[category+subcategory]` in a v5 schema migration. The `chapter` field is filtered in-memory from the boot-loaded CardMap, which is acceptable for <10k cards.
+
+### useLiveQuery Decision
+Per the memory note: the app **intentionally** uses boot-load-all pattern, not `useLiveQuery`. This is correct for an offline-first Electron app with <10k cards. **No change.**
+
+### Business Logic Already Extracted
+- FSRS calculations → `spaced-repetition.ts` (untouched per guardrail)
+- Dashboard stats → `useDashboardData` hook
+- Planner calculations → `usePlannerData` hook
+- Card CRUD → `useCardCRUD` hook
+- Card annotations → `useCardAnnotations` hook
+
+**One remaining extraction:**
+- `LearnSession.tsx` lines 146-185: inline review-ratio calculation → extract to `lib/learn-analytics.ts` as `calcReviewPriorityWarning()`
+
+---
+
+## TASK 3: Performance Optimization
+
+### Current Memoization Audit
+| Component | `React.memo` | Stable callbacks | Status |
+|-----------|:---:|:---:|--------|
+| `DraggableCardTile` | ✅ | ✅ | Good |
+| `ChapterBox` | ✅ | N/A | Good |
+| `CardRowInner` (CardList) | ✅ | ✅ | Good |
+| `SourceContent` (SourceReader) | ✅ | ✅ | Good |
+| `SubcategoryCard` | Need to check | — | **Verify** |
+
+**Action:** Verify `SubcategoryCard` is memoized. If not, wrap with `React.memo`.
+
+### Re-render Risks Identified
+1. **KnowledgeMap subcategory view**: `handleMoveSub` is created inline inside render branch → wrap in `useCallback`
+2. **LearnSession**: `updateProgress` depends on `learnMode` which changes during setup → stable, no issue
+3. **CardList VirtualRow**: receives `rowProps` object literal on every render → memoize the `rowProps` object with `useMemo`
+
+---
+
+## TASK 4: Desktop-Only Cleanup
+
+### TopNav.tsx Mobile Code (lines 230-321)
+- `mobileOpen` state variable
+- `md:hidden` mobile header div (lines 231-252)
+- Mobile dropdown menu (lines 254-321)
+- `Menu` and `X` icon imports (used only for mobile hamburger)
+
+**Action:** Remove all of the above. Remove `Menu` import. Keep the `hidden md:flex` desktop nav as the only nav. Simplify to always-visible desktop layout (remove `hidden md:flex` → just `flex`).
+
+### Other Mobile Patterns
+- No `TouchSensor` found
+- No `use-mobile` hook found
+- No other `md:hidden` patterns found outside TopNav
+- Responsive CSS (`sm:grid-cols-2`, `lg:grid-cols-3`) preserved for desktop window resizing
+
+---
+
+## Execution Order (One batch per response)
+
+1. **TopNav mobile cleanup** — smallest, lowest risk, immediate line reduction
+2. **KnowledgeMap decomposition** — largest file, highest impact
+3. **MyStats decomposition** — extract overview tab + useStatsData hook
+4. **LearnSession setup extraction** — ModeSelector + FilterSetup
+5. **Minor fixes** — SourceSnippetDialog db import, SubcategoryCard memo check, CardList rowProps memoization, Dexie v5 compound index
+6. **LearnSession analytics extraction** — `calcReviewPriorityWarning()` to lib
+
+---
+
+## Risk Assessment
+
+- **KnowledgeMap split**: Medium risk — view-state routing logic must stay coordinated. The `useSourceHierarchy` hook is called conditionally (only in subcategory view) which React rules require staying in the same component or being restructured.
+- **MyStats split**: Low risk — tab contents are already independent.
+- **TopNav mobile removal**: Very low risk — pure deletion of dead code for desktop-only app.
+- **Dexie v5 migration**: Low risk — additive index, no data migration needed.
 
