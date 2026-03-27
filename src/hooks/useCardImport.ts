@@ -91,8 +91,8 @@ export function useCardImport({
           return next;
         }, "full");
 
-        if (Array.isArray(parsed.categories)) {
-          setCategories((prev) => [...new Set([...prev, ...parsed.categories])]);
+        if (Array.isArray(data.categories)) {
+          setCategories((prev) => [...new Set([...prev, ...(data.categories as string[])])]);
         }
         if (parsed.subcategories && typeof parsed.subcategories === "object") {
           setSubcategories((prev) => {
