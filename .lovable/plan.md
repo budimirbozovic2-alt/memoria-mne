@@ -1,85 +1,46 @@
 
 
-# Surgical Logic Patch — C1, C2, H1, H2, H4
+# Dead Code Elimination — 7 Surgical Deletions
 
-## 1. H4: Fix VIEW_TO_PATH routing map (`src/contexts/AppContext.tsx`)
+## 1. Delete `src/views/DatabasePage.tsx`
+Entire file — zero imports anywhere in the codebase.
 
-**Lines 12-19** — Update the map so `cards`, `categories` point to their correct routes instead of all mapping to `/database`:
+## 2. Clean `src/hooks/useCategoryManagement.ts`
+- Remove `categories` and `setCardMap` from `UseCategoryManagementParams` interface (lines 6, 9)
+- Remove them from destructuring (lines 14, 17)
 
-```
-cards: "/cards", categories: "/categories", database: "/database",
-```
+## 3. Clean `src/hooks/useCardImport.ts`
+- Remove `categories`, `setCardMap`, and `schedulePersist` from `UseCardImportDeps` interface (lines 8, 9, 14)
+- Remove them from destructuring (lines 20-21): drop `categories`, `setCardMap`, and `schedulePersist: _schedulePersist`
 
-Add `sources` and `source-registry` to the `View` type (line 10) and map entries if not present. Remove duplicate `/database` mappings.
+## 4. Clean `src/hooks/useCardExport.ts`
+- Remove `reviewLog` from `UseCardExportDeps` interface (line 52)
+- Remove `reviewLog` from destructuring (line 56)
+- Remove `reviewLog` from `exportData` dep array (line 156): `[cards, categories, subcategories, srSettings]`
+- Remove unused import `ReviewLogEntry` (line 4) — only used for `reviewLog` typing
 
-## 2. C2: Sync `cardMapRef` in bulk operations (`src/hooks/useCardAnnotations.ts`)
+## 5. Clean `src/hooks/useCards.ts` (orchestrator)
+- **Line 110**: Remove `categories` and `setCardMap` from `useCategoryManagement` call
+- **Lines 115-118**: Remove `categories`, `setCardMap`, and `schedulePersist` from `useCardImport` call
+- **Line 114**: Remove `reviewLog` from `useCardExport` call
+- **Lines 62-66**: Delete the entire `setCardMap` useCallback (zero consumers after above)
 
-**Problem**: `bulkFlagNeedsReview`, `reorderCards`, `bulkUpdateChapter` update state via `setCardMapState` but never sync `cardMapRef`, so a same-tick `patchCard` reads stale ref data.
+## 6. Delete `idbSaveCards` from `src/lib/db.ts`
+Lines 345-353 — deprecated function with zero actual imports. Test file only references it in a comment string.
 
-**Fix**: Add `cardMapRef` as a parameter to `useCardAnnotations`. In each of the 3 bulk functions, after building the updated cards inside the updater, also sync `cardMapRef.current` with each modified card. Pattern:
-
-```ts
-// Inside each bulk function, after building `next`:
-for (const id of modifiedIds) {
-  cardMapRef.current = { ...cardMapRef.current, [id]: next[id] };
-}
-```
-
-**Caller change** (`src/hooks/useCards.ts` line 102): Pass `cardMapRef` to `useCardAnnotations`.
-
-## 3. C1: Invalidate caches on import (`src/hooks/useCardImport.ts`)
-
-**After line 189** (after localStorage restore loop): Add:
-```ts
-import { invalidateSourceRegistryCache } from "@/lib/source-registry";
-import { invalidateMonumentTypesCache } from "@/lib/forum-logic";
-// ... after localStorage restore:
-invalidateSourceRegistryCache();
-invalidateMonumentTypesCache();
-```
-
-## 4. H2: Pre-compute merged array outside updater (`src/hooks/useCardImport.ts`)
-
-**Lines 78-97** — Instead of populating `merged[]` inside `setCardMap` updater (which relies on React batching timing for an async function), pre-compute the merge by reading `cardMapRef`:
-
-- Add `cardMapRef` as a dependency to `useCardImport`
-- Read current state from `cardMapRef.current` to compute `merged` and `nextMap` synchronously
-- Then call `schedulePersist` with pre-computed `merged`
-- Then call `setCardMapState` with pre-computed `nextMap`
-
-**Caller change** (`src/hooks/useCards.ts`): Pass `cardMapRef` to `useCardImport`.
-
-## 5. H1: Fix stale closure in `renameCategory` (`src/hooks/useCategoryManagement.ts`)
-
-**Line 29** — The `categories.includes(newName)` check reads a potentially stale closure. Move the duplicate check inside the `setCategories` updater and use an early-return flag:
-
-```ts
-const renameCategory = useCallback((oldName: string, newName: string) => {
-  let aborted = false;
-  setCategories(prev => {
-    if (prev.includes(newName)) { aborted = true; return prev; }
-    return prev.map(c => c === oldName ? newName : c);
-  });
-  if (aborted) return;
-  // ... rest of rename logic
-```
-
-Wait — `aborted` populated inside updater may not be set synchronously in async context. But `renameCategory` is called from event handlers (synchronous), so React 18 batching runs updaters synchronously within the same event handler tick. The flag will be set before the `if (aborted)` check. This is safe for event-handler calls.
-
-Remove `categories` from the dependency array since we no longer read it.
+## 7. Delete deprecated aliases from `src/lib/forum-logic.ts`
+Lines 314-318 — `MATERIAL_LABELS` and `MATERIAL_ICONS` have zero consumers outside their export definitions.
 
 ## Files touched
-
-| File | Change |
+| File | Action |
 |------|--------|
-| `src/contexts/AppContext.tsx` | Fix View type + VIEW_TO_PATH mappings |
-| `src/hooks/useCardAnnotations.ts` | Add `cardMapRef` param, sync ref in 3 bulk ops |
-| `src/hooks/useCardImport.ts` | Add cache invalidation calls + pre-compute merge with `cardMapRef` |
-| `src/hooks/useCards.ts` | Pass `cardMapRef` to `useCardAnnotations` and `useCardImport` |
-| `src/hooks/useCategoryManagement.ts` | Move duplicate check inside updater |
+| `src/views/DatabasePage.tsx` | Delete |
+| `src/hooks/useCategoryManagement.ts` | Remove 2 dead params |
+| `src/hooks/useCardImport.ts` | Remove 3 dead params |
+| `src/hooks/useCardExport.ts` | Remove `reviewLog` dep |
+| `src/hooks/useCards.ts` | Stop passing dead params, delete `setCardMap` |
+| `src/lib/db.ts` | Delete `idbSaveCards` |
+| `src/lib/forum-logic.ts` | Delete deprecated aliases |
 
-## Risk
-- All changes are surgical, few-line edits
-- No FSRS, UI, or CSS changes
-- `cardMapRef` pattern already battle-tested in `useCardCRUD`
+Zero logic, FSRS, or persist changes.
 
