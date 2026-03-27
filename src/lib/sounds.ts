@@ -1,10 +1,19 @@
 import { loadAppSettings } from "./app-settings";
 
-const audioCtx = typeof window !== "undefined" ? new (window.AudioContext || window.webkitAudioContext)() : null;
+let audioCtx: AudioContext | null = null;
+
+function getAudioCtx(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  return audioCtx;
+}
 
 function playTone(frequency: number, duration: number, type: OscillatorType = "sine", volume: number = 0.15) {
-  if (!audioCtx) return;
-  if (audioCtx.state === "suspended") audioCtx.resume();
+  const ctx = getAudioCtx();
+  if (!ctx) return;
   
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();

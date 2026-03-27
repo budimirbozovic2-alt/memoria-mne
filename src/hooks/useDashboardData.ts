@@ -87,12 +87,17 @@ export function useDashboardData(
   reviewLog: ReviewLogEntry[],
   srSettings: SRSettings,
 ) {
-  const appSettings = loadAppSettings();
+  const appSettings = useMemo(() => loadAppSettings(), []);
+  // Listen for settings changes from other tabs/components
+  const [, forceSettingsRefresh] = useState(0);
+  useEffect(() => {
+    const handler = () => forceSettingsRefresh((n) => n + 1);
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
   const wc = appSettings.dashboardWidgets;
   const todayKey = getDayKey(Date.now());
-  // Stable hash to avoid recomputing downstream when reviewLog length hasn't changed
-  const reviewLogLen = reviewLog.length;
-  const todayReviews = useMemo(() => reviewLog.filter(e => getDayKey(e.timestamp) === todayKey).length, [reviewLogLen, todayKey]);
+  const todayReviews = useMemo(() => reviewLog.filter(e => getDayKey(e.timestamp) === todayKey).length, [reviewLog, todayKey]);
   const dailyGoal = srSettings.dailyGoal;
   const goalProgress = Math.min(100, Math.round((todayReviews / Math.max(1, dailyGoal)) * 100));
   const pendingFirstReview = useMemo(() => getPendingFirstReviewCount(cards), [cards]);
