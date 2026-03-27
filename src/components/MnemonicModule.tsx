@@ -187,7 +187,7 @@ export default function MnemonicModule({ onBack }: Props) {
           className="rounded-xl border bg-card p-6 text-left hover:border-primary/40 transition-colors space-y-3"
         >
           <Wrench className="h-8 w-8 text-warning" />
-          <h3 className="text-lg font-display">Radionica mentalnih kuka</h3>
+          <h3 className="text-lg font-medium">Radionica mentalnih kuka</h3>
           <p className="text-sm text-muted-foreground">Kreiraj mentalne videe i akronime za kartice.</p>
         </motion.button>
 
@@ -198,7 +198,7 @@ export default function MnemonicModule({ onBack }: Props) {
           className="rounded-xl border bg-card p-6 text-left hover:border-primary/40 transition-colors space-y-3"
         >
           <FlaskConical className="h-8 w-8 text-primary" />
-          <h3 className="text-lg font-display">Testiranje mentalnih kuka</h3>
+          <h3 className="text-lg font-medium">Testiranje mentalnih kuka</h3>
           <p className="text-sm text-muted-foreground">Testiraj koliko dobro pamtiš uz pomoć mentalnih slika.</p>
         </motion.button>
 
@@ -209,7 +209,7 @@ export default function MnemonicModule({ onBack }: Props) {
           className="rounded-xl border bg-card p-6 text-left hover:border-primary/40 transition-colors space-y-3"
         >
           <Hash className="h-8 w-8 text-accent-foreground" />
-          <h3 className="text-lg font-display">Mentalne tablice</h3>
+          <h3 className="text-lg font-medium">Mentalne tablice</h3>
           <p className="text-sm text-muted-foreground">Prilagodi Major sistem termine za brojeve 0–100.</p>
         </motion.button>
       </div>

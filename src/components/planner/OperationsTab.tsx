@@ -310,7 +310,7 @@ export default function OperationsTab({
               <p className="text-xs text-muted-foreground mt-0.5">{smartSuggestion.message}</p>
               <div className="flex items-center gap-4 mt-2 flex-wrap">
                 {smartSuggestion.suggestedToday > 0 && (
-                  <p className="text-lg font-display text-primary">{smartSuggestion.suggestedToday} novih cjelina</p>
+                  <p className="text-lg font-medium text-primary">{smartSuggestion.suggestedToday} novih cjelina</p>
                 )}
                 {timeRec && (
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

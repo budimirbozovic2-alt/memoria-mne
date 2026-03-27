@@ -215,7 +215,7 @@ export default function OverviewTab({
               <Clock className="h-4 w-4 text-primary" />
               <h3 className="text-lg font-medium">Efektivno učenje danas</h3>
             </div>
-            <span className="text-lg font-display text-primary tabular-nums">
+            <span className="text-lg font-medium text-primary tabular-nums">
               {Math.floor(todayTime.cognitiveMs / 3600000) > 0
                 ? `${Math.floor(todayTime.cognitiveMs / 3600000)}h ${Math.round((todayTime.cognitiveMs % 3600000) / 60000)}min`
                 : `${Math.round(todayTime.cognitiveMs / 60000)} min`}

@@ -29,7 +29,7 @@ export default function RoadmapTab({
       <div className="rounded-xl bg-card border p-5 space-y-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
-          <h3 className="font-display text-lg">Burn-up Chart</h3>
+          <h3 className="text-lg font-medium">Burn-up Chart</h3>
         </div>
 
         {burnupData.length > 2 ? (
@@ -67,7 +67,7 @@ export default function RoadmapTab({
       <div className="rounded-xl bg-card border p-5 space-y-3">
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-primary" />
-          <h3 className="font-display text-lg">Simulacija završetka</h3>
+          <h3 className="text-lg font-medium">Simulacija završetka</h3>
         </div>
         <p className="text-sm text-muted-foreground leading-relaxed">{projectionText}</p>
         <div className="grid grid-cols-3 gap-3 pt-3 border-t">
