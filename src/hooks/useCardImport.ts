@@ -8,9 +8,9 @@ interface UseCardImportDeps {
   setCardMap: (updater: (prev: CardMap) => CardMap, persist?: "surgical" | "full") => void;
   setCategories: (updater: (prev: string[]) => string[]) => void;
   setSubcategories: (updater: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
-  setReviewLog: (log: any[]) => void;
+  setReviewLog: (log: unknown[]) => void;
   updateSRSettings: (settings: SRSettings) => void;
-  schedulePersist: (action: any) => void;
+  schedulePersist: (action: unknown) => void;
   setCardMapState: (updater: (prev: CardMap) => CardMap) => void;
 }
 
