@@ -54,42 +54,39 @@ export function useCards() {
   // ── Derived: Card[] for consumers (memoized from map) ──
   const cards = useMemo(() => mapToArray(cardMap), [cardMap]);
 
-  // ── Bulk map update (for operations touching many cards) ──
-  const setCardMap = useCallback((updater: (prev: CardMap) => CardMap, persist: "surgical" | "full" = "full") => {
-    let snapshot: CardMap = {};
-    setCardMapState((prev) => {
-      const next = updater(prev);
-      snapshot = next;
-      return next;
-    });
+  // ── useEffect-based persistence (React 18 Guard: eliminates snapshot races) ──
+  const cardMapMountedRef = useRef(false);
+  useEffect(() => {
+    if (!cardMapMountedRef.current) { cardMapMountedRef.current = true; return; }
+    if (!ready) return;
+    const allCards = Object.values(cardMap);
+    if (allCards.length > 0) schedulePersist({ type: "bulk", cards: allCards });
+  }, [cardMap, ready]);
+
+  const catMountedRef = useRef(false);
+  useEffect(() => {
+    if (!catMountedRef.current) { catMountedRef.current = true; return; }
+    idbSaveCategories(categories);
+  }, [categories]);
+
+  const subMountedRef = useRef(false);
+  useEffect(() => {
+    if (!subMountedRef.current) { subMountedRef.current = true; return; }
+    idbSaveSubcategories(subcategories);
+  }, [subcategories]);
+
+  // ── Pure state setters (no side-effects, persistence handled by useEffects above) ──
+  const setCardMap = useCallback((updater: (prev: CardMap) => CardMap, _persist?: "surgical" | "full") => {
+    setCardMapState(updater);
     bumpMapVersion();
-    // Side-effect OUTSIDE the updater (C3 fix)
-    if (persist === "full") {
-      const bulkCards = Object.values(snapshot);
-      if (bulkCards.length > 0) schedulePersist({ type: "bulk", cards: bulkCards });
-    }
   }, []);
 
   const setCategories = useCallback((updater: (prev: string[]) => string[]) => {
-    let snapshot: string[] = [];
-    setCategoriesState((prev) => {
-      const next = updater(prev);
-      snapshot = next;
-      return next;
-    });
-    // Side-effect OUTSIDE the updater (H6 fix)
-    idbSaveCategories(snapshot);
+    setCategoriesState(updater);
   }, []);
 
   const setSubcategories = useCallback((updater: (prev: Record<string, string[]>) => Record<string, string[]>) => {
-    let snapshot: Record<string, string[]> = {};
-    setSubcategoriesState((prev) => {
-      const next = updater(prev);
-      snapshot = next;
-      return next;
-    });
-    // Side-effect OUTSIDE the updater (H6 fix)
-    idbSaveSubcategories(snapshot);
+    setSubcategoriesState(updater);
   }, []);
 
   const setReviewLog = useCallback((updater: (prev: ReviewLogEntry[]) => ReviewLogEntry[]) => {
