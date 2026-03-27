@@ -178,6 +178,26 @@ function calcWarmth(velocity: number): number {
   return Math.min(1, velocity / 100);
 }
 
+// ─── Fingerprint cache for O(1) skip when data unchanged ────
+let _cachedFingerprint = "";
+let _cachedForumState: ForumState | null = null;
+
+/** Build a lightweight fingerprint from card states to detect real changes */
+function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: number): string {
+  // O(n) but much cheaper than full rebuild — just counts + states
+  let reviewSections = 0;
+  let totalSections = 0;
+  let stabilitySum = 0;
+  for (const card of cards) {
+    for (const sec of card.sections) {
+      totalSections++;
+      if (sec.state === SectionState.Review) reviewSections++;
+      stabilitySum += sec.stability;
+    }
+  }
+  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}`;
+}
+
 // ─── Main Calculator ────────────────────────────────────
 
 export function calculateForumState(
@@ -185,6 +205,12 @@ export function calculateForumState(
   reviewLog: ReviewEntry[],
   allSources?: Source[],
 ): ForumState {
+  // B2: Skip full O(n*s) rebuild if fingerprint matches
+  const fp = buildFingerprint(cards, reviewLog.length, allSources?.length ?? 0);
+  if (fp === _cachedFingerprint && _cachedForumState) {
+    return _cachedForumState;
+  }
+
   // Group cards by category
   const byCategory = new Map<string, Card[]>();
   for (const card of cards) {
@@ -255,13 +281,17 @@ export function calculateForumState(
 
   const velocity = calcVelocity(reviewLog);
 
-  return {
+  const result: ForumState = {
     monuments,
     overallMastery,
     velocity,
     dayPhase: getDayPhase(),
     warmth: calcWarmth(velocity),
   };
+
+  _cachedFingerprint = fp;
+  _cachedForumState = result;
+  return result;
 }
 
 // ─── Phase Display Helpers ──────────────────────────────
