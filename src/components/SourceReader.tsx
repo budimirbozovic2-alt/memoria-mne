@@ -1,5 +1,5 @@
 import { PenSquare, BarChart3, Wand2, ChevronUp, ChevronDown, Link as LinkIcon } from "lucide-react";
-import { lazy, Suspense, memo, useCallback } from "react";
+import { lazy, Suspense, memo, useCallback, useState, useEffect } from "react";
 import { useSourceLogic } from "@/hooks/useSourceLogic";
 import { SourceToolbar } from "@/components/source-reader/SourceToolbar";
 import ExamSidebar from "@/components/ExamSidebar";
