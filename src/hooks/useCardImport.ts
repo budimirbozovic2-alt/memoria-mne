@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import { Card, createCard, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap } from "@/lib/persist-queue";
+import { CardMap, bumpMapVersion } from "@/lib/persist-queue";
 
 interface UseCardImportDeps {
   categories: string[];
@@ -121,6 +121,8 @@ export function useCardImport({
               ...src, htmlContent: sanitizeHtml(src.htmlContent ?? ""),
             }));
             await db.sources.bulkPut(sanitizedSources);
+            const { invalidateSourcesCache } = await import("@/lib/sources-storage");
+            invalidateSourcesCache();
             if (strategy === "overwrite") {
               const importedIds = new Set(sanitizedSources.map((s: { id: string }) => s.id));
               const allKeys = await db.sources.toCollection().primaryKeys();
@@ -206,11 +208,13 @@ export function useCardImport({
   const importCards = useCallback(
     (newCards: { question: string; sections: { title: string; content: string }[] }[], category: string) => {
       const created = newCards.map((c) => createCard(c.question, c.sections, category));
+      created.forEach(c => { c.updatedAt = Date.now(); });
       setCardMapState((prev) => {
         const next = { ...prev };
         created.forEach((c) => { next[c.id] = c; });
         return next;
       });
+      bumpMapVersion();
       // Side-effect OUTSIDE the updater (C1 fix)
       schedulePersist({ type: "bulk", cards: created });
       if (!categories.includes(category)) setCategories((prev) => [...prev, category]);

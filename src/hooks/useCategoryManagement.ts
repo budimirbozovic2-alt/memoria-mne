@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Card } from "@/lib/spaced-repetition";
-import { CardMap, schedulePersist as globalSchedulePersist } from "@/lib/persist-queue";
+import { CardMap, schedulePersist as globalSchedulePersist, bumpMapVersion } from "@/lib/persist-queue";
 
 interface UseCategoryManagementParams {
   categories: string[];
@@ -21,9 +21,9 @@ export function useCategoryManagement({
 }: UseCategoryManagementParams) {
   const addCategory = useCallback(
     (name: string) => {
-      if (!categories.includes(name)) setCategories((prev) => [...prev, name]);
+      setCategories((prev) => prev.includes(name) ? prev : [...prev, name]);
     },
-    [categories, setCategories],
+    [setCategories],
   );
 
   const renameCategory = useCallback(
@@ -42,6 +42,7 @@ export function useCategoryManagement({
         }
         return next;
       });
+      bumpMapVersion();
       if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
       setSubcategories((prev) => {
         const next = { ...prev };
@@ -70,6 +71,7 @@ export function useCategoryManagement({
         }
         return next;
       });
+      bumpMapVersion();
       if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
       setSubcategories((prev) => {
         const next = { ...prev };
@@ -110,6 +112,7 @@ export function useCategoryManagement({
         }
         return next;
       });
+      bumpMapVersion();
       if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
     },
     [setSubcategories, setCardMapState],
@@ -130,6 +133,7 @@ export function useCategoryManagement({
         }
         return next;
       });
+      bumpMapVersion();
       if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
     },
     [setSubcategories, setCardMapState],
@@ -147,6 +151,7 @@ export function useCategoryManagement({
       }
       return next;
     });
+    bumpMapVersion();
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
   }, [setCardMapState, schedulePersist]);
 

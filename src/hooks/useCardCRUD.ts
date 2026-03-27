@@ -7,7 +7,7 @@ import {
   createSection,
   SourceModule,
 } from "@/lib/spaced-repetition";
-import { CardMap, PersistAction } from "@/lib/persist-queue";
+import { CardMap, PersistAction, bumpMapVersion } from "@/lib/persist-queue";
 
 interface UseCardCRUDParams {
   categories: string[];
@@ -32,9 +32,10 @@ export function useCardCRUD({
     setCardMapState((prev) => {
       const card = prev[id];
       if (!card) return prev;
-      updated = patcher(card);
+      updated = { ...patcher(card), updatedAt: Date.now() };
       return { ...prev, [id]: updated };
     });
+    bumpMapVersion();
     if (updated) schedulePersist({ type: "put", card: updated });
   }, [setCardMapState, schedulePersist]);
 
@@ -54,6 +55,7 @@ export function useCardCRUD({
       },
     ) => {
       const card = createCard(question, sections, category, subcategory);
+      card.updatedAt = Date.now();
       if (chapter) card.chapter = chapter;
       if (extra?.sourceId) card.sourceId = extra.sourceId;
       if (extra?.textAnchor) card.textAnchor = extra.textAnchor;
@@ -63,6 +65,7 @@ export function useCardCRUD({
       setCardMapState((prev) => {
         return { ...prev, [card.id]: card };
       });
+      bumpMapVersion();
       schedulePersist({ type: "put", card });
       if (!categoriesRef.current.includes(category)) {
         setCategories((prev) => [...prev, category]);
@@ -75,9 +78,11 @@ export function useCardCRUD({
   const addFlashCard = useCallback(
     (question: string, answer: string, category: string, subcategory?: string) => {
       const card = createFlashCard(question, answer, category, subcategory);
+      card.updatedAt = Date.now();
       setCardMapState((prev) => {
         return { ...prev, [card.id]: card };
       });
+      bumpMapVersion();
       schedulePersist({ type: "put", card });
       if (!categoriesRef.current.includes(category)) {
         setCategories((prev) => [...prev, category]);
@@ -142,6 +147,7 @@ export function useCardCRUD({
       delete next[id];
       return next;
     });
+    bumpMapVersion();
     schedulePersist({ type: "delete", id });
     toast.success("Kartica obrisana.");
   }, [setCardMapState, schedulePersist]);
@@ -162,12 +168,14 @@ export function useCardCRUD({
             card.subcategory,
           ),
           sections: [{ ...section }],
+          updatedAt: Date.now(),
         };
         next[newCard.id] = newCard;
         newCards.push(newCard);
       });
       return next;
     });
+    bumpMapVersion();
     if (newCards.length > 0) {
       schedulePersist({ type: "delete", id });
       schedulePersist({ type: "bulk", cards: newCards });

@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { Card, calculateNextReview } from "@/lib/spaced-repetition";
 import { loadAppSettings } from "@/lib/app-settings";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap, PersistAction, schedulePersist } from "@/lib/persist-queue";
+import { CardMap, PersistAction, schedulePersist, bumpMapVersion } from "@/lib/persist-queue";
 import { idbAddReviewLogEntry } from "@/lib/db";
 
 interface UseCardAnnotationsParams {
@@ -147,12 +147,13 @@ export function useCardAnnotations({
       const next = { ...prev };
       for (const id of cardIds) {
         if (next[id]) {
-          next[id] = { ...next[id], needsReview: true };
+          next[id] = { ...next[id], needsReview: true, updatedAt: Date.now() };
           updated.push(next[id]);
         }
       }
       return next;
     });
+    bumpMapVersion();
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
   }, [setCardMapState]);
 
@@ -163,12 +164,13 @@ export function useCardAnnotations({
       const next = { ...prev };
       orderedIds.forEach((id, index) => {
         if (next[id]) {
-          next[id] = { ...next[id], sortOrder: index };
+          next[id] = { ...next[id], sortOrder: index, updatedAt: Date.now() };
           updated.push(next[id]);
         }
       });
       return next;
     });
+    bumpMapVersion();
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
   }, [setCardMapState]);
 
@@ -179,12 +181,13 @@ export function useCardAnnotations({
       const next = { ...prev };
       for (const u of updates) {
         if (next[u.id]) {
-          next[u.id] = { ...next[u.id], chapter: u.chapter, chapterOrder: u.chapterOrder };
+          next[u.id] = { ...next[u.id], chapter: u.chapter, chapterOrder: u.chapterOrder, updatedAt: Date.now() };
           changed.push(next[u.id]);
         }
       }
       return next;
     });
+    bumpMapVersion();
     if (changed.length > 0) schedulePersist({ type: "bulk", cards: changed });
   }, [setCardMapState]);
 

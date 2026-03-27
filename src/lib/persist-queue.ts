@@ -13,13 +13,17 @@ export function arrayToMap(cards: Card[]): CardMap {
   return map;
 }
 
-// Cached conversion — avoids O(n) reconstruction when map reference is same
-let _cachedMap: CardMap | null = null;
+// Version-based cache — avoids O(n) reconstruction when map hasn't changed (B4 fix)
+let _mapVersion = 0;
+let _cachedVersion = -1;
 let _cachedArray: Card[] = [];
 
+/** Call after every setCardMapState mutation to signal that the map changed */
+export function bumpMapVersion() { _mapVersion++; }
+
 export function mapToArray(map: CardMap): Card[] {
-  if (map === _cachedMap) return _cachedArray;
-  _cachedMap = map;
+  if (_mapVersion === _cachedVersion) return _cachedArray;
+  _cachedVersion = _mapVersion;
   _cachedArray = Object.values(map);
   return _cachedArray;
 }
