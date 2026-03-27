@@ -1,6 +1,5 @@
 import { useCallback } from "react";
-import { Card, calculateNextReview } from "@/lib/spaced-repetition";
-import { loadAppSettings } from "@/lib/app-settings";
+import { Card, calculateNextReview, getCachedRetention } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 import { idbAddReviewLogEntry } from "@/lib/db";
