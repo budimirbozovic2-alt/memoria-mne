@@ -117,7 +117,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
     setMobileOpen(false);
   }, [location.pathname]);
 
-  const isLabActive = LAB_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + "/"));
+  const isToolsActive = TOOLS_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + "/"));
 
   return (
     <nav className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur-md">
