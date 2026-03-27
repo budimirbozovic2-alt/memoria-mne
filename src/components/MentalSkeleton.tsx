@@ -22,7 +22,23 @@ interface Props {
   onReviewSection: (cardId: string, sectionId: string, grade: number) => void;
 }
 
+function getChapters(cards: Card[]): string[] {
+  const chapters = new Set<string>();
+  cards.forEach(c => {
+    if (c.chapter && c.chapter !== "") chapters.add(c.chapter);
+  });
+  return Array.from(chapters).sort((a, b) => {
+    const numA = extractChapterNum(a);
+    const numB = extractChapterNum(b);
+    if (numA !== null && numB !== null) return numA - numB;
+    return a.localeCompare(b);
+  });
+}
 
+function extractChapterNum(name: string): number | null {
+  const match = name.match(/(\d+)/);
+  return match ? parseInt(match[1]) : null;
+}
 
 
 // ── Learn Modal (overlay) ────────────────────────────────
