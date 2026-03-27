@@ -1,187 +1,218 @@
 
 
-# The React 18 Guard — Implementation Plan
+# Sprint 5: The Surgical Refactor — Ref-Delta Pattern
 
-## Overview
-Eliminate snapshot race conditions via useEffect-based persistence, fix FSRS call-site for per-section error logging, stabilize Math.min spread, pre-compute sort keys, fix stale closures, and add source invalidation signaling.
+## What's Already Done (No Changes Needed)
+These items from the mission are already implemented in the current codebase:
+- **H1 (ReviewCard sectionId)**: Line 99 already passes `section.id` ✓
+- **H5 (Math.min spread)**: `getCardNextReview` already uses a loop (lines 330-334) ✓
+- **B1 (Sort pre-computation)**: Sort keys already pre-computed in Map (lines 184-192) ✓
+- **H3 (Source invalidation)**: `onSourcesChanged` event pattern already exists ✓
+- **H4 (Forum reviewLog dep)**: Already uses full `reviewLog` reference ✓
+- **H2 (KnowledgeMap any cast)**: Already removed ✓
+- **H2 (renameCategory stale closure)**: Already uses functional updater ✓
+- **ReviewPage sectionId passthrough**: Already forwards `sectionId` ✓
 
-## 1. Eliminate Snapshot Races (C1, C3, C4, H6)
+## What Changes — The Ref-Delta Pattern
 
-### `src/hooks/useCards.ts`
-**Problem**: `setCardMap`, `setCategories`, `setSubcategories` use a snapshot variable that can be empty/stale due to React 18 batching — the updater may not have run yet when the side-effect reads `snapshot`.
+The single remaining architectural fix: replace the 3 `useEffect`-based persistence hooks in `useCards.ts` with synchronous ref-based side-effects in action handlers.
 
-**Fix**: Replace snapshot-based persistence with three `useEffect` hooks:
+### Problem with Current Code
+`useCards.ts` lines 57-85: Three `useEffect` hooks watch `cardMap`, `categories`, and `subcategories` and persist on change. This:
+- Fires asynchronously (next microtask), not at mutation time
+- Requires a diff (O(n) reference comparison) for every cardMap change
+- Couples persistence timing to React's render cycle instead of user intent
 
+### The Ref-Delta Pattern
+
+**Core idea**: Maintain a `cardMapRef` that mirrors state. Action handlers read the ref synchronously, compute the result, fire the surgical persist immediately, then update React state.
+
+### File: `src/hooks/useCards.ts`
+
+**Remove** (lines 57-85): All three `useEffect`-based persistence hooks (`cardMapMountedRef`, `prevCardMapRef`, `catMountedRef`, `subMountedRef` and their effects).
+
+**Add** a `cardMapRef` synced to state:
 ```ts
-// Persist cardMap changes via effect (skip initial mount)
-const cardMapMountedRef = useRef(false);
-useEffect(() => {
-  if (!cardMapMountedRef.current) { cardMapMountedRef.current = true; return; }
-  if (!ready) return;
-  const cards = Object.values(cardMap);
-  if (cards.length > 0) schedulePersist({ type: "bulk", cards });
-}, [cardMap, ready]);
-
-// Persist categories via effect
-const catMountedRef = useRef(false);
-useEffect(() => {
-  if (!catMountedRef.current) { catMountedRef.current = true; return; }
-  idbSaveCategories(categories);
-}, [categories]);
-
-// Persist subcategories via effect
-const subMountedRef = useRef(false);
-useEffect(() => {
-  if (!subMountedRef.current) { subMountedRef.current = true; return; }
-  idbSaveSubcategories(subcategories);
-}, [subcategories]);
+const cardMapRef = useRef<CardMap>({});
+useEffect(() => { cardMapRef.current = cardMap; }, [cardMap]);
 ```
 
-**Simplify setCardMap/setCategories/setSubcategories** to pure state setters:
+**Restore side-effects in setters** — but using pre-computed payloads, not snapshots:
+
 ```ts
 const setCardMap = useCallback((updater, persist) => {
   setCardMapState(updater);
   bumpMapVersion();
+  // No persist here — handled by callers with pre-computed data
 }, []);
 
 const setCategories = useCallback((updater) => {
-  setCategoriesState(updater);
+  setCategoriesState(prev => {
+    const next = updater(prev);
+    if (next !== prev) idbSaveCategories(next);
+    return next;
+  });
 }, []);
 
 const setSubcategories = useCallback((updater) => {
-  setSubcategoriesState(updater);
+  setSubcategoriesState(prev => {
+    const next = updater(prev);
+    if (next !== prev) idbSaveSubcategories(next);
+    return next;
+  });
 }, []);
 ```
 
-**Fix `reorderSubcategories`** (line 208-213): remove `idbSaveSubcategories` from inside the updater — it will now be handled by the useEffect.
+For categories/subcategories, the functional updater approach is safe because the persist call uses the exact computed `next` value — no snapshot race. The updater runs synchronously within React's batch.
 
-**Fix `reorderCategories`** (line 203-206): remove direct `idbSaveCategories` call.
-
-### `src/hooks/useCardImport.ts`
-The `importCards` function (line 220) has a stale closure on `categories`. Since `addCategory` already uses functional updater pattern (H2 fix), just change line 220:
+**Fix `reorderCategories` and `reorderSubcategories`**: These set state directly (not via the wrapper setters), so add explicit persist:
 ```ts
-setCategories(prev => prev.includes(category) ? prev : [...prev, category]);
-```
-Remove `categories` from the dependency array.
+const reorderCategories = useCallback((ordered) => {
+  setCategoriesState(ordered);
+  idbSaveCategories(ordered);
+}, []);
 
-## 2. Re-Attach FSRS Surgery (H1)
-
-### `src/components/review/ReviewCard.tsx`
-**Problem**: `onLogError(card.id, selection)` at line 99 doesn't pass `section.id`, so all sections get penalized.
-
-**Fix**: 
-- Change prop type: `onLogError: (cardId: string, text: string, sectionId?: string) => void`
-- Change call at line 99: `onLogError(card.id, selection, section.id)`
-
-### `src/components/review/review-constants.ts`
-- Update `ReviewSessionProps.onLogError` type: `(cardId: string, text: string, sectionId?: string) => void`
-
-## 3. Stabilize Math & Sorting (H5, B1)
-
-### `src/lib/spaced-repetition.ts`
-**Line 332**: Replace `Math.min(...reviewable.map(...))` with reduce:
-```ts
-let min = Infinity;
-for (const s of reviewable) if (s.nextReview < min) min = s.nextReview;
-return min;
-```
-
-### `src/hooks/useCards.ts` — single-pass memo
-**Pre-compute sort key**: During the single-pass loop, compute `minNextReview` per card and store in a Map. Use this Map in the sort comparator:
-```ts
-const sortKeys = new Map<string, number>();
-// Inside the loop, for due cards:
-let minNext = Infinity;
-for (const s of card.sections) {
-  if (s.state !== SectionState.New && s.nextReview < minNext) minNext = s.nextReview;
-}
-sortKeys.set(card.id, minNext);
-// ...
-dueList.sort((a, b) => (sortKeys.get(a.id) ?? Infinity) - (sortKeys.get(b.id) ?? Infinity));
-```
-
-## 4. Source & Forum Correctness (H3, H4, H2)
-
-### `src/lib/sources-storage.ts`
-Add a simple event-based invalidation signal:
-```ts
-type SourceListener = () => void;
-const _listeners = new Set<SourceListener>();
-export function onSourcesChanged(fn: SourceListener) { _listeners.add(fn); return () => _listeners.delete(fn); }
-function _notify() { _listeners.forEach(fn => fn()); }
-```
-Call `_notify()` in `saveSource`, `deleteSource`, and `invalidateSourcesCache`.
-
-### `src/views/RomanForumPage.tsx`
-Subscribe to source changes:
-```ts
-useEffect(() => {
-  loadSources().then(setSources);
-  return onSourcesChanged(() => loadSources().then(setSources));
+const reorderSubcategories = useCallback((category, ordered) => {
+  setSubcategoriesState(prev => {
+    const next = { ...prev, [category]: ordered };
+    idbSaveSubcategories(next);
+    return next;
+  });
 }, []);
 ```
 
-### `src/views/RomanForumPage.tsx` (H4)
-Use full `reviewLog` reference as dependency instead of just length — the length-only optimization is unsound if entries are replaced:
+### File: `src/hooks/useCardCRUD.ts`
+
+**Accept `cardMapRef`** as a new parameter.
+
+**`patchCard`** — Ref-Delta pattern:
 ```ts
-const forumState = useMemo(() =>
-  calculateForumState(deferredCards, reviewLog, sources),
-  [deferredCards, sources, reviewLog]
-);
+const patchCard = useCallback((id: string, patcher: (card: Card) => Card) => {
+  const card = cardMapRef.current[id];
+  if (!card) return;
+  const updated = { ...patcher(card), updatedAt: Date.now() };
+  // Surgical persist BEFORE state update — payload is pre-computed
+  schedulePersist({ type: "put", card: updated });
+  setCardMapState(prev => {
+    if (!prev[id]) return prev;
+    return { ...prev, [id]: updated };
+  });
+  bumpMapVersion();
+}, [setCardMapState, cardMapRef]);
 ```
-Remove the `reviewLogLen` variable and eslint-disable comment.
 
-### `src/components/KnowledgeMap.tsx` (H2)
-Remove `(card as any).updatedAt` cast, use typed access since `updatedAt` is now on the Card interface:
+**`addCard`** — already pre-computes the card object outside the updater, so just add:
 ```ts
-const cardUpdated = card.updatedAt ?? 0;
+schedulePersist({ type: "put", card });
 ```
+before `setCardMapState`.
 
-## 5. Category Management (H2)
+**`addFlashCard`** — same pattern: add `schedulePersist({ type: "put", card })`.
 
-### `src/hooks/useCategoryManagement.ts`
-**`renameCategory`** (line 30-31): Replace stale closure check with functional pattern:
+**`splitCard`** — needs ref access to read the card and compute new cards synchronously:
 ```ts
-setCategories(prev => {
-  if (prev.includes(newName)) return prev; // no-op
-  return prev.map(c => c === oldName ? newName : c);
-});
+const splitCard = useCallback((id: string) => {
+  const card = cardMapRef.current[id];
+  if (!card || card.sections.length <= 1) return;
+  const newCards = card.sections.map(section => ({
+    ...createCard(card.question, [{ title: section.title, content: section.content }], card.category, card.subcategory),
+    sections: [{ ...section }],
+    updatedAt: Date.now(),
+  }));
+  schedulePersist({ type: "bulk", cards: newCards });
+  idbDeleteCard(id).catch(e => console.error("[splitCard] IDB delete failed", e));
+  setCardMapState(prev => {
+    const next = { ...prev };
+    delete next[id];
+    newCards.forEach(c => { next[c.id] = c; });
+    return next;
+  });
+  bumpMapVersion();
+}, [setCardMapState, cardMapRef]);
 ```
-Remove `categories` from dependency array.
 
-Note: The duplicate check now happens inside the updater. The early return must be removed since we can't bail out of the whole function from inside the updater. Instead, wrap the card-update logic in a condition that checks the result.
+### File: `src/hooks/useCardAnnotations.ts`
 
-**Approach**: Use a ref to track whether the rename actually happened:
+**`bulkFlagNeedsReview`**, **`reorderCards`**, **`bulkUpdateChapter`** — these use `setCardMapState` directly. Add `cardMapRef` param, pre-compute changes, and persist:
+
 ```ts
-let didRename = false;
-setCategories(prev => {
-  if (prev.includes(newName)) return prev;
-  didRename = true;
-  return prev.map(c => c === oldName ? newName : c);
-});
-// Only update cards if rename happened — read didRename synchronously
-// (setCategoriesState is synchronous in React 18 when not in a transition)
-if (!didRename) return;
+const bulkFlagNeedsReview = useCallback((cardIds: string[]) => {
+  if (cardIds.length === 0) return;
+  const updated: Card[] = [];
+  setCardMapState(prev => {
+    const next = { ...prev };
+    for (const id of cardIds) {
+      if (next[id]) {
+        const u = { ...next[id], needsReview: true, updatedAt: Date.now() };
+        next[id] = u;
+        updated.push(u);
+      }
+    }
+    return next;
+  });
+  if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
+  bumpMapVersion();
+}, [setCardMapState]);
 ```
-Actually, in React 18 the updater runs synchronously within the same event handler, so `didRename` will be set by the time we read it.
 
-## Files Changed Summary
+Same pattern for `reorderCards` and `bulkUpdateChapter`.
+
+Note: For these bulk operations, we can collect `updated` cards inside the updater (reading from `prev`) and persist after. The updater runs synchronously, so `updated` is populated by the time `schedulePersist` runs. This is safe because we're not reading a snapshot variable — we're accumulating results from the updater's own `prev`.
+
+### File: `src/hooks/useCardImport.ts`
+
+**`importCards`** — already pre-computes `created` array outside updater. Add:
+```ts
+schedulePersist({ type: "bulk", cards: created });
+```
+
+**`importData`** — uses `setCardMap` wrapper which doesn't persist. The imported cards are known (`importedCards`), but the merge logic (skip/overwrite/newer) happens inside the updater. Use the same accumulator pattern:
+```ts
+const merged: Card[] = [];
+setCardMap(prev => {
+  // ... existing merge logic, pushing to `merged` for each card that enters `next`
+  return next;
+}, "full");
+if (merged.length > 0) schedulePersist({ type: "bulk", cards: merged });
+```
+
+### File: `src/hooks/useCategoryManagement.ts`
+
+**`renameCategory`**, **`deleteCategory`**, **`renameSubcategory`**, **`deleteSubcategory`**, **`bulkUpdateSubcategory`** — these call `setCardMapState` directly. Use the accumulator pattern: collect changed cards inside the updater, persist after.
+
+Categories/subcategories persistence is now handled by the wrapper `setCategories`/`setSubcategories` in `useCards.ts` which persist inside the functional updater.
+
+### Wiring Changes in `useCards.ts`
+
+Pass `cardMapRef` to `useCardCRUD` and `useCardAnnotations`:
+```ts
+const cardMapRef = useRef<CardMap>({});
+useEffect(() => { cardMapRef.current = cardMap; }, [cardMap]);
+
+const { patchCard, ... } = useCardCRUD({ categories, setCardMapState, setCategories, cardMapRef });
+const { ... } = useCardAnnotations({ patchCard, setCardMapState, setReviewLog, cardMapRef });
+```
+
+### Import changes
+- `useCardCRUD.ts`: import `schedulePersist` from `persist-queue`
+- `useCardAnnotations.ts`: import `schedulePersist` from `persist-queue`
+- `useCardImport.ts`: already has `schedulePersist` in deps
+- `useCategoryManagement.ts`: already imports from `persist-queue`
+
+## Summary of Files Changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useCards.ts` | Replace snapshot persistence with 3 useEffects; simplify setters; fix reorder functions; pre-compute sort keys |
-| `src/components/review/ReviewCard.tsx` | Pass `section.id` to `onLogError` |
-| `src/components/review/review-constants.ts` | Update `onLogError` type signature |
-| `src/lib/spaced-repetition.ts` | Replace `Math.min(...arr)` with reduce loop |
-| `src/lib/sources-storage.ts` | Add event-based invalidation signaling |
-| `src/views/RomanForumPage.tsx` | Subscribe to source changes; fix reviewLog dep |
-| `src/components/KnowledgeMap.tsx` | Remove `as any` cast |
-| `src/hooks/useCategoryManagement.ts` | Fix renameCategory stale closure |
-| `src/hooks/useCardImport.ts` | Fix stale closure in importCards |
+| `src/hooks/useCards.ts` | Remove 3 useEffect persist hooks; add `cardMapRef`; restore persist in `setCategories`/`setSubcategories` wrappers; pass ref to CRUD/annotations |
+| `src/hooks/useCardCRUD.ts` | Accept `cardMapRef`; add `schedulePersist` calls with pre-computed data in `patchCard`, `addCard`, `addFlashCard`, `splitCard` |
+| `src/hooks/useCardAnnotations.ts` | Add `schedulePersist` calls in bulk operations using accumulator pattern |
+| `src/hooks/useCardImport.ts` | Add `schedulePersist` for `importCards`; accumulator pattern for `importData` |
+| `src/hooks/useCategoryManagement.ts` | Accumulator pattern for card mutations in rename/delete operations |
 
 ## Risk Assessment
-- **useEffect persistence**: Low risk — skip-on-mount pattern prevents boot re-save; `ready` guard prevents persisting empty initial state
-- **FSRS**: Untouched algorithm; only call-site fixed to pass sectionId
-- **Sort fix**: Pure performance improvement, same result
-- **Source signaling**: Additive pattern, existing cache logic unchanged
+- **Categories/subcategories**: Persisting inside functional updater is safe — the value written is the exact return value
+- **patchCard ref-delta**: Pre-computing from ref is safe because React dispatches synchronously within event handlers; ref and state diverge only during concurrent renders (which we don't use)
+- **Accumulator pattern**: Collecting results inside updater + persisting after is safe because React 18 runs updaters synchronously in event handlers
+- **No FSRS changes**: Algorithm untouched
+- **Deletes**: Still explicit via `idbDeleteCard` — unchanged
 
