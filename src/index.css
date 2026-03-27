@@ -679,10 +679,6 @@
   background-color: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* ─── Display Font ────────────────────────────────── */
-.font-display {
-  font-family: var(--font-display);
-}
 
 /* ─── Glassmorphism Card ─────────────────────────── */
 .glass-card {
