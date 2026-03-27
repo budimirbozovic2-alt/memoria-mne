@@ -122,6 +122,7 @@ function buildMonument(category: string, cards: Card[]): Monument {
     avgDifficulty: Math.round(avgDifficulty * 10) / 10,
     leechCount,
     crumbling,
+    buildingType: "insula",
   };
 }
 
