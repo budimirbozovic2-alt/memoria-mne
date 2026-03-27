@@ -39,6 +39,7 @@ export default function CardsView() {
   const debouncedSearch = useDebounce(searchQuery, 300);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkCategory, setBulkCategory] = useState("");
   const [bulkSubcategory, setBulkSubcategory] = useState("");
   const [bulkChapter, setBulkChapter] = useState("");
   const [newBulkChapter, setNewBulkChapter] = useState("");
