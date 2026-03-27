@@ -178,11 +178,11 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
     ]);
     clearTimeout(timer);
     return true;
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTimeout(timer);
-    console.error("[MemoriaDB] open failed:", err?.name, err?.message);
-    // VersionError = schema downgrade or corruption — delete and retry once
-    if (err?.name === "VersionError" || err?.name === "UpgradeError") {
+    const e = err instanceof Error ? err : new Error(String(err));
+    console.error("[MemoriaDB] open failed:", e.name, e.message);
+    if (e.name === "VersionError" || e.name === "UpgradeError") {
       try {
         await db.delete();
         await db.open();
