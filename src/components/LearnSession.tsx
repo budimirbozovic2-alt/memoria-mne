@@ -58,6 +58,9 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
         stored.forEach((ch, i) => { map[ch] = i; });
         setChapterPositionMap(map);
       });
+    }).catch((err) => {
+      console.error("[LearnSession] Failed to load chapter settings:", err);
+      setChapterPositionMap({});
     });
   }, [selectedCategory, selectedSubcategory]);
 

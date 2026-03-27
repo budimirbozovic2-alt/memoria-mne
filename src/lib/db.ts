@@ -183,14 +183,12 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
     const e = err instanceof Error ? err : new Error(String(err));
     console.error("[MemoriaDB] open failed:", e.name, e.message);
     if (e.name === "VersionError" || e.name === "UpgradeError") {
-      try {
-        await db.delete();
-        await db.open();
-        console.warn("[MemoriaDB] DB reset after VersionError — data cleared");
-        return true;
-      } catch (retryErr) {
-        console.error("[MemoriaDB] retry after delete failed:", retryErr);
-      }
+      console.error(
+        "[MemoriaDB] CRITICAL: DB schema version mismatch. Automatic deletion has been disabled to protect user data. " +
+        "The app cannot initialize until this is resolved. Error:", e.message
+      );
+      // Do NOT delete the database — this would silently wipe all user data.
+      // A future UI recovery screen will handle this case.
     }
     return false;
   }

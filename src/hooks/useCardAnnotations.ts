@@ -21,10 +21,11 @@ export function useCardAnnotations({
   const reviewSection = useCallback(
     (cardId: string, sectionId: string, grade: number) => {
       const cachedRetention = loadAppSettings().targetRetention;
+      const entry: ReviewLogEntry = { timestamp: Date.now(), cardId, sectionId, grade, category: "" };
+
       patchCard(cardId, (c) => {
-        const entry: ReviewLogEntry = { timestamp: Date.now(), cardId, sectionId, grade, category: c.category };
-        idbAddReviewLogEntry(entry);
-        setReviewLog((log) => [...log, entry]);
+        // Fill in category now that we have the card
+        entry.category = c.category;
 
         let errorLog = c.errorLog;
         if (errorLog && errorLog.length > 0 && grade >= 3) {
@@ -45,6 +46,10 @@ export function useCardAnnotations({
           ),
         };
       });
+
+      // Persist review log OUTSIDE the state updater to avoid nested setState
+      idbAddReviewLogEntry(entry);
+      setReviewLog((log) => [...log, entry]);
     },
     [patchCard, setReviewLog],
   );
