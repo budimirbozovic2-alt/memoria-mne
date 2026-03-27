@@ -138,9 +138,8 @@ export function useCardCRUD({
       return next;
     });
     bumpMapVersion();
-    schedulePersist({ type: "delete", id });
     toast.success("Kartica obrisana.");
-  }, [setCardMapState, schedulePersist]);
+  }, [setCardMapState]);
 
   const splitCard = useCallback((id: string) => {
     let newCards: Card[] = [];
