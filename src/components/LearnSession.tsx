@@ -149,7 +149,7 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
             if (totalSections === 0) return null;
             const progress = Math.round((learnedSections / totalSections) * 100);
             const targetReviewPct = Math.max(5, progress);
-            const reviewLog = loadReviewLog();
+            const reviewLog = reviewLogProp;
             const todayStr = new Date().toISOString().slice(0, 10);
             const todayStart = new Date(todayStr).getTime();
             const todayEntries = reviewLog.filter(e => e.timestamp >= todayStart);
