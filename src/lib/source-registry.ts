@@ -59,6 +59,7 @@ export function saveSourceRegistry(registry: SourceRegistry): void {
   localStorage.setItem(REGISTRY_KEY, JSON.stringify(registry));
   // Fire-and-forget IDB backup sync
   syncSourceRegistryToIDB(registry);
+  _notifyRegistry();
 }
 
 /** Invalidate cache (e.g. after external import) */
