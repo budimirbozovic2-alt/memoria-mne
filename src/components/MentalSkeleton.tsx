@@ -8,9 +8,11 @@ import {
   DragEndEvent, DragOverlay, DragStartEvent,
 } from "@dnd-kit/core";
 import { toast } from "sonner";
-import { ArrowLeft, Eye, Compass, Plus, X, BookOpen, AlertTriangle, CheckCircle, ChevronDown } from "lucide-react";
+import { ArrowLeft, Eye, Compass, Plus, X, BookOpen } from "lucide-react";
 import ChapterBox from "./mental-skeleton/ChapterBox";
 import DraggableCardTile from "./mental-skeleton/DraggableCardTile";
+import LearnModal from "./mental-skeleton/LearnModal";
+import AuditorDetailPanel from "./mental-skeleton/AuditorDetailPanel";
 import { Mode, UNASSIGNED_CHAPTER } from "./mental-skeleton/types";
 
 interface Props {
