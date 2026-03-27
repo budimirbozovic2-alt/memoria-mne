@@ -221,6 +221,11 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
         </div>
 
         <div className="flex items-center gap-0.5 ml-2">
+          {forumUnlocked && (
+            <Link to="/forum" className="p-1.5 rounded-md hover:bg-gold/10 text-gold transition-colors" title="Forum Iustitiae" aria-label="Forum Iustitiae">
+              <Landmark className="h-4 w-4" />
+            </Link>
+          )}
           {/* Mapping badge */}
           {mappingFlash && (
             <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-success/15 text-success text-[10px] font-bold animate-in fade-in zoom-in-95 duration-300">
