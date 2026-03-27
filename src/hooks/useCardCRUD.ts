@@ -118,9 +118,13 @@ export function useCardCRUD({
         if (updates.sourceModules !== undefined) newCard.sourceModules = updates.sourceModules;
         if (updates.needsReview !== undefined) newCard.needsReview = updates.needsReview;
         if (updates.sections) {
-          newCard.sections = updates.sections.map((s) => {
-            const existing = c.sections.find((es) => es.title === s.title);
-            if (existing) return { ...existing, content: s.content };
+          newCard.sections = updates.sections.map((s, idx) => {
+            // H6 fix: match by id first (preserves FSRS on title rename), then title, then index
+            const existing =
+              c.sections.find((es) => (s as { id?: string }).id && es.id === (s as { id?: string }).id) ||
+              c.sections.find((es) => es.title === s.title) ||
+              c.sections[idx];
+            if (existing) return { ...existing, title: s.title, content: s.content };
             return createSection(s.title, s.content);
           });
         }
