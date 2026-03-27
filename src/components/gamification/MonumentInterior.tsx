@@ -154,7 +154,6 @@ export const MonumentInterior = memo(function MonumentInterior({
               <ArchNode key={node.name} name={node.name} cardCount={node.cardCount} levels={node.levels} avgStability={node.avgStability} index={i} onClick={() => setSelectedSub(node.name)} />
             ))}
           </div>
-          </div>
         )}
         {tree.length === 0 && (
           <div className="flex items-center justify-center min-h-[20vh]">
