@@ -1,52 +1,44 @@
 
 
-# Clickable MonumentCards with Category Detail Panel
+# Material Transition Animation for MonumentCard
 
 ## Overview
-Make each MonumentCard clickable to open a Dialog showing all cards in that category with their FSRS status (state, stability, next review, leech flag).
+Track each monument's previous material tier and, when it changes (e.g., wood → stone → marble), play a shimmer + particle burst animation on the card. Uses `useRef` to remember prior material and `AnimatePresence` for the overlay effect.
 
-## Changes
+## Approach
 
 ### 1. `src/components/gamification/MonumentCard.tsx`
-- Add `onClick` prop to the component interface
-- Add `cursor-pointer` to the motion.div and call `onClick` on click
+- Add a `useRef<MaterialTier>` to track previous material
+- On render, compare `monument.material` with `prevMaterialRef.current`
+- When material upgrades (tier index increases), set a local `upgraded` state to `true` for ~2 seconds
+- When `upgraded` is true, render two overlay layers inside the card:
+  - **Shimmer sweep**: A full-width gradient div that translates left-to-right once using framer-motion (`x: ["-100%", "100%"]`), with the new material's accent color. Duration ~1s.
+  - **Particle burst**: 8-12 small circular `motion.div` elements that scatter outward from center with random angles, fade out, and scale down. Gold particles for gold tier, white/silver for marble, grey for stone, etc. Duration ~1.2s.
+- After animation completes (~2s), reset `upgraded` to false
+- Update `prevMaterialRef` to current material after comparison
 
-### 2. `src/components/gamification/MonumentDetailDialog.tsx` (NEW)
-- A Dialog component that receives `category: string`, `open: boolean`, `onClose: () => void`
-- Imports `useCardContext` to get all cards, filters by `card.category === category`
-- Renders a scrollable list of cards showing:
-  - Card question (truncated)
-  - Per-section FSRS state badge (New / Learning / Review / Relearning) with color coding
-  - Stability value (days)
-  - Next review date (relative: "za 3 dana" / "kasni 2 dana")
-  - Leech warning icon if `lapses >= 5`
-  - Mastery indicator (all sections in Review = gold checkmark)
-- Header shows monument material icon + category name + overall stats
-- Uses glass-card styling, gold accents for mastered items
-- Sorted: leeches first, then by next review date (most urgent first)
+### 2. Tier ordering for comparison
+Define a simple array: `["wood", "brick", "stone", "marble", "gold"]` — compare indices to detect upgrade vs. downgrade. Only trigger animation on upgrade.
 
-### 3. `src/views/RomanForumPage.tsx`
-- Add state: `selectedCategory: string | null`
-- Pass `onClick={() => setSelectedCategory(monument.category)}` to each MonumentCard
-- Render `MonumentDetailDialog` with `open={!!selectedCategory}` and `onClose={() => setSelectedCategory(null)}`
+### 3. Particle implementation
+- No external library needed — just 8-12 `motion.div` elements with randomized:
+  - `x` and `y` endpoints (spread 40-80px from center)
+  - `opacity: [1, 0]`
+  - `scale: [1, 0]`
+  - `duration: 0.8-1.2s` with staggered delays
+- Each particle is a 4px rounded-full div colored per material tier
 
-### State Badge Colors
-| State | Label | Color |
-|-------|-------|-------|
-| New | Novus | `bg-muted text-muted-foreground` |
-| Learning | Discens | `bg-blue-500/20 text-blue-500` |
-| Review | Peritus | `bg-green-500/20 text-green-500` |
-| Relearning | Rediscens | `bg-orange-500/20 text-orange-500` |
+### 4. No new CSS needed
+The existing `shimmer` keyframe in tailwind.config.ts won't be used directly — framer-motion handles the sweep animation inline for better control over timing and color.
 
-### Files Changed
+## Files Changed
 | File | Change |
 |------|--------|
-| `src/components/gamification/MonumentCard.tsx` | Add onClick prop |
-| `src/components/gamification/MonumentDetailDialog.tsx` | New: detail dialog component |
-| `src/views/RomanForumPage.tsx` | Add selectedCategory state, wire onClick + dialog |
+| `src/components/gamification/MonumentCard.tsx` | Add material transition detection + shimmer/particle overlay |
 
-### Guardrails
-- No FSRS math changes
+## Guardrails
+- No FSRS, DB, or layout changes
+- No new dependencies
 - Standard barrel imports
-- Uses existing Dialog, Badge, ScrollArea components
+- Animation is purely visual, no state persistence
 
