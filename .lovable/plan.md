@@ -1,75 +1,87 @@
 
 
-# The Polishing Act — Performance & Visual Refinement
+# Imperial Standardization — Phase 1: Global CSS, Typography, Scrollbars & Dashboard
 
-## 1. Performance: Pre-compute avgStability in useSourceHierarchy
+This is the first of 3 phases. Phase 1 establishes the visual foundation that all subsequent phases build on.
 
-**Problem**: `MonumentInterior` line 158 does `catCards.filter(...)` per node in Mode B render loop — O(n*m). Mode A calls `computeAvgStability(child.cards)` which iterates sections per render.
+## Scope (Phase 1)
 
-**Fix in `src/hooks/useSourceHierarchy.ts`**:
-- Add `avgStability` field to both `HierarchyNode` and `HierarchyLeaf` interfaces
-- Compute it inside the `useMemo` during tree construction (single pass)
-- New helper: `computeAvgStability(cards)` that averages section stability
+| Area | What changes |
+|------|-------------|
+| **1. Global CSS & Typography** | Cinzel for page headers, gold accent standardization, glass-card base class, shimmer button hover, gold-tinted scrollbars |
+| **2. Dashboard Alignment** | Glass-card widgets, subtle golden radial glow, Forum gateway with layoutId |
+| **3. Dialog & ScrollArea Kit** | Backdrop-blur + glassmorphic paneling for all dialogs, gold scrollbar thumbs |
 
-**Fix in `src/components/gamification/MonumentInterior.tsx`**:
-- Remove the standalone `computeAvgStability` function
-- Pass `node.avgStability` and `child.avgStability` directly to `ArchNode` props
-- Remove the O(n^2) `catCards.filter(...)` call on line 158
+Phase 2 (next): Sidebar evolution + Nav decommissioning + Source Manager rebranding
+Phase 3 (after): Study interface mastery sync + achievement glow
 
-## 2. SVG ID Sanitization
+---
 
-**Add `slugify` helper** in `src/components/gamification/monument-effects.tsx`:
-```ts
-function slugify(text: string): string {
-  return text.replace(/[^a-zA-Z0-9]/g, "-").replace(/-+/g, "-");
-}
+## Technical Details
+
+### 1. Global CSS (`src/index.css`)
+
+**New utility classes** (appended after `forum-tablet`):
+
+- `.glass-card` — `bg-card/60`, `backdrop-blur(12px)`, `border border-border/40`, `shadow-sm`. Replaces plain `bg-card border` across Dashboard widgets.
+- `.gold-shimmer` — `@keyframes shimmer` that sweeps a subtle `hsl(var(--gold)/0.08)` highlight left-to-right on hover. Applied to primary buttons via `.btn-imperial`.
+- `.btn-imperial` — extends default button with `border-color: hsl(var(--gold)/0.3)`, applies `gold-shimmer` on hover.
+
+**Scrollbar override** (global):
+```css
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: hsl(var(--gold) / 0.25); border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
 ```
+Also style the Radix ScrollArea thumb in `scroll-area.tsx` with `bg-[hsl(var(--gold)/0.25)]`.
 
-- Use in `TorchOverlay`: `id={`torch-glow-${slugify(id)}`}`
-- Use in `MonumentEffects`: pass `slugify(monument.category)` to TorchOverlay
+**Typography rule**:
+```css
+h1, h2, .font-display { font-family: var(--font-display); }
+```
+This leverages the existing `--font-display: 'Cinzel'` variable. All `<h1>` tags across the app automatically get Cinzel. Body text stays DM Sans (already set).
 
-## 3. Visual Refinement — "Modern Stele" ArchNode
+### 2. Dashboard (`src/components/Dashboard.tsx` + sub-components)
 
-**Update `src/components/gamification/ArchNode.tsx`**:
-- Add subtle `inset` shadow to make text feel engraved: `shadow-[inset_0_1px_2px_hsl(0_0%_0%/0.08)]`
-- Add a 12px decorative SVG column line on the left edge using `hsl(var(--gold)/0.3)`
-- Replace flat background with glassmorphic gradient: `linear-gradient(to bottom right, hsl(var(--card)/0.5), hsl(var(--card)/0.3))`
-- Gold tier gets a subtle gold-tinted gradient instead
+- Replace `rounded-xl bg-card border` with `glass-card` on all widget containers (ExamProgressBar, CoreStats cards, DailyBriefing, IdealFocus, VelocityWidget, StatusIconsRow).
+- Add a subtle golden radial glow behind the first widget area: a `div` with `background: radial-gradient(ellipse at 50% 0%, hsl(var(--gold)/0.06) 0%, transparent 70%)` as an absolute positioned layer.
+- **Forum gateway** (`Dashboard.tsx` line ~112): Add `layoutId="forum-gateway"` to the "Enter Forum" Link card. In `RomanForumPage.tsx`, add a matching `layoutId="forum-gateway"` on the forum header wrapper so navigating Dashboard → Forum triggers a smooth morph.
 
-**Update `src/components/gamification/ForumAtmosphere.tsx`**:
-- Add `backdrop-filter: blur(2px)` to the sky gradient layer for premium color blending
+### 3. CoreStats (`src/components/dashboard/CoreStats.tsx`)
 
-**Update `src/index.css`**:
-- Enhance `forum-tablet` with `box-shadow: inset 0 1px 2px hsl(0 0% 0% / 0.06), 0 1px 3px hsl(0 0% 0% / 0.04)`
+- Replace `rounded-xl bg-card border` with `glass-card` class on both stat cards.
 
-## 4. Zombie Removal
+### 4. ScrollArea (`src/components/ui/scroll-area.tsx`)
 
-**Delete** `src/components/gamification/MonumentDetailDialog.tsx`
+- Change ScrollAreaThumb className from `bg-border` to `bg-[hsl(var(--gold)/0.25)]`.
 
-**Verify** no imports remain — search confirms it's only self-referencing (no imports in RomanForumPage or elsewhere).
+### 5. Dialog (`src/components/ui/dialog.tsx`)
 
-## 5. Reverse Transition
+- Add `backdrop-blur-md` to `DialogOverlay` (likely already has it, verify and ensure).
+- Add `glass-card` styling to `DialogContent`: replace `bg-background` with `bg-card/80 backdrop-blur-xl border-border/40`.
 
-**Current state**: `MonumentInterior` has `layoutId={`monument-${monument.category}`}` matching `MonumentCard`. The `AnimatePresence` in `RomanForumPage` wraps both. Clicking back sets `selectedCategory = null`, which should trigger the reverse layout animation.
-
-**Fix**: Add `exit` props on the forum grid's `motion.div` wrapper (currently just a plain `<div key="forum-grid">`). Change it to `motion.div` with `initial/animate/exit` opacity so `AnimatePresence` can orchestrate the crossfade properly during the reverse `layoutId` morph.
+---
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/hooks/useSourceHierarchy.ts` | Add `avgStability` to interfaces, pre-compute in useMemo |
-| `src/components/gamification/MonumentInterior.tsx` | Remove `computeAvgStability`, use pre-computed props, remove O(n^2) filter |
-| `src/components/gamification/monument-effects.tsx` | Add `slugify`, sanitize gradient IDs |
-| `src/components/gamification/ArchNode.tsx` | Engraved inset shadow, gold column accent, glassmorphic gradient |
-| `src/components/gamification/ForumAtmosphere.tsx` | Add subtle backdrop-blur to sky layer |
-| `src/index.css` | Enhanced `forum-tablet` inset shadow |
-| `src/views/RomanForumPage.tsx` | Wrap forum grid in `motion.div` for reverse transition |
-| `src/components/gamification/MonumentDetailDialog.tsx` | **DELETE** |
+| `src/index.css` | Add `glass-card`, `btn-imperial`, `gold-shimmer` keyframes, scrollbar override, `h1/h2` font rule |
+| `src/components/ui/scroll-area.tsx` | Gold-tinted thumb |
+| `src/components/ui/dialog.tsx` | Glassmorphic content + blur overlay |
+| `src/components/Dashboard.tsx` | `glass-card` on widget wrappers, golden radial glow, layoutId on Forum card |
+| `src/components/dashboard/CoreStats.tsx` | `glass-card` class |
+| `src/components/dashboard/DailyBriefing.tsx` | `glass-card` class |
+| `src/components/dashboard/IdealFocus.tsx` | `glass-card` class |
+| `src/components/dashboard/VelocityWidget.tsx` | `glass-card` class |
+| `src/components/dashboard/StatusIconsRow.tsx` | `glass-card` class |
+| `src/components/dashboard/ExamProgressBar.tsx` | `glass-card` class |
+| `src/views/RomanForumPage.tsx` | Add matching `layoutId="forum-gateway"` |
 
 ## Guardrails
 - No FSRS math changes
+- No navigation structure changes (that's Phase 2)
+- No study interface changes (that's Phase 3)
+- Existing themes (Amber, Steel, Forest, etc.) preserved — gold scrollbars use `--gold` which is theme-aware
 - No new dependencies
-- Source registry logic untouched
-- All existing functionality preserved
 
