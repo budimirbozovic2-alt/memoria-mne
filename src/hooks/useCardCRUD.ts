@@ -147,6 +147,7 @@ export function useCardCRUD({
       delete next[id];
       return next;
     });
+    bumpMapVersion();
     schedulePersist({ type: "delete", id });
     toast.success("Kartica obrisana.");
   }, [setCardMapState, schedulePersist]);
