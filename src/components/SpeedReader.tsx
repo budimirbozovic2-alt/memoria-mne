@@ -203,6 +203,7 @@ export default function SpeedReader() {
 
   // TTS "natural" mode: speak entire text, TTS boundary events drive highlight
   const speakSegment = useCallback((segIdx: number, startLocal: number) => {
+    if (!ttsPlayingRef.current) return;
     if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
 
