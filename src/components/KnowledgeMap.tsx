@@ -110,7 +110,12 @@ export default function KnowledgeMap({
   const [view, setView] = useState<ViewState>(() => hydrateView(categories, subcategories));
   const [searchQuery, setSearchQuery] = useState("");
   const [reorderMode, setReorderMode] = useState(false);
+  const [sources, setSources] = useState<Source[]>([]);
   const directionRef = useRef(1);
+
+  useEffect(() => {
+    loadSources().then(setSources);
+  }, []);
 
   const navigate = (next: ViewState) => {
     const stepOrder = { categories: 0, subcategories: 1, detail: 2 };
