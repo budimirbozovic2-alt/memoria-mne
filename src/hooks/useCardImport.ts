@@ -208,11 +208,13 @@ export function useCardImport({
   const importCards = useCallback(
     (newCards: { question: string; sections: { title: string; content: string }[] }[], category: string) => {
       const created = newCards.map((c) => createCard(c.question, c.sections, category));
+      created.forEach(c => { c.updatedAt = Date.now(); });
       setCardMapState((prev) => {
         const next = { ...prev };
         created.forEach((c) => { next[c.id] = c; });
         return next;
       });
+      bumpMapVersion();
       // Side-effect OUTSIDE the updater (C1 fix)
       schedulePersist({ type: "bulk", cards: created });
       if (!categories.includes(category)) setCategories((prev) => [...prev, category]);

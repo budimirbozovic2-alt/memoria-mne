@@ -151,6 +151,7 @@ export function useCategoryManagement({
       }
       return next;
     });
+    bumpMapVersion();
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
   }, [setCardMapState, schedulePersist]);
 
