@@ -74,6 +74,18 @@ const SourceContent = memo(function SourceContent({ html, onMouseUp, contentRef 
   );
 });
 
+type ReaderWidth = "S" | "M" | "L" | "XL" | "Full";
+
+const WIDTH_CLASSES: Record<ReaderWidth, string> = {
+  S: "max-w-2xl",
+  M: "max-w-4xl",
+  L: "max-w-6xl",
+  XL: "max-w-7xl",
+  Full: "max-w-none",
+};
+
+const STORAGE_KEY = "codex-source-reader-width";
+
 interface Props {
   source: Source;
   onBack: () => void;
@@ -82,6 +94,15 @@ interface Props {
 export default function SourceReader({ source, onBack }: Props) {
   const logic = useSourceLogic(source);
   const isCoverage = logic.viewMode === "coverage";
+
+  const [readerWidth, setReaderWidth] = useState<ReaderWidth>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return (saved && saved in WIDTH_CLASSES) ? saved as ReaderWidth : "M";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, readerWidth);
+  }, [readerWidth]);
 
   const handleOpenCoveredCard = (cardId: string) => {
     sessionStorage.setItem("sr-scroll-to-card", cardId);
