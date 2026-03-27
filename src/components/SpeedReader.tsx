@@ -260,7 +260,7 @@ export default function SpeedReader() {
       if (nextIdx < segments.length) {
         ttsSegIdxRef.current = nextIdx;
         setCurrentWordIdx(segments[nextIdx].globalStartIdx);
-        setTimeout(() => speakSegment(nextIdx, 0), 100);
+        ttsTimeoutRef.current = setTimeout(() => speakSegment(nextIdx, 0), 100);
       } else {
         setPlaying(false);
         ttsPlayingRef.current = false;
@@ -273,7 +273,7 @@ export default function SpeedReader() {
       if (nextIdx < segments.length) {
         ttsSegIdxRef.current = nextIdx;
         setCurrentWordIdx(segments[nextIdx].globalStartIdx);
-        setTimeout(() => speakSegment(nextIdx, 0), 100);
+        ttsTimeoutRef.current = setTimeout(() => speakSegment(nextIdx, 0), 100);
       } else {
         setPlaying(false);
         ttsPlayingRef.current = false;
