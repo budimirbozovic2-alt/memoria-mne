@@ -35,11 +35,13 @@ export function useCardImport({
           return;
         }
 
-        if (!parsed || typeof parsed !== "object") { toast.error("Fajl ne sadrži validan JSON objekat."); return; }
-        if (!Array.isArray(parsed.cards)) { toast.error("Fajl ne sadrži 'cards' niz. Provjerite format."); return; }
+        const data = parsed as Record<string, unknown>;
+        if (!data || typeof data !== "object") { toast.error("Fajl ne sadrži validan JSON objekat."); return; }
+        if (!Array.isArray(data.cards)) { toast.error("Fajl ne sadrži 'cards' niz. Provjerite format."); return; }
 
-        for (let i = 0; i < Math.min(5, parsed.cards.length); i++) {
-          const c = parsed.cards[i];
+        const cardsArr = data.cards as Record<string, unknown>[];
+        for (let i = 0; i < Math.min(5, cardsArr.length); i++) {
+          const c = cardsArr[i];
           if (!c || typeof c.question !== "string" || !Array.isArray(c.sections)) {
             toast.error(`Kartica #${i + 1} ima neispravan format (nedostaje question ili sections).`);
             return;
