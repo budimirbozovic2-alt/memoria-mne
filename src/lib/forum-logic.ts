@@ -16,7 +16,10 @@ import type { Source } from "./db";
 
 // ─── Types ──────────────────────────────────────────────
 
-export type MaterialTier = "wood" | "brick" | "stone" | "marble" | "gold";
+export type ConstructionPhase = "foundation" | "skeleton" | "construction" | "complete" | "imperial";
+
+/** Backward-compatible alias — all downstream consumers keep working */
+export type MaterialTier = ConstructionPhase;
 
 export type BuildingType =
   | "amphitheatrum" | "basilica" | "tabularium" | "rostra"
@@ -49,6 +52,19 @@ export function invalidateMonumentTypesCache() {
   _monumentTypesCache = null;
 }
 
+// ─── Construction Phase Logic ───────────────────────────
+
+function getConstructionPhase(mastery: number): ConstructionPhase {
+  if (mastery >= 91) return "imperial";
+  if (mastery >= 61) return "complete";
+  if (mastery >= 31) return "construction";
+  if (mastery >= 11) return "skeleton";
+  return "foundation";
+}
+
+/** @deprecated Use getConstructionPhase — kept for backward compat */
+const getMaterialTier = getConstructionPhase;
+
 export interface MonumentSourceBreakdown {
   masterSource: string;
   cardCount: number;
@@ -60,37 +76,21 @@ export interface Monument {
   totalCards: number;
   masteredCards: number;
   mastery: number;
-  material: MaterialTier;
+  material: ConstructionPhase;
   avgStability: number;
   avgDifficulty: number;
   leechCount: number;
   crumbling: boolean;
-  /** User-chosen building type (or "insula" fallback) */
   buildingType: BuildingType;
-  /** Source breakdown (populated when sources are provided) */
   sources?: MonumentSourceBreakdown[];
 }
 
 export interface ForumState {
   monuments: Monument[];
-  /** Overall mastery across all cards (0-100) */
   overallMastery: number;
-  /** Learning velocity: reviews in last 7 days */
   velocity: number;
-  /** Time-of-day phase for atmosphere (0-1, derived from hour) */
   dayPhase: number;
-  /** Atmosphere warmth (0-1) based on velocity — higher velocity = warmer/sunnier */
   warmth: number;
-}
-
-// ─── Material Tier Logic ────────────────────────────────
-
-function getMaterialTier(mastery: number): MaterialTier {
-  if (mastery >= 95) return "gold";
-  if (mastery >= 80) return "marble";
-  if (mastery >= 60) return "stone";
-  if (mastery >= 30) return "brick";
-  return "wood";
 }
 
 // ─── Monument Calculator ────────────────────────────────
@@ -99,7 +99,7 @@ function buildMonument(category: string, cards: Card[]): Monument {
   if (cards.length === 0) {
     return {
       category, totalCards: 0, masteredCards: 0, mastery: 0,
-      material: "wood", avgStability: 0, avgDifficulty: 5,
+      material: "foundation", avgStability: 0, avgDifficulty: 5,
       leechCount: 0, crumbling: false, buildingType: "insula",
     };
   }
@@ -264,20 +264,25 @@ export function calculateForumState(
   };
 }
 
-// ─── Material Display Helpers ───────────────────────────
+// ─── Phase Display Helpers ──────────────────────────────
 
-export const MATERIAL_LABELS: Record<MaterialTier, string> = {
-  wood: "Drvo",
-  brick: "Cigla",
-  stone: "Kamen",
-  marble: "Mermer",
-  gold: "Zlato",
+export const PHASE_LABELS: Record<ConstructionPhase, string> = {
+  foundation: "Temelji",
+  skeleton: "Skele",
+  construction: "Građenje",
+  complete: "Kompletna",
+  imperial: "Imperijalna",
 };
 
-export const MATERIAL_ICONS: Record<MaterialTier, string> = {
-  wood: "🪵",
-  brick: "🧱",
-  stone: "🪨",
-  marble: "🏛️",
-  gold: "✨",
+export const PHASE_ICONS: Record<ConstructionPhase, string> = {
+  foundation: "📐",
+  skeleton: "🏗️",
+  construction: "🔨",
+  complete: "🏛️",
+  imperial: "✨",
 };
+
+/** @deprecated Use PHASE_LABELS */
+export const MATERIAL_LABELS = PHASE_LABELS;
+/** @deprecated Use PHASE_ICONS */
+export const MATERIAL_ICONS = PHASE_ICONS;
