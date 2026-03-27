@@ -10,6 +10,26 @@ import { Card, SectionState } from "./spaced-repetition";
 
 export type MaterialTier = "wood" | "brick" | "stone" | "marble" | "gold";
 
+export type BuildingType =
+  | "amphitheatrum" | "basilica" | "tabularium" | "rostra"
+  | "curia" | "macellum" | "argentaria" | "templum" | "arcus"
+  | "insula";
+
+const MONUMENT_TYPES_KEY = "codex-monument-types";
+
+export function loadMonumentTypes(): Record<string, BuildingType> {
+  try {
+    const raw = localStorage.getItem(MONUMENT_TYPES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export function saveMonumentType(category: string, type: BuildingType) {
+  const current = loadMonumentTypes();
+  current[category] = type;
+  localStorage.setItem(MONUMENT_TYPES_KEY, JSON.stringify(current));
+}
+
 export interface Monument {
   /** Category name */
   category: string;
