@@ -33,7 +33,7 @@ function IvyOverlay({ stability }: { stability: number }) {
   );
 }
 
-function TorchOverlay({ mastery, tier }: { mastery: number; tier: string }) {
+function TorchOverlay({ mastery, tier, id }: { mastery: number; tier: string; id: string }) {
   const count = tier === "gold" ? 4 : tier === "marble" ? 3 : tier === "stone" ? 2 : 1;
   const positions = [
     { x: 55, y: 80 },
@@ -45,14 +45,14 @@ function TorchOverlay({ mastery, tier }: { mastery: number; tier: string }) {
   return (
     <g>
       <defs>
-        <radialGradient id="torch-glow">
+        <radialGradient id={`torch-glow-${id}`}>
           <stop offset="0%" stopColor="hsl(45,90%,60%)" stopOpacity={0.6} />
           <stop offset="100%" stopColor="hsl(45,90%,60%)" stopOpacity={0} />
         </radialGradient>
       </defs>
       {positions.map((p, i) => (
         <g key={i}>
-          <circle cx={p.x} cy={p.y} r={8} fill="url(#torch-glow)" />
+          <circle cx={p.x} cy={p.y} r={8} fill={`url(#torch-glow-${id})`} />
           <circle cx={p.x} cy={p.y} r={2} fill="hsl(35,100%,55%)" opacity={0.9}>
             <animate attributeName="opacity" values="0.7;1;0.7" dur="1.5s" repeatCount="indefinite" />
             <animate attributeName="r" values="1.5;2.5;1.5" dur="2s" repeatCount="indefinite" />
@@ -108,7 +108,7 @@ export function MonumentEffects({ monument }: Props) {
     <svg viewBox="0 0 200 160" className="absolute inset-0 pointer-events-none" style={{ width: "100%", height: "100%" }} preserveAspectRatio="xMidYMax meet">
       {monument.crumbling && <CrackOverlay leechRatio={leechRatio} />}
       {monument.avgStability < 10 && <IvyOverlay stability={monument.avgStability} />}
-      {monument.mastery > 30 && <TorchOverlay mastery={monument.mastery} tier={monument.material} />}
+      {monument.mastery > 30 && <TorchOverlay mastery={monument.mastery} tier={monument.material} id={monument.category} />}
       {monument.material === "wood" && <ScaffoldingOverlay />}
       {monument.avgStability > 30 && monument.mastery > 60 && <FountainOverlay />}
     </svg>

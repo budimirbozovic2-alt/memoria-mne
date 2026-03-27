@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import React, { memo, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCardContext } from "@/contexts/AppContext";
 import { MATERIAL_ICONS } from "@/lib/forum-logic";
@@ -61,15 +61,16 @@ export const MonumentDetailDialog = memo(function MonumentDetailDialog({ monumen
       });
   }, [cards, monument]);
 
+  const handleStartReview = React.useCallback(() => {
+    if (!monument) return;
+    onClose();
+    navigate(`/review?category=${encodeURIComponent(monument.category)}`);
+  }, [onClose, navigate, monument]);
+
   if (!monument) return null;
 
   const materialIcon = MATERIAL_ICONS[monument.material];
   const overdueCount = categoryCards.filter(c => c.overdue).length;
-
-  const handleStartReview = () => {
-    onClose();
-    navigate(`/review?category=${encodeURIComponent(monument.category)}`);
-  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
