@@ -14,8 +14,15 @@ export function arrayToMap(cards: Card[]): CardMap {
   return map;
 }
 
+// Cached conversion — avoids O(n) reconstruction when map reference is same
+let _cachedMap: CardMap | null = null;
+let _cachedArray: Card[] = [];
+
 export function mapToArray(map: CardMap): Card[] {
-  return Object.values(map);
+  if (map === _cachedMap) return _cachedArray;
+  _cachedMap = map;
+  _cachedArray = Object.values(map);
+  return _cachedArray;
 }
 
 // ─── Surgical persist helpers ───────────────────────────
