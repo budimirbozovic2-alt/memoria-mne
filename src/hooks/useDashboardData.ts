@@ -127,7 +127,7 @@ export function useDashboardData(
     return { reviewTarget, newTarget };
   }, [focusRatio, dailyGoal, stats.totalSections]);
 
-  const storageUsage = useDeferredCompute(async () => getStorageUsage(), [cards, reviewLog]);
+  const storageUsage = useDeferredCompute(async () => getStorageUsage(), []);
   const backupOverdue = useDeferredCompute(() => {
     if (appSettings.autoBackupDays <= 0) return false;
     const last = getLastBackupTime();
