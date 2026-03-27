@@ -3,18 +3,14 @@ import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 
 interface UseCategoryManagementParams {
-  categories: string[];
   setCategories: (updater: (prev: string[]) => string[]) => void;
   setSubcategories: (updater: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
-  setCardMap: (updater: (prev: CardMap) => CardMap, persist?: "surgical" | "full") => void;
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
 }
 
 export function useCategoryManagement({
-  categories,
   setCategories,
   setSubcategories,
-  setCardMap,
   setCardMapState,
 }: UseCategoryManagementParams) {
   const addCategory = useCallback(

@@ -5,20 +5,17 @@ import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 
 interface UseCardImportDeps {
-  categories: string[];
-  setCardMap: (updater: (prev: CardMap) => CardMap, persist?: "surgical" | "full") => void;
   setCategories: (updater: (prev: string[]) => string[]) => void;
   setSubcategories: (updater: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
   setReviewLog: (log: ReviewLogEntry[]) => void;
   updateSRSettings: (settings: SRSettings) => void;
-  schedulePersist: (action: { type: string; cards?: Card[] }) => void;
   setCardMapState: (updater: (prev: CardMap) => CardMap) => void;
   cardMapRef: MutableRefObject<CardMap>;
 }
 
 export function useCardImport({
-  categories, setCardMap, setCategories, setSubcategories,
-  setReviewLog, updateSRSettings, schedulePersist: _schedulePersist, setCardMapState, cardMapRef,
+  setCategories, setSubcategories,
+  setReviewLog, updateSRSettings, setCardMapState, cardMapRef,
 }: UseCardImportDeps) {
   const importData = useCallback(
     async (file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {

@@ -58,12 +58,7 @@ export function useCards() {
   const cardMapRef = useRef<CardMap>({});
   useEffect(() => { cardMapRef.current = cardMap; }, [cardMap]);
 
-  // ── Setters with inline persistence (no useEffect-based persistence) ──
-  const setCardMap = useCallback((updater: (prev: CardMap) => CardMap, _persist?: "surgical" | "full") => {
-    setCardMapState(updater);
-    bumpMapVersion();
-    // Card persistence handled by callers with pre-computed data
-  }, []);
+
 
   const setCategories = useCallback((updater: (prev: string[]) => string[]) => {
     setCategoriesState(prev => {
@@ -107,15 +102,15 @@ export function useCards() {
     addSubcategory, renameSubcategory, deleteSubcategory,
     bulkUpdateSubcategory,
   } = useCategoryManagement({
-    categories, setCategories, setSubcategories, setCardMap, setCardMapState,
+    setCategories, setSubcategories, setCardMapState,
   });
 
   // ── Export/Import (extracted to separate modules) ──
-  const { exportData, exportTemplate } = useCardExport({ cards, categories, subcategories, reviewLog, srSettings });
+  const { exportData, exportTemplate } = useCardExport({ cards, categories, subcategories, srSettings });
   const { importData, importCards } = useCardImport({
-    categories, setCardMap, setCategories, setSubcategories,
+    setCategories, setSubcategories,
     setReviewLog: setReviewLogState, updateSRSettings,
-    schedulePersist, setCardMapState, cardMapRef,
+    setCardMapState, cardMapRef,
   });
 
   // ── Single-pass derived data (B2+B5 fix: 4×O(n) → 1×O(n)) ──

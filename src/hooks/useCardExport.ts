@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { Card, SRSettings } from "@/lib/spaced-repetition";
-import { ReviewLogEntry, setLastBackupTime } from "@/lib/storage";
+import { setLastBackupTime } from "@/lib/storage";
 
 function downloadFile(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -49,11 +49,10 @@ interface UseCardExportDeps {
   cards: Card[];
   categories: string[];
   subcategories: Record<string, string[]>;
-  reviewLog: ReviewLogEntry[];
   srSettings: SRSettings;
 }
 
-export function useCardExport({ cards, categories, subcategories, reviewLog, srSettings }: UseCardExportDeps) {
+export function useCardExport({ cards, categories, subcategories, srSettings }: UseCardExportDeps) {
   const exportTemplate = useCallback(
     async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
       const templateCards = cards.map((c) => ({
@@ -153,7 +152,7 @@ export function useCardExport({ cards, categories, subcategories, reviewLog, srS
       }
       setLastBackupTime();
     },
-    [cards, categories, subcategories, reviewLog, srSettings],
+    [cards, categories, subcategories, srSettings],
   );
 
   return { exportData, exportTemplate };

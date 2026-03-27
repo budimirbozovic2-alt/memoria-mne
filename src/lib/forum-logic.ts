@@ -311,8 +311,3 @@ export const PHASE_ICONS: Record<ConstructionPhase, string> = {
   complete: "",
   imperial: "",
 };
-
-/** @deprecated Use PHASE_LABELS */
-export const MATERIAL_LABELS = PHASE_LABELS;
-/** @deprecated Use PHASE_ICONS */
-export const MATERIAL_ICONS = PHASE_ICONS;
