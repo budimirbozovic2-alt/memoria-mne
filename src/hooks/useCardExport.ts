@@ -152,7 +152,7 @@ export function useCardExport({ cards, categories, subcategories, srSettings }: 
       }
       setLastBackupTime();
     },
-    [cards, categories, subcategories, reviewLog, srSettings],
+    [cards, categories, subcategories, srSettings],
   );
 
   return { exportData, exportTemplate };
