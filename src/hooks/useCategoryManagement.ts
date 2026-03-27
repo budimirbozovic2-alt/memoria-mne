@@ -61,20 +61,16 @@ export function useCategoryManagement({
   const deleteCategory = useCallback(
     (name: string) => {
       setCategories((prev) => prev.filter((c) => c !== name));
-      // Surgical: only update cards in the deleted category
-      let updated: Card[] = [];
       setCardMapState((prev) => {
         const next = { ...prev };
         for (const [id, c] of Object.entries(next)) {
           if (c.category === name) {
-            next[id] = { ...c, category: "Opšte", subcategory: "" };
-            updated.push(next[id]);
+            next[id] = { ...c, category: "Opšte", subcategory: "", updatedAt: Date.now() };
           }
         }
         return next;
       });
       bumpMapVersion();
-      if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
       setSubcategories((prev) => {
         const next = { ...prev };
         delete next[name];
