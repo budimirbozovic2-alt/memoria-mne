@@ -75,8 +75,8 @@ export default function ZenMode({ active, onToggle }: Props) {
     if (seconds <= 0) {
       setTimerRunning(false);
       if (phase === "focus") {
-        addPomodoroEntry({ timestamp: Date.now(), type: "focus", durationMinutes: pom.workMinutes });
-        setPomodoroStats(getPomodoroStats());
+        addPomodoroEntry({ timestamp: Date.now(), type: "focus", durationMinutes: pom.workMinutes })
+          .then(() => getPomodoroStats()).then(setPomodoroStats);
         playChime("focus");
         const newCycle = cycleCount + 1;
         setCycleCount(newCycle);
