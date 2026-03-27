@@ -11,6 +11,8 @@ import { useSourceHierarchy, type HierarchyNode } from "@/hooks/useSourceHierarc
 import { getCardMasteryLevel } from "@/components/KnowledgeMap";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 import type { Source } from "@/lib/db";
 
