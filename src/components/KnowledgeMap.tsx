@@ -41,20 +41,30 @@ export const MASTERY_LEVELS: MasteryLevel[] = [
   { level: 5, label: "Savladano", color: "hsl(142, 60%, 30%)" },
 ];
 
+// Weak cache: auto-GC'd when Card objects are collected
+const _masteryCache = new WeakMap<Card, number>();
+
 export function getCardMasteryLevel(card: Card): number {
+  const cached = _masteryCache.get(card);
+  if (cached !== undefined) return cached;
+
   const errorCount = card.errorLog?.reduce((sum, e) => sum + e.count, 0) || 0;
   const allNew = card.sections.every((s) => s.state === SectionState.New);
-  if (allNew) return 0;
+  if (allNew) { _masteryCache.set(card, 0); return 0; }
 
   const avgStability = card.sections.reduce((sum, s) => sum + s.stability, 0) / card.sections.length;
 
-  if (errorCount > 3 || avgStability < 3) return 1;
-  if (errorCount > 0 && avgStability < 7) return 2;
-
-  const avgDifficulty = card.sections.reduce((sum, s) => sum + s.difficulty, 0) / card.sections.length;
-  if (avgStability < 15 || avgDifficulty >= 6) return 3;
-  if (avgStability <= 30) return 4;
-  return 5;
+  let level: number;
+  if (errorCount > 3 || avgStability < 3) level = 1;
+  else if (errorCount > 0 && avgStability < 7) level = 2;
+  else {
+    const avgDifficulty = card.sections.reduce((sum, s) => sum + s.difficulty, 0) / card.sections.length;
+    if (avgStability < 15 || avgDifficulty >= 6) level = 3;
+    else if (avgStability <= 30) level = 4;
+    else level = 5;
+  }
+  _masteryCache.set(card, level);
+  return level;
 }
 
 export function getMasteryColor(level: number): string {

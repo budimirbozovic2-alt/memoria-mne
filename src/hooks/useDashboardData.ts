@@ -90,7 +90,9 @@ export function useDashboardData(
   const appSettings = useMemo(() => loadAppSettings(), []);
   const wc = appSettings.dashboardWidgets;
   const todayKey = getDayKey(Date.now());
-  const todayReviews = useMemo(() => reviewLog.filter(e => getDayKey(e.timestamp) === todayKey).length, [reviewLog, todayKey]);
+  // Stable hash to avoid recomputing downstream when reviewLog length hasn't changed
+  const reviewLogLen = reviewLog.length;
+  const todayReviews = useMemo(() => reviewLog.filter(e => getDayKey(e.timestamp) === todayKey).length, [reviewLogLen, todayKey]);
   const dailyGoal = srSettings.dailyGoal;
   const goalProgress = Math.min(100, Math.round((todayReviews / Math.max(1, dailyGoal)) * 100));
   const pendingFirstReview = useMemo(() => getPendingFirstReviewCount(cards), [cards]);
