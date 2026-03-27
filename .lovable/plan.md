@@ -1,25 +1,39 @@
 
 
-# UX Fix: Source Card CTA + Edit Date Field
+# Critical Bug Fixes — Round 1
 
-## Problems
-1. **"Čitaj" (Eye) button blends in** with edit/delete/version icons — all same ghost style, all hidden behind hover opacity. The primary action (reading the source) should be visually prominent.
-2. **Edit dialog missing date field** — `handleEditSource` only loads `editLabel` and `editGazette`, no `editDate`. The edit dialog has no date input.
+## Fix 1: TTS Race Condition (`SpeedReader.tsx:305`)
+**Problem**: Cleanup function is `return () => {}` — a no-op. Rapid play/pause leaves parallel speech chains.
+**Fix**: Replace with proper cleanup that calls `window.speechSynthesis.cancel()`, sets `ttsPlayingRef.current = false`, and clears `ttsTimeoutRef.current`.
 
-## Changes — single file: `src/views/SourcesView.tsx`
+## Fix 2: Stale Retention Cache (`useCardAnnotations.ts:19`)
+**Problem**: `cachedRetentionRef` captures `targetRetention` once on mount, never updates.
+**Fix**: Remove the `useRef`. Inside `reviewSection`, call `loadAppSettings().targetRetention` directly each time. This is a synchronous localStorage read — negligible cost per review.
 
-### 1. Promote "Čitaj" button to primary CTA
-- Move the Eye/read button OUT of the hover-only icon group
-- Make it a visible, always-shown `variant="default"` or `variant="outline"` button with text label "Čitaj"
-- Keep edit/delete/version/diff as ghost icon buttons in the hover group
+## Fix 3: Unsafe `any` in Saved Session (`ReviewSession.tsx:18`)
+**Problem**: `savedSession` is `useState<any>(null)` — no validation on parsed JSON.
+**Fix**:
+- Define `interface SavedSessionState { mode: ReviewMode; randomIndex: number; timestamp: number }`
+- Type state as `SavedSessionState | null`
+- Add guard: validate `parsed.timestamp` is a finite number before accepting
 
-### 2. Add date editing to edit dialog
-- Add `editDate` state (initialized from `editingSource.date` in `handleEditSource`)
-- Add date input to the edit dialog (between label and gazette fields)
-- Include `date: editDate` in the `handleSaveEdit` updated source object
+## Fix 4: Residual `as any` in db.ts (lines 352, 366)
+**Problem**: `(err as any)?.inner?.name` bypasses type safety.
+**Fix**: Replace with a helper check:
+```ts
+function hasInnerQuotaError(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "inner" in err &&
+    typeof (err as Record<string, unknown>).inner === "object" &&
+    ((err as Record<string, Record<string, unknown>>).inner)?.name === "QuotaExceededError";
+}
+```
+Use this in both `idbPutCard` and `idbBulkPutCards`.
 
-### Files changed
+## Files changed
 | File | Change |
 |------|--------|
-| `src/views/SourcesView.tsx` | Add `editDate` state; update `handleEditSource` + `handleSaveEdit`; add date input to edit dialog; restyle read button as primary CTA |
+| `src/components/SpeedReader.tsx` | Replace no-op cleanup in TTS natural mode effect |
+| `src/hooks/useCardAnnotations.ts` | Remove `cachedRetentionRef`, read settings live in `reviewSection` |
+| `src/components/ReviewSession.tsx` | Add `SavedSessionState` interface, type state, add timestamp guard |
+| `src/lib/db.ts` | Add `hasInnerQuotaError` helper, remove `as any` from both catch blocks |
 
