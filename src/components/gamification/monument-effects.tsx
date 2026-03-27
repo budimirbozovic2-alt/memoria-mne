@@ -4,6 +4,10 @@
  */
 import type { Monument } from "@/lib/forum-logic";
 
+function slugify(text: string): string {
+  return text.replace(/[^a-zA-Z0-9]/g, "-").replace(/-+/g, "-");
+}
+
 interface Props {
   monument: Monument;
 }
