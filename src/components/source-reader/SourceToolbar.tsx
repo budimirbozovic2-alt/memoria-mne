@@ -77,6 +77,21 @@ export const SourceToolbar = memo(function SourceToolbar({
         </button>
       </div>
 
+      <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
+        {WIDTH_OPTIONS.map(w => (
+          <button
+            key={w}
+            onClick={() => setReaderWidth(w)}
+            className={cn(
+              "px-2 py-1 rounded-md text-xs font-medium transition-colors",
+              readerWidth === w ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {w}
+          </button>
+        ))}
+      </div>
+
       <Button
         variant={examOpen ? "default" : "outline"}
         size="sm"

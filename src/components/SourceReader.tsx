@@ -149,7 +149,7 @@ export default function SourceReader({ source, onBack }: Props) {
           </div>
         )}
 
-        <div className="flex-1 min-w-0 relative">
+        <div className={cn("flex-1 min-w-0 relative mx-auto px-6", WIDTH_CLASSES[readerWidth])}>
           {isCoverage ? (
             <CoverageArticleList source={source} cards={logic.cards} onOpenCard={handleOpenCoveredCard} />
           ) : (
