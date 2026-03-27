@@ -147,51 +147,36 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
             </NavLink>
           ))}
 
-          {/* Laboratorija mega menu trigger */}
+          {/* Alati dropdown */}
           <div ref={labRef} className="relative">
             <button
               onClick={() => startTransition(() => setLabOpen(v => !v))}
               className={`relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap hover:bg-secondary/60 ${
-                isLabActive || labOpen
+                isToolsActive || labOpen
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <FlaskConical className="h-4 w-4 flex-shrink-0" />
-              <span>Laboratorija</span>
+              <Wrench className="h-4 w-4 flex-shrink-0" />
+              <span>Alati</span>
             </button>
 
-            {/* Mega menu panel */}
             {labOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[380px] rounded-xl border bg-popover p-4 shadow-xl animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-200">
-                <div className="grid grid-cols-2 gap-1">
-                  {LAB_ITEMS.map(({ path, icon: Icon, label, desc }) => {
-                    const active = location.pathname === path;
-                    return (
-                      <Link
-                        key={path}
-                        to={path}
-                        className={`flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-secondary/60 group ${
-                          active ? "bg-primary/10" : ""
-                        }`}
-                      >
-                        <div className={`mt-0.5 rounded-md p-1.5 transition-colors ${
-                          active ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
-                        }`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className={`font-medium leading-tight ${active ? "text-primary" : "text-foreground"}`}>
-                            {label}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
-                            {desc}
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-[200px] rounded-xl border bg-popover p-2 shadow-xl animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 duration-200">
+                {TOOLS_NAV.map(({ path, label }) => {
+                  const active = location.pathname === path;
+                  return (
+                    <Link
+                      key={path}
+                      to={path}
+                      className={`block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-secondary/60 ${
+                        active ? "bg-primary/10 text-primary font-medium" : "text-foreground"
+                      }`}
+                    >
+                      {label}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
