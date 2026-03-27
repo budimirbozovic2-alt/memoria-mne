@@ -14,9 +14,16 @@ export default function RomanForumPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
 
+  const [registryVersion, setRegistryVersion] = useState(0);
+
   useEffect(() => {
     loadSources().then(setSources);
-    return onSourcesChanged(() => loadSources().then(setSources));
+    const unsub1 = onSourcesChanged(() => loadSources().then(setSources));
+    const unsub2 = onRegistryChanged(() => {
+      setRegistryVersion(v => v + 1);
+      loadSources().then(setSources);
+    });
+    return () => { unsub1(); unsub2(); };
   }, []);
 
   const deferredCards = useDeferredValue(cards);
