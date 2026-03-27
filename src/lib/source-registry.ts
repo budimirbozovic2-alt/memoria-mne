@@ -59,11 +59,27 @@ export function saveSourceRegistry(registry: SourceRegistry): void {
   localStorage.setItem(REGISTRY_KEY, JSON.stringify(registry));
   // Fire-and-forget IDB backup sync
   syncSourceRegistryToIDB(registry);
+  _notifyRegistry();
 }
 
 /** Invalidate cache (e.g. after external import) */
 export function invalidateSourceRegistryCache() {
   _registryCache = null;
+}
+
+// ─── Event Emitter (registry changes) ───────────────────
+
+const _registryListeners = new Set<() => void>();
+
+export function onRegistryChanged(fn: () => void): () => void {
+  _registryListeners.add(fn);
+  return () => { _registryListeners.delete(fn); };
+}
+
+function _notifyRegistry() {
+  for (const fn of _registryListeners) {
+    try { fn(); } catch { /* swallow */ }
+  }
 }
 
 /** Sync source registry to IDB for backup consistency */
