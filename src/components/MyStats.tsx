@@ -292,7 +292,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   onClick={onShowKnowledgeMap}
-                  className="w-full rounded-xl border bg-card p-5 hover:border-primary/40 transition-colors group text-left space-y-3"
+                  className="w-full glass-card rounded-xl p-5 hover:border-primary/40 transition-colors group text-left space-y-3"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -353,7 +353,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
 
             {/* Ratio Chart (14 dana) — premješteno sa Dashboarda */}
             {ratioHistory && ratioHistory.some(d => d["Stvarni ponavljanje"] !== null) && (
-              <Suspense fallback={<div className="h-[280px] rounded-xl bg-card border animate-pulse" />}>
+              <Suspense fallback={<div className="h-[280px] glass-card rounded-xl animate-pulse" />}>
                 <DashboardChart ratioHistory={ratioHistory} targetReviewPct={focusRatio.targetReviewPct} />
               </Suspense>
             )}
@@ -361,7 +361,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
             {/* Efektivno učenje danas — premješteno sa Dashboarda */}
             {todayTime && todayTime.totalMs > 60000 && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-                className="rounded-xl bg-card border p-5 space-y-3">
+                className="glass-card rounded-xl p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-primary" />
