@@ -87,14 +87,14 @@ export function useDashboardData(
   reviewLog: ReviewLogEntry[],
   srSettings: SRSettings,
 ) {
-  const appSettings = useMemo(() => loadAppSettings(), []);
   // Listen for settings changes from other tabs/components
-  const [, forceSettingsRefresh] = useState(0);
+  const [settingsVersion, forceSettingsRefresh] = useState(0);
   useEffect(() => {
     const handler = () => forceSettingsRefresh((n) => n + 1);
     window.addEventListener("storage", handler);
     return () => window.removeEventListener("storage", handler);
   }, []);
+  const appSettings = useMemo(() => loadAppSettings(), [settingsVersion]);
   const wc = appSettings.dashboardWidgets;
   const todayKey = getDayKey(Date.now());
   const todayReviews = useMemo(() => reviewLog.filter(e => getDayKey(e.timestamp) === todayKey).length, [reviewLog, todayKey]);
