@@ -347,6 +347,7 @@ export default function SpeedReader() {
   }, [currentWordIdx]);
 
   const stopTts = useCallback(() => {
+    if (ttsTimeoutRef.current) { clearTimeout(ttsTimeoutRef.current); ttsTimeoutRef.current = null; }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
     ttsUtteranceRef.current = null;
     ttsPlayingRef.current = false;
