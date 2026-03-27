@@ -9,7 +9,7 @@ export default function ReviewComplete({ onBack }: { onBack: () => void }) {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-6 py-20">
-      <div className="inline-flex p-4 rounded-2xl bg-gold/10 mb-2 achievement-glow">
+      <div className="inline-flex p-4 rounded-2xl bg-gold/10 mb-2">
         <BookOpen className="h-10 w-10 text-gold" />
       </div>
       <h2 className="text-4xl font-display">Sesija završena!</h2>
