@@ -50,7 +50,9 @@ export const MonumentInterior = memo(function MonumentInterior({
     for (const [name, subCards] of bySubcat) {
       const levels = [0, 0, 0, 0, 0, 0];
       for (const c of subCards) levels[getCardMasteryLevel(c)]++;
-      nodes.push({ name, cardCount: subCards.length, levels, children: [] });
+      let stabTotal = 0, stabCount = 0;
+      for (const c of subCards) for (const s of (c as any).sections ?? []) if ((s.stability ?? 0) > 0) { stabTotal += s.stability; stabCount++; }
+      nodes.push({ name, cardCount: subCards.length, levels, avgStability: stabCount > 0 ? stabTotal / stabCount : 0, children: [] });
     }
     nodes.sort((a, b) => b.cardCount - a.cardCount);
     return nodes;
