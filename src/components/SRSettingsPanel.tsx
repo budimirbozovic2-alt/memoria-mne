@@ -93,7 +93,7 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
         {/* ═══════════ TAB 1: ALGORITAM ═══════════ */}
         <TabsContent value="algorithm" className="space-y-5 mt-0">
           {/* Ciljna retencija */}
-          <div className="rounded-xl border bg-card p-5 space-y-3">
+          <div className="glass-card rounded-xl p-5 space-y-3">
             <h3 className="text-sm font-semibold">Ciljna retencija</h3>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Stopa zadržavanja</span>
