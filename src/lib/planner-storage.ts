@@ -63,16 +63,20 @@ export async function initPlannerCache(): Promise<void> {
     if (plannerRow?.value) {
       const parsed = plannerRow.value as Record<string, unknown>;
       // Migrate old decades → phases
-      if ((parsed as any).decades && !(parsed as any).phases) {
-        (parsed as any).phases = ((parsed as any).decades as StudyDecade[]).map((d: StudyDecade) => ({
+      if ('decades' in parsed && !('phases' in parsed)) {
+        const decades = (parsed as Record<string, unknown>).decades as StudyDecade[];
+        const phases = decades.map((d: StudyDecade) => ({
           id: d.id,
           name: d.name,
           expectedDays: d.durationDays,
           categories: d.categories,
         }));
-        delete (parsed as any).decades;
+        const migrated = { ...parsed, phases } as Record<string, unknown>;
+        delete migrated.decades;
+        _plannerCache = { ...DEFAULT_CONFIG, ...(migrated as unknown as Partial<PlannerConfig>) };
+      } else {
+        _plannerCache = { ...DEFAULT_CONFIG, ...(parsed as Partial<PlannerConfig>) };
       }
-      _plannerCache = { ...DEFAULT_CONFIG, ...(parsed as Partial<PlannerConfig>) };
     }
 
     _disciplineCache = disciplineLog;

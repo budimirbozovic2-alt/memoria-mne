@@ -1,10 +1,11 @@
-const { app, session } = require('electron');
+const { app, session, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 const isDev = !app.isPackaged;
 const configPath = path.join(app.getPath('userData'), 'window-state.json');
 const crashLogPath = path.join(app.getPath('userData'), 'crash.log');
+const rendererLogPath = path.join(app.getPath('userData'), 'renderer-errors.log');
 
 // ── Global Error Handler ──
 function logCrash(label, err) {
@@ -35,6 +36,14 @@ const backup = setupBackupSystem({
   getMainWindow,
   logCrash,
   isDev,
+});
+
+// ── Renderer error logging IPC ──
+ipcMain.handle('log-error', (_event, message) => {
+  const timestamp = new Date().toISOString();
+  const line = `[${timestamp}] ${typeof message === 'string' ? message : JSON.stringify(message)}\n`;
+  try { fs.appendFileSync(rendererLogPath, line); } catch (_) {}
+  return true;
 });
 
 app.whenReady().then(() => {

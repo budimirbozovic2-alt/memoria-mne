@@ -121,11 +121,11 @@ export default function ReviewCard({
     <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1" aria-label="Nazad na listu">
             <ArrowLeft className="h-4 w-4" /> Nazad
           </button>
           {onPause && (
-            <button onClick={onPause} className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded-md hover:bg-secondary text-xs" title="Pauziraj sesiju i nastavi kasnije">
+            <button onClick={onPause} className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-1 rounded-md hover:bg-secondary text-xs" title="Pauziraj sesiju i nastavi kasnije" aria-label="Pauziraj sesiju">
               <Pause className="h-3.5 w-3.5" /> Pauza
             </button>
           )}

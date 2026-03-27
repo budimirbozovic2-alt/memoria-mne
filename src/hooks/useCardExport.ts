@@ -19,8 +19,8 @@ async function buildJsonChunked(
   onProgress(10, "Priprema podataka...");
   await new Promise((r) => setTimeout(r, 30));
 
-  const dataAny = data as any;
-  const cardsArr: any[] = dataAny.cards || [];
+  const dataAny = data as Record<string, unknown>;
+  const cardsArr: unknown[] = (dataAny.cards as unknown[]) || [];
   const CHUNK = 500;
   const blobParts: (string | Blob)[] = [];
 
@@ -32,7 +32,7 @@ async function buildJsonChunked(
   for (let i = 0; i < cardsArr.length; i += CHUNK) {
     const chunk = cardsArr.slice(i, i + CHUNK);
     const prefix = i > 0 ? "," : "";
-    blobParts.push(prefix + chunk.map((c: any) => JSON.stringify(c)).join(","));
+    blobParts.push(prefix + chunk.map((c: unknown) => JSON.stringify(c)).join(","));
     const pct = 10 + Math.round((i / Math.max(cardsArr.length, 1)) * 60);
     onProgress(pct, `Serijalizacija kartica... ${Math.min(i + CHUNK, cardsArr.length)}/${cardsArr.length}`);
     await new Promise((r) => setTimeout(r, 10));
@@ -107,7 +107,7 @@ export function useCardExport({ cards, categories, subcategories, reviewLog, srS
         loadFullReviewLog(),
       ]);
 
-      const localStorageData: Record<string, any> = {};
+      const localStorageData: Record<string, unknown> = {};
       const lsKeys = [
         "sr-app-settings", "sr-mnemonic-workshop", "sr-mnemonic-associations",
         "sr-major-system-map", "sr-learn-progress", "sr-last-backup",

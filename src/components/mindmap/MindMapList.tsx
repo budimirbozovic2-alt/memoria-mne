@@ -18,8 +18,13 @@ interface Props {
 export default function MindMapList({ onOpen }: Props) {
   const [maps, setMaps] = useState<MindMapDoc[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = async () => setMaps(await loadMindMaps());
+  const refresh = async () => {
+    const result = await loadMindMaps();
+    setMaps(result);
+    setLoading(false);
+  };
   useEffect(() => { refresh(); }, []);
 
   const createNew = async (mode: MindMapMode) => {
@@ -96,7 +101,11 @@ export default function MindMapList({ onOpen }: Props) {
         </div>
       )}
 
-      {maps.length === 0 && !showCreate ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      ) : maps.length === 0 && !showCreate ? (
         <div className="text-center py-16 space-y-4">
           <Network className="h-12 w-12 mx-auto text-muted-foreground/40" />
           <p className="text-muted-foreground">Nemate nijednu mentalnu mapu.</p>

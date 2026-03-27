@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { Card, createCard, createSection, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
+import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap } from "@/lib/persist-queue";
 
 interface UseCardImportDeps {
@@ -8,9 +9,9 @@ interface UseCardImportDeps {
   setCardMap: (updater: (prev: CardMap) => CardMap, persist?: "surgical" | "full") => void;
   setCategories: (updater: (prev: string[]) => string[]) => void;
   setSubcategories: (updater: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
-  setReviewLog: (log: any[]) => void;
+  setReviewLog: (log: ReviewLogEntry[]) => void;
   updateSRSettings: (settings: SRSettings) => void;
-  schedulePersist: (action: any) => void;
+  schedulePersist: (action: { type: string; cards?: Card[] }) => void;
   setCardMapState: (updater: (prev: CardMap) => CardMap) => void;
 }
 
@@ -29,17 +30,19 @@ export function useCardImport({
           jsonText = await file.text();
         }
 
-        let parsed: any;
+        let parsed: unknown;
         try { parsed = JSON.parse(jsonText); } catch {
           toast.error("Neispravan JSON format. Fajl je oštećen ili nije validan.");
           return;
         }
 
-        if (!parsed || typeof parsed !== "object") { toast.error("Fajl ne sadrži validan JSON objekat."); return; }
-        if (!Array.isArray(parsed.cards)) { toast.error("Fajl ne sadrži 'cards' niz. Provjerite format."); return; }
+        const data = parsed as Record<string, unknown>;
+        if (!data || typeof data !== "object") { toast.error("Fajl ne sadrži validan JSON objekat."); return; }
+        if (!Array.isArray(data.cards)) { toast.error("Fajl ne sadrži 'cards' niz. Provjerite format."); return; }
 
-        for (let i = 0; i < Math.min(5, parsed.cards.length); i++) {
-          const c = parsed.cards[i];
+        const cardsArr = data.cards as Record<string, unknown>[];
+        for (let i = 0; i < Math.min(5, cardsArr.length); i++) {
+          const c = cardsArr[i];
           if (!c || typeof c.question !== "string" || !Array.isArray(c.sections)) {
             toast.error(`Kartica #${i + 1} ima neispravan format (nedostaje question ili sections).`);
             return;
@@ -47,6 +50,7 @@ export function useCardImport({
         }
 
         const { sanitizeHtml } = await import("@/lib/sanitize");
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic JSON migration requires flexible typing
         const migrateImported = (c: any): Card => ({
           ...c,
           readCount: c.readCount || 0,
@@ -71,7 +75,7 @@ export function useCardImport({
           })),
         });
 
-        const importedCards: Card[] = parsed.cards.map(migrateImported);
+        const importedCards: Card[] = cardsArr.map(c => migrateImported(c));
         setCardMap((prev) => {
           const next = { ...prev };
           if (strategy === "newer") {
@@ -89,44 +93,47 @@ export function useCardImport({
           return next;
         }, "full");
 
-        if (Array.isArray(parsed.categories)) {
-          setCategories((prev) => [...new Set([...prev, ...parsed.categories])]);
+        if (Array.isArray(data.categories)) {
+          setCategories((prev) => [...new Set([...prev, ...(data.categories as string[])])]);
         }
-        if (parsed.subcategories && typeof parsed.subcategories === "object") {
+        if (data.subcategories && typeof data.subcategories === "object") {
           setSubcategories((prev) => {
             const merged = { ...prev };
-            for (const [cat, subs] of Object.entries(parsed.subcategories as Record<string, string[]>)) {
+            for (const [cat, subs] of Object.entries(data.subcategories as Record<string, string[]>)) {
               merged[cat] = [...new Set([...(merged[cat] || []), ...subs])];
             }
             return merged;
           });
         }
-        if (Array.isArray(parsed.reviewLog) && strategy === "overwrite") {
-          setReviewLog(parsed.reviewLog);
+        if (Array.isArray(data.reviewLog) && strategy === "overwrite") {
+          setReviewLog(data.reviewLog as ReviewLogEntry[]);
         }
-        if (parsed.srSettings && strategy === "overwrite") {
-          updateSRSettings({ ...DEFAULT_SR_SETTINGS, ...parsed.srSettings });
+        if (data.srSettings && strategy === "overwrite") {
+          updateSRSettings({ ...DEFAULT_SR_SETTINGS, ...(data.srSettings as Partial<SRSettings>) });
         }
 
         // Restore sources & mindMaps (v3+) — surgical upsert
-        if (Array.isArray(parsed.sources) || Array.isArray(parsed.mindMaps)) {
+        if (Array.isArray(data.sources) || Array.isArray(data.mindMaps)) {
           const { db } = await import("@/lib/db");
-          if (Array.isArray(parsed.sources) && parsed.sources.length > 0) {
-            const sanitizedSources = parsed.sources.map((src: any) => ({
+          if (Array.isArray(data.sources) && (data.sources as unknown[]).length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sanitizedSources = (data.sources as any[]).map((src) => ({
               ...src, htmlContent: sanitizeHtml(src.htmlContent ?? ""),
             }));
             await db.sources.bulkPut(sanitizedSources);
             if (strategy === "overwrite") {
-              const importedIds = new Set(sanitizedSources.map((s: any) => s.id));
+              const importedIds = new Set(sanitizedSources.map((s: { id: string }) => s.id));
               const allKeys = await db.sources.toCollection().primaryKeys();
               const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
               if (toDelete.length > 0) await db.sources.bulkDelete(toDelete);
             }
           }
-          if (Array.isArray(parsed.mindMaps) && parsed.mindMaps.length > 0) {
-            await db.mindMaps.bulkPut(parsed.mindMaps);
+          if (Array.isArray(data.mindMaps) && (data.mindMaps as unknown[]).length > 0) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await db.mindMaps.bulkPut(data.mindMaps as any[]);
             if (strategy === "overwrite") {
-              const importedIds = new Set(parsed.mindMaps.map((m: any) => m.id));
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const importedIds = new Set((data.mindMaps as any[]).map((m: { id: string }) => m.id));
               const allKeys = await db.mindMaps.toCollection().primaryKeys();
               const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
               if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
@@ -141,35 +148,37 @@ export function useCardImport({
           { key: "activityLog", table: "activityLog" }, { key: "disciplineLog", table: "disciplineLog" },
           { key: "pomodoroLog", table: "pomodoroLog" },
         ];
-        const hasExtraTables = idbTables.some((t) => Array.isArray(parsed[t.key]) && parsed[t.key].length > 0);
+        const hasExtraTables = idbTables.some((t) => Array.isArray(data[t.key]) && (data[t.key] as unknown[]).length > 0);
         if (hasExtraTables) {
-          const { db } = await import("@/lib/db");
+          const { db: dbInst } = await import("@/lib/db");
+          const dbRecord = dbInst as unknown as Record<string, { bulkPut: (items: unknown[]) => Promise<void>; toCollection: () => { primaryKeys: () => Promise<unknown[]> }; bulkDelete: (keys: unknown[]) => Promise<void> }>;
           for (const { key, table } of idbTables) {
-            if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
-              await (db as any)[table].bulkPut(parsed[key]);
+            const arr = data[key];
+            if (Array.isArray(arr) && arr.length > 0) {
+              await dbRecord[table].bulkPut(arr);
               if (strategy === "overwrite") {
-                const importedIds = new Set(parsed[key].map((r: any) => r.id));
-                const allKeys = await (db as any)[table].toCollection().primaryKeys();
-                const toDelete = allKeys.filter((k: any) => !importedIds.has(k));
-                if (toDelete.length > 0) await (db as any)[table].bulkDelete(toDelete);
+                const importedIds = new Set((arr as Record<string, unknown>[]).map((r) => r.id));
+                const allKeys = await dbRecord[table].toCollection().primaryKeys();
+                const toDelete = allKeys.filter((k) => !importedIds.has(k));
+                if (toDelete.length > 0) await dbRecord[table].bulkDelete(toDelete);
               }
             }
           }
         }
 
         // Restore localStorage data (v4+)
-        if (parsed.localStorageData && typeof parsed.localStorageData === "object") {
-          for (const [key, value] of Object.entries(parsed.localStorageData)) {
+        if (data.localStorageData && typeof data.localStorageData === "object") {
+          for (const [key, value] of Object.entries(data.localStorageData as Record<string, unknown>)) {
             localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
           }
         }
 
         const extraParts: string[] = [];
-        if (Array.isArray(parsed.sources) && parsed.sources.length > 0) extraParts.push(`${parsed.sources.length} izvora`);
-        if (Array.isArray(parsed.mindMaps) && parsed.mindMaps.length > 0) extraParts.push(`${parsed.mindMaps.length} mentalnih mapa`);
-        if (Array.isArray(parsed.diary) && parsed.diary.length > 0) extraParts.push(`${parsed.diary.length} dnevničkih zapisa`);
-        if (Array.isArray(parsed.disciplineLog) && parsed.disciplineLog.length > 0) extraParts.push("disciplinski log");
-        if (parsed.localStorageData) extraParts.push("podešavanja i planer");
+        if (Array.isArray(data.sources) && (data.sources as unknown[]).length > 0) extraParts.push(`${(data.sources as unknown[]).length} izvora`);
+        if (Array.isArray(data.mindMaps) && (data.mindMaps as unknown[]).length > 0) extraParts.push(`${(data.mindMaps as unknown[]).length} mentalnih mapa`);
+        if (Array.isArray(data.diary) && (data.diary as unknown[]).length > 0) extraParts.push(`${(data.diary as unknown[]).length} dnevničkih zapisa`);
+        if (Array.isArray(data.disciplineLog) && (data.disciplineLog as unknown[]).length > 0) extraParts.push("disciplinski log");
+        if (data.localStorageData) extraParts.push("podešavanja i planer");
         const extraMsg = extraParts.length > 0 ? ` + ${extraParts.join(", ")}` : "";
         toast.success(`Uspješno uvezeno ${importedCards.length} kartica${extraMsg}.`);
       } catch (err) {
