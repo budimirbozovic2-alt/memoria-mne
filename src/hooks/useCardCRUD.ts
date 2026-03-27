@@ -168,12 +168,14 @@ export function useCardCRUD({
             card.subcategory,
           ),
           sections: [{ ...section }],
+          updatedAt: Date.now(),
         };
         next[newCard.id] = newCard;
         newCards.push(newCard);
       });
       return next;
     });
+    bumpMapVersion();
     if (newCards.length > 0) {
       schedulePersist({ type: "delete", id });
       schedulePersist({ type: "bulk", cards: newCards });
