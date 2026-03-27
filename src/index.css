@@ -316,6 +316,8 @@
      THEME: Ocean — deep blue calm
      ═══════════════════════════════════════════ */
   [data-theme="ocean"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 220 20% 10%;
 
