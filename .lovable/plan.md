@@ -1,47 +1,59 @@
 
 
-# Fix: Persist Expanded Chapters in MentalSkeleton
+# Settings Reorganization Plan
 
-## Problem
-When navigating away from MentalSkeleton and back, all chapters reset to expanded. The user loses track of which chapters they had open/collapsed.
+## Current Problems
 
-## Solution
-Persist `expandedChapters` to `localStorage` using a key scoped to the current category+subcategory. On mount, hydrate from storage instead of blindly expanding all.
+| Tab | Contents | Issue |
+|-----|----------|-------|
+| Algoritam | Retention, FSRS, Resistance weights | ✅ Clean |
+| Interfejs | Theme, Widgets, Sound, Backup, Pomodoro, Notifications, TTS | ❌ Overloaded — mixes visual customization with workflow tools |
+| Referenca | FSRS guide collapsibles | ✅ Fine but could live elsewhere |
+| (outside tabs) | HealthMonitor | ❌ Orphaned at bottom, unrelated to settings |
 
-## Changes — `src/components/MentalSkeleton.tsx` only
+**Core issue**: "Interfejs" became a dumping ground. Pomodoro, TTS, and Notifications are *workflow/study tools*, not interface customization. Health Monitor has no logical home.
 
-### 1. Storage key & helpers
-```ts
-const EXPANDED_KEY = `codex-nav-expanded-${category}-${subcategory}`;
+## Proposed Structure: 4 Tabs
+
+```text
+┌─────────────┬─────────────┬─────────────┬─────────────┐
+│  Algoritam  │  Interfejs  │  Tok rada   │   Sistem    │
+└─────────────┴─────────────┴─────────────┴─────────────┘
 ```
 
-### 2. Initialize `expandedChapters` from localStorage
-Replace the current `useState<Set<string>>(new Set(["__all__"]))` with a lazy initializer that reads from localStorage. If stored value exists and is valid, use it; otherwise default to all chapters expanded.
+### Tab 1: Algoritam (unchanged)
+- Ciljna retencija
+- Ponavljanje (FSRS) — leech, daily goal
+- Težine kognitivnog otpora
 
-### 3. Update the `useEffect` (lines 115-118)
-Instead of always resetting all chapters to expanded, only set all-expanded when there's **no** stored state (first visit). When stored state exists, merge it with current chapters (remove stale, keep valid).
+### Tab 2: Interfejs (slimmed down)
+- Tema boja
+- Dashboard widgeti
+- Zvučni efekti (toggle only)
 
-### 4. Sync to localStorage on change
-Add a `useEffect` that writes `expandedChapters` to localStorage whenever it changes:
-```ts
-useEffect(() => {
-  localStorage.setItem(EXPANDED_KEY, JSON.stringify([...expandedChapters]));
-}, [expandedChapters, EXPANDED_KEY]);
-```
+### Tab 3: Tok rada (new — study workflow settings)
+- Pomodoro tajmer (work/break/long break)
+- Glasovni čitač (TTS) — speed, voice, test button
+- Podsjetnik za ponavljanje (notifications)
+- Backup podsjetnik
 
-## Technical details
-- Key is scoped per category+subcategory so different subcategories have independent state
-- Stale chapter names (renamed/deleted) are filtered out during hydration
-- New chapters (added after last visit) default to expanded
-- `codex-nav-chapter` key from CardsView remains separate (different purpose)
+### Tab 4: Sistem (new — diagnostics & reference)
+- Health Monitor (moved from bottom)
+- FSRS Referenca / Vodič (moved from old Tab 3)
 
-## Files modified
-| File | Change |
-|------|--------|
-| `src/components/MentalSkeleton.tsx` | Hydrate + persist `expandedChapters` via localStorage |
+## Changes
 
-## Guardrails
-- No FSRS/SM-2 changes
-- DnD logic untouched
-- Existing `codex-nav-category`/`codex-nav-subcategory` keys untouched
+### File: `src/components/SRSettingsPanel.tsx`
+
+1. Change `TabsList` from `grid-cols-3` to `grid-cols-4`, add "Tok rada" and "Sistem" triggers
+2. **Interfejs tab**: Remove Pomodoro, TTS, Notifications sections; keep only Theme, Widgets, Sound toggle
+3. **New "Tok rada" tab**: Move Pomodoro, TTS, Notifications, and Backup reminder here
+4. **New "Sistem" tab**: Move HealthMonitor inside this tab + move the FSRS reference collapsibles here
+5. Remove the orphaned `<HealthMonitor />` from bottom of component
+6. Update subtitle text from "Algoritam, interfejs i referenca" to "Algoritam, interfejs, tok rada i sistem"
+
+### No other files changed
+- `HealthMonitor.tsx` — unchanged
+- `app-settings.ts` — unchanged
+- No data model changes
 
