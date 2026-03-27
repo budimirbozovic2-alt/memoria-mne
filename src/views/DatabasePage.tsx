@@ -93,6 +93,10 @@ export default function DatabasePage() {
               <BookOpen className="h-3.5 w-3.5" />
               Izvori
             </TabsTrigger>
+            <TabsTrigger value="registry" className="flex-1 gap-1.5">
+              <Library className="h-3.5 w-3.5" />
+              Registar
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="cards" className="mt-4">
