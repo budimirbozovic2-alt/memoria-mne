@@ -21,6 +21,17 @@ interface LearnModalProps {
 export default function LearnModal({ card, onGradeSection, onClose }: LearnModalProps) {
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set());
   const [gradedSections, setGradedSections] = useState<Record<string, number>>({});
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+
+  // C4 fix: confirm close if revealed but ungraded sections exist
+  const safeClose = useCallback(() => {
+    const hasUngraded = Array.from(revealedSections).some(id => !gradedSections[id]);
+    if (hasUngraded) {
+      setShowCloseConfirm(true);
+    } else {
+      onClose();
+    }
+  }, [revealedSections, gradedSections, onClose]);
 
   const toggleSection = (id: string) => {
     setRevealedSections(prev => {
