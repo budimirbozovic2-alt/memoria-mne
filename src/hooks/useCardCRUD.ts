@@ -32,9 +32,10 @@ export function useCardCRUD({
     setCardMapState((prev) => {
       const card = prev[id];
       if (!card) return prev;
-      updated = patcher(card);
+      updated = { ...patcher(card), updatedAt: Date.now() };
       return { ...prev, [id]: updated };
     });
+    bumpMapVersion();
     if (updated) schedulePersist({ type: "put", card: updated });
   }, [setCardMapState, schedulePersist]);
 
