@@ -96,6 +96,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     reviewQueue.current = [];
     errorQueue.current = [];
     readQueue.current = [];
+    setQueueSize(0);
 
     // Apply all queued mutations
     if (reviews.length > 0) flushReviews(reviews);
