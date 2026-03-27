@@ -52,14 +52,22 @@ export function loadReviewLog(): ReviewLogEntry[] {
   return loadFromStorage(REVIEW_LOG_KEY, []);
 }
 
-export function addPomodoroEntry(entry: PomodoroLogEntry) {
-  const log: PomodoroLogEntry[] = loadFromStorage(POMODORO_LOG_KEY, []);
-  log.push(entry);
-  saveToStorage(POMODORO_LOG_KEY, log);
+export async function addPomodoroEntry(entry: PomodoroLogEntry): Promise<void> {
+  const { db } = await import("@/lib/db");
+  await db.pomodoroLog.add(entry);
 }
 
-export function getPomodoroStats() {
-  const log: PomodoroLogEntry[] = loadFromStorage(POMODORO_LOG_KEY, []);
+export interface PomodoroStatsResult {
+  today: number;
+  todayMinutes: number;
+  week: number;
+  weekMinutes: number;
+  total: number;
+}
+
+export async function getPomodoroStats(): Promise<PomodoroStatsResult> {
+  const { db } = await import("@/lib/db");
+  const log = await db.pomodoroLog.toArray();
   const todayStart = new Date().setHours(0, 0, 0, 0);
   const weekStart = todayStart - new Date().getDay() * 86400000;
 
@@ -85,16 +93,14 @@ export function saveLearnProgress(progress: Record<string, LearnCardProgress>) {
 }
 
 // Storage usage (estimates localStorage footprint)
-const APP_KEYS = ["sr-essay-cards", "sr-essay-categories", "sr-essay-subcategories", REVIEW_LOG_KEY, "sr-settings", POMODORO_LOG_KEY];
-const MAX_STORAGE_BYTES = 5 * 1024 * 1024;
-
-export function getStorageUsage(): { usedBytes: number; maxBytes: number; percent: number } {
-  let usedBytes = 0;
-  for (const key of APP_KEYS) {
-    const val = localStorage.getItem(key);
-    if (val) usedBytes += key.length + val.length * 2;
+export async function getStorageUsage(): Promise<{ usedBytes: number; maxBytes: number; percent: number }> {
+  if (navigator.storage?.estimate) {
+    const est = await navigator.storage.estimate();
+    const used = est.usage ?? 0;
+    const max = est.quota ?? 500 * 1024 * 1024;
+    return { usedBytes: used, maxBytes: max, percent: Math.round((used / max) * 100) };
   }
-  return { usedBytes, maxBytes: MAX_STORAGE_BYTES, percent: Math.round((usedBytes / MAX_STORAGE_BYTES) * 100) };
+  return { usedBytes: 0, maxBytes: 0, percent: 0 };
 }
 
 // Backup reminder

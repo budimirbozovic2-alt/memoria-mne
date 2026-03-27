@@ -28,7 +28,10 @@ export default function ZenMode({ active, onToggle }: Props) {
   const [cycleCount, setCycleCount] = useState(0);
   const [noiseOn, setNoiseOn] = useState(false);
   const [noiseVolume, setNoiseVolume] = useState(0.3);
-  const [pomodoroStats, setPomodoroStats] = useState(getPomodoroStats());
+  const [pomodoroStats, setPomodoroStats] = useState<Awaited<ReturnType<typeof getPomodoroStats>>>({ today: 0, todayMinutes: 0, week: 0, weekMinutes: 0, total: 0 });
+
+  // Load pomodoro stats on mount
+  useEffect(() => { getPomodoroStats().then(setPomodoroStats); }, []);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const totalForPhase = phase === "focus" ? FOCUS_DURATION : phase === "longBreak" ? LONG_BREAK_DURATION : BREAK_DURATION;
@@ -72,8 +75,8 @@ export default function ZenMode({ active, onToggle }: Props) {
     if (seconds <= 0) {
       setTimerRunning(false);
       if (phase === "focus") {
-        addPomodoroEntry({ timestamp: Date.now(), type: "focus", durationMinutes: pom.workMinutes });
-        setPomodoroStats(getPomodoroStats());
+        addPomodoroEntry({ timestamp: Date.now(), type: "focus", durationMinutes: pom.workMinutes })
+          .then(() => getPomodoroStats()).then(setPomodoroStats);
         playChime("focus");
         const newCycle = cycleCount + 1;
         setCycleCount(newCycle);
@@ -86,7 +89,7 @@ export default function ZenMode({ active, onToggle }: Props) {
         }
       } else {
         const dur = phase === "longBreak" ? pom.longBreakMinutes : pom.breakMinutes;
-        addPomodoroEntry({ timestamp: Date.now(), type: "break", durationMinutes: dur });
+        void addPomodoroEntry({ timestamp: Date.now(), type: "break", durationMinutes: dur });
         playChime("break");
         setPhase("focus");
         setSeconds(FOCUS_DURATION);

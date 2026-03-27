@@ -5,8 +5,8 @@ import { useState, useEffect, useRef } from "react";
  * Returns `null` until the computation is complete, then returns the result.
  * Re-runs when `deps` change.
  */
-export function useDeferredCompute<T>(compute: () => T, deps: unknown[]): T | null {
-  const [result, setResult] = useState<T | null>(null);
+export function useDeferredCompute<T>(compute: () => T | Promise<T>, deps: unknown[]): Awaited<T> | null {
+  const [result, setResult] = useState<Awaited<T> | null>(null);
   const computeRef = useRef(compute);
   computeRef.current = compute;
 
@@ -14,7 +14,12 @@ export function useDeferredCompute<T>(compute: () => T, deps: unknown[]): T | nu
     let cancelled = false;
     const run = () => {
       if (cancelled) return;
-      setResult(computeRef.current());
+      const val = computeRef.current();
+      if (val instanceof Promise) {
+        val.then((resolved) => { if (!cancelled) setResult(resolved as Awaited<T>); });
+      } else {
+        setResult(val as Awaited<T>);
+      }
     };
 
     if ("requestIdleCallback" in window) {
