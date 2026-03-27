@@ -10,25 +10,38 @@ import { Card, SectionState } from "./spaced-repetition";
 
 export type MaterialTier = "wood" | "brick" | "stone" | "marble" | "gold";
 
+export type BuildingType =
+  | "amphitheatrum" | "basilica" | "tabularium" | "rostra"
+  | "curia" | "macellum" | "argentaria" | "templum" | "arcus"
+  | "insula";
+
+const MONUMENT_TYPES_KEY = "codex-monument-types";
+
+export function loadMonumentTypes(): Record<string, BuildingType> {
+  try {
+    const raw = localStorage.getItem(MONUMENT_TYPES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch { return {}; }
+}
+
+export function saveMonumentType(category: string, type: BuildingType) {
+  const current = loadMonumentTypes();
+  current[category] = type;
+  localStorage.setItem(MONUMENT_TYPES_KEY, JSON.stringify(current));
+}
+
 export interface Monument {
-  /** Category name */
   category: string;
-  /** Total cards in this category */
   totalCards: number;
-  /** Cards where ALL sections are in Review state */
   masteredCards: number;
-  /** 0-100 mastery percentage */
   mastery: number;
-  /** Visual material tier derived from mastery */
   material: MaterialTier;
-  /** Average stability across all sections (days) */
   avgStability: number;
-  /** Average difficulty across all sections (1-10) */
   avgDifficulty: number;
-  /** Number of "leech" sections (lapses >= 5) */
   leechCount: number;
-  /** Whether this monument is "crumbling" (many leeches relative to total) */
   crumbling: boolean;
+  /** User-chosen building type (or "insula" fallback) */
+  buildingType: BuildingType;
 }
 
 export interface ForumState {
@@ -60,7 +73,7 @@ function buildMonument(category: string, cards: Card[]): Monument {
     return {
       category, totalCards: 0, masteredCards: 0, mastery: 0,
       material: "wood", avgStability: 0, avgDifficulty: 5,
-      leechCount: 0, crumbling: false,
+      leechCount: 0, crumbling: false, buildingType: "insula",
     };
   }
 
@@ -108,6 +121,7 @@ function buildMonument(category: string, cards: Card[]): Monument {
     avgDifficulty: Math.round(avgDifficulty * 10) / 10,
     leechCount,
     crumbling,
+    buildingType: "insula",
   };
 }
 
@@ -152,9 +166,13 @@ export function calculateForumState(
     else byCategory.set(cat, [card]);
   }
 
+  const monumentTypes = loadMonumentTypes();
+
   const monuments: Monument[] = [];
   for (const [cat, catCards] of byCategory) {
-    monuments.push(buildMonument(cat, catCards));
+    const m = buildMonument(cat, catCards);
+    m.buildingType = monumentTypes[cat] || "insula";
+    monuments.push(m);
   }
 
   // Sort: highest mastery first
