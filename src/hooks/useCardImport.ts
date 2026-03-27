@@ -115,21 +115,24 @@ export function useCardImport({
         if (Array.isArray(data.sources) || Array.isArray(data.mindMaps)) {
           const { db } = await import("@/lib/db");
           if (Array.isArray(data.sources) && (data.sources as unknown[]).length > 0) {
-            const sanitizedSources = (data.sources as Record<string, unknown>[]).map((src) => ({
-              ...src, htmlContent: sanitizeHtml((src.htmlContent as string) ?? ""),
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const sanitizedSources = (data.sources as any[]).map((src) => ({
+              ...src, htmlContent: sanitizeHtml(src.htmlContent ?? ""),
             }));
             await db.sources.bulkPut(sanitizedSources);
             if (strategy === "overwrite") {
-              const importedIds = new Set(sanitizedSources.map((s) => s.id as string));
+              const importedIds = new Set(sanitizedSources.map((s: { id: string }) => s.id));
               const allKeys = await db.sources.toCollection().primaryKeys();
               const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
               if (toDelete.length > 0) await db.sources.bulkDelete(toDelete);
             }
           }
           if (Array.isArray(data.mindMaps) && (data.mindMaps as unknown[]).length > 0) {
-            await db.mindMaps.bulkPut(data.mindMaps as Record<string, unknown>[]);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await db.mindMaps.bulkPut(data.mindMaps as any[]);
             if (strategy === "overwrite") {
-              const importedIds = new Set((data.mindMaps as Record<string, unknown>[]).map((m) => m.id as string));
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const importedIds = new Set((data.mindMaps as any[]).map((m: { id: string }) => m.id));
               const allKeys = await db.mindMaps.toCollection().primaryKeys();
               const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
               if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
