@@ -278,7 +278,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
           <button onClick={toggleDark} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground">
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
-          <button onClick={() => setMobileOpen(v => !v)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground">
+          <button onClick={() => setMobileOpen(v => !v)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground" aria-label={mobileOpen ? "Zatvori meni" : "Otvori meni"}>
             {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
         </div>
