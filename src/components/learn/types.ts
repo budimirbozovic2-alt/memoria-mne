@@ -1,5 +1,5 @@
 import { Card } from "@/lib/spaced-repetition";
-import { LearnMode, LearnCardProgress } from "@/lib/storage";
+import { LearnMode, LearnCardProgress, ReviewLogEntry } from "@/lib/storage";
 
 export type { LearnCardProgress };
 
