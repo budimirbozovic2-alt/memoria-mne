@@ -65,13 +65,41 @@ function getConstructionPhase(mastery: number): ConstructionPhase {
 /** @deprecated Use getConstructionPhase — kept for backward compat */
 const getMaterialTier = getConstructionPhase;
 
+export interface MonumentSourceBreakdown {
+  masterSource: string;
+  cardCount: number;
+  mastery: number;
+}
+
+export interface Monument {
+  category: string;
+  totalCards: number;
+  masteredCards: number;
+  mastery: number;
+  material: ConstructionPhase;
+  avgStability: number;
+  avgDifficulty: number;
+  leechCount: number;
+  crumbling: boolean;
+  buildingType: BuildingType;
+  sources?: MonumentSourceBreakdown[];
+}
+
+export interface ForumState {
+  monuments: Monument[];
+  overallMastery: number;
+  velocity: number;
+  dayPhase: number;
+  warmth: number;
+}
+
 // ─── Monument Calculator ────────────────────────────────
 
 function buildMonument(category: string, cards: Card[]): Monument {
   if (cards.length === 0) {
     return {
       category, totalCards: 0, masteredCards: 0, mastery: 0,
-      material: "wood", avgStability: 0, avgDifficulty: 5,
+      material: "foundation", avgStability: 0, avgDifficulty: 5,
       leechCount: 0, crumbling: false, buildingType: "insula",
     };
   }
