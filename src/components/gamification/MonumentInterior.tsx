@@ -235,3 +235,49 @@ export const MonumentInterior = memo(function MonumentInterior({
     </motion.div>
   );
 });
+
+/** Compact source mastery breakdown for interior header */
+function SourceBreakdown({ sources }: { sources: import("@/lib/forum-logic").MonumentSourceBreakdown[] }) {
+  const [open, setOpen] = useState(false);
+  const sorted = useMemo(
+    () => [...sources].sort((a, b) => b.mastery - a.mastery),
+    [sources],
+  );
+
+  function tierColor(m: number) {
+    if (m >= 95) return "hsl(var(--gold))";
+    if (m >= 60) return "hsl(142, 60%, 45%)";
+    if (m >= 30) return "hsl(45, 93%, 47%)";
+    return "hsl(0, 72%, 51%)";
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-3 pt-3 border-t border-border/30">
+      <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
+        <span className="font-display uppercase tracking-wider">Fontes</span>
+        <span className="tabular-nums">({sorted.length})</span>
+        <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${open ? "rotate-180" : ""}`} />
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 space-y-1.5">
+          {sorted.map((s) => (
+            <div key={s.masterSource} className="flex items-center gap-2 text-xs">
+              <span className="truncate flex-1 min-w-0 text-foreground">{s.masterSource}</span>
+              <span className="tabular-nums text-muted-foreground shrink-0">{s.cardCount}</span>
+              <div className="w-16 shrink-0">
+                <Progress
+                  value={s.mastery}
+                  className="h-1"
+                  style={{ "--progress-color": tierColor(s.mastery) } as React.CSSProperties}
+                />
+              </div>
+              <span className="tabular-nums w-8 text-right shrink-0" style={{ color: tierColor(s.mastery) }}>
+                {s.mastery}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
