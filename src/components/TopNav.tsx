@@ -114,7 +114,6 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
   // Close mega menu on route change
   useEffect(() => {
     setLabOpen(false);
-    setMobileOpen(false);
   }, [location.pathname]);
 
   const isToolsActive = TOOLS_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + "/"));
