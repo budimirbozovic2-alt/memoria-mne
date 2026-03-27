@@ -105,7 +105,7 @@ export function useCardImport({
           });
         }
         if (Array.isArray(data.reviewLog) && strategy === "overwrite") {
-          setReviewLog(data.reviewLog);
+          setReviewLog(data.reviewLog as ReviewLogEntry[]);
         }
         if (data.srSettings && strategy === "overwrite") {
           updateSRSettings({ ...DEFAULT_SR_SETTINGS, ...(data.srSettings as Partial<SRSettings>) });
