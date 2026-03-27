@@ -294,7 +294,6 @@ export default function LearnSession({ cards, categories, subcategories, onMarkR
       const activityType = learnMode === "free" ? "learn-free" as const : learnMode === "active-recall" ? "learn-active" as const : "learn-chain" as const;
       addActivityEntry({ timestamp: Date.now(), type: activityType, durationMs: elapsed });
       try {
-        const reviewLog = loadReviewLog();
         const plannerConfig = loadPlanner();
         const velocity = calcVelocity(reviewLog, 7);
         const suggestion = getSmartSuggestion(null, cards, plannerConfig.finalGoalDate, velocity, plannerConfig.bufferPercent ?? 15);
