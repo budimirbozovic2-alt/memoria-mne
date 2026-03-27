@@ -61,15 +61,16 @@ export const MonumentDetailDialog = memo(function MonumentDetailDialog({ monumen
       });
   }, [cards, monument]);
 
+  const handleStartReview = React.useCallback(() => {
+    if (!monument) return;
+    onClose();
+    navigate(`/review?category=${encodeURIComponent(monument.category)}`);
+  }, [onClose, navigate, monument]);
+
   if (!monument) return null;
 
   const materialIcon = MATERIAL_ICONS[monument.material];
   const overdueCount = categoryCards.filter(c => c.overdue).length;
-
-  const handleStartReview = React.useCallback(() => {
-    onClose();
-    navigate(`/review?category=${encodeURIComponent(monument.category)}`);
-  }, [onClose, navigate, monument]);
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
