@@ -11,9 +11,24 @@ export async function confirmCardReview(cardId: string): Promise<void> {
 // ── In-memory sources cache (H4 fix) ──
 let _cache: Source[] | null = null;
 
+// ── Event-based invalidation signaling ──
+type SourceListener = () => void;
+const _listeners = new Set<SourceListener>();
+
+/** Subscribe to source changes. Returns unsubscribe function. */
+export function onSourcesChanged(fn: SourceListener): () => void {
+  _listeners.add(fn);
+  return () => { _listeners.delete(fn); };
+}
+
+function _notify(): void {
+  _listeners.forEach(fn => fn());
+}
+
 /** Invalidate the in-memory sources cache (call after external mutations like import) */
 export function invalidateSourcesCache(): void {
   _cache = null;
+  _notify();
 }
 
 export async function loadSources(): Promise<Source[]> {
