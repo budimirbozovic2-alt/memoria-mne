@@ -1,62 +1,51 @@
 
 
-# Fix: Strip Structural Headings from Auto-Split Card Content
+# Fix: Navigation State Persistence
 
 ## Problem
-Both split engines (`auto-split-engine.ts` and `selection-split-engine.ts`) already filter `isHeading` (H1-H3 tags) and markdown-style headings, but they do NOT filter **structural legal headings** that appear as regular `<p>` elements — lines like `"GLAVA PRVA"`, `"DIO DRUGI"`, `"POGLAVLJE III"`, `"ODJELJAK 2"`. These get included in card body content as noise.
+When navigating back from edit mode or switching between views, the selected Category/Subcategory/Chapter resets to defaults. The user must re-navigate the hierarchy each time.
 
 ## Solution
-Add a shared `isStructuralLine()` utility that detects these lines, then apply it as an additional filter in both content-collection loops.
+Use `localStorage` with 3 keys (`codex-nav-category`, `codex-nav-subcategory`, `codex-nav-chapter`) to persist the last active navigation state. Both `KnowledgeMap.tsx` and `CardsView.tsx` read these on mount and write them on change.
 
-### New: `isStructuralLine` helper (in each engine, or shared)
-```ts
-const STRUCTURAL_KEYWORDS = /^\s*(DIO|GLAVA|POGLAVLJE|ODJELJAK|CZĘŚĆ|TYTUŁ)\b/i;
+## Changes
 
-function isStructuralLine(text: string): boolean {
-  const trimmed = text.trim();
-  if (!trimmed || trimmed.length > 120) return false;
-  // Purely uppercase lines ≤80 chars (e.g. "GLAVA PRVA", "OPŠTE ODREDBE")
-  if (trimmed.length <= 80 && trimmed === trimmed.toUpperCase() && /[A-ZČĆŽŠĐ]/.test(trimmed)) return true;
-  // Lines starting with structural keywords
-  if (STRUCTURAL_KEYWORDS.test(trimmed)) return true;
-  return false;
-}
-```
+### 1. `src/components/KnowledgeMap.tsx`
+- **Initialize `view` state** from localStorage: if `codex-nav-category` and `codex-nav-subcategory` exist, start at `step: "detail"`; if only category exists, start at `step: "subcategories"`; otherwise `step: "categories"`.
+- **Update `navigate()` function** to write the keys on each transition:
+  - `subcategories` step → save category
+  - `detail` step → save category + subcategory
+  - `categories` step → clear all 3 keys
+- Validate that the stored category/subcategory still exist in the current `categories`/`subcategories` props before hydrating.
 
-### File 1: `auto-split-engine.ts` — lines 140-144
-Current content collection loop:
-```ts
-for (let j = i + 1; j < nextBoundary; j++) {
-  if (lines[j].text && !lines[j].isHeading) {
-```
-Change to:
-```ts
-for (let j = i + 1; j < nextBoundary; j++) {
-  if (lines[j].text && !lines[j].isHeading && !isStructuralLine(lines[j].text)) {
-```
+### 2. `src/views/CardsView.tsx`
+- **Hydrate `filterCategory`**: check `codex-nav-category` from localStorage (after the existing `sr-deeplink-category` sessionStorage check, which takes priority).
+- **Hydrate `filterSubcategory`**: check `codex-nav-subcategory`.
+- **Hydrate `filterChapter`**: check `codex-nav-chapter`.
+- **Write to localStorage** whenever these filters change — add a `useEffect` that syncs the 3 values.
 
-### File 2: `selection-split-engine.ts` — lines 115-117
-Current content collection loop:
-```ts
-for (let j = lineIndex + 1; j < contentEnd; j++) {
-  if (lines[j].trim() && !HEADING_LINE_REGEX.test(lines[j])) contentLines.push(lines[j]);
-```
-Change to:
-```ts
-for (let j = lineIndex + 1; j < contentEnd; j++) {
-  if (lines[j].trim() && !HEADING_LINE_REGEX.test(lines[j]) && !isStructuralLine(lines[j])) contentLines.push(lines[j]);
-```
+### 3. `src/components/MentalSkeleton.tsx`
+- No direct changes needed. MentalSkeleton receives `category`/`subcategory` as props from KnowledgeMap. The chapter state is already internal (expanded chapters). However, the **selected chapter context** is implicit (all chapters expanded). No chapter-level persistence needed here since MentalSkeleton shows all chapters simultaneously.
+
+## Storage Keys
+| Key | Set by | Read by |
+|-----|--------|---------|
+| `codex-nav-category` | KnowledgeMap `navigate()`, CardsView filter change | Both on mount |
+| `codex-nav-subcategory` | KnowledgeMap `navigate()`, CardsView filter change | Both on mount |
+| `codex-nav-chapter` | CardsView filter change | CardsView on mount |
+
+## Cross-Component Sync
+Both components read/write the same localStorage keys, so selecting a category in KnowledgeMap → navigating to CardsView will show the same category pre-selected, and vice versa.
+
+## Guardrails
+- Existing `sr-deeplink-category` sessionStorage mechanism takes priority (used by PlannerPage)
+- FSRS/SM-2 logic untouched
+- No layout changes
+- Stored values are validated against current data before use (stale categories ignored)
 
 ## Files modified
 | File | Change |
 |------|--------|
-| `src/lib/auto-split-engine.ts` | Add `isStructuralLine` function + filter in content loop |
-| `src/lib/selection-split-engine.ts` | Add `isStructuralLine` function + filter in content loop |
-
-## What stays untouched
-- Title detection logic — structural lines above `Član` can still be picked up as titles if appropriate
-- `essayName` / metadata — unchanged
-- `plainSnippet` — will also be cleaned (structural lines won't appear)
-- FSRS/SM-2 logic — not involved
-- `heading-promotion.ts` — not modified
+| `src/components/KnowledgeMap.tsx` | Hydrate `view` state from localStorage; persist on navigate |
+| `src/views/CardsView.tsx` | Hydrate filters from localStorage; sync on change |
 
