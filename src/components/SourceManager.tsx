@@ -248,7 +248,7 @@ export default function SourceManager() {
             {categoryDepths.map(({ category, mode, override }) => (
               <div
                 key={category}
-                className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                className="flex items-center justify-between p-3 rounded-lg glass-card"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{category}</p>
