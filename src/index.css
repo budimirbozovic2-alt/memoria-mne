@@ -506,6 +506,8 @@
      THEME: Midnight — pure dark-first theme
      ═══════════════════════════════════════════ */
   [data-theme="midnight"] {
+    --gold: 43 74% 49%;
+    --gold-foreground: 0 0% 100%;
     --background: 0 0% 100%;
     --foreground: 230 15% 12%;
 
