@@ -90,7 +90,7 @@ export function useDashboardData(
   reviewLog: ReviewLogEntry[],
   srSettings: SRSettings,
 ) {
-  const appSettings = useMemo(() => loadAppSettings(), []);
+  const appSettings = loadAppSettings();
   const wc = appSettings.dashboardWidgets;
   const todayKey = getDayKey(Date.now());
   // Stable hash to avoid recomputing downstream when reviewLog length hasn't changed
