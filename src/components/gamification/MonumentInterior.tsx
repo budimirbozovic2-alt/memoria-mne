@@ -26,12 +26,6 @@ interface Props {
   onReviewSection?: (cardId: string, sectionId: string, grade: number) => void;
 }
 
-function computeAvgStability(cards: { sections: { stability: number }[] }[]): number {
-  let total = 0, count = 0;
-  for (const card of cards) for (const s of card.sections) if (s.stability > 0) { total += s.stability; count++; }
-  return count > 0 ? total / count : 0;
-}
-
 export const MonumentInterior = memo(function MonumentInterior({
   monument, sources, onBack, onUpdateChapters, onReviewSection,
 }: Props) {
