@@ -33,16 +33,19 @@ export const MonumentDetailDialog = memo(function MonumentDetailDialog({ monumen
         const sections = card.sections ?? [];
         const worstState = sections.length > 0
           ? Math.max(...sections.map((s) => s.state ?? 0))
-          : (card.state ?? 0);
+          : 0;
         const stability = sections.length > 0
           ? Math.min(...sections.filter((s) => (s.stability ?? 0) > 0).map((s) => s.stability ?? 0)) || 0
-          : (card.stability ?? 0);
-        const lapses = sections.reduce((sum, s) => sum + (s.failCount ?? 0), card.failCount ?? 0);
+          : 0;
+        const lapses = sections.reduce((sum, s) => sum + (s.lapses ?? 0), 0);
         const isLeech = lapses >= 5;
         const allReview = sections.length > 0
           ? sections.every((s) => (s.state ?? 0) === 2)
-          : (card.state ?? 0) === 2;
-        const nextReview = card.nextReview ? new Date(card.nextReview) : null;
+          : false;
+        const earliestReview = sections.length > 0
+          ? Math.min(...sections.map((s) => s.nextReview ?? Infinity))
+          : Infinity;
+        const nextReview = earliestReview < Infinity ? new Date(earliestReview) : null;
         const overdue = nextReview ? isPast(nextReview) : false;
 
         return { card, worstState, stability, lapses, isLeech, allReview, nextReview, overdue };
