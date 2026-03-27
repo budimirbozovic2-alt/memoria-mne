@@ -32,7 +32,7 @@ async function buildJsonChunked(
   for (let i = 0; i < cardsArr.length; i += CHUNK) {
     const chunk = cardsArr.slice(i, i + CHUNK);
     const prefix = i > 0 ? "," : "";
-    blobParts.push(prefix + chunk.map((c: any) => JSON.stringify(c)).join(","));
+    blobParts.push(prefix + chunk.map((c: unknown) => JSON.stringify(c)).join(","));
     const pct = 10 + Math.round((i / Math.max(cardsArr.length, 1)) * 60);
     onProgress(pct, `Serijalizacija kartica... ${Math.min(i + CHUNK, cardsArr.length)}/${cardsArr.length}`);
     await new Promise((r) => setTimeout(r, 10));
