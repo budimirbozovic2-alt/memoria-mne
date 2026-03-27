@@ -10,6 +10,7 @@ import ArrowUp from "lucide-react/dist/esm/icons/arrow-up";
 import ArrowDown from "lucide-react/dist/esm/icons/arrow-down";
 import Edit3 from "lucide-react/dist/esm/icons/edit-3";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
 import DraggableCardTile from "./DraggableCardTile";
 import { Mode, UNASSIGNED_CHAPTER } from "./types";
 
@@ -143,16 +144,18 @@ function ChapterBoxInner({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="pl-4 pr-2 py-3">
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-              {sortedCards.map(card => (
-                <DraggableCardTile
-                  key={card.id}
-                  card={card}
-                  mode={mode}
-                  onClick={() => onCardClick(card)}
-                />
-              ))}
-            </div>
+            <SortableContext items={sortedCards.map(c => c.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
+                {sortedCards.map(card => (
+                  <DraggableCardTile
+                    key={card.id}
+                    card={card}
+                    mode={mode}
+                    onClick={() => onCardClick(card)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
             {cards.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">Prevuci kartice ovdje</p>
             )}

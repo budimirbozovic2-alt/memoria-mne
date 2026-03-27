@@ -2,7 +2,8 @@ import React from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { useDraggable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import GripVertical from "lucide-react/dist/esm/icons/grip-vertical";
 import { Mode } from "./types";
 
@@ -14,10 +15,13 @@ interface DraggableCardTileProps {
 
 function DraggableCardTileInner({ card, mode, onClick }: DraggableCardTileProps) {
   const level = getCardMasteryLevel(card);
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id });
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: card.id });
 
   const style: React.CSSProperties = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transform: CSS.Translate.toString(transform),
+    transition,
     opacity: isDragging ? 0.3 : 1,
     zIndex: isDragging ? 50 : undefined,
   };
@@ -70,7 +74,7 @@ function DraggableCardTileInner({ card, mode, onClick }: DraggableCardTileProps)
           </p>
         )}
         {mode === "navigator" && (
-          <p className="text-[10px] text-muted-foreground mt-0.5">Klikni za učenje • Drži za pomjeranje u glavu</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Klikni za učenje • Drži za pomjeranje</p>
         )}
       </TooltipContent>
     </Tooltip>
