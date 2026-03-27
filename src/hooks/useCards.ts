@@ -56,16 +56,16 @@ export function useCards() {
 
   // ── Bulk map update (for operations touching many cards) ──
   const setCardMap = useCallback((updater: (prev: CardMap) => CardMap, persist: "surgical" | "full" = "full") => {
-    let bulkCards: Card[] = [];
+    let snapshot: CardMap = {};
     setCardMapState((prev) => {
       const next = updater(prev);
-      if (persist === "full") {
-        bulkCards = Object.values(next);
-      }
+      snapshot = next;
       return next;
     });
-    if (bulkCards.length > 0) {
-      schedulePersist({ type: "bulk", cards: bulkCards });
+    // Side-effect OUTSIDE the updater (C3 fix)
+    if (persist === "full") {
+      const bulkCards = Object.values(snapshot);
+      if (bulkCards.length > 0) schedulePersist({ type: "bulk", cards: bulkCards });
     }
   }, []);
 
