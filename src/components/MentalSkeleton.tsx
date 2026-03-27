@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Card, SectionState, calculateNextReview } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { motion, AnimatePresence } from "framer-motion";
@@ -330,13 +331,16 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
           />
         </div>
 
-        <DragOverlay>
-          {activeCard && (
-            <div className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-xl">
-              {activeCard.question.length > 25 ? activeCard.question.slice(0, 23) + "…" : activeCard.question}
-            </div>
-          )}
-        </DragOverlay>
+        {createPortal(
+          <DragOverlay dropAnimation={null}>
+            {activeCard && (
+              <div className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-xl pointer-events-none">
+                {activeCard.question.length > 25 ? activeCard.question.slice(0, 23) + "…" : activeCard.question}
+              </div>
+            )}
+          </DragOverlay>,
+          document.body
+        )}
       </DndContext>
 
       {subCards.length === 0 && (
