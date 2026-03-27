@@ -1,4 +1,4 @@
-import { memo, useMemo, lazy, Suspense } from "react";
+import { memo, useMemo, useState, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Play } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -48,6 +48,8 @@ export const MonumentInterior = memo(function MonumentInterior({
 }: Props) {
   const { cards } = useCardContext();
   const navigate = useNavigate();
+  const [selectedSub, setSelectedSub] = useState<string | null>(null);
+
   const allCards = useMemo(() => Object.values(cards), [cards]);
   const catCards = useMemo(
     () => allCards.filter((c) => c.category === monument.category),
@@ -82,55 +84,6 @@ export const MonumentInterior = memo(function MonumentInterior({
 
   const tree = sourceHierarchy.hasSourceLinks ? sourceHierarchy.tree : fallbackTree;
   const mode = sourceHierarchy.hasSourceLinks ? sourceHierarchy.mode : "B";
-
-  // Drill-down state: null = overview, string = subcategory detail
-  const [drillDown, setDrillDown] = useMemo(() => {
-    // We need useState but can't call hooks conditionally — handled below
-    return [null, () => {}] as any;
-  }, []);
-
-  // Actually use state properly
-  return <InteriorContent
-    monument={monument}
-    tree={tree}
-    mode={mode}
-    catCards={catCards}
-    allCards={allCards}
-    sources={sources}
-    onBack={onBack}
-    onUpdateChapters={onUpdateChapters}
-    onReviewSection={onReviewSection}
-  />;
-});
-
-/** Separated to allow useState */
-import { useState } from "react";
-
-interface InteriorContentProps {
-  monument: Monument;
-  tree: HierarchyNode[];
-  mode: string;
-  catCards: any[];
-  allCards: any[];
-  sources: Source[];
-  onBack: () => void;
-  onUpdateChapters?: (updates: { id: string; chapter: string; chapterOrder: number }[]) => void;
-  onReviewSection?: (cardId: string, sectionId: string, grade: number) => void;
-}
-
-const InteriorContent = memo(function InteriorContent({
-  monument,
-  tree,
-  mode,
-  catCards,
-  allCards,
-  sources,
-  onBack,
-  onUpdateChapters,
-  onReviewSection,
-}: InteriorContentProps) {
-  const [selectedSub, setSelectedSub] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const overdueCount = useMemo(() => {
     const now = Date.now();
@@ -170,9 +123,10 @@ const InteriorContent = memo(function InteriorContent({
   return (
     <motion.div
       key="interior"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
+      layoutId={`monument-${monument.category}`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="space-y-6"
     >
@@ -215,40 +169,34 @@ const InteriorContent = memo(function InteriorContent({
       {/* Interior: Architectural nodes */}
       <ScrollArea className="max-h-[calc(100vh-280px)]">
         {mode === "A" ? (
-          // Mode A: Wings (Master Sources) containing nodes
           <div className="space-y-6">
-            {tree.map((wing, wi) => {
-              const wingAvgStab = computeAvgStabilityFromLevels(catCards, wing.name, monument.category);
-              return (
-                <div key={wing.name} className="space-y-3">
-                  {/* Wing header — stone lintel */}
-                  <div className="flex items-center gap-3 px-2">
-                    <div className="h-px flex-1 bg-gold/20" />
-                    <h3 className="text-xs font-display text-gold uppercase tracking-widest shrink-0">
-                      {wing.name}
-                    </h3>
-                    <div className="h-px flex-1 bg-gold/20" />
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {wing.children.map((child, ci) => (
-                      <ArchNode
-                        key={child.name}
-                        name={child.name}
-                        cardCount={child.cardCount}
-                        levels={child.levels}
-                        avgStability={computeAvgStability(child.cards)}
-                        index={wi * 10 + ci}
-                        onClick={() => setSelectedSub(child.name)}
-                      />
-                    ))}
-                  </div>
+            {tree.map((wing, wi) => (
+              <div key={wing.name} className="space-y-3">
+                <div className="flex items-center gap-3 px-2">
+                  <div className="h-px flex-1 bg-gold/20" />
+                  <h3 className="text-xs font-display text-gold uppercase tracking-widest shrink-0">
+                    {wing.name}
+                  </h3>
+                  <div className="h-px flex-1 bg-gold/20" />
                 </div>
-              );
-            })}
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {wing.children.map((child, ci) => (
+                    <ArchNode
+                      key={child.name}
+                      name={child.name}
+                      cardCount={child.cardCount}
+                      levels={child.levels}
+                      avgStability={computeAvgStability(child.cards)}
+                      index={wi * 10 + ci}
+                      onClick={() => setSelectedSub(child.name)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          // Mode B: Direct column cards
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {tree.map((node, i) => {
               const nodeCards = catCards.filter(
@@ -280,12 +228,3 @@ const InteriorContent = memo(function InteriorContent({
     </motion.div>
   );
 });
-
-function computeAvgStabilityFromLevels(
-  catCards: any[],
-  _wingName: string,
-  _category: string,
-): number {
-  // Simple fallback — actual avg is computed per-node
-  return 0;
-}

@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo } from "react";
 import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 
@@ -83,11 +83,11 @@ export const ArchNode = memo(function ArchNode({
   const hasCracks = avgStability > 0 && avgStability < 10;
   const hasIvy = avgStability > 0 && avgStability < 5;
 
-  const borderClass = useMemo(() => {
-    if (allMastered) return "border-gold/50 shadow-[0_0_12px_hsl(var(--gold)/0.15)]";
-    if (hasIvy) return "border-green-800/40";
-    return "border-border/50";
-  }, [allMastered, hasIvy]);
+  const borderClass = allMastered
+    ? "border-gold/50 shadow-[0_0_12px_hsl(var(--gold)/0.15)]"
+    : hasIvy
+      ? "border-green-800/40"
+      : "border-border/50";
 
   return (
     <motion.button
@@ -118,7 +118,7 @@ export const ArchNode = memo(function ArchNode({
         </div>
 
         <p className="text-xs text-muted-foreground mb-2">
-          {cardCount} {cardCount === 1 ? "kartica" : "kartica"}
+          {cardCount} kartica
           {avgStability > 0 && <span className="ml-2 tabular-nums">S̄ {avgStability.toFixed(0)}d</span>}
         </p>
 

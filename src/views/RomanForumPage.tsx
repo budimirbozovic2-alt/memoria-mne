@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { useCardContext } from "@/contexts/AppContext";
 import { loadReviewLog } from "@/lib/storage";
 import { calculateForumState } from "@/lib/forum-logic";
@@ -36,7 +36,8 @@ export default function RomanForumPage() {
       {/* Atmospheric background layer */}
       <ForumAtmosphere dayPhase={forumState.dayPhase} warmth={forumState.warmth} />
 
-      <AnimatePresence mode="wait">
+      <LayoutGroup>
+      <AnimatePresence>
         {selectedMonument ? (
           <MonumentInterior
             key="interior"
@@ -87,6 +88,7 @@ export default function RomanForumPage() {
           </div>
         )}
       </AnimatePresence>
+      </LayoutGroup>
     </div>
   );
 }
