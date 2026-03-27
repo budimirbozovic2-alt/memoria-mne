@@ -361,8 +361,9 @@ export async function idbBulkPutCards(cards: Card[]): Promise<void> {
   if (cards.length === 0) return;
   try {
     await db.cards.bulkPut(cards);
-  } catch (err: any) {
-    if (err?.name === "QuotaExceededError" || err?.inner?.name === "QuotaExceededError") {
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    if (e.name === "QuotaExceededError" || (err as any)?.inner?.name === "QuotaExceededError") {
       console.error("[MemoriaDB] Storage quota exceeded during bulk write", err);
       throw new Error("QUOTA_EXCEEDED");
     }
