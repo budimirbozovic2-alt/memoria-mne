@@ -301,6 +301,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
         sensors={sensors}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       >
         <div className="space-y-2">
           {allChapters.map((chapter, idx) => (
