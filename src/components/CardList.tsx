@@ -351,10 +351,6 @@ export default function CardList({
 
   const useVirtualization = filtered.length >= VIRTUALIZATION_THRESHOLD && !reorderMode;
 
-  if (filtered.length === 0) {
-    return <p className="text-muted-foreground text-center py-12">Nema kartica. Kreirajte prvu!</p>;
-  }
-
   const virtualRowProps = useMemo(() => ({
     filteredCards: filtered,
     expandedId,
@@ -374,6 +370,10 @@ export default function CardList({
     onCloneToMnemonic,
     onAddKeyPart,
   }), [filtered, expandedId, scrollToCardId, selectionMode, selectedIds, onToggleSelect, onToggleTag, onEdit, onDelete, propCategories, propSubcategories, availableChapters, onMoveCategory, onAssignChapter, onCloneToMnemonic, onAddKeyPart]);
+
+  if (filtered.length === 0) {
+    return <p className="text-muted-foreground text-center py-12">Nema kartica. Kreirajte prvu!</p>;
+  }
 
   if (useVirtualization) {
     return (
