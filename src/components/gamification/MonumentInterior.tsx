@@ -150,10 +150,10 @@ export const MonumentInterior = memo(function MonumentInterior({
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {tree.map((node, i) => {
-              const nodeCards = catCards.filter((c: any) => (c.subcategory || "Ostalo") === node.name);
-              return <ArchNode key={node.name} name={node.name} cardCount={node.cardCount} levels={node.levels} avgStability={computeAvgStability(nodeCards)} index={i} onClick={() => setSelectedSub(node.name)} />;
-            })}
+            {tree.map((node, i) => (
+              <ArchNode key={node.name} name={node.name} cardCount={node.cardCount} levels={node.levels} avgStability={node.avgStability} index={i} onClick={() => setSelectedSub(node.name)} />
+            ))}
+          </div>
           </div>
         )}
         {tree.length === 0 && (
