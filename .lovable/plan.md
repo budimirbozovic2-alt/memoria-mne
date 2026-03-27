@@ -1,40 +1,103 @@
 
 
-# Fix Build Errors + Add Source Reader Width Control
+# Critical Foundation Fix: Audit v3 Phase 1
 
-## Part 1: Fix Build Errors (stale/cached)
+## Task 1: Fix C1 — `getStorageUsage()` (storage.ts)
 
-The 7 files all have correct barrel imports now. The errors are from a stale TypeScript cache. A simple rebuild will clear them — no code changes needed for the errors themselves.
+**Problem**: Reads stale localStorage keys that are now empty post-migration. Reports ~0% usage.
 
-## Part 2: Source Reader Width Selector
+**Fix**: Make `getStorageUsage()` async. Use `navigator.storage.estimate()` (returns `{usage, quota}`) which covers IndexedDB. Fall back to a rough Dexie table count if `estimate()` is unavailable.
 
-### Design
-Add a width toggle to `SourceToolbar` (same row as existing controls). Use 5 options: S, M, L, XL, Full. State lives in `SourceReader.tsx`, persisted to `localStorage` key `codex-source-reader-width`, default `M`.
+**Callers to update**:
+- `src/hooks/useDashboardData.ts:125` — `useDeferredCompute` callback becomes async (it already supports promises)
+- `src/components/HealthMonitor.tsx:65` — wrap in `.then()` or make the refresh callback async
 
-### Width mapping
-| Label | Class | Approx width |
-|-------|-------|-------------|
-| S | `max-w-2xl` | 672px |
-| M | `max-w-4xl` | 896px |
-| L | `max-w-6xl` | 1152px |
-| XL | `max-w-7xl` | 1280px |
-| Full | `max-w-none` | 100% |
+**Changes**:
+```ts
+// storage.ts
+export async function getStorageUsage(): Promise<{usedBytes: number; maxBytes: number; percent: number}> {
+  if (navigator.storage?.estimate) {
+    const est = await navigator.storage.estimate();
+    const used = est.usage ?? 0;
+    const max = est.quota ?? 500 * 1024 * 1024;
+    return { usedBytes: used, maxBytes: max, percent: Math.round((used / max) * 100) };
+  }
+  // Fallback: count IDB records as rough estimate
+  return { usedBytes: 0, maxBytes: 0, percent: 0 };
+}
+```
 
-### File changes
+---
 
-**`src/components/SourceReader.tsx`**
-- Add `ReaderWidth` type and width class map
-- Add `readerWidth` state initialized from `localStorage`, default `"M"`
-- `useEffect` to persist changes to localStorage
-- Wrap the content `<div className="flex-1 min-w-0 relative">` in a constraining div with `mx-auto px-6` + the dynamic `max-w-*` class
-- Pass `readerWidth` + `setReaderWidth` to `SourceToolbar`
+## Task 2: Fix C2 — Import overwrite for `++id` tables (useCardImport.ts)
 
-**`src/components/source-reader/SourceToolbar.tsx`**
-- Add `readerWidth` and `setReaderWidth` to Props
-- Add a small button group (5 buttons, S/M/L/XL/Full) between the view-mode toggle and the Pitanja button
-- Active button gets `bg-background shadow-sm` styling (same pattern as the Čitanje/Pokrivenost toggle)
+**Problem**: Lines 159-163 — for `++id` tables (reviewLog, pomodoroLog, calibrationLog, etc.), imported records have `id` fields from the source DB. On `bulkPut`, Dexie assigns NEW auto-increment IDs. The cleanup then compares imported `r.id` values against new keys — they never match, so ALL existing records get deleted.
 
-### No other files changed
-- No changes to auto-split, source loading, FSRS, or DnD-kit
-- Standard barrel imports only
+**Fix**: For "overwrite" strategy on `++id` tables, use `table.clear()` before `bulkPut` instead of the ID-comparison cleanup. This is semantically correct: "overwrite" means "replace all data with imported data."
+
+Separate `idbTables` into two lists:
+- UUID-keyed tables (`diary`) — keep current ID-comparison logic
+- Auto-increment tables (all others) — use `clear()` + `bulkAdd` for overwrite
+
+---
+
+## Task 3: Fix C3 — Pomodoro to IDB (storage.ts + callers)
+
+**Problem**: `addPomodoroEntry()` writes to localStorage, but backup reads from `db.pomodoroLog` (IDB). Data never syncs.
+
+**Fix**:
+- **storage.ts**: Rewrite `addPomodoroEntry()` to write to `db.pomodoroLog` instead of localStorage. Make it async.
+- **storage.ts**: Rewrite `getPomodoroStats()` to read from `db.pomodoroLog`. Make it async.
+- **ZenMode.tsx**: Update calls to await `addPomodoroEntry()` and `getPomodoroStats()`.
+- **AppContext.tsx**: Update call to await `addPomodoroEntry()`.
+
+```ts
+// storage.ts
+export async function addPomodoroEntry(entry: PomodoroLogEntry): Promise<void> {
+  const { db } = await import("@/lib/db");
+  await db.pomodoroLog.add(entry);
+}
+
+export async function getPomodoroStats(): Promise<{...}> {
+  const { db } = await import("@/lib/db");
+  const log = await db.pomodoroLog.toArray();
+  // ... same math, same return shape
+}
+```
+
+---
+
+## Task 4: Fix C4 — TTS listener leak (SpeedReader.tsx)
+
+**Problem**: Line 142 — `window.speechSynthesis.onvoiceschanged = load` overwrites any existing handler and can be clobbered by other instances.
+
+**Fix**: Replace with `addEventListener`/`removeEventListener`:
+```ts
+useEffect(() => {
+  if (!("speechSynthesis" in window)) return;
+  const load = () => { const v = window.speechSynthesis.getVoices(); if (v.length) setVoices(v); };
+  load();
+  window.speechSynthesis.addEventListener("voiceschanged", load);
+  return () => { window.speechSynthesis.removeEventListener("voiceschanged", load); };
+}, []);
+```
+
+---
+
+## Files changed
+
+| File | Change |
+|------|--------|
+| `src/lib/storage.ts` | Make `getStorageUsage` async (use `navigator.storage.estimate`); rewrite `addPomodoroEntry` + `getPomodoroStats` to use IDB |
+| `src/hooks/useDashboardData.ts` | Update `getStorageUsage()` call to handle async |
+| `src/components/HealthMonitor.tsx` | Update `getStorageUsage()` call to handle async |
+| `src/hooks/useCardImport.ts` | Fix `++id` overwrite: use `clear()` + `bulkAdd` for auto-increment tables |
+| `src/components/SpeedReader.tsx` | Replace `onvoiceschanged =` with `addEventListener` |
+| `src/components/ZenMode.tsx` | Await async `addPomodoroEntry` / `getPomodoroStats` |
+| `src/contexts/AppContext.tsx` | Await async `addPomodoroEntry` |
+
+## Guardrails
+- No UI changes
+- No FSRS math changes
+- No DnD-kit changes
 
