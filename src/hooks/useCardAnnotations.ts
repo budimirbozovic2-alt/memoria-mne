@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { Card, calculateNextReview } from "@/lib/spaced-repetition";
 import { loadAppSettings } from "@/lib/app-settings";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap, PersistAction, schedulePersist, bumpMapVersion } from "@/lib/persist-queue";
+import { CardMap, bumpMapVersion } from "@/lib/persist-queue";
 import { idbAddReviewLogEntry } from "@/lib/db";
 
 interface UseCardAnnotationsParams {
