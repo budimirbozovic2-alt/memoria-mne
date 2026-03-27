@@ -1,58 +1,63 @@
 
 
-# Phase 2: Sidebar Evolution, Nav Decommissioning & Tabularium
+# Imperial Standardization — Localized UI (Serbian Latin)
 
 ## Overview
-Remove standalone "Mapa znanja" from navigation (the hierarchy is now accessed via Forum and will be embedded in a future sidebar). Rename "Registar" tab to "Tabularium". Keep the `/knowledge-map` route alive (deep links) but remove it from all nav menus.
-
-**Note**: The user's request mentions "sidebar evolution with useSourceHierarchy dynamic tree." However, CODEX currently has NO sidebar component — it uses a TopNav with a mega-menu. Building a full collapsible sidebar with live hierarchy tree is a significant new component. This phase will: (1) do the nav cleanup, (2) do the Tabularium rename, and (3) add a collapsible Knowledge Tree panel to the Database page that uses `useSourceHierarchy` — serving as the "live sidebar" for navigating the hierarchy without needing the standalone Knowledge Map page.
+Replace all remaining Latin/Roman placeholders with clean Serbian labels across the Forum, Dashboard, Navigation, and Database. Keep the building type identifiers (`BuildingType` enum values like `"tabularium"`, `"basilica"`) as internal constants — only change user-facing display text.
 
 ## Changes
 
-### 1. TopNav — Remove "Mapa znanja" from Laboratorija menu
-**`src/components/TopNav.tsx`**
-- Remove `{ path: "/knowledge-map", ... }` from `LAB_ANALYTICS` array (line 34)
-- This removes it from both desktop mega-menu and mobile nav
+### 1. `src/components/gamification/monument-buildings.tsx` (line 11-22)
+Replace `BUILDING_LABELS` with Serbian translations:
+```
+amphitheatrum → "Amfiteatar"
+basilica → "Bazilika"
+tabularium → "Arhiv"
+rostra → "Govornica"
+curia → "Senat"
+macellum → "Tržnica"
+argentaria → "Blagajna"
+templum → "Hram"
+arcus → "Slavoluk"
+insula → "Blok"
+```
 
-### 2. Breadcrumbs — Keep route label but remove from LAB_ROUTES display
-**`src/components/Breadcrumbs.tsx`**
-- Keep the `/knowledge-map` entry in route labels (for deep-link breadcrumbs)
-- No functional change needed — it just won't appear in nav anymore
+### 2. `src/components/gamification/MonumentCard.tsx` (line 195, 203)
+- `"Dominatio"` → `"Savladanost"`
+- `"cives"` → `"modula"` (consistent with app terminology)
 
-### 3. App.tsx — Keep route alive
-- No change. The `/knowledge-map` route stays for backward compatibility and direct Forum→KnowledgeMap deep linking.
+### 3. `src/components/gamification/MonumentInterior.tsx` (line 182)
+- `"Fontes"` → `"Izvori"`
 
-### 4. DatabasePage — Rename "Registar" to "Tabularium"
-**`src/views/DatabasePage.tsx`**
-- Change tab label from "Registar" to "Tabularium" (line 98)
-- Change icon from `Library` to a `Landmark` icon for the imperial aesthetic
-- Keep the tab value as `"registry"` (no logic change)
+### 4. `src/components/Dashboard.tsx` (lines 126-127)
+- `"ENTER THE FORVM"` → `"FORUM ZNANJA"`
+- `"Forum Iustitiae — tvoj hram znanja"` → `"Pregled napretka po kategorijama"`
 
-### 5. SourceManager — Add "Tabularium" header styling
-**`src/components/SourceManager.tsx`**
-- Add `font-display` (Cinzel) to the component's internal header if it has one
-- Add `glass-card` styling to the source list items for visual consistency
+### 5. `src/components/TopNav.tsx`
+- Line 224: `title="Forum Iustitiae"` → `title="Forum znanja"`, same for `aria-label`
+- Line 352: `"Forum Iustitiae"` → `"Forum znanja"`
 
-### 6. Database Page — Add Knowledge Tree sidebar panel
-**`src/views/DatabasePage.tsx`**
-- Add a collapsible left panel (using `Collapsible` from radix) that renders a compact hierarchy tree using `useSourceHierarchy`
-- The tree shows categories → L1 nodes → L2 nodes with mastery color dots
-- Clicking a node navigates to the corresponding filtered view in the Cards tab
-- Panel toggled via a small "Atlas" button in the page header
-- Uses `glass-card` styling and gold accents consistent with Phase 1
+### 6. `src/views/RomanForumPage.tsx` (line 75)
+- `"Nulla monumenta. Crea disciplinas ut Forum aedificētur."` → `"Nema kategorija. Kreiraj kartice da bi se Forum izgradio."`
+
+### 7. `src/views/DatabasePage.tsx` (line 98)
+- `"Tabularium"` → `"Registar izvora"`
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/TopNav.tsx` | Remove knowledge-map from LAB_ANALYTICS |
-| `src/views/DatabasePage.tsx` | Rename tab to "Tabularium", add Landmark icon, add collapsible knowledge tree panel |
-| `src/components/SourceManager.tsx` | Add glass-card styling to source items, font-display header |
+| `src/components/gamification/monument-buildings.tsx` | Serbian building labels |
+| `src/components/gamification/MonumentCard.tsx` | "Savladanost", "modula" |
+| `src/components/gamification/MonumentInterior.tsx` | "Izvori" |
+| `src/components/Dashboard.tsx` | Serbian Forum gateway text |
+| `src/components/TopNav.tsx` | "Forum znanja" |
+| `src/views/RomanForumPage.tsx` | Serbian empty state |
+| `src/views/DatabasePage.tsx` | "Registar izvora" |
 
 ## Guardrails
-- `/knowledge-map` route kept alive in App.tsx for deep links
+- Internal `BuildingType` enum values (`"tabularium"`, `"basilica"`, etc.) stay unchanged — only display labels change
 - No FSRS math changes
-- No source-registry logic changes
-- Tab value stays `"registry"` — only the display label changes
-- Breadcrumbs still work for `/knowledge-map` if accessed directly
+- No navigation structure changes
+- No new dependencies
 
