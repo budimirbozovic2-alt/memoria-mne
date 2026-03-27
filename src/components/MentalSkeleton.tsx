@@ -397,7 +397,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
       {/* Modal overlays */}
       <AnimatePresence>
         {selectedCard && mode === "navigator" && (
-          <LearnModal card={selectedCard} onGrade={handleGrade} onClose={() => setSelectedCard(null)} />
+          <LearnModal card={selectedCard} onGradeSection={handleGradeSection} onClose={() => setSelectedCard(null)} />
         )}
         {selectedCard && mode === "auditor" && (
           <AuditorDetailPanel card={selectedCard} onClose={() => setSelectedCard(null)} />
