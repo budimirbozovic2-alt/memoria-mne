@@ -26,8 +26,12 @@ export function useCategoryManagement({
 
   const renameCategory = useCallback(
     (oldName: string, newName: string) => {
-      if (categories.includes(newName)) return; // Synchronous check — no React 18 batching race
-      setCategories(prev => prev.map(c => c === oldName ? newName : c));
+      let aborted = false;
+      setCategories(prev => {
+        if (prev.includes(newName)) { aborted = true; return prev; }
+        return prev.map(c => c === oldName ? newName : c);
+      });
+      if (aborted) return;
       const changed: Card[] = [];
       setCardMapState((prev) => {
         const next = { ...prev };
@@ -48,7 +52,7 @@ export function useCategoryManagement({
         return next;
       });
     },
-    [categories, setCategories, setCardMapState, setSubcategories],
+    [setCategories, setCardMapState, setSubcategories],
   );
 
   const deleteCategory = useCallback(
