@@ -29,7 +29,7 @@ export function useCardImport({
           jsonText = await file.text();
         }
 
-        let parsed: any;
+        let parsed: unknown;
         try { parsed = JSON.parse(jsonText); } catch {
           toast.error("Neispravan JSON format. Fajl je oštećen ili nije validan.");
           return;
