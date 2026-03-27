@@ -17,9 +17,9 @@ export default function DatabasePage() {
   const { setView } = useUIContext();
   const [exportOpen, setExportOpen] = useState(false);
   const [docxOpen, setDocxOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"cards" | "categories" | "sources">(() => {
+  const [activeTab, setActiveTab] = useState<"cards" | "categories" | "sources" | "registry">(() => {
     const stored = sessionStorage.getItem("sr-database-tab");
-    return stored === "categories" || stored === "sources" ? stored : "cards";
+    return stored === "categories" || stored === "sources" || stored === "registry" ? stored : "cards";
   });
 
   useEffect(() => {
