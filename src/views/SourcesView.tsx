@@ -38,6 +38,7 @@ function generateId() {
 export default function SourcesView() {
   const { cards, bulkFlagNeedsReview } = useCardContext();
   const [sources, setSources] = useState<Source[]>([]);
+  const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [importLabel, setImportLabel] = useState("");
   const [importDate, setImportDate] = useState("");
@@ -59,7 +60,7 @@ export default function SourcesView() {
   } | null>(null);
 
   useEffect(() => {
-    loadSources().then(setSources);
+    loadSources().then(s => { setSources(s); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const handleFileSelect = useCallback(async (f: File) => {
