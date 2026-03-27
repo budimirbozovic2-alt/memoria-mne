@@ -80,7 +80,7 @@ export function useCardCRUD({
     (question: string, answer: string, category: string, subcategory?: string) => {
       const card = createFlashCard(question, answer, category, subcategory);
       card.updatedAt = Date.now();
-      // Surgical persist with pre-computed card
+      cardMapRef.current = { ...cardMapRef.current, [card.id]: card }; // Sync ref
       schedulePersist({ type: "put", card });
       setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
