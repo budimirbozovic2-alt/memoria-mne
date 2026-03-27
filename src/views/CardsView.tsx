@@ -81,25 +81,27 @@ export default function CardsView() {
     });
   };
 
-  const handleBulkApply = () => {
-    if (selectedIds.size === 0 || !bulkSubcategory || !filterCategory) return;
-    bulkUpdateSubcategory(Array.from(selectedIds), bulkSubcategory);
-    setSelectionMode(false);
-    setSelectedIds(new Set());
-    setBulkSubcategory("");
-  };
-
-  const handleBulkChapterApply = () => {
-    if (selectedIds.size === 0 || !filterCategory) return;
+  const handleBulkMove = () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const cat = bulkCategory || filterCategory || "";
+    const sub = bulkSubcategory;
     const ch = newBulkChapter.trim() || bulkChapter;
-    if (!ch) return;
-    const updates = Array.from(selectedIds).map((id, i) => ({ id, chapter: ch, chapterOrder: i }));
-    bulkUpdateChapter(updates);
-    toast.success(`${selectedIds.size} kartica dodijeljeno u "${ch}"`);
-    setSelectionMode(false);
-    setSelectedIds(new Set());
-    setBulkChapter("");
-    setNewBulkChapter("");
+
+    ids.forEach((id, i) => {
+      const patch: Partial<Card> = {};
+      if (cat && (bulkCategory || !filterCategory)) patch.category = cat;
+      if (sub) patch.subcategory = sub;
+      if (ch) { patch.chapter = ch; patch.chapterOrder = i; }
+      if (Object.keys(patch).length > 0) updateCard(id, patch);
+    });
+
+    const parts: string[] = [];
+    if (bulkCategory) parts.push(bulkCategory);
+    if (sub) parts.push(sub);
+    if (ch) parts.push(ch);
+    toast.success(`${ids.length} kartica premješteno${parts.length ? " u " + parts.join(" › ") : ""}`);
+    exitSelectionMode();
   };
 
   const exitSelectionMode = () => {
