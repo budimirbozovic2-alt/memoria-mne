@@ -15,16 +15,14 @@ export default function RomanForumPage() {
 
   useEffect(() => {
     loadSources().then(setSources);
+    return onSourcesChanged(() => loadSources().then(setSources));
   }, []);
 
   const deferredCards = useDeferredValue(cards);
 
-  // B3 fix: use reviewLog.length as dep to avoid recalc on reference-only changes
-  const reviewLogLen = reviewLog.length;
   const forumState = useMemo(() => {
     return calculateForumState(deferredCards, reviewLog, sources);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deferredCards, sources, reviewLogLen]);
+  }, [deferredCards, sources, reviewLog]);
 
   const selectedMonument = selectedCategory
     ? forumState.monuments.find((m) => m.category === selectedCategory) ?? null

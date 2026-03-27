@@ -203,15 +203,12 @@ export function useCards() {
 
   const reorderCategories = useCallback((ordered: string[]) => {
     setCategoriesState(ordered);
-    idbSaveCategories(ordered);
+    // Persistence handled by categories useEffect
   }, []);
 
   const reorderSubcategories = useCallback((category: string, ordered: string[]) => {
-    setSubcategoriesState((prev) => {
-      const next = { ...prev, [category]: ordered };
-      idbSaveSubcategories(next);
-      return next;
-    });
+    setSubcategoriesState((prev) => ({ ...prev, [category]: ordered }));
+    // Persistence handled by subcategories useEffect
   }, []);
 
   return {

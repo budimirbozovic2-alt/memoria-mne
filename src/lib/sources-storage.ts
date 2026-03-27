@@ -59,6 +59,7 @@ export async function deleteSource(id: string): Promise<void> {
     }
     await db.sources.delete(id);
   });
+  _notify();
 }
 
 export async function getSource(id: string): Promise<Source | undefined> {
