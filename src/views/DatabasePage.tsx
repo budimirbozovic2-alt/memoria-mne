@@ -1,4 +1,4 @@
-import { Database, FolderOpen, Download, FileText, BookOpen } from "lucide-react";
+import { Database, FolderOpen, Download, FileText, BookOpen, Library } from "lucide-react";
 import { useState, lazy, Suspense, useEffect } from "react";
 import { useCardContext, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -10,21 +10,22 @@ const CategoriesPage = lazy(() => import("@/views/CategoriesPage"));
 const SourcesView = lazy(() => import("@/views/SourcesView"));
 const ExportImportDialog = lazy(() => import("@/components/ExportImportDialog"));
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
+const SourceManager = lazy(() => import("@/components/SourceManager"));
 
 export default function DatabasePage() {
   const { cards, categories, exportData, exportTemplate, importData, importCards, addFlashCard } = useCardContext();
   const { setView } = useUIContext();
   const [exportOpen, setExportOpen] = useState(false);
   const [docxOpen, setDocxOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"cards" | "categories" | "sources">(() => {
+  const [activeTab, setActiveTab] = useState<"cards" | "categories" | "sources" | "registry">(() => {
     const stored = sessionStorage.getItem("sr-database-tab");
-    return stored === "categories" || stored === "sources" ? stored : "cards";
+    return stored === "categories" || stored === "sources" || stored === "registry" ? stored : "cards";
   });
 
   useEffect(() => {
     const handleOpenTab = (event: Event) => {
       const next = (event as CustomEvent<string>).detail;
-      if (next === "cards" || next === "categories" || next === "sources") {
+      if (next === "cards" || next === "categories" || next === "sources" || next === "registry") {
         setActiveTab(next);
         sessionStorage.setItem("sr-database-tab", next);
       }
@@ -35,7 +36,7 @@ export default function DatabasePage() {
   }, []);
 
   const handleTabChange = (value: string) => {
-    if (value === "cards" || value === "categories" || value === "sources") {
+    if (value === "cards" || value === "categories" || value === "sources" || value === "registry") {
       setActiveTab(value);
       sessionStorage.setItem("sr-database-tab", value);
     }
@@ -92,6 +93,10 @@ export default function DatabasePage() {
               <BookOpen className="h-3.5 w-3.5" />
               Izvori
             </TabsTrigger>
+            <TabsTrigger value="registry" className="flex-1 gap-1.5">
+              <Library className="h-3.5 w-3.5" />
+              Registar
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="cards" className="mt-4">
@@ -109,6 +114,12 @@ export default function DatabasePage() {
           <TabsContent value="sources" className="mt-4">
             <Suspense fallback={<TabSkeleton />}>
               <SourcesView />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="registry" className="mt-4">
+            <Suspense fallback={<TabSkeleton />}>
+              <SourceManager />
             </Suspense>
           </TabsContent>
         </Tabs>

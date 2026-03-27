@@ -1,9 +1,12 @@
 import { ArrowLeft, ChevronRight, Search, BookOpen, BarChart3, HelpCircle, ArrowUp, ArrowDown, ListOrdered } from "lucide-react";
-import { useState, useRef, useCallback, lazy, Suspense } from "react";
+import { useState, useRef, useCallback, lazy, Suspense, useEffect } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
+import type { Source } from "@/lib/db";
 import { motion } from "framer-motion";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 import SubcategoryCard from "./knowledge-map/SubcategoryCard";
+import { useSourceHierarchy } from "@/hooks/useSourceHierarchy";
+import { loadSources } from "@/lib/sources-storage";
 
 const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
 
@@ -107,7 +110,12 @@ export default function KnowledgeMap({
   const [view, setView] = useState<ViewState>(() => hydrateView(categories, subcategories));
   const [searchQuery, setSearchQuery] = useState("");
   const [reorderMode, setReorderMode] = useState(false);
+  const [sources, setSources] = useState<Source[]>([]);
   const directionRef = useRef(1);
+
+  useEffect(() => {
+    loadSources().then(setSources);
+  }, []);
 
   const navigate = (next: ViewState) => {
     const stepOrder = { categories: 0, subcategories: 1, detail: 2 };
@@ -161,11 +169,69 @@ export default function KnowledgeMap({
     );
   }
 
+  // ── Source hierarchy for current subcategory view ──
+  const hierarchyCat = view.step === "subcategories" ? view.category : "";
+  const sourceHierarchy = useSourceHierarchy(cards, sources, hierarchyCat);
+
   // ── Step 2: Subcategory list ──
   if (view.step === "subcategories") {
     const cat = view.category;
-    const subs = subcategories[cat] || [];
     const catCards = cards.filter((c) => c.category === cat);
+
+    // Use source hierarchy if available, otherwise fall back to subcategories
+    if (sourceHierarchy.hasSourceLinks) {
+      const { mode, tree } = sourceHierarchy;
+      const q = searchQuery.toLowerCase();
+      const filtered = q ? tree.filter((n) => n.name.toLowerCase().includes(q)) : tree;
+      const modeLabel = mode === "A" ? "po izvoru" : "po potkategoriji";
+
+      return (
+        <motion.div
+          key="subcategories-source"
+          custom={directionRef.current}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          transition={transition}
+          className="space-y-6"
+        >
+          <Header
+            title={cat}
+            subtitle={`${catCards.length} kartica • ${tree.length} grupa (${modeLabel})`}
+            onBack={() => navigate({ step: "categories" })}
+          />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Pretraži..." />
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {filtered.map(({ name, cardCount, levels }, i) => (
+              <SubcategoryCard
+                key={name}
+                name={name}
+                count={cardCount}
+                levels={levels}
+                index={i}
+                realIndex={i}
+                subsLength={tree.length}
+                reorderMode={false}
+                isOstalo={name === "Bez izvora" || name === "Ostalo"}
+                onNavigate={() => {
+                  if (onUpdateChapters && onReviewSection) {
+                    navigate({ step: "detail", category: cat, subcategory: name });
+                  }
+                }}
+                onMoveUp={() => {}}
+                onMoveDown={() => {}}
+              />
+            ))}
+          </div>
+
+          {filtered.length === 0 && <EmptyMessage text={searchQuery ? "Nema rezultata pretrage" : "Nema podataka"} />}
+        </motion.div>
+      );
+    }
+
+    // Fallback: original subcategory system
+    const subs = subcategories[cat] || [];
 
     const subsWithStats = subs
       .map((sub) => {
