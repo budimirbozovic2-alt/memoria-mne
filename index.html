@@ -64,6 +64,23 @@
           </div>
         </div>
       </div>
+      <!-- Fallback UI: hidden by default, shown by 10s safety timer if app fails to boot -->
+      <div id="boot-fallback" style="
+        display: none; position: fixed; inset: 0; z-index: 10000;
+        align-items: center; justify-content: center;
+        background: radial-gradient(ellipse at center, #152238 0%, #0a1628 100%);
+        font-family: 'Segoe UI', system-ui, sans-serif; color: #e0e0e0;
+      ">
+        <div style="text-align: center; max-width: 420px; padding: 32px;">
+          <div style="width: 64px; height: 64px; margin: 0 auto 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(56,130,220,0.1); border: 1px solid rgba(56,130,220,0.25);">
+            <span style="font-size: 28px;">⏳</span>
+          </div>
+          <h1 style="font-size: 18px; font-weight: 700; letter-spacing: 0.08em; margin-bottom: 12px; background: linear-gradient(90deg, #a0c4f0, #3882dc); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">CODEX</h1>
+          <p style="font-size: 14px; line-height: 1.7; color: #d1d5db; margin-bottom: 8px;">Aplikacija se učitava duže nego što je očekivano.</p>
+          <p style="font-size: 12px; line-height: 1.6; color: #9ca3af; margin-bottom: 24px;">Ako ste u web preview-u, ovo je normalno zbog restrikcija okruženja. Molimo pokrenite aplikaciju lokalno preko <code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:11px;">npm run dev</code> ili osvježite stranicu.</p>
+          <button onclick="window.location.reload()" style="padding: 10px 28px; background: linear-gradient(90deg, #3882dc, #5ba0f5); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; letter-spacing: 0.02em; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">Osveži aplikaciju</button>
+        </div>
+      </div>
       <style>
         @keyframes appSplashFade { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes appSplashLoad { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }
@@ -72,23 +89,13 @@
     </div>
     <script>
       setTimeout(function(){
-        var s=document.getElementById("app-splash");
-        if(!s)return;
-        var status=document.getElementById("splash-status");
-        var bar=document.getElementById("splash-progress");
-        var pct=document.getElementById("splash-percent");
-        if(status)status.textContent="Učitavanje traje duže nego obično…";
-        if(bar)bar.style.width="100%";
-        if(pct)pct.textContent="";
-        var errBox=document.getElementById("splash-error");
-        var errMsg=document.getElementById("splash-error-msg");
-        if(errBox)errBox.style.display="block";
-        if(errMsg)errMsg.textContent="Aplikacija se nije uspjela pokrenuti u očekivanom roku.";
-        var retry=document.createElement("button");
-        retry.textContent="Pokušaj ponovo";
-        retry.style.cssText="margin-top:12px;padding:8px 20px;background:linear-gradient(90deg,#3882dc,#5ba0f5);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:0.02em;";
-        retry.onclick=function(){location.reload();};
-        if(errBox)errBox.appendChild(retry);
+        var root=document.getElementById("root");
+        var splash=document.getElementById("app-splash");
+        var fallback=document.getElementById("boot-fallback");
+        var appMounted=root&&root.querySelector("[data-app-mounted]");
+        if(appMounted)return;
+        if(splash){splash.style.transition="opacity 0.3s";splash.style.opacity="0";setTimeout(function(){if(splash.parentNode)splash.remove();},400);}
+        if(fallback){fallback.style.display="flex";}
       },10000);
     </script>
     <script type="module" src="./src/main.tsx"></script>
