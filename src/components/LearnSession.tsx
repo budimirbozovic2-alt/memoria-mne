@@ -1,7 +1,7 @@
 import { ShieldAlert, Link2, BookOpen, Brain, ArrowLeft, ChevronRight, ListOrdered, TrendingDown, Eye, HelpCircle, AlertTriangle } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
 import { Card, getCardScore, getDueCards } from "@/lib/spaced-repetition";
-import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress, loadReviewLog } from "@/lib/storage";
+import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress, ReviewLogEntry } from "@/lib/storage";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
 import { recordDayDiscipline, getSmartSuggestion, calcVelocity, loadPlanner } from "@/lib/planner-storage";
 import { motion, AnimatePresence } from "framer-motion";
