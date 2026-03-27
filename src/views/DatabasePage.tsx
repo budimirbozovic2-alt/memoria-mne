@@ -1,4 +1,4 @@
-import { Database, FolderOpen, Download, FileText, BookOpen, Library } from "lucide-react";
+import { Database, FolderOpen, Download, FileText, BookOpen, Landmark } from "lucide-react";
 import { useState, lazy, Suspense, useEffect } from "react";
 import { useCardContext, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
