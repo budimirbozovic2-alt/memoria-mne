@@ -37,7 +37,7 @@ const queryClient = new QueryClient(); // rebuild trigger v2
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <div className="flex flex-col h-screen">
+      <div className="flex flex-col h-screen" data-app-mounted>
         <TitleBar />
         <Toaster />
         <Sonner />
