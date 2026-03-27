@@ -198,8 +198,10 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
     if (e.name === "VersionError" || e.name === "UpgradeError") {
       dbErrorState = { type: "version", message: e.message };
       console.error("[MemoriaDB] CRITICAL: DB schema version mismatch.", e.message);
-    } else if (e.message === "DB_OPEN_TIMEOUT") {
-      dbErrorState = { type: "timeout", message: "Baza podataka se nije otvorila u predviđenom roku." };
+    } else if (e.message === "DB_OPEN_TIMEOUT" || e.message === "DB_BLOCKED") {
+      dbErrorState = { type: "timeout", message: e.message === "DB_BLOCKED"
+        ? "Baza je blokirana od strane drugog taba. Zatvorite ostale tabove i osvježite."
+        : "Baza podataka se nije otvorila u predviđenom roku." };
     }
     return false;
   }

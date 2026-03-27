@@ -117,6 +117,7 @@ export function useCardBootstrap(setters: BootSetters) {
         );
 
         splashProgress(25, "Učitavanje kartica…");
+        console.log("[boot:diag] step 4: loading data");
         markBootStep("cards:data-load-start");
         const c = await withTimeout(idbLoadCards(), 5000, "cards load", []);
 

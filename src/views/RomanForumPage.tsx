@@ -1,8 +1,6 @@
 import { useMemo, useState, useEffect, useDeferredValue } from "react";
 import { AnimatePresence, LayoutGroup, motion } from "framer-motion";
 import { useCardContext } from "@/contexts/AppContext";
-import { idbLoadReviewLog } from "@/lib/db";
-import { ReviewLogEntry } from "@/lib/storage";
 import { calculateForumState } from "@/lib/forum-logic";
 import { ForumAtmosphere } from "@/components/gamification/ForumAtmosphere";
 import { MonumentCard } from "@/components/gamification/MonumentCard";
@@ -11,14 +9,12 @@ import { Progress } from "@/components/ui/progress";
 import { loadSources, type Source } from "@/lib/sources-storage";
 
 export default function RomanForumPage() {
-  const { cards, bulkUpdateChapter, reviewSection } = useCardContext();
+  const { cards, reviewLog, bulkUpdateChapter, reviewSection } = useCardContext();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
-  const [reviewLog, setReviewLog] = useState<ReviewLogEntry[]>([]);
 
   useEffect(() => {
     loadSources().then(setSources);
-    idbLoadReviewLog().then(setReviewLog);
   }, []);
 
   const deferredCards = useDeferredValue(cards);
