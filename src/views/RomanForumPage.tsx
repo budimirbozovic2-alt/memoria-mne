@@ -30,7 +30,8 @@ export default function RomanForumPage() {
 
   const forumState = useMemo(() => {
     return calculateForumState(deferredCards, reviewLog, sources);
-  }, [deferredCards, sources, reviewLog]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deferredCards, sources, reviewLog, registryVersion]);
 
   const selectedMonument = selectedCategory
     ? forumState.monuments.find((m) => m.category === selectedCategory) ?? null
