@@ -36,19 +36,16 @@ export function useCategoryManagement({
       // React 18: updater runs synchronously in same event handler, so didRename is set
       if (!didRename) return;
       // Surgical: only update cards in the renamed category
-      let updated: Card[] = [];
       setCardMapState((prev) => {
         const next = { ...prev };
         for (const [id, c] of Object.entries(next)) {
           if (c.category === oldName) {
-            next[id] = { ...c, category: newName };
-            updated.push(next[id]);
+            next[id] = { ...c, category: newName, updatedAt: Date.now() };
           }
         }
         return next;
       });
       bumpMapVersion();
-      if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
       setSubcategories((prev) => {
         const next = { ...prev };
         if (next[oldName]) {
