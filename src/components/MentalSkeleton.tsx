@@ -9,6 +9,7 @@ import {
   DragEndEvent, DragOverlay, DragStartEvent,
   MeasuringStrategy,
 } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { toast } from "sonner";
 import { ArrowLeft, Eye, Compass, Plus, X, BookOpen } from "lucide-react";
 import ChapterBox from "./mental-skeleton/ChapterBox";
