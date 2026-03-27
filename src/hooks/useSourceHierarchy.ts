@@ -143,6 +143,7 @@ export function useSourceHierarchy(
           name: subName,
           cardCount: allCards.length,
           levels: computeLevels(allCards),
+          avgStability: computeAvgStability(allCards),
           children,
         });
       }
