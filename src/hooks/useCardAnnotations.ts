@@ -15,6 +15,7 @@ export function useCardAnnotations({
   patchCard,
   setCardMapState,
   setReviewLog,
+  cardMapRef,
 }: UseCardAnnotationsParams) {
 
   // O(1) review — surgical IDB write (patchCard handles persist via Ref-Delta)
