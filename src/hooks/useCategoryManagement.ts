@@ -133,6 +133,7 @@ export function useCategoryManagement({
         }
         return next;
       });
+      bumpMapVersion();
       if (updated.length > 0) globalSchedulePersist({ type: "bulk", cards: updated });
     },
     [setSubcategories, setCardMapState],
