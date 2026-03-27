@@ -256,11 +256,11 @@ export function calculateForumState(
 // ─── Material Display Helpers ───────────────────────────
 
 export const MATERIAL_LABELS: Record<MaterialTier, string> = {
-  wood: "Lignum",       // Wood
-  brick: "Laterīcius",  // Brick
-  stone: "Lapis",       // Stone
-  marble: "Marmor",     // Marble
-  gold: "Aurum",        // Gold
+  wood: "Drvo",
+  brick: "Cigla",
+  stone: "Kamen",
+  marble: "Mermer",
+  gold: "Zlato",
 };
 
 export const MATERIAL_ICONS: Record<MaterialTier, string> = {

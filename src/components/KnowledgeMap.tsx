@@ -61,7 +61,7 @@ export function getCardMasteryLevel(card: Card): number {
     else if (avgStability <= 30) level = 4;
     else level = 5;
   }
-  _masteryCache.set(card, level);
+  _masteryCache.set(card.id, { level, updatedAt: cardUpdated });
   return level;
 }
 

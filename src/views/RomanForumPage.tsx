@@ -21,9 +21,11 @@ export default function RomanForumPage() {
     idbLoadReviewLog().then(setReviewLog);
   }, []);
 
+  const deferredCards = useDeferredValue(cards);
+
   const forumState = useMemo(() => {
-    return calculateForumState(cards, reviewLog, sources);
-  }, [cards, sources, reviewLog]);
+    return calculateForumState(deferredCards, reviewLog, sources);
+  }, [deferredCards, sources, reviewLog]);
 
   const selectedMonument = selectedCategory
     ? forumState.monuments.find((m) => m.category === selectedCategory) ?? null
