@@ -14,6 +14,7 @@ import DraggableCardTile from "./mental-skeleton/DraggableCardTile";
 import LearnModal from "./mental-skeleton/LearnModal";
 import AuditorDetailPanel from "./mental-skeleton/AuditorDetailPanel";
 import { Mode, UNASSIGNED_CHAPTER } from "./mental-skeleton/types";
+import { useChapterManagement } from "@/hooks/useChapterManagement";
 
 interface Props {
   cards: Card[];
