@@ -239,17 +239,7 @@ function useGlobalPomodoro() {
 function CardProvider({ children }: { children: ReactNode }) {
   const h = useCards();
 
-  if (h.dbError) {
-    const DatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
-    return (
-      <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-muted-foreground">Učitavanje...</div>}>
-        <DatabaseRecoveryPanel error={h.dbError} />
-      </Suspense>
-    );
-  }
-
-  // Split into stable actions ref (never changes unless hook identity changes)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Split into stable actions ref (useCallback refs don't change)
   const actions = useMemo<CardActionsContextValue>(() => ({
     addCard: h.addCard, addFlashCard: h.addFlashCard, updateCard: h.updateCard,
     deleteCard: h.deleteCard, splitCard: h.splitCard, reviewSection: h.reviewSection,
@@ -283,6 +273,15 @@ function CardProvider({ children }: { children: ReactNode }) {
     h.categoryStats, h.cardCountByCategory, h.reviewLog, h.srSettings,
     h.ready, h.dbError,
   ]);
+
+  if (h.dbError) {
+    const DatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
+    return (
+      <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-muted-foreground">Učitavanje...</div>}>
+        <DatabaseRecoveryPanel error={h.dbError} />
+      </Suspense>
+    );
+  }
 
   return (
     <CardActionsContext.Provider value={actions}>
