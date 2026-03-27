@@ -112,6 +112,7 @@ export default function ReviewSession({ dueCards, allCards, subcategories, srSet
         savedSession={savedSession}
         onResumeSession={resumeSession}
         onClearSavedSession={() => { setSavedSession(null); clearSavedSession(); }}
+        preSelectedCategory={preSelectedCategory}
       />
     );
   }
