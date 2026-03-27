@@ -56,7 +56,7 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
 
       {wc.showProgressRing && plannerData && plannerData.activePhase && (
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.12 }}
-          className="rounded-xl bg-card border p-5">
+          className="glass-card p-5">
           <div className="flex items-center gap-2 mb-4">
             <Target className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-medium">Progres faze: {plannerData.activePhase.name}</h3>
