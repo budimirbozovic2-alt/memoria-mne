@@ -151,13 +151,14 @@ export function useCardAnnotations({
           const u = { ...next[id], needsReview: true, updatedAt: Date.now() };
           next[id] = u;
           updated.push(u);
+          cardMapRef.current[id] = u;
         }
       }
       return next;
     });
     if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
     bumpMapVersion();
-  }, [setCardMapState]);
+  }, [setCardMapState, cardMapRef]);
 
   // Reorder cards — accumulator pattern for surgical persist
   const reorderCards = useCallback((orderedIds: string[]) => {
