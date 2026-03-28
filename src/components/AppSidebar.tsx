@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useCardData } from "@/contexts/AppContext";
+import type { CategoryRecord } from "@/lib/db";
 
 const STATIC_NAV = [
   { path: "/", icon: Home, label: "Dashboard" },
