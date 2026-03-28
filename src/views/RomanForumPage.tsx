@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { loadSources, onSourcesChanged, type Source } from "@/lib/sources-storage";
 
 export default function RomanForumPage() {
-  const { cards, reviewLog, bulkUpdateChapter, reviewSection } = useCardContext();
+  const { cards, reviewLog } = useCardContext();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
 
@@ -42,8 +42,6 @@ export default function RomanForumPage() {
               monument={selectedMonument}
               sources={sources}
               onBack={() => setSelectedCategory(null)}
-              onUpdateChapters={bulkUpdateChapter}
-              onReviewSection={reviewSection}
             />
           ) : (
             <motion.div

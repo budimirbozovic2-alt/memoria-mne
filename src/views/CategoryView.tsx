@@ -14,6 +14,7 @@ import { BookOpen, FileText, Brain, Plus, Upload } from "lucide-react";
 import SourceEditor from "@/components/category/SourceEditor";
 import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
+import CategoryMnemonicWorkshop from "@/components/category/CategoryMnemonicWorkshop";
 
 export default function CategoryView() {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -172,13 +173,11 @@ export default function CategoryView() {
 
         {/* ═══ MNEMONIČKA RADIONICA TAB ═══ */}
         <TabsContent value="mnemonic">
-          <div className="text-center py-16 space-y-2">
-            <Brain className="h-10 w-10 mx-auto text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">
-              Mnemonička radionica za: <strong className="text-foreground">{category.name}</strong>
-            </p>
-            <p className="text-xs text-muted-foreground">Implementacija u Phase 3b.</p>
-          </div>
+          <CategoryMnemonicWorkshop
+            categoryId={categoryId!}
+            categoryName={category.name}
+            categoryCards={cards}
+          />
         </TabsContent>
       </Tabs>
     </div>
