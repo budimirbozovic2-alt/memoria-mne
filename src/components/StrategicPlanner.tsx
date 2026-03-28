@@ -14,11 +14,10 @@ interface Props {
   cards: SRCard[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
-  onBack: () => void;
   onNavigateToDatabase?: (category: string) => void;
 }
 
-export default function StrategicPlanner({ cards, categories, reviewLog, onBack, onNavigateToDatabase }: Props) {
+export default function StrategicPlanner({ cards, categories, reviewLog, onNavigateToDatabase }: Props) {
   const data = usePlannerData(cards, reviewLog);
   const [activeTab, setActiveTab] = useState<"operations" | "roadmap" | "discipline">("operations");
 
