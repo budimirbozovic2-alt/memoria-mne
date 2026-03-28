@@ -83,14 +83,13 @@ export interface MindMapDoc {
 export const DEFAULT_CATEGORIES: { name: string; color?: string }[] = [
   { name: "Krivično materijalno pravo", color: "hsl(0, 70%, 50%)" },
   { name: "Krivično procesno pravo", color: "hsl(20, 70%, 50%)" },
-  { name: "Građansko pravo", color: "hsl(210, 70%, 50%)" },
-  { name: "Obligaciono pravo", color: "hsl(180, 70%, 50%)" },
-  { name: "Stvarno pravo", color: "hsl(150, 70%, 50%)" },
-  { name: "Radno pravo", color: "hsl(45, 70%, 50%)" },
+  { name: "Građansko materijalno pravo", color: "hsl(210, 70%, 50%)" },
+  { name: "Građansko procesno pravo", color: "hsl(180, 70%, 50%)" },
   { name: "Upravno pravo", color: "hsl(270, 70%, 50%)" },
-  { name: "Ustavno pravo", color: "hsl(300, 70%, 50%)" },
-  { name: "Međunarodno pravo", color: "hsl(330, 70%, 50%)" },
-  { name: "Opšte", color: "hsl(220, 15%, 50%)" },
+  { name: "Privredno pravo", color: "hsl(150, 70%, 50%)" },
+  { name: "Radno pravo", color: "hsl(45, 70%, 50%)" },
+  { name: "Ustavno pravo i organizacija pravosuđa", color: "hsl(300, 70%, 50%)" },
+  { name: "Konvencijsko pravo", color: "hsl(330, 70%, 50%)" },
 ];
 
 export function createDefaultCategories(): CategoryRecord[] {
