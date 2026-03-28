@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
+import { cn } from "@/lib/utils";
 import {
-  Home, Landmark, Settings as SettingsIcon, GraduationCap, RotateCcw,
-  BarChart3, BookOpen, Brain, Gauge, Zap, Map, Wrench, Scale,
+  Home, Landmark, Settings as SettingsIcon, RotateCcw,
+  BarChart3, BookOpen, Gauge, Zap, Map, Scale,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel,
@@ -16,7 +17,6 @@ import { useCardContext } from "@/contexts/AppContext";
 
 const STATIC_NAV = [
   { path: "/", icon: Home, label: "Dashboard" },
-  { path: "/learn", icon: GraduationCap, label: "Učenje" },
   { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
   { path: "/forum", icon: Landmark, label: "Forum" },
   { path: "/settings", icon: SettingsIcon, label: "Podešavanja" },
@@ -89,13 +89,14 @@ export default function AppSidebar() {
                         className="hover:bg-sidebar-accent/50"
                         activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                       >
-                        {cat.color && (
+                        {cat.color ? (
                           <span
                             className="h-2.5 w-2.5 rounded-full shrink-0"
                             style={{ backgroundColor: cat.color }}
                           />
+                        ) : (
+                          <Scale className="h-4 w-4 shrink-0" />
                         )}
-                        <Scale className={cn("h-4 w-4 shrink-0", cat.color && "hidden")} />
                         {!collapsed && (
                           <span className="truncate text-[13px]">{cat.name}</span>
                         )}
@@ -133,8 +134,4 @@ export default function AppSidebar() {
       </SidebarContent>
     </Sidebar>
   );
-}
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
 }
