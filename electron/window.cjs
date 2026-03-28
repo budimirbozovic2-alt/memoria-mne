@@ -166,8 +166,12 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
     logCrash('render-process-gone', JSON.stringify(details));
     if (!win.isDestroyed()) {
       if (shouldAllowRecovery()) {
-        appReady = false;
-        ipcMain.removeAllListeners('renderer-ready');
+        appReady = true;
+        ipcMain.removeListener('window-minimize', onMinimize);
+        ipcMain.removeListener('window-maximize', onMaximize);
+        ipcMain.removeListener('window-close', onClose);
+        ipcMain.removeHandler('window-is-maximized');
+        clearTimeout(fallbackTimer);
         win.destroy();
         const newSplash = createSplashWindow(isDev, baseDir);
         createWindow({ isDev, baseDir, configPath, logCrash, splash: newSplash, onMainWindow });
