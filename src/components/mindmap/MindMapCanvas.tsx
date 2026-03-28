@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import ExportToCategory from "./ExportToCategory";
 const nodeTypes = { mindMapNode: MindMapNodeComponent };
 
 let nodeIdCounter = 0;
