@@ -1,44 +1,53 @@
 
 
-# Rebuild & Test Electron App
+# Fix: IndexedDB Data Not Persisting in Electron (Data Loss on Restart)
 
-## Overview
-Build the Vite project, package with `@electron/packager`, and verify the app launches past the splash screen.
+## Root Cause
 
-## Steps
+Under `file://` protocol in Chromium (which Electron uses), the origin is **opaque** — meaning IndexedDB gets a unique, non-persistent storage context. Data written during a session exists in memory but is **not guaranteed to persist** across app restarts. This is why the app works perfectly during a session but starts empty on next launch.
 
-### 1. Build Vite production bundle
-```bash
-cd /dev-server && npx vite build
-```
+The fix: register a **custom `app://` protocol** that serves dist files with a **stable, consistent origin**, making IndexedDB fully persistent.
 
-### 2. Install Electron + Packager
-```bash
-cd /dev-server && npm install --save-dev electron @electron/packager
-```
+## Changes
 
-### 3. Package for Linux
-```bash
-cd /dev-server && npx @electron/packager . "Memoria" \
-  --platform=linux --arch=x64 \
-  --out=electron-release --overwrite \
-  --ignore='node_modules' \
-  --ignore='^/src' --ignore='^/public' \
-  --ignore='^/electron-release'
-```
+### 1. `main.cjs` — Register custom protocol scheme (before `app.whenReady`)
 
-### 4. Archive for download
-```bash
-tar czf /mnt/documents/Memoria-linux-x64.tar.gz -C /dev-server/electron-release Memoria-linux-x64/
-```
+Add `protocol.registerSchemesAsPrivileged` call **before** `app.whenReady()` to register an `app` scheme with:
+- `standard: true` (enables proper URL resolution)
+- `secure: true` (enables IndexedDB, localStorage, etc.)
+- `supportFetchAPI: true`
 
-### 5. Verify fixes are in place (pre-build checklist)
-Before building, confirm these 4 fixes are active in the current code:
-- `vite.config.ts`: `base: './'` and no `manualChunks` (just `emptyOutDir: true`)
-- `main.cjs`: CSP skips `file://` URLs
-- `src/main.tsx`: SW registration skipped when `electronAPI` present
-- `electron/window.cjs`: `webSecurity: false` in webPreferences
+Inside `app.whenReady()`, register a file protocol handler that maps `app://localhost/` requests to the `dist/` directory.
 
-### What this tests
-The eternal loading screen was caused by CSP blocking dynamic imports under `file://`, SW registration crashing, and potential rollup chunking TDZ errors. All three have been patched. A successful launch past the splash screen confirms the fix.
+### 2. `electron/window.cjs` — Load via `app://localhost/index.html` instead of `loadFile`
+
+In the production branch of `createWindow`:
+- Replace `win.loadFile(indexPath)` with `win.loadURL('app://localhost/index.html')`
+- The fallback in `did-fail-load` also uses `app://localhost/index.html`
+- Remove `webSecurity: false` (no longer needed — `app://` is a proper secure origin)
+
+### 3. No changes to renderer code
+
+The app code (`src/`) remains untouched. IndexedDB, localStorage, and all Web APIs work identically under `app://` as they do under `http://`.
+
+## Why This Works
+
+| Protocol | Origin | IndexedDB Persists? |
+|----------|--------|-------------------|
+| `file://` | Opaque/null | No (or unreliable) |
+| `app://localhost` | `app://localhost` | Yes — stable origin |
+| `http://localhost` | `http://localhost:PORT` | Yes |
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `main.cjs` | Add `protocol.registerSchemesAsPrivileged` + file handler |
+| `electron/window.cjs` | Use `app://localhost/index.html` for production load, remove `webSecurity: false` |
+
+## Risk Assessment
+
+- **Zero impact on web preview** — no renderer code changes
+- **Backward compatible** — existing Electron window state, backup system, IPC all unaffected
+- **Dev mode unchanged** — still uses `http://localhost:8080`
 
