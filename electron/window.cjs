@@ -148,7 +148,9 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
         if (isDev) {
           win.loadURL('http://localhost:8080');
         } else {
-          win.loadFile(getDistPath(isDev, baseDir, 'index.html')).catch(() => {});
+          win.loadURL('app://localhost/index.html').catch(() => {
+            win.loadFile(getDistPath(isDev, baseDir, 'index.html')).catch(() => {});
+          });
         }
       }
     }, 2000);
