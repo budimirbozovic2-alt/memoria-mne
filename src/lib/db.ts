@@ -140,6 +140,11 @@ class MemoriaDB extends Dexie {
       disciplineLog: "++id, date",
       mindMaps: "id, title, updatedAt",
     });
+
+    // v8: Add categoryId index to mindMaps for category-scoped gallery
+    this.version(8).stores({
+      mindMaps: "id, categoryId, title, updatedAt",
+    });
   }
 }
 
