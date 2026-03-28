@@ -79,7 +79,17 @@ export default function MnemonicModule({ onBack }: Props) {
 
   const updateCard = useCallback((id: string, updates: Partial<MnemonicCard>) => {
     setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
-  }, [setCards]);
+    // Graduation: when marked "ready", tag the original card with "mnemonic"
+    if (updates.mnemonicStatus === "ready") {
+      const mnemoCard = cards.find(c => c.id === id);
+      if (mnemoCard?.originalCardId) {
+        patchCard(mnemoCard.originalCardId, (c) => ({
+          ...c,
+          tags: c.tags?.includes("mnemonic") ? c.tags : [...(c.tags || []), "mnemonic"],
+        }));
+      }
+    }
+  }, [setCards, cards, patchCard]);
 
   const deleteCard = useCallback((id: string) => {
     setCards(prev => prev.filter(c => c.id !== id));
