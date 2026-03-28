@@ -11,7 +11,7 @@ import type { ExamQuestion } from "@/components/ExamSidebar";
 type ViewMode = "standard" | "coverage";
 
 export function useSourceLogic(source: Source) {
-  const { addCard, categories, cards } = useAppContext();
+  const { addCard, categories, cards, patchCard } = useAppContext();
   const contentRef = useRef<HTMLDivElement>(null);
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("standard");
