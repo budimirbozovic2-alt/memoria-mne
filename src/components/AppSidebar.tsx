@@ -66,7 +66,7 @@ export default function AppSidebar() {
           <SidebarGroupLabel>Predmeti</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {displayCategories.length === 0 && (
+              {categoryRecords.length === 0 && (
                 <SidebarMenuItem>
                   <div className="px-2 py-1.5 text-xs text-muted-foreground">
                     Učitavanje predmeta…
