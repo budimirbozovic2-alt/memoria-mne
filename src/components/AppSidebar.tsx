@@ -74,7 +74,7 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               )}
 
-              {displayCategories.map((cat) => (
+              {categoryRecords.map((cat) => (
                 <SidebarMenuItem key={cat.id}>
                   <SidebarMenuButton asChild tooltip={cat.name}>
                     <NavLink
