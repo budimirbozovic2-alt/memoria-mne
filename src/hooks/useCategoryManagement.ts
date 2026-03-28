@@ -45,7 +45,7 @@ export function useCategoryManagement({
       const nextRef = { ...cardMapRef.current };
       for (const [id, c] of Object.entries(nextRef)) {
         if (c.categoryId === oldName) {
-          const u = { ...c, category: newName, updatedAt: now };
+          const u = { ...c, categoryId: newName, updatedAt: now };
           nextRef[id] = u;
           changed.push(u);
         }
@@ -65,7 +65,7 @@ export function useCategoryManagement({
       // F4 fix: Cascade rename to sources
       (async () => {
         try {
-          await db.sources.where("category").equals(oldName).modify({ categoryId: newName });
+          await db.sources.where("categoryId").equals(oldName).modify({ categoryId: newName });
           invalidateSourcesCache();
         } catch (err) {
           console.error("[renameCategory] source cascade failed", err);
@@ -84,7 +84,7 @@ export function useCategoryManagement({
       const nextRef = { ...cardMapRef.current };
       for (const [id, c] of Object.entries(nextRef)) {
         if (c.categoryId === name) {
-          const u = { ...c, category: "Opšte", subcategory: "", updatedAt: now };
+          const u = { ...c, categoryId: "Opšte", subcategory: "", updatedAt: now };
           nextRef[id] = u;
           changed.push(u);
         }
@@ -104,7 +104,7 @@ export function useCategoryManagement({
       // F3 fix: Cascade delete to sources — reassign to "Opšte"
       (async () => {
         try {
-          await db.sources.where("category").equals(name).modify({ categoryId: "Opšte" });
+          await db.sources.where("categoryId").equals(name).modify({ categoryId: "Opšte" });
           invalidateSourcesCache();
         } catch (err) {
           console.error("[deleteCategory] source cascade failed", err);

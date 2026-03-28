@@ -10,6 +10,8 @@ import {
   idbLoadRecentReviewLog,
   idbLoadSettings,
   getDbErrorState,
+  seedDefaultCategories,
+  type CategoryRecord,
 } from "@/lib/db";
 import { checkInterruptedFlush } from "@/lib/persist-queue";
 
@@ -121,7 +123,14 @@ export function useCardBootstrap(setters: BootSetters) {
         const c = await withTimeout(idbLoadCards(), 5000, "cards load", []);
 
         splashProgress(50, `${c.length} kartica učitano`);
-        const cats = await withTimeout(idbLoadCategories(), 2500, "categories load", ["Opšte"]);
+        // Load CategoryRecord[] from IDB, seed defaults if empty
+        const catRecords = await withTimeout(seedDefaultCategories(), 2500, "categories load", []);
+        const catNames = catRecords.map((r: CategoryRecord) => r.name);
+        // Build subcategories map from CategoryRecord.subcategories
+        const subsMap: Record<string, string[]> = {};
+        catRecords.forEach((r: CategoryRecord) => {
+          if (r.subcategories && r.subcategories.length > 0) subsMap[r.name] = r.subcategories;
+        });
 
         splashProgress(65, "Učitavanje kategorija…");
 
@@ -138,8 +147,8 @@ export function useCardBootstrap(setters: BootSetters) {
         markBootStep("cards:data-load-done", `${c.length} cards`);
 
         setCardMapState(arrayToMap(c));
-        setCategoriesState(cats);
-        setSubcategoriesState(subs);
+        setCategoriesState(catNames);
+        setSubcategoriesState(subsMap);
         setReviewLogState(log);
         setSrSettingsState(settings);
 

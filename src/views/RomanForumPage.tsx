@@ -13,21 +13,18 @@ export default function RomanForumPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
 
-
   useEffect(() => {
     loadSources().then(setSources);
-    const unsub1 = onSourcesChanged(() => loadSources().then(setSources));
-    const unsub2 = (() => {
-      setRegistryVersion(v => v + 1);
-      loadSources().then(setSources);
-    });
-    return () => { unsub1(); unsub2(); };
+    const unsub = onSourcesChanged(() => loadSources().then(setSources));
+    return () => { unsub(); };
   }, []);
 
   const deferredCards = useDeferredValue(cards);
 
-  const forumState = useMemo(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const forumState = useMemo(
+    () => calculateForumState(deferredCards, reviewLog, sources),
+    [deferredCards, reviewLog, sources],
+  );
 
   const selectedMonument = selectedCategory
     ? forumState.monuments.find((m) => m.category === selectedCategory) ?? null

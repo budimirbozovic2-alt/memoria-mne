@@ -46,6 +46,7 @@ export default function Breadcrumbs() {
   if (crumbs.length <= 1) return null;
 
   return (
+    <nav className="flex items-center gap-1 text-xs text-muted-foreground">
       {crumbs.map((crumb, i) => (
         <span key={i} className="flex items-center gap-1">
           {i > 0 && <ChevronRight className="h-3 w-3" />}

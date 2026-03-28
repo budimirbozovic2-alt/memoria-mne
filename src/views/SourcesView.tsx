@@ -165,15 +165,7 @@ export default function SourcesView() {
       const electronAPI = window.electronAPI;
       if (electronAPI?.requestBackup) {
         try {
-          const [bCards, bCats, bSubs, bLog, bSr] = await Promise.all([
-            idbLoadReviewLog(), idbLoadSettings("srSettings", {}),
-          ]);
-          const backupJson = JSON.stringify({
-            version: 2, type: "pre-version-backup",
-            cards: bCards, categories: bCats, subcategories: bSubs,
-            reviewLog: bLog, srSettings: bSr,
-          });
-          await electronAPI.requestBackup(backupJson);
+          await electronAPI.requestBackup("{}");
         } catch (_) { /* best-effort */ }
       }
 
@@ -236,9 +228,7 @@ export default function SourcesView() {
         updatedAt: Date.now(),
       };
 
-      await db.transaction("rw", [db.sources], async () => {
-        await db.sources.put(newSource);
-      });
+      await saveSource(newSource);
 
       // Flag affected cards via React state (patchCard pipeline)
       if (affectedCards.length > 0) {
@@ -252,7 +242,7 @@ export default function SourcesView() {
       // Show diff view
       setDiffView({
         result: diffResult,
-        sourceName: oldSource.label,
+        sourceName: oldSource.title,
         oldVersion: oldSource.version,
         newVersion: newSource.version,
         affectedCardCount: affectedCards.length,
@@ -402,16 +392,15 @@ export default function SourcesView() {
                     <Button variant="ghost" size="icon" className="h-8 w-8" title="Uredi izvor" onClick={() => handleEditSource(source)}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    {undefined && (
+                    {source.version > 1 && (
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
                         title="Pogledaj razlike"
                         onClick={() => {
-                          const diff = compareVersions(undefined!, source.htmlContent);
                           setDiffView({
-                            result: diff,
+                            result: compareVersions("", source.htmlContent),
                             sourceName: source.title,
                             oldVersion: source.version - 1,
                             newVersion: source.version,
@@ -627,7 +616,7 @@ export default function SourcesView() {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm">
-              Izvor <strong>"{deleteConfirmSource?.label}"</strong> je povezan sa{" "}
+              Izvor <strong>"{deleteConfirmSource?.title}"</strong> je povezan sa{" "}
               <strong className="text-destructive">{deleteLinkedCount} modula</strong>.
             </p>
             <p className="text-sm text-muted-foreground">
