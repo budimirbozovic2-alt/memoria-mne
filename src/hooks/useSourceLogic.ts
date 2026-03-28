@@ -11,7 +11,7 @@ import type { ExamQuestion } from "@/components/ExamSidebar";
 type ViewMode = "standard" | "coverage";
 
 export function useSourceLogic(source: Source) {
-  const { addCard, categories, cards } = useAppContext();
+  const { addCard, categories, cards, patchCard } = useAppContext();
   const contentRef = useRef<HTMLDivElement>(null);
   const [outlineOpen, setOutlineOpen] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("standard");
@@ -29,6 +29,8 @@ export function useSourceLogic(source: Source) {
   const [splitModules, setSplitModules] = useState<SelectionModule[]>([]);
   const [examOpen, setExamOpen] = useState(false);
   const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkSelectedText, setLinkSelectedText] = useState("");
 
   // Only recompute coverage/linkedCount when cards linked to THIS source change
   const sourceCards = useMemo(
@@ -155,6 +157,44 @@ export function useSourceLogic(source: Source) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
+  const handleLinkToExisting = useCallback(() => {
+    if (!selection) return;
+    setLinkSelectedText(selection.text);
+    setLinkModalOpen(true);
+    setSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }, [selection]);
+
+  const handleLinkConfirm = useCallback((cardId: string) => {
+    patchCard(cardId, (c) => ({
+      ...c,
+      sourceId: source.id,
+      textAnchor: createTextAnchor(linkSelectedText),
+      originalSourceSnippet: linkSelectedText,
+      sections: [
+        ...c.sections,
+        {
+          id: crypto.randomUUID(),
+          title: "Isječak iz izvora",
+          content: sanitizeHtml(linkSelectedText),
+          state: 0 as const,
+          interval: 0,
+          stability: 0,
+          difficulty: 0,
+          elapsedDays: 0,
+          scheduledDays: 0,
+          nextReview: 0,
+          lastReviewed: null,
+          lapses: 0,
+          firstReviewPending: false,
+        },
+      ],
+    }));
+    setLinkModalOpen(false);
+    setLinkSelectedText("");
+    toast({ title: "Esej uspješno povezan!", description: `Povezano sa izvorom "${source.label}"` });
+  }, [patchCard, source.id, source.label, linkSelectedText]);
+
   const handleMapSelection = useCallback((questionId: string) => {
     if (!selection) return;
     const text = selection.text;
@@ -200,8 +240,9 @@ export function useSourceLogic(source: Source) {
     splitSummaryOpen, setSplitSummaryOpen, splitResult, setSplitResult,
     splitDone, splitCreatedCount, splitParentName, setSplitParentName,
     splitModules, setSplitModules, examOpen, setExamOpen, examQuestions, setExamQuestions,
+    linkModalOpen, setLinkModalOpen, linkSelectedText,
     coverage, safeHtml, linkedCount, cards, categories,
     handleMouseUp, handleConvertToEssay, handleSmartSplitConfirm, handleCreateEssay,
-    scrollToHeading, handleMapSelection,
+    scrollToHeading, handleMapSelection, handleLinkToExisting, handleLinkConfirm,
   };
 }
