@@ -1,4 +1,4 @@
-import { ShieldAlert, BookOpen, Brain, Link2, ArrowLeft, ChevronRight, HelpCircle, AlertTriangle } from "lucide-react";
+import { ShieldAlert, BookOpen, Brain, Link2, ChevronRight, HelpCircle, AlertTriangle } from "lucide-react";
 import { useState, useMemo } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { LearnMode, ReviewLogEntry } from "@/lib/storage";
