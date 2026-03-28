@@ -10,6 +10,7 @@ interface UseCategoryManagementParams {
   setSubcategories: (updater: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   cardMapRef: MutableRefObject<CardMap>;
+  getCategoryRecords: () => { id: string; name: string }[];
 }
 
 export function useCategoryManagement({
