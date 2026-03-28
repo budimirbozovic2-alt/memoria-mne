@@ -70,8 +70,10 @@ export default function CategoryView() {
       const { parseDocxInWorker } = await import("@/lib/docx-parser");
       const rawHtml = await parseDocxInWorker(arrayBuffer);
       const cleanHtml = sanitizeHtml(rawHtml);
-      const { html: promotedHtml, outline } = promoteHeadings(cleanHtml);
-      const articles = parseArticles(promotedHtml);
+      const promotedHtml = (await import("@/lib/heading-promotion")).promoteHeadings(cleanHtml);
+      const injectedHtml = injectHeadingIds(promotedHtml);
+      const outline = extractOutline(injectedHtml);
+      const articles = parseArticles(injectedHtml);
       const title = file.name.replace(/\.docx?$/i, "");
 
       const newSource: Source = {
