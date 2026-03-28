@@ -69,6 +69,7 @@ export function useCardData() {
 // CARD ACTIONS CONTEXT — stable refs (never re-renders on data changes)
 // ═══════════════════════════════════════════════════════════
 interface CardActionsContextValue {
+  patchCard: ReturnType<typeof useCards>["patchCard"];
   addCard: ReturnType<typeof useCards>["addCard"];
   addFlashCard: ReturnType<typeof useCards>["addFlashCard"];
   updateCard: ReturnType<typeof useCards>["updateCard"];
