@@ -126,6 +126,7 @@ export function useCardBootstrap(setters: BootSetters) {
         splashProgress(50, `${c.length} kartica učitano`);
         // Load CategoryRecord[] from IDB, seed defaults if empty
         const catRecords = await withTimeout(seedDefaultCategories(), 2500, "categories load", []);
+        console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
         const catNames = catRecords.map((r: CategoryRecord) => r.name);
         // Build subcategories map from CategoryRecord.subcategories
         const subsMap: Record<string, string[]> = {};
@@ -147,6 +148,7 @@ export function useCardBootstrap(setters: BootSetters) {
         );
         markBootStep("cards:data-load-done", `${c.length} cards`);
 
+        console.log("[boot:diag] setting state — cards:", c.length, "categories:", catRecords.length);
         setCardMapState(arrayToMap(c));
         setCategoriesState(catNames);
         setCategoryRecordsState(catRecords);

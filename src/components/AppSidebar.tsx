@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useCardData } from "@/contexts/AppContext";
+import type { CategoryRecord } from "@/lib/db";
 
 const STATIC_NAV = [
   { path: "/", icon: Home, label: "Dashboard" },
@@ -32,6 +34,28 @@ export default function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { stats, categoryRecords } = useCardData();
+
+  // Defensive fallback: if context categories are empty after 2s, load directly from DB
+  const [fallbackCategories, setFallbackCategories] = useState<CategoryRecord[]>([]);
+  useEffect(() => {
+    if (categoryRecords.length > 0) {
+      if (fallbackCategories.length > 0) setFallbackCategories([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const { seedDefaultCategories } = await import("@/lib/db");
+        const cats = await seedDefaultCategories();
+        console.log("[sidebar] fallback loaded", cats.length, "categories");
+        setFallbackCategories(cats);
+      } catch (e) { console.error("[sidebar] fallback failed", e); }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [categoryRecords.length]);
+
+  const displayCategories = categoryRecords.length > 0 ? categoryRecords : fallbackCategories;
+
+  console.log("[sidebar] categoryRecords:", categoryRecords.length, "fallback:", fallbackCategories.length, "display:", displayCategories.length);
 
   return (
     <Sidebar collapsible="icon">
@@ -65,14 +89,20 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Categories — from boot context, not useLiveQuery */}
+        {/* Categories — from boot context with fallback */}
         <SidebarGroup>
           <SidebarGroupLabel>Predmeti</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {categoryRecords.map((cat) => {
+              {displayCategories.length === 0 && (
+                <SidebarMenuItem>
+                  <span className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Učitavanje predmeta…
+                  </span>
+                </SidebarMenuItem>
+              )}
+              {displayCategories.map((cat) => {
                 const catPath = `/category/${cat.id}`;
-                const isActive = location.pathname.startsWith(catPath);
                 return (
                   <SidebarMenuItem key={cat.id}>
                     <SidebarMenuButton asChild tooltip={cat.name}>
