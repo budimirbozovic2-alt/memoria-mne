@@ -16,8 +16,10 @@ import { useCardBootstrap } from "./useCardBootstrap";
 import { useCardAnnotations } from "./useCardAnnotations";
 import { CardMap, mapToArray, persistQueue, schedulePersist, bumpMapVersion } from "@/lib/persist-queue";
 import {
-  idbSaveCategories,
   idbSaveSettings,
+  idbLoadCategories,
+  idbSaveCategories,
+  type CategoryRecord,
 } from "@/lib/db";
 import { onCardLinksCleared } from "@/lib/sources-storage";
 
@@ -79,12 +81,26 @@ export function useCards() {
     });
   }, []);
 
-
-
+  // Save categories: convert string[] names to CategoryRecord[] for IDB
   const setCategories = useCallback((updater: (prev: string[]) => string[]) => {
     setCategoriesState(prev => {
       const next = updater(prev);
-      if (next !== prev) idbSaveCategories(next);
+      if (next !== prev) {
+        // Async save: load existing records, update names/order
+        (async () => {
+          try {
+            const existing = await idbLoadCategories();
+            const byName = new Map(existing.map(c => [c.name, c]));
+            const records: CategoryRecord[] = next.map((name, i) => {
+              const rec = byName.get(name);
+              return rec
+                ? { ...rec, sortOrder: i }
+                : { id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] };
+            });
+            await idbSaveCategories(records);
+          } catch (e) { console.error("[useCards] category save failed", e); }
+        })();
+      }
       return next;
     });
   }, []);
@@ -92,6 +108,19 @@ export function useCards() {
   const setSubcategories = useCallback((updater: (prev: Record<string, string[]>) => Record<string, string[]>) => {
     setSubcategoriesState(prev => {
       const next = updater(prev);
+      // Persist subcategories to CategoryRecord.subcategories
+      if (next !== prev) {
+        (async () => {
+          try {
+            const existing = await idbLoadCategories();
+            const updated = existing.map(cat => ({
+              ...cat,
+              subcategories: next[cat.name] || [],
+            }));
+            await idbSaveCategories(updated);
+          } catch (e) { console.error("[useCards] subcategory save failed", e); }
+        })();
+      }
       return next;
     });
   }, []);
@@ -210,7 +239,20 @@ export function useCards() {
 
   const reorderCategories = useCallback((ordered: string[]) => {
     setCategoriesState(ordered);
-    idbSaveCategories(ordered);
+    // Save reordered categories
+    (async () => {
+      try {
+        const existing = await idbLoadCategories();
+        const byName = new Map(existing.map(c => [c.name, c]));
+        const records: CategoryRecord[] = ordered.map((name, i) => {
+          const rec = byName.get(name);
+          return rec
+            ? { ...rec, sortOrder: i }
+            : { id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] };
+        });
+        await idbSaveCategories(records);
+      } catch (e) { console.error("[useCards] reorderCategories save failed", e); }
+    })();
   }, []);
 
   const reorderSubcategories = useCallback((category: string, ordered: string[]) => {

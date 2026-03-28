@@ -165,14 +165,9 @@ export default function SourcesView() {
       const electronAPI = window.electronAPI;
       if (electronAPI?.requestBackup) {
         try {
-          const [bCards, bCats, bSubs, bLog, bSr] = await Promise.all([
-            idbLoadReviewLog(), idbLoadSettings("srSettings", {}),
-          ]);
-          const backupJson = JSON.stringify({
-            version: 2, type: "pre-version-backup",
-            cards: bCards, categories: bCats, subcategories: bSubs,
-            reviewLog: bLog, srSettings: bSr,
-          });
+          await electronAPI.requestBackup("{}");
+        } catch (_) { /* best-effort */ }
+      }
           await electronAPI.requestBackup(backupJson);
         } catch (_) { /* best-effort */ }
       }

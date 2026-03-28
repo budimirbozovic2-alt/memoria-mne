@@ -43,7 +43,6 @@ window.onunhandledrejection = (event) => {
 markBootStep("main:error-handlers-registered");
 
 // ── Splash fallback timeout — always runs even if imports fail ──
-// Safety timer: forcefully remove splash after 8 seconds no matter what
 setTimeout(() => {
   hideSplashImmediately();
 }, 8000);
@@ -56,7 +55,6 @@ setTimeout(() => {
     initColorTheme();
     markBootStep("main:theme-init-done");
 
-    // Render React FIRST, before DB — UI must never be blocked by database
     markBootStep("main:app-import-start");
     const { default: App } = await import("./App");
     markBootStep("main:app-import-done");
@@ -66,8 +64,6 @@ setTimeout(() => {
     createRoot(document.getElementById("root")!).render(<App />);
     markBootStep("main:react-render-done");
 
-    // Boot complete — replace destructive handlers with benign loggers
-    // React ErrorBoundary now handles UI errors; these only catch non-React exceptions
     window.onerror = (_msg, _src, _ln, _col, err) => {
       console.error("[runtime] uncaught error", err || _msg);
     };
@@ -87,12 +83,14 @@ setTimeout(() => {
       const { db } = await import("./lib/db");
 
       const buildBackupData = async () => {
+        const [
+          cards, categories, reviewLog, srSettingsRow,
+          sources, mindMaps, diary,
+          calibrationLog, latencyLog, slippageLog,
+          activityLog, disciplineLog, pomodoroLog,
+        ] = await Promise.all([
           db.cards.toArray(),
-          db.categories.toArray().then(rows => rows.map(r => r.name)),
-            const result: Record<string, string[]> = {};
-            rows.forEach(r => { result[r.category] = r.subs; });
-            return result;
-          }),
+          db.categories.toArray(),
           db.reviewLog.toArray(),
           db.settings.get("srSettings").then(r => r?.value ?? null),
           db.sources.toArray(),
@@ -106,7 +104,13 @@ setTimeout(() => {
           db.pomodoroLog.toArray(),
         ]);
 
-        // Read planner data from IDB (not stale localStorage)
+        // Build subcategories map from CategoryRecord
+        const subcategories: Record<string, string[]> = {};
+        categories.forEach(r => {
+          if (r.subcategories?.length > 0) subcategories[r.name] = r.subcategories;
+        });
+
+        // Read planner data from IDB
         const [plannerConfigRow, dailyMappedRow, dailyMappedDateRow] = await Promise.all([
           db.settings.get("plannerConfig"),
           db.settings.get("dailyMapped"),
@@ -132,15 +136,17 @@ setTimeout(() => {
 
         const data: Record<string, unknown> = {
           version: 4, type: "full",
+          cards,
+          categories: categories.map(r => r.name),
+          subcategories,
           sources, mindMaps,
           diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog,
           localStorageData,
         };
-        if (srSettings) data["srSettings"] = srSettings;
+        if (srSettingsRow) data["srSettings"] = srSettingsRow;
         return JSON.stringify(data);
       };
 
-      // Register periodic backup-requested listener
       const cleanup = window.electronAPI.onBackupRequested(async () => {
         try {
           const json = await buildBackupData();
@@ -148,8 +154,6 @@ setTimeout(() => {
         } catch (_) {}
       });
 
-      // Register quit-backup listener (IPC pattern, no executeJavaScript)
-      // CRITICAL: notifyQuitBackupDone MUST always be called or Electron hangs on quit
       const api = window.electronAPI!;
       const cleanupQuit = api.onQuitBackupRequested?.(async () => {
         try {
@@ -171,7 +175,6 @@ setTimeout(() => {
       window.addEventListener("beforeunload", doCleanup);
       window.addEventListener("unload", doCleanup);
 
-      // HMR cleanup: remove listeners to prevent leaks during hot-reload
       if (import.meta.hot) {
         import.meta.hot.dispose(() => {
           window.removeEventListener("beforeunload", doCleanup);
