@@ -206,7 +206,7 @@ export default function KnowledgeMap({
         onSearchChange={setSearchQuery}
         reorderMode={reorderMode}
         onToggleReorder={onReorderCategories ? () => setReorderMode(r => !r) : undefined}
-        onBack={onBack}
+        onBack={() => {}}
         onSelectCategory={(cat) => navigate({ step: "subcategories", category: cat })}
         onReorderCategories={onReorderCategories}
       />
