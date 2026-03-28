@@ -32,6 +32,7 @@ function stabilityLabel(s: number): { text: string; color: string } {
 
 export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard }: Props) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [addMode, setAddMode] = useState<"essay" | "flash">("flash");
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
