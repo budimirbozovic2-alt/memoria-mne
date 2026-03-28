@@ -89,7 +89,7 @@ function ProgressBar({ count, successes, streak }: { count: number; successes: n
   );
 }
 
-export default function FrequentErrors({ cards, onBack, onClearErrorLog, embedded }: Props) {
+export default function FrequentErrors({ cards, onClearErrorLog, embedded }: Props) {
   const { toast } = useToast();
   const [showMastered, setShowMastered] = useState(false);
 
