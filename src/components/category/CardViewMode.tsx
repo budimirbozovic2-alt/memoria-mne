@@ -385,6 +385,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
           </div>
         </DialogContent>
       </Dialog>
+      {renderAddDialog()}
     </div>
   );
 }
