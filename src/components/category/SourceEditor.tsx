@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { ArrowLeft, Save, Calendar as CalendarIcon, Scissors, Link2 } from "lucide-react";
+import { ArrowLeft, Save, Calendar as CalendarIcon, Scissors, Link2, Wand2, Maximize2, Minimize2, BookOpen, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
