@@ -1,192 +1,200 @@
 
 
-# Architectural & Relational Audit Report
+# CODEX v2.0 — Phase 1: Database Schema & Registry Destruction
 
-## Entity-Relationship Map
+## Understanding
+
+The current architecture has Categories as flat string arrays, Sources with an optional `category` field, and a separate localStorage-based Source Registry that maps raw labels to "Master Source" names with monument-type overrides. This creates fragile string-key relationships, duplicated grouping logic, and no true aggregate root.
+
+Phase 1 delivers a clean-slate Dexie v7 schema where Category is the root entity (UUID-based), Cards and Sources carry a strict `categoryId` FK, and the Source entity absorbs all registry metadata. The Source Registry module and its localStorage keys are deleted entirely.
+
+## New Domain Model
 
 ```text
-┌──────────────────────────────────────────────────────────────────┐
-│                        CATEGORIES (string[])                     │
-│  Storage: IDB categories table (id=name)                        │
-│  No UUID — name IS the key                                      │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│    ┌─────────────┐          ┌─────────────┐                     │
-│    │   SOURCES    │          │    CARDS     │                     │
-│    │ id (UUID)    │◄─────────│ sourceId?    │  N:1 (optional)    │
-│    │ category?    │          │ category     │  string match      │
-│    │ label        │          │ subcategory  │                     │
-│    └──────┬──────┘          │ chapter      │                     │
-│           │                  └──────────────┘                     │
-│           │                                                      │
-│    ┌──────▼──────────────────────────┐                           │
-│    │  SOURCE REGISTRY (localStorage) │                           │
-│    │  aliases: rawLabel→masterSource │                           │
-│    │  overrides: category→forcedMode │                           │
-│    └──────┬──────────────────────────┘                           │
-│           │                                                      │
-│    ┌──────▼──────┐                                               │
-│    │    FORUM     │  Derived at runtime from Cards + Registry    │
-│    │  monuments[] │  One monument per category                   │
-│    └─────────────┘                                               │
-└──────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  CATEGORIES (UUID PK, ~9-10 fixed)              │
+│  id, name, sortOrder, subcategories[], color    │
+├─────────────────────────────────────────────────┤
+│         │                        │              │
+│  ┌──────▼──────┐          ┌──────▼──────┐       │
+│  │   SOURCES    │          │    CARDS     │      │
+│  │ categoryId   │          │ categoryId   │      │
+│  │ (absorbs     │◄─────────│ sourceId?    │      │
+│  │  registry)   │          │              │      │
+│  └─────────────┘          └──────────────┘       │
+│                                                  │
+│  FORUM = pure read-only derived view from above  │
+└──────────────────────────────────────────────────┘
 ```
 
----
+## Changes
 
-## 1. Hierarchy & Relational Logic
+### 1. `src/lib/db.ts` — New v7 Schema (Clean Slate)
 
-### 1.1 Foreign Keys & Indexes
-
-| Relationship | Key Field | Indexed? | Enforcement |
-|---|---|---|---|
-| Card → Source | `card.sourceId` | Yes (IDB index) | **None** — no FK constraint, orphan sourceId values silently tolerated |
-| Card → Category | `card.category` (string) | Yes | **None** — category is a plain string, no referential check |
-| Source → Category | `source.category` (string, optional) | Yes (v6 index) | **None** — same string-match, no constraint |
-| Registry → Source | `alias.rawLabel` matches `source.label` | No index | **None** — pure string equality, no validation |
-| Forum → Cards | Derived grouping by `card.category` | N/A | Runtime only |
-
-**Finding F1**: There are zero enforced foreign keys anywhere. All relationships are string-based conventions. IndexedDB doesn't support FK constraints natively, but the application doesn't compensate with validation logic either.
-
-### 1.2 Circular Dependencies
-
-No circular dependencies exist. The hierarchy is strictly:
+**New Category table** with UUID PK:
+```ts
+interface CategoryRecord {
+  id: string;           // UUID
+  name: string;         // display name
+  sortOrder: number;
+  subcategories: string[];  // absorbs subcategories table
+  color?: string;
+}
 ```
-Category (string) ← Card.category / Source.category
-Source (UUID) ← Card.sourceId
-Registry (localStorage) ← Source.label
-Forum (runtime) ← Cards + Registry
+
+**Updated Source interface** — absorbs registry metadata, drops `label` rename to `title`:
+```ts
+interface Source {
+  id: string;
+  categoryId: string;       // FK → categories.id (REQUIRED)
+  title: string;             // was "label"
+  date: string;
+  htmlContent: string;
+  outline: { id: string; text: string; level: number }[];
+  articles: SourceArticle[];
+  version: number;
+  createdAt: number;
+  updatedAt: number;
+  // Registry-absorbed fields:
+  officialGazetteInfo?: string;
+  slMarkings?: string;        // SL oznake
+  isExclusive?: boolean;      // sole source for category (was Mode B)
+  // Dropped: previousVersionId, previousHtmlContent (diff feature preserved via version field)
+}
 ```
-This is clean. No risk of circular references.
 
-### 1.3 Category Identity Problem
+**Updated Card interface** — `category` string → `categoryId` UUID FK:
+```ts
+// In spaced-repetition.ts Card:
+categoryId: string;      // FK → categories.id (replaces `category: string`)
+subcategory?: string;     // kept as string within category
+chapter?: string;
+// sourceId?: string;     // unchanged
+```
 
-**Finding F2 (HIGH)**: Categories use `name` as both display label and primary key (`id: name, name`). This means:
-- `renameCategory("A", "B")` must atomically update: the categories table, all cards, all subcategories, **and all sources** with `category === oldName`.
-- Currently, `renameCategory` in `useCategoryManagement.ts` updates cards and subcategories but **does NOT update `source.category`**. Sources with `category === oldName` become orphaned from the renamed category.
+**Dexie v7 stores** — complete reset, no upgrade function:
+```ts
+this.version(7).stores({
+  categories: "id, name, sortOrder",
+  cards: "id, categoryId, subcategory, type, createdAt, sourceId, [categoryId+subcategory]",
+  sources: "id, categoryId, title, version, createdAt",
+  reviewLog: "++id, cardId, sectionId, timestamp",
+  pomodoroLog: "++id, timestamp, type",
+  settings: "key",
+  diary: "id, date",
+  calibrationLog: "++id, timestamp, cardId",
+  latencyLog: "++id, timestamp, cardId",
+  slippageLog: "++id, date",
+  activityLog: "++id, timestamp, type",
+  disciplineLog: "++id, date",
+  mindMaps: "id, title, updatedAt",
+  // subcategories table: DROPPED (absorbed into categories)
+});
+```
 
----
+The `ensureDbOpen` catch block will detect `VersionError` from v6→v7 mismatch. We add a one-time reset: if v7 upgrade fails, `deleteDatabase()` + reopen, seeding the 9 default categories.
 
-## 2. Synchronization & Cascading Operations
+**Default categories seed** (run after clean DB open):
+```ts
+const DEFAULT_CATEGORIES = [
+  "Krivično materijalno pravo",
+  "Krivično procesno pravo",
+  "Građansko pravo",
+  "Obligaciono pravo",
+  "Stvarno pravo",
+  "Radno pravo",
+  "Upravno pravo",
+  "Ustavno pravo",
+  "Međunarodno pravo",
+  "Opšte",
+];
+```
 
-### 2.1 Category Delete → Cards (Handled) / Sources (NOT Handled)
+### 2. Delete Source Registry — Files & References
 
-`deleteCategory(name)` in `useCategoryManagement.ts:65-89`:
-- Cards: reassigned to `"Opšte"` with `subcategory: ""` ✅
-- Subcategories: deleted ✅
-- **Sources with `source.category === name`: NOT updated** ❌
+**Delete files:**
+- `src/lib/source-registry.ts` — entire file
+- `src/views/SourceRegistryPage.tsx` — entire file
 
-**Finding F3 (CRITICAL)**: Deleting a category leaves sources with a `category` value pointing to a non-existent category. These sources become invisible in any category-filtered view and produce wrong auto-link results.
+**Clean references in 10 files:**
+- `src/App.tsx` — remove `/source-registry` route
+- `src/components/TopNav.tsx` — remove "Registar izvora" nav item
+- `src/components/Breadcrumbs.tsx` — remove `/source-registry` entry
+- `src/components/MainLayout.tsx` — remove from `SOURCE_ROUTES`
+- `src/components/SourceManager.tsx` — remove all registry imports/logic, rewrite to use `source.isExclusive` directly
+- `src/lib/sources-storage.ts` — remove registry import and cleanup logic
+- `src/lib/forum-logic.ts` — remove registry imports, use `source.title` directly instead of alias resolution
+- `src/hooks/useSourceHierarchy.ts` — remove registry imports
+- `src/hooks/useCardImport.ts` — remove registry cache invalidation
+- `src/hooks/useCardExport.ts` — remove `codex-source-registry` from localStorage backup keys
+- `src/views/RomanForumPage.tsx` — remove `onRegistryChanged` listener
+- `src/lib/db.ts` — remove `idbLoadSourceRegistry`/`idbSaveSourceRegistry` helpers
 
-### 2.2 Category Rename → Sources (NOT Handled)
+**Clean localStorage keys:**
+- Remove `codex-source-registry` usage
+- Remove `codex-monument-types` usage (monument types move to `settings` table or are derived)
 
-**Finding F4 (CRITICAL)**: Same as F3 but for rename. `renameCategory` updates cards and subcategories but sources with `source.category === oldName` are not renamed. After rename, `source.category` no longer matches any category.
+### 3. Update `spaced-repetition.ts` — Card Interface
 
-### 2.3 Source Delete → Cards (Handled)
+- Rename `category: string` → `categoryId: string` in `Card` interface
+- Keep `subcategory` and `chapter` as plain strings (they're scoped within the category)
 
-`deleteSource` in `sources-storage.ts:48-62` runs inside a Dexie transaction:
-- Finds all cards with `sourceId === id`
-- Clears `sourceId`, `textAnchor`, `needsReview`
-- Deletes source
+### 4. Update `useCategoryManagement.ts`
 
-This is correct, **but** it writes directly to IDB, bypassing the in-memory `cardMap` in `useCards`. The React state will be stale until next page reload.
+- Rewrite to work with UUID-based `CategoryRecord` instead of string arrays
+- `renameCategory` updates `categories.name`, then cascades to `cards.categoryId` (no change needed since FK is UUID)
+- `deleteCategory` reassigns cards/sources to "Opšte" category UUID
+- Subcategory operations now modify `categories.subcategories[]` array directly
 
-**Finding F5 (HIGH)**: `deleteSource` cleans IDB cards but doesn't notify the in-memory card state. Users see stale `sourceId` links in the UI until they refresh.
+### 5. Boot Sequence (`useCardBootstrap.ts`)
 
-### 2.4 Source Registry ↔ Source Delete
+- Load categories as `CategoryRecord[]` instead of `string[]`
+- Build a `categoryMap: Map<id, CategoryRecord>` for O(1) lookups
+- Remove `idbLoadSubcategories()` call (absorbed into categories)
+- Seed default categories if table is empty
 
-When a source is deleted, its `label` may still exist as a `rawLabel` in the Source Registry aliases. No cleanup occurs.
+## Technical Detail — DB Reset Strategy
 
-**Finding F6 (MEDIUM)**: Deleting a source doesn't remove its registry alias entry. The registry will reference a ghost label. This is cosmetic (the SourceManager shows count=0) but accumulates stale data over time.
+```ts
+// In ensureDbOpen, after VersionError catch:
+if (e.name === "VersionError" || e.name === "UpgradeError") {
+  await Dexie.delete("MemoriaDB");
+  // Re-instantiate and open fresh
+  // Seed default categories
+}
+```
 
-### 2.5 Import (Overwrite) — Source Category Preservation
+This is explicitly authorized by the "Clean Slate" protocol. All existing data is dropped.
 
-The import flow (`useCardImport.ts`) imports cards but sources are imported separately via `db.sources.bulkPut`. Since `source.category` is now a schema field, it survives import if the backup contains it. Old backups without the field will import sources with `category: undefined`.
+## Files Modified (Phase 1 only)
 
-**Finding F7 (LOW)**: Old backups produce sources without category. The v6 migration only runs on DB upgrade, not on import. A post-import migration step to re-infer categories from linked cards is missing.
+| File | Action |
+|---|---|
+| `src/lib/db.ts` | Major rewrite — v7 schema, new interfaces, seed logic, drop subcategories table |
+| `src/lib/spaced-repetition.ts` | `Card.category` → `Card.categoryId` |
+| `src/lib/source-registry.ts` | **DELETE** |
+| `src/views/SourceRegistryPage.tsx` | **DELETE** |
+| `src/lib/sources-storage.ts` | Remove registry imports |
+| `src/lib/forum-logic.ts` | Remove registry imports, use source.title |
+| `src/hooks/useCategoryManagement.ts` | Rewrite for UUID categories |
+| `src/hooks/useCardBootstrap.ts` | Load CategoryRecord[], seed defaults |
+| `src/App.tsx` | Remove registry route |
+| `src/components/TopNav.tsx` | Remove registry nav |
+| `src/components/Breadcrumbs.tsx` | Remove registry breadcrumb |
+| `src/components/MainLayout.tsx` | Remove from SOURCE_ROUTES |
+| `src/hooks/useCardImport.ts` | Remove registry references |
+| `src/hooks/useCardExport.ts` | Remove registry localStorage keys |
+| `src/hooks/useSourceHierarchy.ts` | Remove registry imports |
+| `src/views/RomanForumPage.tsx` | Remove registry listener |
+| `src/components/SourceManager.tsx` | Remove registry logic |
+| `src/contexts/AppContext.tsx` | Update category types |
 
----
+## What Phase 1 Does NOT Touch
 
-## 3. State Management & Component Coupling
+- No UI layout changes (Phase 2)
+- No Mode A/B card view toggle (Phase 3)
+- No Forum DnD stripping (Phase 3)
+- No new Source editor (Phase 3)
 
-### 3.1 Dual Data Paths (IDB Direct vs. In-Memory)
-
-| Operation | Path | In-memory sync? |
-|---|---|---|
-| Card CRUD | `useCardCRUD` → `cardMapRef` + `schedulePersist` | ✅ Yes |
-| Source CRUD | `sources-storage.ts` → `db.sources.put()` directly | ❌ No — components re-fetch via `loadSources()` |
-| Category CRUD | `useCategoryManagement` → `setCategoriesState` + `idbSaveCategories` | ✅ Yes |
-| Source Registry | `source-registry.ts` → `localStorage` + IDB backup | ❌ Event-based (`onRegistryChanged`) |
-| Forum | `forum-logic.ts` → Pure function, fingerprint cache | ✅ Derived |
-
-**Finding F8 (HIGH)**: Sources and Cards use completely different state management patterns. Cards are in a centralized `cardMap` with ref-delta persistence. Sources are loaded ad-hoc via `loadSources()` with an in-memory cache that is invalidated on write. This means:
-- `deleteSource` clears card links in IDB but the `cardMap` in memory still shows the old `sourceId`.
-- `SourceReader` operates on its own fetched source, disconnected from the `SourceManager` cache.
-
-### 3.2 SourceManager Tight Coupling
-
-`SourceManager.tsx` directly calls `loadSources()`, `loadSourceRegistry()`, `buildAliasMap()`, and manually iterates `cards` to compute monument structures. It duplicates logic that `forum-logic.ts` also performs (grouping cards by category, resolving master sources). These two should share a computation layer.
-
-**Finding F9 (MEDIUM)**: `SourceManager` and `ForumProvider` independently compute monument/source groupings from the same raw data, with slightly different logic paths. Risk of UI inconsistency between Forum view and Registry view.
-
----
-
-## 4. Performance in Cross-Entity Queries
-
-### 4.1 N+1 Query Patterns
-
-| Component | Pattern | Efficiency |
-|---|---|---|
-| `SourceManager` monuments | Iterates all cards O(n), then for each monument law does `sources.find()` O(m) | O(n*m) — should use sourceMap |
-| `forum-logic.ts` source breakdown | For each card in category, looks up `sourceMap.get()` | O(1) per card ✅ |
-| `auto-link-suggestion.ts` | Iterates all cards × all sources | O(n*m) but filtered early |
-| `LinkToExistingCardModal` | Filters cards in-memory from props | O(n) ✅ |
-
-**Finding F10 (MEDIUM)**: In `SourceManager.tsx:119-134`, the `matchingCat` lookup does `sources.find(s => s.label === law.label)` inside a loop over all monument groups, each with multiple laws. This is O(groups × laws × sources). With many sources this becomes noticeable. Should use a `Map<label, Source>` for O(1) lookup.
-
-### 4.2 Boot Load
-
-All cards are loaded into memory at boot (`boot-load-all` pattern). This is intentional and appropriate for <10K cards. Sources are loaded lazily on first access. No N+1 IDB queries at boot.
-
----
-
-## Summary of Findings
-
-| ID | Severity | Issue |
-|---|---|---|
-| F3 | 🔴 CRITICAL | `deleteCategory` doesn't update `source.category` — orphaned sources |
-| F4 | 🔴 CRITICAL | `renameCategory` doesn't update `source.category` — broken category link |
-| F5 | 🟠 HIGH | `deleteSource` updates IDB cards but not in-memory `cardMap` — stale UI |
-| F2 | 🟠 HIGH | Category uses name as PK — all rename/delete must cascade to sources |
-| F8 | 🟠 HIGH | Dual data path (cards in-memory vs sources ad-hoc) causes sync gaps |
-| F9 | 🟡 MEDIUM | SourceManager and Forum duplicate grouping logic, risk of divergence |
-| F6 | 🟡 MEDIUM | Deleting source doesn't clean registry alias entries |
-| F10 | 🟡 MEDIUM | `SourceManager` matchingCat uses O(n) find instead of Map lookup |
-| F7 | 🟡 LOW | Old backup import produces sources without category, no post-import fix |
-| F1 | ℹ️ INFO | No FK enforcement anywhere — all relationships are string conventions |
-
-## Actionable Recommendations
-
-### Priority 1: Fix Category Cascade to Sources (F3, F4)
-
-In `useCategoryManagement.ts`:
-- `renameCategory`: after updating cards, query `db.sources.where("category").equals(oldName)` and update to `newName`.
-- `deleteCategory`: same — update source.category to `"Opšte"` or clear it.
-- Invalidate sources cache after these mutations.
-
-### Priority 2: Sync deleteSource with In-Memory Card State (F5)
-
-After `deleteSource` cleans IDB, fire a notification that `useCards` listens to (similar to `onSourcesChanged`), triggering a `setCardMapState` update that clears `sourceId` on affected cards in memory.
-
-### Priority 3: Unify Source/Card State Layer (F8)
-
-Consider lifting sources into the same centralized provider pattern as cards, or at minimum, ensure all IDB-direct source mutations trigger in-memory card state updates.
-
-### Priority 4: Deduplicate Monument Computation (F9)
-
-Extract shared "group cards by category + resolve master sources" logic into a shared utility that both `SourceManager` and `forum-logic.ts` consume.
-
-### Priority 5: Registry Cleanup on Source Delete (F6)
-
-When deleting a source, check if its `label` appears in `registry.aliases` and remove entries where no other source shares that label.
+Existing UI will have TypeScript errors after Phase 1 due to `category` → `categoryId` rename. These are intentional — Phase 2 will fix all consumers as it builds the new routing shell.
 
