@@ -52,7 +52,7 @@ export default function AutoLinkReviewModal({ pairs, open, onClose, onLink }: Pr
 
         {remaining.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-8 text-center">
-            <CheckCircle className="h-10 w-10 text-green-500" />
+            <CheckCircle className="h-10 w-10 text-primary" />
             <p className="text-sm text-muted-foreground">
               {linkedCount > 0
                 ? `Uspješno uvezano ${linkedCount} kartica.`
