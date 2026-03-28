@@ -1,50 +1,71 @@
 
 
-# Electron Build — Eternal Loading Screen Audit
+# Fix Eternal Loading Screen in Electron
 
-## Verdict: No eternal loading bug found
+## Root Cause Analysis
 
-The boot sequence has **5 independent timeout layers** that guarantee the UI will eventually show:
+The app already uses `HashRouter` and `base: './'` — those are correct. The actual culprits are:
 
-```text
-Layer 1: useCards.ts forceReady         →  5s → sets ready=true
-Layer 2: useCardBootstrap panicTimer    →  8s → sets ready=true
-Layer 3: main.tsx hideSplashImmediately →  8s → removes splash DOM
-Layer 4: index.html fallback timer     → 10s → shows reload button (with 2 auto-retries)
-Layer 5: electron/window.cjs fallback  →  6s → shows BrowserWindow regardless
+1. **CSP blocks dynamic imports under `file://`** — In `main.cjs:52-61`, the production CSP sets `script-src 'self' 'unsafe-inline'` but under the `file://` protocol, `'self'` origin matching is unreliable in Chromium. Dynamic `import()` calls in `main.tsx` (lines 55, 61, 65) silently fail, so React never mounts.
+
+2. **Service Worker registration crashes under `file://`** — In `main.tsx:189-201`, production mode tries `navigator.serviceWorker.register("./sw.js")`. Service workers are not supported under `file://` and this can throw an unhandled error.
+
+3. **SW cache poisoning** — The service worker caches absolute paths (`/`, `/index.html`) which don't exist under `file://`, potentially intercepting navigation requests and returning broken responses.
+
+## Changes
+
+### 1. `main.cjs` — Relax CSP for file:// protocol (~3 lines)
+
+Only apply the CSP `onHeadersReceived` filter when the URL scheme is **not** `file://`. This lets Electron load scripts freely from local disk (which is already sandboxed by `contextIsolation: true`).
+
+```js
+// Line 52: add protocol check
+session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+  // Skip CSP for file:// — 'self' doesn't match reliably under file protocol
+  if (details.url.startsWith('file://')) {
+    return callback({ responseHeaders: details.responseHeaders });
+  }
+  callback({
+    responseHeaders: {
+      ...details.responseHeaders,
+      'Content-Security-Policy': [
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self';"
+      ],
+    },
+  });
+});
 ```
 
-Each layer is **independent** — they use separate timers, not chained promises. Even if React never mounts, layers 4 and 5 still fire.
+### 2. `src/main.tsx` — Skip service worker in Electron (~2 lines)
 
-## Trace of the critical path
+Wrap the SW registration block with an Electron guard:
 
-1. **Electron main** → creates splash window, creates main window (hidden)
-2. **main.tsx** → registers error handlers, starts 8s splash-kill timer, async-imports App, calls `createRoot().render(<App/>)`
-3. **App.tsx** → renders `<div data-app-mounted>` immediately (no blocking)
-4. **AppContext** → calls `useCards()` → `useCardBootstrap()` → `ensureDbOpen(6000ms)` with timeout
-5. **useCardBootstrap finally** → always calls `setReady(true)` + `electronAPI.notifyReady()`
-6. **Electron main** receives `renderer-ready` IPC → destroys splash, shows main window
+```ts
+// Line 189: add Electron guard
+if ("serviceWorker" in navigator && !(window as any).electronAPI) {
+```
 
-### DB failure path (line 88-97)
-If `ensureDbOpen` fails, the `return` on line 97 exits the `try` block but **`finally` still executes** — `setReady(true)` is called, splash is removed, `notifyReady()` fires. The app boots in degraded mode with empty data.
+This prevents SW registration entirely when running inside Electron, avoiding both the `file://` crash and cache poisoning.
 
-### Dynamic import failure path
-If `import("@/lib/boot-trace")` on line 80 throws, the outer `catch` logs it, and `finally` still fires.
+### 3. `public/sw.js` — Use relative cache paths (safety net)
 
-## Minor observations (not bugs)
+Change `STATIC_ASSETS` from absolute paths to relative, so even if SW somehow registers, it won't cache-intercept with broken absolute URLs:
 
-1. **`ready-to-show` timer logic** (window.cjs:205-212): If `ready-to-show` fires before the 6s fallback, it **clears** the fallback and sets a new 3s timer. Net effect: window shows at `ready-to-show + 3.5s` instead of 6s. This is intentional but slightly confusing. Not a bug.
+```js
+const STATIC_ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+```
 
-2. **Preload path duplication** (window.cjs:87-89): Both dev and prod branches resolve to the same path. This is correct since `preload.cjs` lives at project root in both cases, but the conditional is dead code.
+## Files Changed
 
-3. **Service Worker in Electron production**: `sw.js` registration runs in prod (main.tsx:189-201). Under `file://` protocol, service workers don't work. The registration silently fails. Not a loading risk, just a no-op.
+| File | Change |
+|------|--------|
+| `main.cjs` | Skip CSP header injection for `file://` URLs |
+| `src/main.tsx` | Skip SW registration when `electronAPI` is present |
+| `public/sw.js` | Use relative paths in `STATIC_ASSETS` |
 
-## Conclusion
-
-**No code changes needed.** The layered timeout architecture is solid. If an eternal loading screen is actually observed in production, it would have to be caused by:
-- A crash loop exceeding the 3-crash limit (which shows an error dialog and quits)
-- A hung GPU process (Electron-level, not app-level)
-- File corruption where `dist/index.html` is missing (caught by `did-fail-load` handler with 2s retry)
-
-None of these are code bugs — they're environmental failures with existing handlers.
+## What stays the same
+- `App.tsx` — already uses `HashRouter` ✅
+- `vite.config.ts` — already has `base: './'` ✅
+- `electron/window.cjs` — fallback timers and `loadFile` path are correct ✅
+- All DB/persistence logic untouched
 
