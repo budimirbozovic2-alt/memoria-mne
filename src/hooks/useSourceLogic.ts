@@ -145,7 +145,7 @@ export function useSourceLogic(source: Source) {
   const handleCreateEssay = useCallback(() => {
     if (!essayQuestion.trim() || !selectedText) return;
     const anchor = createTextAnchor(selectedText);
-    addCard(essayQuestion.trim(), [{ title: "Odgovor", content: sanitizeHtml(selectedText) }], essayCategory, undefined, undefined, {
+    addCard(essayQuestion.trim(), [{ title: "Odgovor", content: sanitizeHtml(selectedText) }], source.categoryId, undefined, undefined, {
       sourceId: source.id, textAnchor: anchor, originalSourceSnippet: selectedText,
     });
     toast({ title: "Esejsko pitanje kreirano", description: `Povezano sa izvorom "${source.title}"` });
