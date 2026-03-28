@@ -7,7 +7,7 @@ import { SectionState } from "@/lib/spaced-repetition";
  * Helper: generates N cards for a category where `masteryPct`% of sections
  * are in Review state and the rest are New.
  */
-function makeCards(category: string, total: number, masteryPct: number): Card[] {
+function makeCards(categoryId: string, total: number, masteryPct: number): Card[] {
   const cards: Card[] = [];
   const sectionsPerCard = 4;
   const totalSections = total * sectionsPerCard;
