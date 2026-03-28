@@ -51,11 +51,51 @@ export default function CategoryView() {
 
   // Sources tab: selected source for editor
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSourceUpdated = useCallback((updated: Source) => {
-    // Source was saved via SourceEditor; invalidate cache for other consumers
     invalidateSourcesCache();
   }, []);
+
+  const handleDocxImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !categoryId) return;
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+
+    setImporting(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const { parseDocxInWorker } = await import("@/lib/docx-parser");
+      const rawHtml = await parseDocxInWorker(arrayBuffer);
+      const cleanHtml = sanitizeHtml(rawHtml);
+      const { html: promotedHtml, outline } = promoteHeadings(cleanHtml);
+      const articles = parseArticles(promotedHtml);
+      const title = file.name.replace(/\.docx?$/i, "");
+
+      const newSource: Source = {
+        id: crypto.randomUUID(),
+        categoryId,
+        title,
+        date: new Date().toISOString().slice(0, 10),
+        htmlContent: promotedHtml,
+        outline,
+        articles,
+        version: 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      await saveSource(newSource);
+      invalidateSourcesCache();
+      toast.success(`Izvor "${title}" uspješno importovan.`);
+    } catch (err) {
+      toast.error(`Greška pri importu: ${err instanceof Error ? err.message : "Nepoznata greška"}`);
+    } finally {
+      setImporting(false);
+    }
+  }, [categoryId]);
 
   // Loading state
   if (category === undefined) {
