@@ -390,6 +390,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
         </DialogContent>
       </Dialog>
       {renderAddDialog()}
+      <BulkImportDialog open={bulkImportOpen} onOpenChange={setBulkImportOpen} categoryId={categoryId} addFlashCard={addFlashCard} />
     </div>
   );
 }
