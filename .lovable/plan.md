@@ -1,136 +1,437 @@
 
+Analiza 4 tačke:
 
-# Phase 4: Post-Refactoring System Integrity Audit
+1. Provider Trap
+- Ne, `AppSidebar` nije izvan provider-a.
+- U `src/App.tsx` redoslijed je: `HashRouter > AppProvider > ... > MainLayout`.
+- U `src/components/MainLayout.tsx`, `AppSidebar` se renderuje unutar `MainLayout`.
+- `AppProvider` iz `src/contexts/AppContext.tsx` obavija cijelo stablo prije `MainLayout`, tako da `useCardData()` u sidebar-u ima pristup kontekstu.
 
-## Executive Summary
+2. Silent Bailout
+- U `AppSidebar.tsx` nema `if (isLoading) return null`, niti bilo kakvog ranog `return null`.
+- `MainLayout.tsx` takođe ne uslovljava render `AppSidebar`.
+- Jedini bailout u provider lancu je `if (h.dbError)` u `CardProvider`, ali tada bi se prikazao recovery panel umjesto cijele aplikacije. Pošto vidiš normalan layout i header, to nije aktivni problem.
 
-The architecture is **structurally sound** with one critical scoping violation, several pieces of dead code, and a few legacy remnants. No "God Object" problems detected. Below is the full report with recommended fixes.
+3. Map Syntax Error
+- `displayCategories.map((cat) => { ... return (...) })` je sintaksno ispravan.
+- `key={cat.id}` postoji.
+- Route koristi ispravan UUID: ``/category/${cat.id}``.
+- Dakle, problem nije “missing return” niti `key`.
 
----
+4. CSS Trap
+- Ovo je najvjerovatniji uzrok vidljivog simptoma.
+- `Sidebar` u kolapsiranom stanju ima širinu `3rem`.
+- `SidebarGroupLabel` postaje `opacity-0`, ali grupa ostaje prisutna.
+- Stavke se i dalje renderuju, ali:
+  - tekst se ne prikazuje kada je `collapsed`
+  - kod kategorija se prikazuje samo mala tačka boje (`h-2.5 w-2.5`)
+  - zbog `justify-center px-0` na `SidebarMenuButton` i `overflow-hidden` na `Sidebar`, te tačkice izgledaju kao da “nema ničega”
+- Drugim riječima: kategorije su vrlo vjerovatno renderovane, ali vizuelno gotovo neprimjetne kada je sidebar ostao zapamćen u collapsed modu.
 
-## 1. Dead Code & Ghost Dependencies
+Tačan fix:
+- Forsirati da sidebar starta otvoren kako bi “Predmeti” lista bila odmah vidljiva.
+- Ukloniti nepotreban `useLocation` iz `AppSidebar.tsx`.
+- Dodati jači vizuelni fallback za kategorije u collapsed modu tako da se ne svode na skoro nevidljivu tačku.
 
-### Dead Components (no imports anywhere)
-| File | Status | Reason |
-|---|---|---|
-| `src/components/SourceManager.tsx` | **DEAD** | Zero imports. Was the old global source overview; replaced by `CategoryView` Sources tab |
+Kod za izmjenu:
 
-### Legacy Views (still routed but redundant under new architecture)
-| File | Status | Reason |
-|---|---|---|
-| `src/views/CardsView.tsx` (541 lines) | **Candidate for removal** | Global card browser with `codex-nav-category` localStorage filters. Replaced by scoped `CategoryView` Kartice tab. Still routed at `/cards` and `/database` |
-| `src/views/SourcesView.tsx` (639 lines) | **Candidate for removal** | Global source manager. Replaced by scoped `CategoryView` Izvori tab. Still routed at `/sources` |
-| `src/views/CardsPage.tsx` | **Wrapper for CardsView** — dies with it |
-| `src/views/SourcesRoutePage.tsx` | **Wrapper for SourcesView** — dies with it |
-| `src/views/CategoriesRoutePage.tsx` + `src/views/CategoriesPage.tsx` | **Review needed** — may still serve as a global category list |
+1. `src/components/MainLayout.tsx`
+```tsx
+import { ReactNode, useState, useEffect, useRef, lazy, Suspense, memo, useCallback } from "react";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import { useLocation } from "react-router-dom";
+import { useUIContext, useCardContext } from "@/contexts/AppContext";
+import ZenMode from "@/components/ZenMode";
+import AppSidebar from "@/components/AppSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AnimatePresence } from "framer-motion";
+import { hasSeenOnboarding } from "@/components/OnboardingModal";
+import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
+import { toast } from "@/hooks/use-toast";
+import { type PlannerConfig, loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
+import { Moon, Sun, Search, Focus, HelpCircle } from "lucide-react";
+import { setDarkMode } from "@/lib/app-settings";
 
-### Action
-- **Delete** `SourceManager.tsx` (zero consumers)
-- **Remove routes** `/cards`, `/database`, `/sources` from `App.tsx` and delete `CardsView.tsx`, `SourcesView.tsx`, `CardsPage.tsx`, `SourcesRoutePage.tsx` — OR keep them as legacy fallback if the user wants a global view. **Recommend asking user.**
+const DocxImporter = lazy(() => import("@/components/DocxImporter"));
+const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
+const AppOnboarding = lazy(() => import("@/components/AppOnboarding"));
 
----
+const SOURCE_ROUTES = ["/cards", "/categories", "/sources", "/database", "/category/"];
 
-## 2. "God Object" Detection
+/** Isolated component for planner nudge */
+const NudgeWatcher = memo(function NudgeWatcher() {
+  const { cards } = useCardContext();
+  const { pathname } = useLocation();
+  const prevPathRef = useRef(pathname);
+  const nudgeShownRef = useRef(false);
+  const plannerRef = useRef<PlannerConfig | null>(null);
 
-| Component | Lines | Verdict |
-|---|---|---|
-| `CategoryView.tsx` | 253 | ✅ Clean — delegates to `CardViewMode`, `CardOrgMode`, `SourceEditor`, `CategoryMnemonicWorkshop` |
-| `AppSidebar.tsx` | 179 | ✅ Clean — pure navigation, no business logic |
-| `MainLayout.tsx` | ~180 | ✅ Clean — layout shell with isolated `NudgeWatcher`, `GlobalSearchWrapper`, `DocxImporterWrapper` |
-| `useCards.ts` | 309 | ✅ Acceptable — orchestrator hook, logic delegated to `useCardBootstrap`, `useCardCRUD`, `useCardAnnotations`, `useCategoryManagement` |
-| `AppContext.tsx` | 388 | ✅ Acceptable — provider composition, no business logic inline |
+  const getPlannerCached = () => {
+    if (!plannerRef.current) plannerRef.current = loadPlanner();
+    return plannerRef.current;
+  };
 
-**No God Objects detected.** The decomposition from Phase 1-3 is holding well.
+  useEffect(() => {
+    if (pathname === "/planner") plannerRef.current = null;
+  }, [pathname]);
 
----
+  useEffect(() => {
+    const prevPath = prevPathRef.current;
+    prevPathRef.current = pathname;
+    if (!SOURCE_ROUTES.some(r => prevPath.startsWith(r))) return;
+    if (SOURCE_ROUTES.some(r => pathname.startsWith(r))) return;
+    if (nudgeShownRef.current) return;
 
-## 3. Implicit vs. Explicit Scoping Conflicts
+    try {
+      const planner = getPlannerCached();
+      if (!planner.finalGoalDate || planner.phases.length === 0) return;
+      const velocity = calcVelocity([], 7);
+      const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
+      if (!suggestion || suggestion.suggestedToday <= 0) return;
+      const dailyDone = getDailyMappedCount();
+      const remaining = suggestion.suggestedToday - dailyDone;
+      if (remaining > 0 && dailyDone < suggestion.suggestedToday) {
+        nudgeShownRef.current = true;
+        toast({
+          title: "📌 Ostani fokusiran",
+          description: `Preostalo ti je još ${remaining} od ${suggestion.suggestedToday} planiranih sekcija za danas.`,
+          duration: 5000,
+        });
+        setTimeout(() => { nudgeShownRef.current = false; }, 30 * 60 * 1000);
+      }
+    } catch {}
+  }, [pathname, cards]);
 
-### CRITICAL: `loadSources()` fetches ALL sources globally
+  return null;
+});
 
-`src/lib/sources-storage.ts` line 44-48:
-```ts
-export async function loadSources(): Promise<Source[]> {
-  const sources = await db.sources.toArray(); // ALL sources, no category filter
+/** Isolated wrapper for GlobalSearch */
+const GlobalSearchWrapper = memo(function GlobalSearchWrapper({
+  open, onClose,
+}: { open: boolean; onClose: () => void }) {
+  const { cards } = useCardContext();
+  const { setView, setEditingCard } = useUIContext();
+  if (!open) return null;
+  return (
+    <Suspense fallback={null}>
+      <GlobalSearch
+        cards={cards}
+        open={open}
+        onClose={onClose}
+        onNavigateToCard={(card) => {
+          setEditingCard(card);
+          setView("edit");
+        }}
+      />
+    </Suspense>
+  );
+});
+
+/** Isolated wrapper for DocxImporter */
+const DocxImporterWrapper = memo(function DocxImporterWrapper({
+  open, onClose,
+}: { open: boolean; onClose: () => void }) {
+  const { categories, importCards, addFlashCard } = useCardContext();
+  if (!open) return null;
+  return (
+    <Suspense fallback={null}>
+      <DocxImporter
+        open={open}
+        onClose={onClose}
+        categories={categories}
+        onImport={(docxCards, cat, cardType) => {
+          if (cardType === "flash") {
+            docxCards.forEach(c => {
+              const answer = c.sections.map(s => s.content).join("\n");
+              addFlashCard(c.question, answer, cat);
+            });
+          } else {
+            importCards(docxCards, cat);
+          }
+          onClose();
+        }}
+      />
+    </Suspense>
+  );
+});
+
+export default function MainLayout({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+
+  const [docxOpen, setDocxOpen] = useState(false);
+  const [zenMode, setZenMode] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [showAppOnboarding, setShowAppOnboarding] = useState(
+    () => !hasSeenOnboarding(APP_ONBOARDING_KEY)
+  );
+  const [dark, setDarkState] = useState(() => document.documentElement.classList.contains("dark"));
+
+  const toggleDark = useCallback(() => {
+    const next = !dark;
+    setDarkState(next);
+    setDarkMode(next);
+  }, [dark]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setGlobalSearchOpen(v => !v);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  const isFullWidth = SOURCE_ROUTES.some(r => pathname.startsWith(r));
+
+  return (
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex min-h-0 flex-1 w-full">
+        <AppSidebar />
+
+        <div className="flex-1 flex flex-col min-w-0">
+          <header className="sticky top-0 z-40 flex items-center h-11 px-4 border-b bg-background/90 backdrop-blur-md gap-2">
+            <SidebarTrigger className="shrink-0" />
+            <Breadcrumbs />
+            <div className="flex-1" />
+            <button
+              onClick={() => setGlobalSearchOpen(true)}
+              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+              title="Pretraži (Ctrl+K)"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setShowAppOnboarding(true)}
+              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+              title="Vodič"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setZenMode(v => !v)}
+              className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${zenMode ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+              title="Zen Mode"
+            >
+              <Focus className="h-4 w-4" />
+            </button>
+            <button
+              onClick={toggleDark}
+              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+              title="Tema"
+            >
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+          </header>
+
+          <NudgeWatcher />
+
+          <main className={`flex-1 px-4 md:px-8 py-6 w-full ${
+            isFullWidth ? "max-w-none" : "max-w-6xl mx-auto"
+          }`}>
+            {children}
+          </main>
+        </div>
+      </div>
+
+      <DocxImporterWrapper open={docxOpen} onClose={() => setDocxOpen(false)} />
+      <AnimatePresence>
+        <ZenMode active={zenMode} onToggle={() => setZenMode(false)} />
+      </AnimatePresence>
+      <GlobalSearchWrapper open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
+      <AnimatePresence>
+        {showAppOnboarding && (
+          <Suspense fallback={null}>
+            <AppOnboarding onComplete={() => setShowAppOnboarding(false)} />
+          </Suspense>
+        )}
+      </AnimatePresence>
+    </SidebarProvider>
+  );
 }
 ```
 
-**Consumers loading ALL sources (data leakage risk):**
-- `RomanForumPage.tsx` — Forum needs all sources for its cross-category analytics → **Acceptable**
-- `GlobalSearch.tsx` — Search across everything → **Acceptable**
-- `KnowledgeMap.tsx` — Cross-category overview → **Acceptable**
-- `auto-link-suggestion.ts` — **VIOLATION** — auto-link should be scoped to same category
+2. `src/components/AppSidebar.tsx`
+```tsx
+import { useEffect, useState } from "react";
+import { NavLink } from "@/components/NavLink";
+import {
+  Home, Landmark, Settings as SettingsIcon, RotateCcw,
+  BarChart3, BookOpen, Gauge, Zap, Map, Scale, GraduationCap,
+} from "lucide-react";
+import {
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel,
+  SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
+import { useCardData } from "@/contexts/AppContext";
+import type { CategoryRecord } from "@/lib/db";
 
-**CategoryView.tsx** correctly uses `useLiveQuery` scoped by `categoryId` → ✅ No leakage
+const STATIC_NAV = [
+  { path: "/", icon: Home, label: "Dashboard" },
+  { path: "/learn", icon: GraduationCap, label: "Učenje" },
+  { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
+  { path: "/forum", icon: Landmark, label: "Forum" },
+];
 
-### Action
-- Add `loadSourcesByCategory(categoryId)` to `sources-storage.ts`
-- Refactor `auto-link-suggestion.ts` to accept `categoryId` and filter sources
+const TOOLS_NAV = [
+  { path: "/stats", icon: BarChart3, label: "Statistika" },
+  { path: "/metacognitive", icon: BookOpen, label: "Dnevnik" },
+  { path: "/planner", icon: Gauge, label: "Strateški planer" },
+  { path: "/speed-reader", icon: Zap, label: "Speed Reader" },
+  { path: "/mind-map", icon: Map, label: "Mentalne mape" },
+];
 
----
+export default function AppSidebar() {
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+  const { stats, categoryRecords } = useCardData();
 
-## 4. Legacy Registry Remnants
+  const [fallbackCategories, setFallbackCategories] = useState<CategoryRecord[]>([]);
 
-### localStorage references to old registry
-| Location | Key | Status |
-|---|---|---|
-| `src/lib/db.ts:247` | `codex-source-registry` removal | ✅ Cleanup code — correct |
-| `src/lib/db.ts:248` | `codex-monument-types` removal | ✅ Cleanup code — correct |
-| `src/lib/forum-logic.ts:22-41` | `codex-monument-types` in localStorage | ⚠️ **Active use** — Forum still reads/writes monument types to localStorage |
-| `src/components/CategoryManager.tsx:8,44,88-90` | `loadMonumentTypes`, `saveMonumentType` | ⚠️ **Active use** — CategoryManager still manages monument building types via localStorage |
-| `src/views/CardsView.tsx:29-35,93-98` | `codex-nav-category/subcategory/chapter` | ⚠️ **Legacy navigation state** — should die with CardsView removal |
+  useEffect(() => {
+    if (categoryRecords.length > 0) {
+      if (fallbackCategories.length > 0) setFallbackCategories([]);
+      return;
+    }
 
-### Action
-- Monument types in localStorage is **acceptable** for now (it's a UI preference, not domain data)
-- `codex-nav-*` localStorage keys will be eliminated when `CardsView` is removed
+    const timer = setTimeout(async () => {
+      try {
+        const { seedDefaultCategories } = await import("@/lib/db");
+        const cats = await seedDefaultCategories();
+        setFallbackCategories(cats);
+      } catch (e) {
+        console.error("[sidebar] fallback failed", e);
+      }
+    }, 2000);
 
----
+    return () => clearTimeout(timer);
+  }, [categoryRecords.length, fallbackCategories.length]);
 
-## 5. Component Prop Drilling vs. Context
+  const displayCategories = categoryRecords.length > 0 ? categoryRecords : fallbackCategories;
 
-`categoryId` is passed through at most 1-2 levels:
-- `CategoryView` → `CardViewMode` / `CardOrgMode` / `SourceEditor` / `CategoryMnemonicWorkshop`
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigacija</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {STATIC_NAV.map(({ path, icon: Icon, label, badge }) => (
+                <SidebarMenuItem key={path}>
+                  <SidebarMenuButton asChild tooltip={label}>
+                    <NavLink
+                      to={path}
+                      end={path === "/"}
+                      className="hover:bg-sidebar-accent/50"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && <span className="truncate">{label}</span>}
+                      {!collapsed && badge && stats.due > 0 && (
+                        <Badge variant="destructive" className="ml-auto text-[9px] h-4 min-w-[16px] px-1">
+                          {stats.due}
+                        </Badge>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-This is **not excessive**. A `CategoryContext` would add complexity for no real benefit at this depth. **No action needed.**
+        <SidebarGroup>
+          <SidebarGroupLabel>Predmeti</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {displayCategories.length === 0 && (
+                <SidebarMenuItem>
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Učitavanje predmeta…
+                  </div>
+                </SidebarMenuItem>
+              )}
 
----
+              {displayCategories.map((cat) => (
+                <SidebarMenuItem key={cat.id}>
+                  <SidebarMenuButton asChild tooltip={cat.name}>
+                    <NavLink
+                      to={`/category/${cat.id}`}
+                      className="hover:bg-sidebar-accent/50"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      {collapsed ? (
+                        <Scale className="h-4 w-4 shrink-0" />
+                      ) : cat.color ? (
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: cat.color }}
+                        />
+                      ) : (
+                        <Scale className="h-4 w-4 shrink-0" />
+                      )}
+                      {!collapsed && (
+                        <span className="truncate text-[13px]">{cat.name}</span>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-## 6. FSRS & Forum Alignment
+        <SidebarGroup>
+          <SidebarGroupLabel>Alati</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {TOOLS_NAV.map(({ path, icon: Icon, label }) => (
+                <SidebarMenuItem key={path}>
+                  <SidebarMenuButton asChild tooltip={label}>
+                    <NavLink
+                      to={path}
+                      className="hover:bg-sidebar-accent/50"
+                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && <span className="truncate">{label}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-- **ReviewSession** (`src/components/ReviewSession.tsx`) uses `Card.sections[].state`, `stability`, `difficulty`, `nextReview` — all v7 schema fields ✅
-- **Forum** (`src/lib/forum-logic.ts`) reads `card.sections` for stability/difficulty aggregation via `computeForumData()` ✅
-- **ReviewLog** linkage: `reviewLog.cardId` → `Card.id` (UUID) ✅
-- Forum uses `loadSources()` (global) which is correct for its cross-category analytics role ✅
+        <SidebarGroup className="mt-auto">
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Podešavanja">
+                  <NavLink
+                    to="/settings"
+                    className="hover:bg-sidebar-accent/50"
+                    activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                  >
+                    <SettingsIcon className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span className="truncate">Podešavanja</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
+}
+```
 
-**FSRS and Forum are correctly aligned with the new schema.**
-
----
-
-## Recommended Fix Plan
-
-### Priority 1 (Do Now)
-1. **Delete `src/components/SourceManager.tsx`** — zero imports, pure dead code
-2. **Remove debug `console.log` lines** from `AppSidebar.tsx` (line 58) and `useCardBootstrap.ts` (lines 86, 104, 113, 122, 129, 151)
-
-### Priority 2 (Ask User First)
-3. **Remove legacy global views** (`CardsView`, `SourcesView`, `CardsPage`, `SourcesRoutePage`) and their routes — these are redundant with `CategoryView` but may still be wanted as a "see everything" fallback
-4. **Remove `/cards`, `/database`, `/sources` routes** from `App.tsx`
-
-### Priority 3 (Next Sprint)
-5. **Add `loadSourcesByCategory()`** to `sources-storage.ts` and scope `auto-link-suggestion.ts`
-6. **Remove sidebar fallback mechanism** once category rendering is confirmed stable (the `setTimeout` + `seedDefaultCategories` fallback in AppSidebar)
-
-### Files to Change
-| File | Action |
-|---|---|
-| `src/components/SourceManager.tsx` | **DELETE** |
-| `src/components/AppSidebar.tsx` | Remove debug console.log |
-| `src/hooks/useCardBootstrap.ts` | Remove debug console.log |
-| `src/views/CardsView.tsx` | **DELETE** (pending user approval) |
-| `src/views/SourcesView.tsx` | **DELETE** (pending user approval) |
-| `src/views/CardsPage.tsx` | **DELETE** (pending user approval) |
-| `src/views/SourcesRoutePage.tsx` | **DELETE** (pending user approval) |
-| `src/App.tsx` | Remove dead routes (pending user approval) |
-| `src/lib/sources-storage.ts` | Add `loadSourcesByCategory()` |
-| `src/lib/auto-link-suggestion.ts` | Scope by `categoryId` |
-
+Suština fixa:
+- Nema provider problema.
+- Nema bailout problema.
+- Nema map problema.
+- Aktivni UI problem je da je sidebar vrlo vjerovatno u persisted collapsed stanju, a kategorije se u tom modu svode na skoro nevidljive tačke. Ovaj fix ih čini vidljivim odmah i daje im jasan icon fallback u collapsed modu.
