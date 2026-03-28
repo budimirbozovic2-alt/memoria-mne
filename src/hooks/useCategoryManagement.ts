@@ -3,6 +3,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 import { db } from "@/lib/db";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
+import { toast } from "@/hooks/use-toast";
 
 interface UseCategoryManagementParams {
   setCategories: (updater: (prev: string[]) => string[]) => void;
@@ -62,9 +63,15 @@ export function useCategoryManagement({
       });
 
       // F4 fix: Cascade rename to sources
-      db.sources.where("category").equals(oldName).modify({ category: newName })
-        .then(() => invalidateSourcesCache())
-        .catch(err => console.warn("[renameCategory] source cascade failed", err));
+      (async () => {
+        try {
+          await db.sources.where("category").equals(oldName).modify({ category: newName });
+          invalidateSourcesCache();
+        } catch (err) {
+          console.error("[renameCategory] source cascade failed", err);
+          toast({ title: "Greška pri ažuriranju izvora", description: "Kategorija izvora nije ažurirana. Pokušajte ponovo.", variant: "destructive" });
+        }
+      })();
     },
     [setCategories, setCardMapState, setSubcategories, cardMapRef],
   );
@@ -95,9 +102,15 @@ export function useCategoryManagement({
       });
 
       // F3 fix: Cascade delete to sources — reassign to "Opšte"
-      db.sources.where("category").equals(name).modify({ category: "Opšte" })
-        .then(() => invalidateSourcesCache())
-        .catch(err => console.warn("[deleteCategory] source cascade failed", err));
+      (async () => {
+        try {
+          await db.sources.where("category").equals(name).modify({ category: "Opšte" });
+          invalidateSourcesCache();
+        } catch (err) {
+          console.error("[deleteCategory] source cascade failed", err);
+          toast({ title: "Greška pri ažuriranju izvora", description: "Izvori nisu prebačeni u 'Opšte'. Pokušajte ponovo.", variant: "destructive" });
+        }
+      })();
     },
     [setCategories, setCardMapState, setSubcategories, cardMapRef],
   );

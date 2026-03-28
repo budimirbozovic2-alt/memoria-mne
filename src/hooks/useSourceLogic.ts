@@ -3,6 +3,7 @@ import { useAppContext } from "@/contexts/AppContext";
 import { createTextAnchor, type Source } from "@/lib/sources-storage";
 import { incrementDailyMapped } from "@/lib/planner-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { createSection } from "@/lib/spaced-repetition";
 import { analyzeCoverage } from "@/lib/coverage-analysis";
 import { splitSelection, type SelectionModule } from "@/lib/selection-split-engine";
 import { toast } from "@/hooks/use-toast";
@@ -118,7 +119,7 @@ export function useSourceLogic(source: Source) {
 
   const handleSmartSplitConfirm = useCallback(() => {
     if (!splitResult || splitModules.length === 0) return;
-    const category = source.label || categories[0] || "Opšte";
+    const category = source.category || categories[0] || "Opšte";
     const modules = splitModules;
     const parentName = splitParentName.trim() || splitResult.parentName;
     const sections = modules.map((mod) => ({ title: mod.title, content: sanitizeHtml(mod.contentHtml) }));
@@ -178,21 +179,7 @@ export function useSourceLogic(source: Source) {
         ...base,
         sections: [
           ...c.sections,
-          {
-            id: crypto.randomUUID(),
-            title: "Isječak iz izvora",
-            content: sanitizeHtml(linkSelectedText),
-            state: 0 as const,
-            interval: 0,
-            stability: 0,
-            difficulty: 0,
-            elapsedDays: 0,
-            scheduledDays: 0,
-            nextReview: 0,
-            lastReviewed: null,
-            lapses: 0,
-            firstReviewPending: false,
-          },
+          createSection("Isječak iz izvora", sanitizeHtml(linkSelectedText)),
         ],
       };
     });
@@ -209,7 +196,7 @@ export function useSourceLogic(source: Source) {
     setSelection(null);
     window.getSelection()?.removeAllRanges();
     const result = splitSelection(text);
-    const category = source.label || categories[0] || "Opšte";
+    const category = source.category || categories[0] || "Opšte";
     if (result.hasArticles && result.modules.length > 0) {
       const { modules } = result;
       const sections = modules.map((mod) => ({ title: mod.title, content: sanitizeHtml(mod.contentHtml) }));
