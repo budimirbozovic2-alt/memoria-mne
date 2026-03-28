@@ -1,4 +1,4 @@
-import { ArrowLeft, RotateCcw, ChevronDown } from "lucide-react";
+import { ArrowLeft, RotateCcw, ChevronDown, Database, FolderOpen } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings, COLOR_THEMES, applyColorTheme, type ColorTheme } from "@/lib/app-settings";
@@ -12,9 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-
 import InfoPanel from "@/components/InfoPanel";
 import HealthMonitor from "@/components/HealthMonitor";
+import ExportImportDialog from "@/components/ExportImportDialog";
+import CategoryManager from "@/components/CategoryManager";
+import { useCardContext } from "@/contexts/AppContext";
 interface Props {
   settings: SRSettings;
   onUpdate: (settings: SRSettings) => void;
