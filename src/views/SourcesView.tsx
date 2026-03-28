@@ -109,7 +109,7 @@ export default function SourcesView() {
       title: "Izvor dodan",
       description: `"${source.label}" — ${articleCount > 1 ? `${articleCount} članova prepoznato` : "uvezeno"}`,
     });
-  }, [importHtml, importLabel, importDate, importGazette]);
+  }, [importHtml, importLabel, importDate, importGazette, importCategory]);
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
