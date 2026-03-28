@@ -34,11 +34,7 @@ export default function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { stats } = useCardContext();
-  const [categories, setCategories] = useState<CategoryRecord[]>([]);
-
-  useEffect(() => {
-    idbLoadCategories().then(setCategories).catch(() => {});
-  }, []);
+  const categories = useLiveQuery(() => db.categories.orderBy("sortOrder").toArray()) ?? [];
 
   return (
     <Sidebar collapsible="icon">
