@@ -118,7 +118,7 @@ export default function MnemonicModule() {
   }
 
   if (subView === "major") {
-    return <MajorSystemSettings onBack={() => setSubView("menu")} />;
+    return <MajorSystemSettings />;
   }
 
   return (
