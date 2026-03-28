@@ -12,7 +12,6 @@ interface Props {
   cards: MnemonicCard[];
   onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
   onDeleteCard: (id: string) => void;
-  onBack: () => void;
 }
 
 const STATUS_FILTERS: { value: MnemonicStatus | "all"; label: string; icon: typeof Sparkles }[] = [
