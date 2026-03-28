@@ -32,7 +32,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
   // Filter state
   const [filterSubcategory, setFilterSubcategory] = useState<string>("__all__");
   const [filterChapter, setFilterChapter] = useState<string>("__all__");
-  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
+  const [filterType, setFilterType] = useState<"all" | "essay" | "flash" | "mnemonic">("all");
   const [filterTag, setFilterTag] = useState<string>("__all__");
 
   const otherCategories = useMemo(
@@ -63,6 +63,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
       if (filterChapter !== "__all__" && (c.chapter || "") !== filterChapter) return false;
       if (filterType === "essay" && c.type !== "essay") return false;
       if (filterType === "flash" && c.type !== "flash") return false;
+      if (filterType === "mnemonic" && !(c.tags?.includes("mnemonic"))) return false;
       if (filterTag !== "__all__" && !(c.tags?.includes(filterTag))) return false;
       return true;
     });
@@ -140,7 +141,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
 
         {/* Type filter */}
         <div className="flex items-center gap-0.5 rounded-md border p-0.5">
-          {(["all", "essay", "flash"] as const).map(t => (
+          {(["all", "essay", "flash", "mnemonic"] as const).map(t => (
             <button
               key={t}
               onClick={() => setFilterType(t)}
@@ -149,7 +150,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                 filterType === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {t === "all" ? "Sve" : t === "essay" ? "Esej" : "Blic"}
+              {t === "all" ? "Sve" : t === "essay" ? "Esej" : t === "flash" ? "Blic" : "Mnemo"}
             </button>
           ))}
         </div>
