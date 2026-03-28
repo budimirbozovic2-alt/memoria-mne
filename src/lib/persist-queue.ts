@@ -96,13 +96,16 @@ export const persistQueue = createPersistQueue();
 export const schedulePersist = persistQueue.schedule;
 
 // ─── Eager flush on tab hide (most reliable cross-browser signal) ────
+// C4 fix: Use a named handler so HMR re-evaluation removes the old one first
+function _onVisibilityChange() {
+  if (document.visibilityState === "hidden" && persistQueue.hasPending()) {
+    try { sessionStorage.setItem("codex-flush-pending", "1"); } catch {}
+    persistQueue.flush();
+  }
+}
 if (typeof document !== "undefined") {
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden" && persistQueue.hasPending()) {
-      try { sessionStorage.setItem("codex-flush-pending", "1"); } catch {}
-      persistQueue.flush(); // fire-and-forget, browser allows ~5s for hidden-tab work
-    }
-  });
+  document.removeEventListener("visibilitychange", _onVisibilityChange);
+  document.addEventListener("visibilitychange", _onVisibilityChange);
 }
 
 /** Check if previous session had interrupted writes */

@@ -164,6 +164,7 @@ export function useCards() {
   });
 
   // ── Single-pass derived data (B2+B5 fix: 4×O(n) → 1×O(n)) ──
+  // C2 fix: Build UUID→name map so catAccum is keyed by NAME but matched by UUID
   const { dueCards, stats, categoryStats, cardCountByCategory } = useMemo(() => {
     const now = Date.now();
     const dueList: Card[] = [];
@@ -173,15 +174,24 @@ export function useCards() {
     const catAccum: Record<string, { scoreSum: number; total: number; due: number }> = {};
     const countByCategory: Record<string, number> = {};
 
-    // Initialize category accumulators
+    // Build UUID→name lookup from categoryRecords (C2 fix)
+    const uuidToName: Record<string, string> = {};
+    for (const rec of categoryRecords) {
+      uuidToName[rec.id] = rec.name;
+    }
+
+    // Initialize category accumulators by NAME (consumers use names)
     for (const cat of categories) {
       catAccum[cat] = { scoreSum: 0, total: 0, due: 0 };
       countByCategory[cat] = 0;
     }
 
     for (const card of cards) {
-      // Card count by category
-      countByCategory[card.categoryId] = (countByCategory[card.categoryId] || 0) + 1;
+      // Resolve UUID to name for accumulation
+      const catName = uuidToName[card.categoryId] || card.categoryId;
+
+      // Card count by category name
+      countByCategory[catName] = (countByCategory[catName] || 0) + 1;
 
       // Section-level stats
       let cardIsDue = false;
@@ -199,8 +209,8 @@ export function useCards() {
 
       if (cardIsDue) dueList.push(card);
 
-      // Category stats accumulation
-      const acc = catAccum[card.categoryId];
+      // Category stats accumulation — keyed by NAME
+      const acc = catAccum[catName];
       if (acc) {
         acc.total++;
         acc.scoreSum += card.sections.length > 0 ? cardScoreSum / card.sections.length : 0;
@@ -236,11 +246,11 @@ export function useCards() {
       categoryStats: finalCatStats,
       cardCountByCategory: countByCategory,
     };
-  }, [cards, categories]);
+  }, [cards, categories, categoryRecords]);
 
+  // H4 fix: Also update categoryRecordsState so sidebar reflects reorder immediately
   const reorderCategories = useCallback((ordered: string[]) => {
     setCategoriesState(ordered);
-    // Save reordered categories
     (async () => {
       try {
         const existing = await idbLoadCategories();
@@ -252,13 +262,26 @@ export function useCards() {
             : { id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] };
         });
         await idbSaveCategories(records);
+        setCategoryRecordsState(records);
       } catch (e) { console.error("[useCards] reorderCategories save failed", e); }
     })();
-  }, []);
+  }, [setCategoryRecordsState]);
 
+  // H6 fix: Persist subcategory reorder to IDB
   const reorderSubcategories = useCallback((category: string, ordered: string[]) => {
     setSubcategoriesState(prev => {
       const next = { ...prev, [category]: ordered };
+      // Persist to IDB
+      (async () => {
+        try {
+          const existing = await idbLoadCategories();
+          const updated = existing.map(cat => cat.name === category
+            ? { ...cat, subcategories: ordered }
+            : cat
+          );
+          await idbSaveCategories(updated);
+        } catch (e) { console.error("[useCards] reorderSubcategories save failed", e); }
+      })();
       return next;
     });
   }, []);

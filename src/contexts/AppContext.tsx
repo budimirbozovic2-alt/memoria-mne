@@ -1,10 +1,13 @@
-import { createContext, useContext, useCallback, useMemo, useState, useEffect, useRef, ReactNode, Suspense, lazy } from "react";
+import { createContext, useContext, useCallback, useMemo, useState, useEffect, useRef, ReactNode, Suspense, lazy, ComponentType } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCards } from "@/hooks/useCards";
 import { Card } from "@/lib/spaced-repetition";
 import { recordAppEntry, recordFirstAction, addActivityEntry, ActivityType } from "@/lib/metacognitive-storage";
 import { addPomodoroEntry } from "@/lib/storage";
 import { loadAppSettings } from "@/lib/app-settings";
+
+// B5 fix: Hoist lazy import to module scope
+const LazyDatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
 
 // ─── Types ──────────────────────────────────────────────
 export type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings" | "metacognitive" | "stats" | "planner" | "database" | "speed-reader";
@@ -281,12 +284,16 @@ function CardProvider({ children }: { children: ReactNode }) {
     h.ready, h.dbError,
   ]);
 
+  // H5 fix: Render recovery panel but still wrap in providers to prevent cascade crash
   if (h.dbError) {
-    const DatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
     return (
-      <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-muted-foreground">Učitavanje...</div>}>
-        <DatabaseRecoveryPanel error={h.dbError} />
-      </Suspense>
+      <CardActionsContext.Provider value={actions}>
+        <CardDataContext.Provider value={data}>
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-muted-foreground">Učitavanje...</div>}>
+            <LazyDatabaseRecoveryPanel error={h.dbError} />
+          </Suspense>
+        </CardDataContext.Provider>
+      </CardActionsContext.Provider>
     );
   }
 

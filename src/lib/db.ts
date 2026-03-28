@@ -206,15 +206,12 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
   // First attempt
   let ok = await tryOpen();
   if (!ok && !dbErrorState) {
-    // Retry after clean slate delete
-    const freshDb = new MemoriaDB();
+    // C1 fix: Retry using the same singleton — don't create orphan connections
     try {
-      await freshDb.open();
-      // Replace module-level db reference is tricky with Dexie singletons
-      // Instead, try reopening the existing db instance
+      // Small delay to let any blocked event settle
+      await new Promise(r => setTimeout(r, 200));
       ok = await tryOpen();
     } catch {
-      // If retry also fails, surface the error
       dbErrorState = { type: "version", message: "Nije moguće otvoriti bazu nakon resetovanja." };
       return false;
     }
