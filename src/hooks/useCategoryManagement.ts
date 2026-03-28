@@ -1,6 +1,8 @@
 import { useCallback, MutableRefObject } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
+import { db } from "@/lib/db";
+import { invalidateSourcesCache } from "@/lib/sources-storage";
 
 interface UseCategoryManagementParams {
   setCategories: (updater: (prev: string[]) => string[]) => void;
@@ -58,6 +60,11 @@ export function useCategoryManagement({
         if (next[oldName]) { next[newName] = next[oldName]; delete next[oldName]; }
         return next;
       });
+
+      // F4 fix: Cascade rename to sources
+      db.sources.where("category").equals(oldName).modify({ category: newName })
+        .then(() => invalidateSourcesCache())
+        .catch(err => console.warn("[renameCategory] source cascade failed", err));
     },
     [setCategories, setCardMapState, setSubcategories, cardMapRef],
   );
@@ -86,6 +93,11 @@ export function useCategoryManagement({
         delete next[name];
         return next;
       });
+
+      // F3 fix: Cascade delete to sources — reassign to "Opšte"
+      db.sources.where("category").equals(name).modify({ category: "Opšte" })
+        .then(() => invalidateSourcesCache())
+        .catch(err => console.warn("[deleteCategory] source cascade failed", err));
     },
     [setCategories, setCardMapState, setSubcategories, cardMapRef],
   );

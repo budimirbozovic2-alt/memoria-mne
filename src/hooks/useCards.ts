@@ -20,6 +20,7 @@ import {
   idbSaveSubcategories,
   idbSaveSettings,
 } from "@/lib/db";
+import { onCardLinksCleared } from "@/lib/sources-storage";
 
 export function useCards() {
   const [cardMap, setCardMapState] = useState<CardMap>({});
@@ -57,6 +58,27 @@ export function useCards() {
   // ── Ref-Delta: cardMapRef mirrors state for synchronous reads in action handlers ──
   const cardMapRef = useRef<CardMap>({});
   useEffect(() => { cardMapRef.current = cardMap; }, [cardMap]);
+
+  // ── F5 fix: Sync in-memory cardMap when deleteSource clears card links ──
+  useEffect(() => {
+    return onCardLinksCleared((clearedIds) => {
+      setCardMapState(prev => {
+        const next = { ...prev };
+        let changed = false;
+        for (const id of clearedIds) {
+          if (next[id]?.sourceId) {
+            next[id] = { ...next[id], sourceId: undefined, textAnchor: undefined, needsReview: undefined };
+            changed = true;
+          }
+        }
+        if (changed) {
+          cardMapRef.current = next;
+          return next;
+        }
+        return prev;
+      });
+    });
+  }, []);
 
 
 
