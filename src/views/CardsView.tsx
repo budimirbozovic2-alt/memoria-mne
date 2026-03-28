@@ -51,6 +51,31 @@ export default function CardsView() {
   });
   const [reorderMode, setReorderMode] = useState(false);
   const [storedChapterOrder, setStoredChapterOrder] = useState<string[]>([]);
+  const [autoLinkPairs, setAutoLinkPairs] = useState<AutoLinkPair[]>([]);
+  const [autoLinkOpen, setAutoLinkOpen] = useState(false);
+  const [autoLinkLoading, setAutoLinkLoading] = useState(false);
+
+  const handleAutoLinkScan = useCallback(async () => {
+    setAutoLinkLoading(true);
+    try {
+      const pairs = await findBulkAutoLinkSuggestions(cards);
+      if (pairs.length === 0) {
+        toast.info("Nema novih predloga za uvezivanje.");
+      } else {
+        setAutoLinkPairs(pairs);
+        setAutoLinkOpen(true);
+      }
+    } catch (e) {
+      console.error("[AutoLink] scan failed", e);
+      toast.error("Greška pri skeniranju predloga.");
+    } finally {
+      setAutoLinkLoading(false);
+    }
+  }, [cards]);
+
+  const handleAutoLink = useCallback((cardId: string, sourceId: string) => {
+    updateCard(cardId, { sourceId });
+  }, [updateCard]);
 
   // Load stored chapter order from IDB when filter changes
   useEffect(() => {
