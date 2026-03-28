@@ -131,11 +131,12 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
   if (isDev) {
     win.loadURL('http://localhost:8080');
   } else {
-    const indexPath = getDistPath(isDev, baseDir, 'index.html');
-    win.loadFile(indexPath).catch((err) => {
-      logCrash('loadFile-failed', err);
-      const fallbackUrl = `file://${indexPath.replace(/\\/g, '/')}`;
-      win.loadURL(fallbackUrl).catch((err2) => logCrash('loadURL-fallback-failed', err2));
+    // Use app:// protocol for stable origin (IndexedDB persistence)
+    win.loadURL('app://localhost/index.html').catch((err) => {
+      logCrash('loadURL-app-protocol-failed', err);
+      // Fallback to file:// if app:// fails
+      const indexPath = getDistPath(isDev, baseDir, 'index.html');
+      win.loadFile(indexPath).catch((err2) => logCrash('loadFile-fallback-failed', err2));
     });
   }
 
