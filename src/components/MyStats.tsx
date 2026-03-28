@@ -9,6 +9,7 @@ import { Card, SRSettings } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 import { useStatsData } from "@/hooks/useStatsData";
+const HealthMonitor = lazy(() => import("@/components/HealthMonitor"));
 
 const OverviewTab = lazy(() => import("./stats/OverviewTab"));
 const LatencyTab = lazy(() => import("./stats/LatencyTab"));
