@@ -48,7 +48,6 @@ function HighlightedSentence({ sectionContent, errorText }: { sectionContent: st
 
 interface Props {
   cards: Card[];
-  onBack: () => void;
   onClearErrorLog: (cardId: string) => void;
   embedded?: boolean;
 }
