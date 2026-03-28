@@ -44,7 +44,7 @@ export default function DocxImporter({ open, onClose, categories, onImport }: Pr
   const [delimiter, setDelimiter] = useState("");
   const [sectionDelimiter, setSectionDelimiter] = useState("");
   const [parsedCards, setParsedCards] = useState<ParsedCard[]>([]);
-  const [category, setCategory] = useState(categories[0] ?? "Opšte");
+  const [category, setCategory] = useState(categories[0] ?? "");
   const [newCategory, setNewCategory] = useState("");
   const [step, setStep] = useState<"upload" | "configure" | "preview">("upload");
   const [cardType, setCardType] = useState<CardType>("essay");

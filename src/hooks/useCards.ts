@@ -25,7 +25,7 @@ import { onCardLinksCleared } from "@/lib/sources-storage";
 
 export function useCards() {
   const [cardMap, setCardMapState] = useState<CardMap>({});
-  const [categories, setCategoriesState] = useState<string[]>(["Opšte"]);
+  const [categories, setCategoriesState] = useState<string[]>([]);
   const [categoryRecords, setCategoryRecordsState] = useState<CategoryRecord[]>([]);
   const [subcategories, setSubcategoriesState] = useState<Record<string, string[]>>({});
   const [reviewLog, setReviewLogState] = useState<ReviewLogEntry[]>([]);
@@ -147,12 +147,13 @@ export function useCards() {
   } = useCardAnnotations({ patchCard, setCardMapState, setReviewLog, cardMapRef });
 
   // ── Category management (extracted module) ──
+  const getCategoryRecords = useCallback(() => categoryRecords, [categoryRecords]);
   const {
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,
     bulkUpdateSubcategory,
   } = useCategoryManagement({
-    setCategories, setSubcategories, setCardMapState, cardMapRef,
+    setCategories, setSubcategories, setCardMapState, cardMapRef, getCategoryRecords,
   });
 
   // ── Export/Import (extracted to separate modules) ──
