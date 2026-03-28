@@ -13,7 +13,7 @@ interface Props {
   onSelectMode: (mode: LearnMode) => void;
 }
 
-export default function ModeSelector({ cards, learnMode, dueCount, reviewLog, onSelectMode, onBack }: Props) {
+export default function ModeSelector({ cards, learnMode, dueCount, reviewLog, onSelectMode }: Props) {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const chainCount = useMemo(() => cards.filter(c => c.type === "essay" && c.sections.length >= 3).length, [cards]);
 
