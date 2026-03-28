@@ -304,6 +304,17 @@ export default function SourceReader({ source, onBack }: Props) {
         {logic.autoSplitOpen && (
           <AutoSplitDialog open={logic.autoSplitOpen} onClose={() => logic.setAutoSplitOpen(false)} source={source} />
         )}
+        {logic.linkModalOpen && (
+          <LinkToExistingCardModal
+            open={logic.linkModalOpen}
+            onOpenChange={logic.setLinkModalOpen}
+            sourceId={source.id}
+            sourceLabel={source.label || ""}
+            selectedText={logic.linkSelectedText}
+            cards={logic.cards}
+            onLink={logic.handleLinkConfirm}
+          />
+        )}
       </Suspense>
     </div>
   );
