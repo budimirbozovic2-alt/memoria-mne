@@ -91,15 +91,19 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
     },
   });
 
-  // ── Window control IPC handlers ──
-  ipcMain.on('window-minimize', () => { if (!win.isDestroyed()) win.minimize(); });
-  ipcMain.on('window-maximize', () => {
+  // ── Window control IPC handlers (scoped to this window via webContents ID) ──
+  // C3/H4 fix: Use functions we can remove on crash recovery instead of anonymous lambdas
+  const onMinimize = () => { if (!win.isDestroyed()) win.minimize(); };
+  const onMaximize = () => {
     if (!win.isDestroyed()) {
       if (win.isMaximized()) win.unmaximize();
       else win.maximize();
     }
-  });
-  ipcMain.on('window-close', () => { if (!win.isDestroyed()) win.close(); });
+  };
+  const onClose = () => { if (!win.isDestroyed()) win.close(); };
+  ipcMain.on('window-minimize', onMinimize);
+  ipcMain.on('window-maximize', onMaximize);
+  ipcMain.on('window-close', onClose);
   ipcMain.handle('window-is-maximized', () => !win.isDestroyed() && win.isMaximized());
 
   // Notify renderer when maximize state changes
@@ -162,8 +166,12 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
     logCrash('render-process-gone', JSON.stringify(details));
     if (!win.isDestroyed()) {
       if (shouldAllowRecovery()) {
-        appReady = false;
-        ipcMain.removeAllListeners('renderer-ready');
+        appReady = true;
+        ipcMain.removeListener('window-minimize', onMinimize);
+        ipcMain.removeListener('window-maximize', onMaximize);
+        ipcMain.removeListener('window-close', onClose);
+        ipcMain.removeHandler('window-is-maximized');
+        clearTimeout(fallbackTimer);
         win.destroy();
         const newSplash = createSplashWindow(isDev, baseDir);
         createWindow({ isDev, baseDir, configPath, logCrash, splash: newSplash, onMainWindow });

@@ -140,62 +140,61 @@ export function useCardAnnotations({
     [patchCard],
   );
 
-  // Bulk flag cards as needsReview — C2 fix: ref mutation moved OUTSIDE setState updater
+  // C2 fix: Pre-compute changes from ref BEFORE setState, then apply atomically.
+  // This eliminates the race where the updater array is populated inside setState
+  // but consumed outside it.
   const bulkFlagNeedsReview = useCallback((cardIds: string[]) => {
     if (cardIds.length === 0) return;
+    const now = Date.now();
     const updated: Card[] = [];
-    setCardMapState((prev) => {
-      const next = { ...prev };
-      for (const id of cardIds) {
-        if (next[id]) {
-          const u = { ...next[id], needsReview: true, updatedAt: Date.now() };
-          next[id] = u;
-          updated.push(u);
-        }
+    const nextRef = { ...cardMapRef.current };
+    for (const id of cardIds) {
+      if (nextRef[id]) {
+        const u = { ...nextRef[id], needsReview: true, updatedAt: now };
+        nextRef[id] = u;
+        updated.push(u);
       }
-      return next;
-    });
-    // Sync ref AFTER updater — safe because React processes updaters synchronously within the batch
-    for (const u of updated) cardMapRef.current[u.id] = u;
-    if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
+    }
+    if (updated.length === 0) return;
+    cardMapRef.current = nextRef;
+    schedulePersist({ type: "bulk", cards: updated });
+    setCardMapState(() => nextRef);
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);
 
-  // Reorder cards — C2 fix: ref mutation moved OUTSIDE setState updater
   const reorderCards = useCallback((orderedIds: string[]) => {
+    const now = Date.now();
     const updated: Card[] = [];
-    setCardMapState((prev) => {
-      const next = { ...prev };
-      orderedIds.forEach((id, index) => {
-        if (next[id]) {
-          const u = { ...next[id], sortOrder: index, updatedAt: Date.now() };
-          next[id] = u;
-          updated.push(u);
-        }
-      });
-      return next;
+    const nextRef = { ...cardMapRef.current };
+    orderedIds.forEach((id, index) => {
+      if (nextRef[id]) {
+        const u = { ...nextRef[id], sortOrder: index, updatedAt: now };
+        nextRef[id] = u;
+        updated.push(u);
+      }
     });
-    for (const u of updated) cardMapRef.current[u.id] = u;
-    if (updated.length > 0) schedulePersist({ type: "bulk", cards: updated });
+    if (updated.length === 0) return;
+    cardMapRef.current = nextRef;
+    schedulePersist({ type: "bulk", cards: updated });
+    setCardMapState(() => nextRef);
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);
 
-  // Update chapter and chapterOrder — C2 fix: ref mutation moved OUTSIDE setState updater
   const bulkUpdateChapter = useCallback((updates: { id: string; chapter: string; chapterOrder: number }[]) => {
+    const now = Date.now();
     const changed: Card[] = [];
-    setCardMapState((prev) => {
-      const next = { ...prev };
-      for (const u of updates) {
-        if (next[u.id]) {
-          const c = { ...next[u.id], chapter: u.chapter, chapterOrder: u.chapterOrder, updatedAt: Date.now() };
-          next[u.id] = c;
-          changed.push(c);
-        }
+    const nextRef = { ...cardMapRef.current };
+    for (const u of updates) {
+      if (nextRef[u.id]) {
+        const c = { ...nextRef[u.id], chapter: u.chapter, chapterOrder: u.chapterOrder, updatedAt: now };
+        nextRef[u.id] = c;
+        changed.push(c);
       }
-      return next;
-    });
-    for (const c of changed) cardMapRef.current[c.id] = c;
-    if (changed.length > 0) schedulePersist({ type: "bulk", cards: changed });
+    }
+    if (changed.length === 0) return;
+    cardMapRef.current = nextRef;
+    schedulePersist({ type: "bulk", cards: changed });
+    setCardMapState(() => nextRef);
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);
 

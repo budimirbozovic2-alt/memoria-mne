@@ -95,12 +95,22 @@ export interface ForumState {
 
 // ─── Monument Calculator ────────────────────────────────
 
-function buildMonument(category: string, cards: Card[]): Monument {
+interface MonumentResult {
+  monument: Monument;
+  totalSections: number;
+  reviewSections: number;
+}
+
+function buildMonument(category: string, cards: Card[]): MonumentResult {
   if (cards.length === 0) {
     return {
-      category, totalCards: 0, masteredCards: 0, mastery: 0,
-      material: "foundation", avgStability: 0, avgDifficulty: 5,
-      leechCount: 0, crumbling: false, buildingType: "insula",
+      monument: {
+        category, totalCards: 0, masteredCards: 0, mastery: 0,
+        material: "foundation", avgStability: 0, avgDifficulty: 5,
+        leechCount: 0, crumbling: false, buildingType: "insula",
+      },
+      totalSections: 0,
+      reviewSections: 0,
     };
   }
 
@@ -139,16 +149,20 @@ function buildMonument(category: string, cards: Card[]): Monument {
   const crumbling = totalSections > 0 && (leechCount / totalSections) > 0.2;
 
   return {
-    category,
-    totalCards: cards.length,
-    masteredCards,
-    mastery: Math.round(mastery * 10) / 10,
-    material: getMaterialTier(mastery),
-    avgStability: Math.round(avgStability * 10) / 10,
-    avgDifficulty: Math.round(avgDifficulty * 10) / 10,
-    leechCount,
-    crumbling,
-    buildingType: "insula",
+    monument: {
+      category,
+      totalCards: cards.length,
+      masteredCards,
+      mastery: Math.round(mastery * 10) / 10,
+      material: getMaterialTier(mastery),
+      avgStability: Math.round(avgStability * 10) / 10,
+      avgDifficulty: Math.round(avgDifficulty * 10) / 10,
+      leechCount,
+      crumbling,
+      buildingType: "insula",
+    },
+    totalSections,
+    reviewSections,
   };
 }
 
@@ -195,8 +209,9 @@ function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: numb
       stabilitySum += sec.stability;
     }
   }
-  // H1 fix: include registryVersion so alias/monument changes bust cache
-  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}:${registryVersion}`;
+  // H2 fix: include monument types hash so building type changes bust cache
+  const mtHash = JSON.stringify(loadMonumentTypes());
+  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}:${registryVersion}:${mtHash}`;
 }
 
 // ─── Main Calculator ────────────────────────────────────
@@ -234,8 +249,14 @@ export function calculateForumState(
   }
 
   const monuments: Monument[] = [];
+  // B4 fix: accumulate overall totals during monument building (eliminates third pass)
+  let grandTotalSections = 0;
+  let grandTotalReview = 0;
   for (const [cat, catCards] of byCategory) {
-    const m = buildMonument(cat, catCards);
+    const result = buildMonument(cat, catCards);
+    const m = result.monument;
+    grandTotalSections += result.totalSections;
+    grandTotalReview += result.reviewSections;
     m.buildingType = monumentTypes[cat] || "insula";
 
     // Add source breakdown if sources available
@@ -266,19 +287,8 @@ export function calculateForumState(
   // Sort: highest mastery first
   monuments.sort((a, b) => b.mastery - a.mastery);
 
-  // Overall mastery
-  let totalSections = 0;
-  let totalReview = 0;
-
-  for (const card of cards) {
-    for (const sec of card.sections) {
-      totalSections++;
-      if (sec.state === SectionState.Review) totalReview++;
-    }
-  }
-
-  const overallMastery = totalSections > 0
-    ? Math.round((totalReview / totalSections) * 1000) / 10
+  const overallMastery = grandTotalSections > 0
+    ? Math.round((grandTotalReview / grandTotalSections) * 1000) / 10
     : 0;
 
   const velocity = calcVelocity(reviewLog);

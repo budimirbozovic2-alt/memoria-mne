@@ -140,16 +140,20 @@ export function useCardCRUD({
     [patchCard],
   );
 
-  // O(1) delete — surgical IDB delete
+  // H5 fix: IDB delete with retry on failure
   const deleteCard = useCallback((id: string) => {
-    const nextRef = { ...cardMapRef.current }; delete nextRef[id]; cardMapRef.current = nextRef; // Sync ref
+    const nextRef = { ...cardMapRef.current }; delete nextRef[id]; cardMapRef.current = nextRef;
     setCardMapState((prev) => {
       const next = { ...prev };
       delete next[id];
       return next;
     });
     bumpMapVersion();
-    idbDeleteCard(id).catch(e => console.error("[deleteCard] IDB delete failed", e));
+    idbDeleteCard(id).catch(e => {
+      console.error("[deleteCard] IDB delete failed, retrying...", e);
+      // Retry once after 1s
+      setTimeout(() => idbDeleteCard(id).catch(e2 => console.error("[deleteCard] IDB retry also failed", e2)), 1000);
+    });
     toast.success("Kartica obrisana.");
   }, [setCardMapState, cardMapRef]);
 
