@@ -1,80 +1,82 @@
 
 
-# Deep Static System Audit — Report v4
+# Deep Static System Audit — Report v5
 
 ---
 
 ## 🔴 CRITICAL (App crashes, infinite loops, data loss)
 
-### C1: `renameCategory` / `deleteCategory` / `renameSubcategory` — `changed` array populated inside `setCardMapState` updater but read outside
-**File:** `src/hooks/useCategoryManagement.ts` — Lines 36-48, 62-74, 103-115
+### C1: `renameCategory` — `aborted` flag set inside `setCategories` updater, read synchronously outside
+**File:** `src/hooks/useCategoryManagement.ts` — Lines 28-33
 
-The `changed` array is declared before `setCardMapState`, populated inside the updater function, then used outside at `schedulePersist({ type: "bulk", cards: changed })`. This pattern relies on React executing the functional updater synchronously (which it does today in React 18 for `setState` calls in the same synchronous stack). However, `setCardMapState` is the raw `useState` setter passed from `useCards`, NOT the wrapped `setCategories` (which has IDB side effects). If React batching behavior changes or these are called from an async context, `changed` could be empty when `schedulePersist` reads it, causing **cards to be visually renamed in state but never persisted to IDB**. On restart, cards revert to old category names — **silent data orphaning**.
+`setCategories` wraps `setCategoriesState` and calls `idbSaveCategories(next)` inside (useCards.ts line 63-69). The functional updater runs synchronously today, so `aborted = true` inside the updater is visible at line 33. **However**, `setCategories` is a `useCallback` that wraps `setCategoriesState` — the updater IS synchronous in React 18 when called from a synchronous context. But if `renameCategory` is ever called from within `startTransition`, `flushSync`, or an async boundary, `setCategoriesState` could batch-defer the updater, and `aborted` would remain `false`. The subsequent `cardMapRef` mutations (lines 36-50) would proceed with the rename, creating duplicate category data.
 
-**Current risk:** Low (works today), but fragile.
+**Current risk:** Low (only triggers if called from `startTransition`). **Latent severity:** Data corruption.
 
-### C2: `ipcMain.once('renderer-ready', showWindow)` handler leaks on crash recovery
-**File:** `electron/window.cjs` — Line 212
+### C2: `logError` mutates cloned `existing` object in-place
+**File:** `src/hooks/useCardAnnotations.ts` — Lines 88-93
 
-On crash recovery (line 168-177), `win.destroy()` is called and a new `createWindow` is invoked. The old `ipcMain.once('renderer-ready', showWindow)` listener is already consumed or destroyed with the old window. However, `ipcMain.removeHandler('window-is-maximized')` on line 173 will throw if called twice (Electron doesn't allow removing a handler that doesn't exist). If the crash recovery fires before the `once` handler fires, the `once` listener referencing the destroyed `win` still exists on `ipcMain` — it won't crash (guards check `appReady`) but it's a dead listener.
+`errorLog` is shallow-cloned with `[...(c.errorLog || [])]`, but `existing` is a reference to an object inside that shallow copy (same object as in the original `c.errorLog`). Lines 90-92 mutate `existing.count`, `existing.lastMissed`, `existing.successStreak` directly — this **mutates the original card's errorLog entries in cardMapRef**. Since `patchCard` reads from `cardMapRef.current`, the next `patchCard` call for the same card will see the already-mutated errorLog. This causes:
+1. Double-counting if `patchCard` re-reads the card between the ref write and state write
+2. Breaks React's immutability contract — previous renders reference mutated objects
 
-### C3: `importData` overwrite strategy doesn't clear orphan records for `pomodoroLog` if backup has zero entries
-**File:** `src/hooks/useCardImport.ts` — Lines 186-207
+### C3: `ReviewSession` resume doesn't recompute `items` — uses stale `items: []`
+**File:** `src/components/ReviewSession.tsx` — Lines 71-83 vs 121
 
-The `hasExtraTables` check (line 185) only enters the IDB restoration block if at least one table has data. If a backup has `pomodoroLog: []` (empty array), the existing pomodoroLog data in IDB is NOT cleared during overwrite. This means stale pomodoro records from a previous import survive an "overwrite" import, producing phantom statistics. Same applies to all auto-increment tables when the backup has empty arrays.
+When `resumeSession` is called, it sets `mode` and `randomIndex` but **never sets `items`**. `items` stays as `[]` (initial state from line 19). At line 121, `const currentItem = items[randomIndex]` reads `undefined`. Line 134 `if (finished || !currentItem)` catches this and shows `ReviewComplete` — so the user sees "session complete" instead of resuming. **Resume is silently broken.**
 
 ---
 
 ## 🟠 HIGH RISK (UI bugs, logical offsets, missing fallbacks)
 
-### H1: `exportTemplate` uses closure `cards` (stale), but `exportData` reads fresh from IDB (inconsistency)
-**File:** `src/hooks/useCardExport.ts` — Lines 56-87 vs 89-161
+### H1: `electron/window.cjs` — `ipcMain.removeHandler('window-is-maximized')` throws on second crash
+**File:** `electron/window.cjs` — Line 173
 
-`exportData` was fixed (H3 from prior audit) to read fresh cards from IDB. But `exportTemplate` at line 58 still uses `cards` from the closure prop. If a user edits a card and immediately exports a template before re-render, the template contains stale data. Not critical for templates (which strip FSRS data), but `question` and `sections.content` could be stale.
+`ipcMain.removeHandler` throws if the handler name isn't registered. On the second crash recovery, the first recovery already removed it, so line 173 throws `Error: Attempted to remove a non-existent handler`. This crashes the main process during recovery, preventing the app from restarting.
 
-### H2: `ReviewSession` saves session state to `localStorage` — not cleared on overwrite import
-**File:** `src/components/ReviewSession.tsx` — Lines 30-44
+### H2: `useDashboardData` calls `autoRedistributeIfNeeded` (IDB side effect) inside `useDeferredCompute`
+**File:** `src/hooks/useDashboardData.ts` — Line 152
 
-When an overwrite import occurs, localStorage keys like `sr-review-session` are NOT cleared. On next review, `resumeSession` could reference a `randomIndex` pointing to a card that no longer exists in the new dataset, causing undefined behavior (accessing `items[randomIndex]` where `randomIndex` > `items.length`).
+`autoRedistributeIfNeeded` writes to IDB planner settings. It's called inside a `useDeferredCompute` callback which runs in `requestIdleCallback`. If the component unmounts and remounts (React StrictMode, route change), the compute runs twice, potentially double-redistributing cards. The `useDeferredCompute` cancellation guard (line 14: `cancelled`) prevents `setResult` but the side effect has already fired.
 
-### H3: `buildFingerprint` calls `loadMonumentTypes()` which does `JSON.stringify` on every invocation
-**File:** `src/lib/forum-logic.ts` — Line 213
+### H3: `_mtHashCache` in forum-logic is only invalidated by `invalidateMonumentTypesCache` — never on load
+**File:** `src/lib/forum-logic.ts` — Lines 201-208
 
-`buildFingerprint` is called on every `calculateForumState` invocation. Line 213 does `JSON.stringify(loadMonumentTypes())` — this serializes the entire monument types object every time to check cache validity. While `loadMonumentTypes` itself is cached, the `JSON.stringify` is O(k) where k = number of categories. For 50+ categories this becomes noticeable, especially since the fingerprint is checked on every render that passes through `ForumProvider`.
+`getMonumentTypesHash()` returns cached `_mtHashCache` forever after first call. If monument types are changed via `saveMonumentType()` which calls `invalidateMonumentTypesCache()`, the hash resets. But if localStorage is modified externally (import, another tab), `_mtHashCache` remains stale, causing the forum fingerprint to match incorrectly and returning cached forum state with wrong building types.
 
-### H4: `_tryLoadFromIDB` async fallback may hydrate AFTER first Forum render
-**File:** `src/lib/source-registry.ts` — Lines 56-76
+### H4: `importCards` missing `cardMapRef` in `useCallback` dependencies
+**File:** `src/hooks/useCardImport.ts` — Line 261
 
-When `loadSourceRegistry()` finds localStorage empty, it returns `{ aliases: [], overrides: [] }` immediately and fires `_tryLoadFromIDB()` asynchronously. If IDB has valid data, it hydrates the cache and calls `_notifyRegistry()`. But Forum components that already rendered with the empty registry won't re-render unless they explicitly listen to `onRegistryChanged`. The `ForumContext` doesn't subscribe to registry changes — it relies on `registryVersion` prop. This means the Forum could render with empty aliases until the next card mutation triggers a re-render.
+`importCards` uses `cardMapRef` (line 253) but the dependency array is `[setCategories, setCardMapState]`. Missing `cardMapRef`. Since refs are stable this won't cause bugs, but it's a lint violation that could mask future issues if the ref were replaced with a different reference.
 
-### H5: `importCards` (batch import from DOCX/template) doesn't sync `cardMapRef`
-**File:** `src/hooks/useCardImport.ts` — Lines 236-251
+### H5: `splitCard` creates new cards with `createCard` metadata but copies section FSRS state
+**File:** `src/hooks/useCardCRUD.ts` — Lines 164-173
 
-`importCards` updates `setCardMapState` and `schedulePersist`, but doesn't update `cardMapRef.current`. If another action (e.g., `patchCard`, `bulkFlagNeedsReview`) runs before React's `useEffect` syncs the ref, those actions read stale ref data and may overwrite the newly imported cards.
+`splitCard` calls `createCard(...)` which creates fresh FSRS sections, then immediately overwrites `sections: [{ ...section }]` with the original section's FSRS state. The `createCard` call generates a fresh `id`, `createdAt`, etc., but the section preserves its `lastReviewed`, `stability`, `nextReview` — this is correct. However, the new card inherits `question: card.question` for ALL split cards, making them indistinguishable in the card list. Only the section title differentiates them.
 
 ---
 
 ## 🟡 BOTTLENECKS (Performance drops, unnecessary re-renders)
 
-### B1: `useDashboardData` imports and calls heavy planner functions synchronously
-**File:** `src/hooks/useDashboardData.ts` — Lines 1-60
+### B1: `MentalSkeleton` recomputes on every unrelated card mutation
+**File:** `src/components/MentalSkeleton.tsx` — Lines 69-90
 
-`loadPlanner()`, `calcVelocity()`, `loadDisciplineLog()`, `loadSlippageLog()` are all called inside `useMemo`. These read from in-memory caches (fast), but `autoRedistributeIfNeeded` and `recordDayDiscipline` have IDB write side effects called inside a `useMemo` — this is a React anti-pattern. Side effects in `useMemo` are not guaranteed to run exactly once and could fire multiple times during concurrent rendering.
+`subCards` depends on `cards` (the full array). Since `cards = mapToArray(cardMap)` creates a new array on every `cardMap` change via `bumpMapVersion()`, any card mutation (even in a different category) triggers recomputation of `subCards`, `chapters`, `cardsByChapter`, and all downstream rendering. For 5000+ cards this cascades into significant wasted work.
 
-### B2: Pomodoro context changes every second — `useMemo` depends on `seconds`
-**File:** `src/contexts/AppContext.tsx` — Lines 228-232
+### B2: `calcActualRatio` iterates full `reviewLog` on every dashboard render
+**File:** `src/hooks/useDashboardData.ts` — Lines 31-57
 
-`useMemo` for the pomodoro return value depends on `seconds`, creating a new object every second. All consumers of `usePomodoroContext()` re-render at 1Hz. Since Pomodoro is in its own isolated context, impact is limited to TopNav and PomodoroTimer components — but those components are always mounted.
+`calcActualRatio` iterates the entire review log to build `sectionFirstSeen` map. For 10000+ review entries, this is O(n) on every render where `reviewLog` reference changes. The `useMemo` depends on `[reviewLog, cards]` — since `cards` changes on any card mutation, this recomputes even when review log hasn't changed.
 
-### B3: `MentalSkeleton` recomputes `cardsByChapter` on every `subCards` change
-**File:** `src/components/MentalSkeleton.tsx` — Lines 80-90
+### B3: `buildFingerprint` still iterates all cards every time forum is checked
+**File:** `src/lib/forum-logic.ts` — Lines 211-223
 
-`subCards` is derived from `cards.filter(...)` which creates a new array reference whenever `cards` (the full array) changes — even if the relevant subcategory's cards didn't change. This cascades through `chapters`, `unassignedCards`, `cardsByChapter`, and `allChapters`, causing full re-computation of the chapter layout on unrelated card mutations.
+Even with the `_mtHashCache` optimization, `buildFingerprint` iterates all cards to count sections/stability. For 5000+ cards with 3 sections each, this is 15000 iterations on every render that touches the forum. The fingerprint itself is cheap (just counting), but it runs on every `calculateForumState` call.
 
-### B4: `LearnSession` re-imports `@/lib/db` on every filter change
-**File:** `src/components/LearnSession.tsx` — Lines 52-61
+### B4: `reviewSection` creates a new `reviewLog` array on every grade
+**File:** `src/hooks/useCardAnnotations.ts` — Line 60
 
-The `useEffect` that loads chapter settings does a dynamic `import("@/lib/db")` on every `selectedCategory` or `selectedSubcategory` change. While Vite caches dynamic imports after first load, the `then` chain creates new closures and promise objects each time, adding GC pressure during rapid filter changes.
+`setReviewLog((log) => [...log, entry])` creates a new array every time a section is reviewed. For a 50-card review session, this triggers 50 `cards` + `reviewLog` dependency changes in `useDashboardData`, cascading through all memos. The spread `[...log, entry]` copies the entire log (potentially 10000+ entries) on each grade.
 
 ---
 
@@ -82,7 +84,7 @@ The `useEffect` that loads chapter settings does a dynamic `import("@/lib/db")` 
 
 | Severity | Count | Key Risk |
 |----------|-------|----------|
-| 🔴 CRITICAL | 3 | Category rename persistence race, IPC handler leak, overwrite import doesn't clear empty tables |
-| 🟠 HIGH | 5 | Template export staleness, review session stale resume, fingerprint serialization cost, async registry hydration, importCards ref desync |
-| 🟡 BOTTLENECK | 4 | Dashboard side-effects in useMemo, Pomodoro 1Hz renders, MentalSkeleton cascading recompute, LearnSession dynamic import churn |
+| 🔴 CRITICAL | 3 | Category rename race (latent), errorLog in-place mutation, review resume broken |
+| 🟠 HIGH | 5 | Double crash recovery throws, side effects in deferred compute, stale monument cache, missing dep, split card UX |
+| 🟡 BOTTLENECK | 4 | MentalSkeleton cascading recompute, full reviewLog iteration, forum fingerprint iteration, reviewLog array copying |
 
