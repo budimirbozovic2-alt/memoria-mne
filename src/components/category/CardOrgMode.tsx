@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, ChevronRight, Plus, FolderOpen, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, FolderOpen, GripVertical, Edit2, Trash2, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,8 @@ interface Props {
   category: CategoryRecord;
   patchCard: (id: string, fn: (c: Card) => Card) => void;
   addSubcategory: (categoryId: string, name: string) => void;
+  renameSubcategory: (categoryId: string, oldName: string, newName: string) => void;
+  deleteSubcategory: (categoryId: string, name: string) => void;
 }
 
 interface TreeNode {
@@ -131,12 +133,56 @@ function CardDragOverlay({ card }: { card: Card }) {
 }
 
 // ─── Main component ─────────────────────────────────────
-export default function CardOrgMode({ cards, categoryId, category, patchCard, addSubcategory }: Props) {
+export default function CardOrgMode({ cards, categoryId, category, patchCard, addSubcategory, renameSubcategory, deleteSubcategory }: Props) {
   const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
   const [newSubName, setNewSubName] = useState("");
   const [newChapterName, setNewChapterName] = useState("");
   const [addingChapterFor, setAddingChapterFor] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingSubName, setEditingSubName] = useState<string | null>(null);
+  const [editSubValue, setEditSubValue] = useState("");
+  const [editingChapter, setEditingChapter] = useState<{ sub: string; chapter: string } | null>(null);
+  const [editChapterValue, setEditChapterValue] = useState("");
+
+  const handleRenameSubcategory = useCallback((oldName: string) => {
+    const newName = editSubValue.trim();
+    if (!newName || newName === oldName) { setEditingSubName(null); return; }
+    // If it's a real subcategory (not the placeholder), rename via context
+    if (oldName !== "(Bez potkategorije)") {
+      renameSubcategory(categoryId, oldName, newName);
+    }
+    // Also update all cards with old subcategory name
+    cards.filter(c => (c.subcategory || "(Bez potkategorije)") === oldName).forEach(c => {
+      patchCard(c.id, card => ({ ...card, subcategory: newName }));
+    });
+    setEditingSubName(null);
+  }, [editSubValue, categoryId, renameSubcategory, cards, patchCard]);
+
+  const handleDeleteSubcategory = useCallback((subName: string) => {
+    if (subName === "(Bez potkategorije)") return;
+    // Unassign all cards from this subcategory
+    cards.filter(c => c.subcategory === subName).forEach(c => {
+      patchCard(c.id, card => ({ ...card, subcategory: undefined }));
+    });
+    deleteSubcategory(categoryId, subName);
+  }, [categoryId, deleteSubcategory, cards, patchCard]);
+
+  const handleRenameChapter = useCallback((sub: string, oldChapter: string) => {
+    const newName = editChapterValue.trim();
+    if (!newName || newName === oldChapter) { setEditingChapter(null); return; }
+    const subFilter = sub === "(Bez potkategorije)" ? "" : sub;
+    cards.filter(c => (c.subcategory || "") === (subFilter || "") && c.chapter === oldChapter).forEach(c => {
+      patchCard(c.id, card => ({ ...card, chapter: newName }));
+    });
+    setEditingChapter(null);
+  }, [editChapterValue, cards, patchCard]);
+
+  const handleDeleteChapter = useCallback((sub: string, chapter: string) => {
+    const subFilter = sub === "(Bez potkategorije)" ? "" : sub;
+    cards.filter(c => (c.subcategory || "") === (subFilter || "") && c.chapter === chapter).forEach(c => {
+      patchCard(c.id, card => ({ ...card, chapter: undefined }));
+    });
+  }, [cards, patchCard]);
 
   const tree = useMemo(() => buildTree(cards), [cards]);
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards]);
@@ -287,22 +333,57 @@ export default function CardOrgMode({ cards, categoryId, category, patchCard, ad
           return (
             <div key={node.subcategory} className="rounded-lg border bg-card overflow-hidden">
               {/* Subcategory header */}
-              <button
-                onClick={() => toggleSub(node.subcategory)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-accent/30 transition-colors"
-              >
-                {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                <FolderOpen className="h-4 w-4 text-primary/70" />
-                <span className="text-sm font-medium text-foreground flex-1">{node.subcategory}</span>
+              <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-accent/30 transition-colors">
+                <button onClick={() => toggleSub(node.subcategory)} className="flex items-center gap-2 flex-1 text-left min-w-0">
+                  {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  <FolderOpen className="h-4 w-4 text-primary/70" />
+                  {editingSubName === node.subcategory ? (
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <Input value={editSubValue} onChange={e => setEditSubValue(e.target.value)} className="h-6 text-xs flex-1"
+                        autoFocus onKeyDown={e => { if (e.key === "Enter") handleRenameSubcategory(node.subcategory); if (e.key === "Escape") setEditingSubName(null); }} />
+                      <button onClick={() => handleRenameSubcategory(node.subcategory)} className="p-0.5 hover:bg-secondary rounded text-green-500"><Check className="h-3 w-3" /></button>
+                      <button onClick={() => setEditingSubName(null)} className="p-0.5 hover:bg-secondary rounded text-muted-foreground"><X className="h-3 w-3" /></button>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-medium text-foreground flex-1 truncate">{node.subcategory}</span>
+                  )}
+                </button>
                 <Badge variant="secondary" className="text-[10px]">{totalCards}</Badge>
-              </button>
+                {!editingSubName && node.subcategory !== "(Bez potkategorije)" && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button onClick={() => { setEditingSubName(node.subcategory); setEditSubValue(node.subcategory); }}
+                      className="p-1 rounded hover:bg-secondary"><Edit2 className="h-3 w-3 text-muted-foreground" /></button>
+                    <button onClick={() => handleDeleteSubcategory(node.subcategory)}
+                      className="p-1 rounded hover:bg-destructive/10"><Trash2 className="h-3 w-3 text-destructive" /></button>
+                  </div>
+                )}
+              </div>
 
               {isExpanded && (
                 <div className="border-t px-3 py-2 space-y-2">
                   {/* Chapters with DnD */}
                   {node.chapters.map(ch => (
                     <div key={ch.chapter} className="space-y-1">
-                      <DroppableChapterHeader sub={node.subcategory} chapter={ch.chapter} count={ch.cards.length} />
+                      <div className="flex items-center gap-1">
+                        {editingChapter?.sub === node.subcategory && editingChapter?.chapter === ch.chapter ? (
+                          <div className="flex items-center gap-1.5 flex-1 px-1">
+                            <Input value={editChapterValue} onChange={e => setEditChapterValue(e.target.value)} className="h-6 text-xs flex-1"
+                              autoFocus onKeyDown={e => { if (e.key === "Enter") handleRenameChapter(node.subcategory, ch.chapter); if (e.key === "Escape") setEditingChapter(null); }} />
+                            <button onClick={() => handleRenameChapter(node.subcategory, ch.chapter)} className="p-0.5 hover:bg-secondary rounded text-green-500"><Check className="h-3 w-3" /></button>
+                            <button onClick={() => setEditingChapter(null)} className="p-0.5 hover:bg-secondary rounded text-muted-foreground"><X className="h-3 w-3" /></button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex-1">
+                              <DroppableChapterHeader sub={node.subcategory} chapter={ch.chapter} count={ch.cards.length} />
+                            </div>
+                            <button onClick={() => { setEditingChapter({ sub: node.subcategory, chapter: ch.chapter }); setEditChapterValue(ch.chapter); }}
+                              className="p-0.5 rounded hover:bg-secondary opacity-0 group-hover:opacity-100"><Edit2 className="h-3 w-3 text-muted-foreground" /></button>
+                            <button onClick={() => handleDeleteChapter(node.subcategory, ch.chapter)}
+                              className="p-0.5 rounded hover:bg-destructive/10 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3 text-destructive" /></button>
+                          </>
+                        )}
+                      </div>
                       <SortableContext items={ch.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
                         {ch.cards.map((card, idx) => (
                           <SortableCardTile key={card.id} card={card} index={idx} />

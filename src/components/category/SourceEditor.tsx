@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
-import { ArrowLeft, Save, Calendar as CalendarIcon, Scissors, Link2 } from "lucide-react";
+import { ArrowLeft, Save, Calendar as CalendarIcon, Scissors, Link2, Wand2, Maximize2, Minimize2, BookOpen, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,8 @@ import { incrementDailyMapped } from "@/lib/planner-storage";
 import { createSection, type Card } from "@/lib/spaced-repetition";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import AutoSplitDialog from "@/components/AutoSplitDialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Props {
   source: Source;
@@ -48,6 +50,11 @@ export default function SourceEditor({ source, categoryId, cards, onBack, onSour
   const [selectedText, setSelectedText] = useState("");
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkSelectedText, setLinkSelectedText] = useState("");
+  const [wide, setWide] = useState(false);
+  const [autoSplitOpen, setAutoSplitOpen] = useState(false);
+
+  // Cards linked to this source
+  const linkedCards = useMemo(() => cards.filter(c => c.sourceId === source.id), [cards, source.id]);
 
   const outline = useMemo(() => extractOutline(source.htmlContent), [source.htmlContent]);
   const safeHtml = useMemo(() => sanitizeHtml(source.htmlContent), [source.htmlContent]);
@@ -193,10 +200,20 @@ export default function SourceEditor({ source, categoryId, cards, onBack, onSour
           <ArrowLeft className="h-4 w-4" />
           Nazad na listu
         </Button>
-        <Button size="sm" onClick={handleSave} disabled={!dirty} className="gap-2">
-          <Save className="h-4 w-4" />
-          Sačuvaj
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setAutoSplitOpen(true)} className="gap-1.5">
+            <Wand2 className="h-4 w-4" />
+            Auto Split
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setWide(w => !w)} className="gap-1.5">
+            {wide ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {wide ? "Usko" : "Široko"}
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={!dirty} className="gap-2">
+            <Save className="h-4 w-4" />
+            Sačuvaj
+          </Button>
+        </div>
       </div>
 
       {/* Top Panel — Legal Metadata */}
@@ -247,10 +264,10 @@ export default function SourceEditor({ source, categoryId, cards, onBack, onSour
         )}
       </div>
 
-      {/* Bottom Panel — Content + Outline */}
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
+      {/* Bottom Panel — Content + Outline + Linked Cards */}
+      <div className={cn("grid gap-4", wide ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-[220px_1fr]")}>
         {/* Outline sidebar */}
-        {outline.length > 0 && (
+        {!wide && outline.length > 0 && (
           <div className="rounded-lg border bg-card p-3 hidden lg:block">
             <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Sadržaj</h4>
             <ScrollArea className="h-[60vh]">
@@ -275,7 +292,7 @@ export default function SourceEditor({ source, categoryId, cards, onBack, onSour
           <ScrollArea className="h-[60vh]">
             <div
               ref={contentRef}
-              className="prose prose-sm dark:prose-invert max-w-none p-4 md:p-6"
+              className={cn("prose prose-sm dark:prose-invert p-4 md:p-6", wide ? "max-w-none" : "max-w-prose mx-auto")}
               dangerouslySetInnerHTML={{ __html: safeHtml }}
               onMouseUp={handleMouseUp}
             />
@@ -334,6 +351,32 @@ export default function SourceEditor({ source, categoryId, cards, onBack, onSour
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Extracted cards panel */}
+      {linkedCards.length > 0 && (
+        <Collapsible defaultOpen={false}>
+          <div className="rounded-lg border bg-card">
+            <CollapsibleTrigger className="flex items-center gap-2 w-full px-4 py-3 text-left hover:bg-accent/30 transition-colors">
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+              <BookOpen className="h-4 w-4 text-primary/70" />
+              <span className="text-sm font-medium text-foreground flex-1">Ekstraktovane kartice</span>
+              <Badge variant="secondary" className="text-[10px]">{linkedCards.length}</Badge>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="border-t px-4 py-2 space-y-1 max-h-48 overflow-y-auto">
+                {linkedCards.map(c => (
+                  <div key={c.id} className="text-xs text-foreground/80 py-1 px-2 rounded hover:bg-accent/20 truncate">
+                    {c.question || "(Bez pitanja)"}
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+
+      {/* Auto Split Dialog */}
+      <AutoSplitDialog open={autoSplitOpen} onClose={() => setAutoSplitOpen(false)} source={source} />
 
       {/* Link to existing card modal */}
       <LinkToExistingCardModal

@@ -1,4 +1,4 @@
-import { ArrowLeft, RotateCcw, ChevronDown } from "lucide-react";
+import { ArrowLeft, RotateCcw, ChevronDown, Database, FolderOpen } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings, COLOR_THEMES, applyColorTheme, type ColorTheme } from "@/lib/app-settings";
@@ -12,9 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-
 import InfoPanel from "@/components/InfoPanel";
 import HealthMonitor from "@/components/HealthMonitor";
+import ExportImportDialog from "@/components/ExportImportDialog";
+import CategoryManager from "@/components/CategoryManager";
+import { useCardContext } from "@/contexts/AppContext";
 interface Props {
   settings: SRSettings;
   onUpdate: (settings: SRSettings) => void;
@@ -25,6 +27,13 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
   const [local, setLocal] = useState<SRSettings>({ ...settings });
   const initialAppRef = useRef(loadAppSettings());
   const initialTtsRef = useRef(loadTTSSettings());
+  const [exportImportOpen, setExportImportOpen] = useState(false);
+  const {
+    cards, categories, subcategories, cardCountByCategory,
+    exportData, exportTemplate, importData,
+    addCategory, renameCategory, deleteCategory,
+    addSubcategory, renameSubcategory, deleteSubcategory,
+  } = useCardContext();
   const [app, setApp] = useState<AppSettings>(initialAppRef.current);
   const [tts, setTts] = useState<TTSSettings>(initialTtsRef.current);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -83,11 +92,15 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
       </div>
 
       <Tabs defaultValue="algorithm" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="algorithm">Algoritam</TabsTrigger>
           <TabsTrigger value="interface">Interfejs</TabsTrigger>
           <TabsTrigger value="workflow">Tok rada</TabsTrigger>
           <TabsTrigger value="system">Sistem</TabsTrigger>
+          <TabsTrigger value="subjects" className="gap-1.5">
+            <FolderOpen className="h-3.5 w-3.5" />
+            Predmeti
+          </TabsTrigger>
         </TabsList>
 
         {/* ═══════════ TAB 1: ALGORITAM ═══════════ */}
@@ -437,6 +450,16 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
 
         {/* ═══════════ TAB 4: SISTEM ═══════════ */}
         <TabsContent value="system" className="space-y-5 mt-0">
+          {/* Backup & Restore */}
+          <div className="glass-card rounded-xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold">Backup & Restore</h3>
+            <p className="text-xs text-muted-foreground">Izvezi ili uvezi kompletnu bazu podataka.</p>
+            <Button variant="outline" className="gap-2" onClick={() => setExportImportOpen(true)}>
+              <Database className="h-4 w-4" />
+              Export / Import
+            </Button>
+          </div>
+
           {/* Health Monitor */}
           <HealthMonitor />
 
@@ -566,6 +589,22 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
             </Collapsible>
           </div>
         </TabsContent>
+
+        {/* ═══════════ TAB 5: PREDMETI ═══════════ */}
+        <TabsContent value="subjects" className="mt-0">
+          <CategoryManager
+            categories={categories}
+            subcategories={subcategories}
+            cardCountByCategory={cardCountByCategory}
+            onAdd={addCategory}
+            onRename={renameCategory}
+            onDelete={deleteCategory}
+            onAddSub={addSubcategory}
+            onRenameSub={renameSubcategory}
+            onDeleteSub={deleteSubcategory}
+            onClose={onBack}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Action buttons — always visible */}
@@ -578,6 +617,16 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
         </Button>
       </div>
       <div className="pb-8" />
+
+      {/* Export/Import Dialog */}
+      <ExportImportDialog
+        open={exportImportOpen}
+        onOpenChange={setExportImportOpen}
+        onExportTemplate={exportTemplate}
+        onExportFull={exportData}
+        onImport={importData}
+        cards={cards}
+      />
     </div>
   );
 }

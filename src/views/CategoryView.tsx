@@ -44,7 +44,7 @@ export default function CategoryView() {
   ) ?? [];
 
   // Card actions from context
-  const { addCard, patchCard, toggleTag, addSubcategory } = useCardActions();
+  const { addCard, patchCard, toggleTag, addSubcategory, renameSubcategory, deleteSubcategory } = useCardActions();
 
   // Cards tab mode toggle
   const [orgMode, setOrgMode] = useState(false);
@@ -161,6 +161,8 @@ export default function CategoryView() {
               category={category}
               patchCard={patchCard}
               addSubcategory={addSubcategory}
+              renameSubcategory={renameSubcategory}
+              deleteSubcategory={deleteSubcategory}
             />
           ) : (
             <CardViewMode
