@@ -21,7 +21,7 @@ const STATUS_FILTERS: { value: MnemonicStatus | "all"; label: string; icon: type
   { value: "ready", label: "Spremne", icon: CheckCircle2 },
 ];
 
-export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, onBack }: Props) {
+export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<MnemonicStatus | "all">("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
