@@ -281,12 +281,16 @@ function CardProvider({ children }: { children: ReactNode }) {
     h.ready, h.dbError,
   ]);
 
+  // H5 fix: Render recovery panel but still wrap in providers to prevent cascade crash
   if (h.dbError) {
-    const DatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
     return (
-      <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-muted-foreground">Učitavanje...</div>}>
-        <DatabaseRecoveryPanel error={h.dbError} />
-      </Suspense>
+      <CardActionsContext.Provider value={actions}>
+        <CardDataContext.Provider value={data}>
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-muted-foreground">Učitavanje...</div>}>
+            <LazyDatabaseRecoveryPanel error={h.dbError} />
+          </Suspense>
+        </CardDataContext.Provider>
+      </CardActionsContext.Provider>
     );
   }
 

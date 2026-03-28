@@ -248,9 +248,9 @@ export function useCards() {
     };
   }, [cards, categories, categoryRecords]);
 
+  // H4 fix: Also update categoryRecordsState so sidebar reflects reorder immediately
   const reorderCategories = useCallback((ordered: string[]) => {
     setCategoriesState(ordered);
-    // Save reordered categories
     (async () => {
       try {
         const existing = await idbLoadCategories();
@@ -262,13 +262,26 @@ export function useCards() {
             : { id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] };
         });
         await idbSaveCategories(records);
+        setCategoryRecordsState(records);
       } catch (e) { console.error("[useCards] reorderCategories save failed", e); }
     })();
-  }, []);
+  }, [setCategoryRecordsState]);
 
+  // H6 fix: Persist subcategory reorder to IDB
   const reorderSubcategories = useCallback((category: string, ordered: string[]) => {
     setSubcategoriesState(prev => {
       const next = { ...prev, [category]: ordered };
+      // Persist to IDB
+      (async () => {
+        try {
+          const existing = await idbLoadCategories();
+          const updated = existing.map(cat => cat.name === category
+            ? { ...cat, subcategories: ordered }
+            : cat
+          );
+          await idbSaveCategories(updated);
+        } catch (e) { console.error("[useCards] reorderSubcategories save failed", e); }
+      })();
       return next;
     });
   }, []);
