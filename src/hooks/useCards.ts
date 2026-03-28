@@ -26,6 +26,7 @@ import { onCardLinksCleared } from "@/lib/sources-storage";
 export function useCards() {
   const [cardMap, setCardMapState] = useState<CardMap>({});
   const [categories, setCategoriesState] = useState<string[]>(["Opšte"]);
+  const [categoryRecords, setCategoryRecordsState] = useState<CategoryRecord[]>([]);
   const [subcategories, setSubcategoriesState] = useState<Record<string, string[]>>({});
   const [reviewLog, setReviewLogState] = useState<ReviewLogEntry[]>([]);
   const [srSettings, setSrSettingsState] = useState<SRSettings>(DEFAULT_SR_SETTINGS);
