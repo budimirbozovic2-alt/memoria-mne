@@ -195,8 +195,9 @@ function buildFingerprint(cards: Card[], reviewLogLen: number, sourceCount: numb
       stabilitySum += sec.stability;
     }
   }
-  // H1 fix: include registryVersion so alias/monument changes bust cache
-  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}:${registryVersion}`;
+  // H2 fix: include monument types hash so building type changes bust cache
+  const mtHash = JSON.stringify(loadMonumentTypes());
+  return `${cards.length}:${totalSections}:${reviewSections}:${Math.round(stabilitySum)}:${reviewLogLen}:${sourceCount}:${registryVersion}:${mtHash}`;
 }
 
 // ─── Main Calculator ────────────────────────────────────
