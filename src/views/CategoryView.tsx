@@ -187,13 +187,29 @@ export default function CategoryView() {
             />
           ) : (
             <div className="space-y-3">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx"
+                className="hidden"
+                onChange={handleDocxImport}
+              />
+              {/* Import button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={importing}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {importing ? "Importujem…" : "Importuj DOCX"}
+                </Button>
+              </div>
+
               {sources.length === 0 ? (
-                <div className="text-center py-16 space-y-3">
-                  <FileText className="h-10 w-10 mx-auto text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">Nema izvora u ovoj kategoriji.</p>
-                  <p className="text-xs text-muted-foreground">Importujte dokument da biste započeli.</p>
-                </div>
-              ) : (
                 sources.map(source => (
                   <button
                     key={source.id}
