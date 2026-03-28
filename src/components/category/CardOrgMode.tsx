@@ -333,15 +333,31 @@ export default function CardOrgMode({ cards, categoryId, category, patchCard, ad
           return (
             <div key={node.subcategory} className="rounded-lg border bg-card overflow-hidden">
               {/* Subcategory header */}
-              <button
-                onClick={() => toggleSub(node.subcategory)}
-                className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-accent/30 transition-colors"
-              >
-                {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                <FolderOpen className="h-4 w-4 text-primary/70" />
-                <span className="text-sm font-medium text-foreground flex-1">{node.subcategory}</span>
+              <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-accent/30 transition-colors">
+                <button onClick={() => toggleSub(node.subcategory)} className="flex items-center gap-2 flex-1 text-left min-w-0">
+                  {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  <FolderOpen className="h-4 w-4 text-primary/70" />
+                  {editingSubName === node.subcategory ? (
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <Input value={editSubValue} onChange={e => setEditSubValue(e.target.value)} className="h-6 text-xs flex-1"
+                        autoFocus onKeyDown={e => { if (e.key === "Enter") handleRenameSubcategory(node.subcategory); if (e.key === "Escape") setEditingSubName(null); }} />
+                      <button onClick={() => handleRenameSubcategory(node.subcategory)} className="p-0.5 hover:bg-secondary rounded text-green-500"><Check className="h-3 w-3" /></button>
+                      <button onClick={() => setEditingSubName(null)} className="p-0.5 hover:bg-secondary rounded text-muted-foreground"><X className="h-3 w-3" /></button>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-medium text-foreground flex-1 truncate">{node.subcategory}</span>
+                  )}
+                </button>
                 <Badge variant="secondary" className="text-[10px]">{totalCards}</Badge>
-              </button>
+                {!editingSubName && node.subcategory !== "(Bez potkategorije)" && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button onClick={() => { setEditingSubName(node.subcategory); setEditSubValue(node.subcategory); }}
+                      className="p-1 rounded hover:bg-secondary"><Edit2 className="h-3 w-3 text-muted-foreground" /></button>
+                    <button onClick={() => handleDeleteSubcategory(node.subcategory)}
+                      className="p-1 rounded hover:bg-destructive/10"><Trash2 className="h-3 w-3 text-destructive" /></button>
+                  </div>
+                )}
+              </div>
 
               {isExpanded && (
                 <div className="border-t px-3 py-2 space-y-2">
