@@ -1,15 +1,17 @@
-import { Plus, CheckSquare, BookOpen, X, Search, Flame, ArrowUpDown } from "lucide-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { Plus, CheckSquare, BookOpen, X, Search, Flame, ArrowUpDown, Link2 } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { idbLoadSettings } from "@/lib/db";
 import { useCardContext, useUIContext } from "@/contexts/AppContext";
 import { useDebounce } from "@/hooks/useDebounce";
-
 
 import { Card } from "@/lib/spaced-repetition";
 import ScrollableRow from "@/components/ScrollableRow";
 import CardList from "@/components/CardList";
 import ShortcutsHint from "@/components/ShortcutsHint";
 import { toast } from "sonner";
+import { findBulkAutoLinkSuggestions, type AutoLinkPair } from "@/lib/auto-link-suggestion";
+
+const AutoLinkReviewModal = lazy(() => import("@/components/AutoLinkReviewModal"));
 const CARDS_SHORTCUTS = [
   { keys: "Ctrl+K", description: "Globalna pretraga" },
 ];
@@ -49,6 +51,31 @@ export default function CardsView() {
   });
   const [reorderMode, setReorderMode] = useState(false);
   const [storedChapterOrder, setStoredChapterOrder] = useState<string[]>([]);
+  const [autoLinkPairs, setAutoLinkPairs] = useState<AutoLinkPair[]>([]);
+  const [autoLinkOpen, setAutoLinkOpen] = useState(false);
+  const [autoLinkLoading, setAutoLinkLoading] = useState(false);
+
+  const handleAutoLinkScan = useCallback(async () => {
+    setAutoLinkLoading(true);
+    try {
+      const pairs = await findBulkAutoLinkSuggestions(cards);
+      if (pairs.length === 0) {
+        toast.info("Nema novih predloga za uvezivanje.");
+      } else {
+        setAutoLinkPairs(pairs);
+        setAutoLinkOpen(true);
+      }
+    } catch (e) {
+      console.error("[AutoLink] scan failed", e);
+      toast.error("Greška pri skeniranju predloga.");
+    } finally {
+      setAutoLinkLoading(false);
+    }
+  }, [cards]);
+
+  const handleAutoLink = useCallback((cardId: string, sourceId: string) => {
+    updateCard(cardId, { sourceId });
+  }, [updateCard]);
 
   // Load stored chapter order from IDB when filter changes
   useEffect(() => {
@@ -199,6 +226,15 @@ export default function CardsView() {
           </button>
           {!reorderMode && (
             <>
+              <button
+                onClick={handleAutoLinkScan}
+                disabled={autoLinkLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                title="Pronađi predloge za uvezivanje kartica i izvora"
+              >
+                <Link2 className="h-4 w-4" />
+                {autoLinkLoading ? "Skeniram..." : "Pronađi predloge"}
+              </button>
               <button
                 onClick={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${selectionMode ? "bg-secondary text-secondary-foreground" : "border text-muted-foreground hover:bg-secondary"}`}
@@ -489,6 +525,17 @@ export default function CardsView() {
         onCloneToMnemonic={handleCloneToMnemonic}
         onAddKeyPart={addKeyPart}
       />
+
+      <Suspense fallback={null}>
+        {autoLinkOpen && (
+          <AutoLinkReviewModal
+            pairs={autoLinkPairs}
+            open={autoLinkOpen}
+            onClose={() => setAutoLinkOpen(false)}
+            onLink={handleAutoLink}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
