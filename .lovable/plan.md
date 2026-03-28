@@ -1,88 +1,65 @@
 
 
-# Deep Static System Audit Report
+# Task 5: Mind Map Export Pipeline & Category Gallery
 
----
+## Current State
 
-## 🔴 CRITICAL (App crashes, infinite loops, data loss)
+- `MindMapDoc` exists in `db.ts` with fields: `id, title, mode, nodes, edges, createdAt, updatedAt`
+- **No `categoryId` field** — maps are global-only
+- `mindMaps` table index: `"id, title, updatedAt"` — no `categoryId` index
+- Schema is at **v7** — adding `categoryId` index requires bumping to **v8**
+- `CategoryView.tsx` has 2 tabs: Kartice, Izvori
 
-### C1. `ensureDbOpen` retry creates orphan DB connection — potential data split
-**[src/lib/db.ts: 210-215]**
-After `VersionError` deletes the DB, the retry logic creates a `new MemoriaDB()` instance (`freshDb`) and opens it. But the app continues to use the module-level `db` singleton. The `freshDb` instance is never closed, creating a dangling open connection that can **block** the singleton's `tryOpen()` retry via the `"blocked"` event. If this happens, the app enters a dead state with `dbErrorState = timeout` and no recovery path — the user sees a permanent error screen.
+## Plan
 
-### C2. `categoryStats` keyed by category NAME, cards keyed by `categoryId` UUID — silent mismatch
-**[src/hooks/useCards.ts: 177-208]**
-The `catAccum` is initialized using `categories` (string names), but `card.categoryId` is a UUID. The lookup `catAccum[card.categoryId]` on line 203 will **always** return `undefined` because UUIDs never match category names. Result: `categoryStats` shows 0 score / 0 total / 0 due for ALL categories. Dashboard "weakest categories" and Stats "category chart" are both silently empty. **No crash, but complete data loss in analytics views.**
+### 1. Schema: Add `categoryId` to `MindMapDoc` (v8 migration)
 
-### C3. `setCategories` persists by NAME lookup — loses UUID identity on reorder
-**[src/hooks/useCards.ts: 86-107]**
-`setCategories` loads existing `CategoryRecord[]`, builds a `Map<name, record>`, then reconstructs records by matching names. If two categories share the same name (edge case but possible via import), this silently merges them. More critically, any category rename that hasn't flushed to IDB yet will create a **duplicate** record with a new UUID, orphaning all cards that referenced the old UUID.
+**`src/lib/db.ts`**:
+- Add optional `categoryId?: string` to `MindMapDoc` interface
+- Bump schema to v8: keep v7 as-is, add `this.version(8).stores({ mindMaps: "id, categoryId, title, updatedAt" })` — only the mindMaps index changes, all other tables stay the same (Dexie carries forward unchanged stores)
 
-### C4. `persist-queue` visibilitychange listener never cleaned up
-**[src/lib/persist-queue.ts: 99-106]**
-The `document.addEventListener("visibilitychange", ...)` is registered at module scope with no cleanup. In Vite HMR, this module can be re-evaluated, stacking duplicate listeners. Each listener independently calls `flush()`, which can cause concurrent IDB writes on the same batch, potentially corrupting data or throwing `ConstraintError`.
+### 2. Export Dialog in MindMapCanvas
 
----
+**New: `src/components/mindmap/ExportToCategory.tsx`**:
+- Small dialog component with:
+  - Text input for map title (pre-filled with current doc title)
+  - Category dropdown (from `useCardData().categoryRecords`)
+  - Save button
+- On save: creates a **new** `MindMapDoc` record with `categoryId` set, copies current nodes/edges as snapshot data, saves via `saveMindMap()`
 
-## 🟠 HIGH RISK (UI bugs, logical offsets, missing fallbacks)
+**`src/components/mindmap/MindMapCanvas.tsx`**:
+- Add "Eksportuj u Predmet" button in the toolbar (next to Save)
+- State: `exportOpen: boolean`
+- Render `<ExportToCategory>` dialog, passing current doc's title/nodes/edges
 
-### H1. `cardCountByCategory` uses UUID, `categoryStats` uses NAME — inconsistent keys
-**[src/hooks/useCards.ts: 184 vs 203]**
-`countByCategory[card.categoryId]` correctly uses UUID (line 184). But `catAccum[card.categoryId]` is initialized by name (line 177). Components consuming both will get mismatched keys. Any UI rendering "due cards per category" alongside "card count per category" will show contradictory data.
+### 3. Category Gallery — 3rd Tab
 
-### H2. `useDashboardData` and `useStatsData` access `categoryStats[cat]` where `cat` is a NAME string
-**[src/hooks/useDashboardData.ts: 189-191, src/hooks/useStatsData.ts: 93-97]**
-These access `categoryStats` by category name, which is technically correct if `categoryStats` were keyed by name (it is, per the `catAccum` initialization). But since `catAccum[card.categoryId]` never matches (C2 above), these views always show empty arrays. Even if C2 is fixed to use UUIDs, these consumers will need to be updated to use UUIDs too.
+**New: `src/components/category/CategoryMindMaps.tsx`**:
+- Query: `useLiveQuery(() => db.mindMaps.where("categoryId").equals(categoryId).toArray())`
+- Display as a grid of cards showing map title, date, node count
+- Click opens a **read-only** full-screen ReactFlow viewer (reuse `MindMapCanvas` with a `readOnly` prop, or render ReactFlow directly with `nodesDraggable={false}, nodesConnectable={false}, elementsSelectable={false}`)
+- Empty state with map icon
 
-### H3. MnemonicWorkshop graduation logic missing — `patchCard` not wired
-**[src/components/MnemonicWorkshop.tsx: 11-16]**
-The `Props` interface has no `patchCard` prop. The plan called for adding graduation logic (stamping cards with `"mnemonic"` tag when status = "ready"), but `MnemonicWorkshop` only receives `onUpdateCard` (which updates `MnemonicCard` in localStorage, not the real `Card` in IDB). The graduation bridge between the mnemonic system and the FSRS card system is **not connected**.
+**`src/views/CategoryView.tsx`**:
+- Add 3rd tab: "Mentalne mape" with `GitBranch` icon and count badge
+- Query category mind maps via `useLiveQuery`
+- Render `<CategoryMindMaps>`
 
-### H4. `reorderCategories` bypasses `categoryRecordsState` — sidebar stale after reorder
-**[src/hooks/useCards.ts: 241-257]**
-`reorderCategories` updates `setCategoriesState` (string[]) and persists to IDB, but never calls `setCategoryRecordsState`. The sidebar reads from `categoryRecords` (from context), which remains in the old order until the next full page refresh.
+### 4. Read-Only Viewer
 
-### H5. `dbError` check blocks ALL children including Toaster
-**[src/contexts/AppContext.tsx: 284-291]**
-When `h.dbError` is truthy, `CardProvider` returns `DatabaseRecoveryPanel` without wrapping it in `CardActionsContext.Provider` or `CardDataContext.Provider`. Any child that calls `useCardActions()` or `useCardData()` during the error state (e.g., `ProcessingOverlay` or `ForumTransition`) will throw "must be used within CardProvider", causing a cascade crash that hides the recovery panel.
+**New: `src/components/category/MindMapViewer.tsx`**:
+- Lightweight ReactFlow wrapper: takes nodes/edges, renders with `nodesDraggable={false}`, `nodesConnectable={false}`, presentation mode, `fitView`
+- Back button to return to gallery
+- Reuses `MindMapNodeComponent` for consistent node rendering
 
-### H6. `reorderSubcategories` doesn't persist to IDB
-**[src/hooks/useCards.ts: 259-264]**
-Unlike `setSubcategories` which has async IDB persistence logic, `reorderSubcategories` only updates React state. Subcategory reordering is lost on refresh.
+## File Changes
 
----
-
-## 🟡 BOTTLENECKS (Performance drops, unnecessary re-renders)
-
-### B1. `useCardContext()` creates a new merged object on every data change
-**[src/contexts/AppContext.tsx: 117-121]**
-`useCardContext` calls `useMemo(() => ({ ...data, ...actions }), [data, actions])`. Since `data` changes on every card mutation and `actions` is a Proxy, this spread creates a new object every time `data` changes, causing re-renders in all 20+ consumers of `useCardContext()`. Components that only need actions still re-render on data changes.
-
-### B2. `getCategoryStats` in spaced-repetition.ts is O(N) per category — called redundantly
-**[src/lib/spaced-repetition.ts: 366-372]**
-The standalone `getCategoryStats()` function does a full `cards.filter()` per category. While `useCards.ts` has an optimized single-pass version (line 167), any component that imports and calls `getCategoryStats` directly bypasses the optimization and re-scans the entire card array.
-
-### B3. Pomodoro timer causes AppProvider subtree re-render every second
-**[src/contexts/AppContext.tsx: 189-216]**
-The `setSeconds` call fires every 1000ms while running, changing `pom.state.seconds`. The `PomodoroContext.Provider` value recalculates via `useMemo` every second. While `PomodoroContext` is isolated, any component using `usePomodoroContext()` re-renders every second — check if `PomodoroTimer` is the only consumer.
-
-### B4. `mapToArray` cache uses module-level version counter — breaks with StrictMode double-render
-**[src/lib/persist-queue.ts: 17-29]**
-`bumpMapVersion()` is called inside action handlers. In React StrictMode, the action handler runs twice, bumping version twice but `setCardMapState` only commits once. The cached array stays valid, but `_mapVersion` drifts ahead of actual renders, causing unnecessary `Object.values()` recomputation on next access.
-
-### B5. `lazy(() => import(...))` inside render function (conditional)
-**[src/contexts/AppContext.tsx: 285]**
-`const DatabaseRecoveryPanel = lazy(...)` is created inside the render path of `CardProvider`. React docs warn against creating lazy components during render — it should be hoisted to module scope. Currently it works but creates a new lazy wrapper on every render when `dbError` is truthy.
-
----
-
-## Summary
-
-| Severity | Count | Most Urgent |
-|----------|-------|-------------|
-| 🔴 CRITICAL | 4 | C2 (categoryStats UUID mismatch) — silently breaks all analytics |
-| 🟠 HIGH | 6 | H5 (dbError cascade crash) |
-| 🟡 BOTTLENECK | 5 | B1 (useCardContext spread) |
-
-**Recommended fix order:** C2 → C1 → H5 → C3 → H4 → H3 → C4 → remainder
+| File | Change |
+|---|---|
+| `src/lib/db.ts` | Add `categoryId?` to `MindMapDoc`, bump to v8 with categoryId index |
+| `src/components/mindmap/ExportToCategory.tsx` | **NEW** — export dialog |
+| `src/components/mindmap/MindMapCanvas.tsx` | Add export button + dialog state |
+| `src/components/category/CategoryMindMaps.tsx` | **NEW** — gallery grid |
+| `src/components/category/MindMapViewer.tsx` | **NEW** — read-only viewer |
+| `src/views/CategoryView.tsx` | Add 3rd tab with mind map query |
 
