@@ -19,7 +19,7 @@ export function useSourceLogic(source: Source) {
   const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null);
   const [essayDialogOpen, setEssayDialogOpen] = useState(false);
   const [essayQuestion, setEssayQuestion] = useState("");
-  const [essayCategory, setEssayCategory] = useState(categories[0] ?? "Opšte");
+  // essayCategory removed — categoryId is always implicit from source.categoryId
   const [selectedText, setSelectedText] = useState("");
   const [autoSplitOpen, setAutoSplitOpen] = useState(false);
   const [splitSummaryOpen, setSplitSummaryOpen] = useState(false);
@@ -145,13 +145,13 @@ export function useSourceLogic(source: Source) {
   const handleCreateEssay = useCallback(() => {
     if (!essayQuestion.trim() || !selectedText) return;
     const anchor = createTextAnchor(selectedText);
-    addCard(essayQuestion.trim(), [{ title: "Odgovor", content: sanitizeHtml(selectedText) }], essayCategory, undefined, undefined, {
+    addCard(essayQuestion.trim(), [{ title: "Odgovor", content: sanitizeHtml(selectedText) }], source.categoryId, undefined, undefined, {
       sourceId: source.id, textAnchor: anchor, originalSourceSnippet: selectedText,
     });
     toast({ title: "Esejsko pitanje kreirano", description: `Povezano sa izvorom "${source.title}"` });
     setEssayDialogOpen(false);
     incrementDailyMapped(1);
-  }, [essayQuestion, selectedText, essayCategory, source, addCard]);
+  }, [essayQuestion, selectedText, source, addCard]);
 
   const scrollToHeading = useCallback((id: string) => {
     const el = contentRef.current?.querySelector(`#${id}`);
@@ -229,7 +229,7 @@ export function useSourceLogic(source: Source) {
   return {
     contentRef, outlineOpen, setOutlineOpen, viewMode, setViewMode,
     selection, essayDialogOpen, setEssayDialogOpen, essayQuestion, setEssayQuestion,
-    essayCategory, setEssayCategory, selectedText, autoSplitOpen, setAutoSplitOpen,
+    selectedText, autoSplitOpen, setAutoSplitOpen,
     splitSummaryOpen, setSplitSummaryOpen, splitResult, setSplitResult,
     splitDone, splitCreatedCount, splitParentName, setSplitParentName,
     splitModules, setSplitModules, examOpen, setExamOpen, examQuestions, setExamQuestions,
