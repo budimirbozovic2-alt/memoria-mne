@@ -136,10 +136,7 @@ export default function MnemonicModule() {
 
       <div className="flex items-center justify-between">
         <div>
-          <button onClick={onBack} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4">
-            <ArrowLeft className="h-4 w-4" /> Nazad
-          </button>
-          <h2 className="text-4xl font-bold flex items-center gap-3">
+          <h2 className="imperial-title flex items-center gap-3">
             <Brain className="h-8 w-8 text-primary" /> Memorizacija
           </h2>
           <p className="text-muted-foreground mt-2">Izolovani sistem za kreiranje i testiranje mentalnih kuka.</p>
