@@ -161,6 +161,43 @@ class MemoriaDB extends Dexie {
       sources: "id, label, version, createdAt",
       mindMaps: "id, title, updatedAt",
     });
+    // v6: add category field to sources
+    this.version(6).stores({
+      cards: "id, category, subcategory, type, createdAt, sourceId, [category+subcategory]",
+      categories: "id, name",
+      subcategories: "id, category",
+      reviewLog: "++id, cardId, sectionId, timestamp, category",
+      pomodoroLog: "++id, timestamp, type",
+      settings: "key",
+      diary: "id, date",
+      calibrationLog: "++id, timestamp, cardId",
+      latencyLog: "++id, timestamp, cardId",
+      slippageLog: "++id, date",
+      activityLog: "++id, timestamp, type",
+      disciplineLog: "++id, date",
+      sources: "id, label, category, version, createdAt",
+      mindMaps: "id, title, updatedAt",
+    }).upgrade(async tx => {
+      // Best-effort migration: infer category from linked cards
+      const allCards = await tx.table("cards").toArray();
+      const sourceCatCounts = new Map<string, Map<string, number>>();
+      for (const card of allCards) {
+        if (!card.sourceId || !card.category) continue;
+        if (!sourceCatCounts.has(card.sourceId)) sourceCatCounts.set(card.sourceId, new Map());
+        const counts = sourceCatCounts.get(card.sourceId)!;
+        counts.set(card.category, (counts.get(card.category) || 0) + 1);
+      }
+      await tx.table("sources").toCollection().modify((source: Source) => {
+        const counts = sourceCatCounts.get(source.id);
+        if (!counts || counts.size === 0) return;
+        // Pick most common category
+        let best = ""; let bestCount = 0;
+        for (const [cat, count] of counts) {
+          if (count > bestCount) { best = cat; bestCount = count; }
+        }
+        source.category = best;
+      });
+    });
   }
 }
 
