@@ -12,6 +12,7 @@ import { type Card, CARD_TAGS, SectionState } from "@/lib/spaced-repetition";
 import { type CategoryRecord } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import BulkImportDialog from "./BulkImportDialog";
 
 interface Props {
   cards: Card[];
@@ -31,6 +32,7 @@ function stabilityLabel(s: number): { text: string; color: string } {
 
 export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard }: Props) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [addMode, setAddMode] = useState<"essay" | "flash">("flash");
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
@@ -256,6 +258,9 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
               <X className="h-3 w-3" /> Reset
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={() => setBulkImportOpen(true)} className="h-7 gap-1.5 text-xs">
+            <Upload className="h-3.5 w-3.5" /> Masovni Import
+          </Button>
           <Button variant="default" size="sm" onClick={() => setAddDialogOpen(true)} className="h-7 gap-1.5 text-xs">
             <Plus className="h-3.5 w-3.5" /> Nova kartica
           </Button>
@@ -385,6 +390,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
         </DialogContent>
       </Dialog>
       {renderAddDialog()}
+      <BulkImportDialog open={bulkImportOpen} onOpenChange={setBulkImportOpen} categoryId={categoryId} addFlashCard={addFlashCard} />
     </div>
   );
 }
