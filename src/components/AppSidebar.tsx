@@ -10,7 +10,7 @@ import {
   SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { db } from "@/lib/db";
+import { db, seedDefaultCategories } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { useCardContext } from "@/contexts/AppContext";
 
