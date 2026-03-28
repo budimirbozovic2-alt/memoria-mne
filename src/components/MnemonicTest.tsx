@@ -148,7 +148,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
         </button>
 
         <div>
-          <h2 className="text-3xl font-bold flex items-center gap-3">
+          <h2 className="imperial-title flex items-center gap-3">
             <Filter className="h-7 w-7 text-primary" /> Izbor drila
           </h2>
           <p className="text-muted-foreground mt-1">Filtriraj kartice za testiranje.</p>
