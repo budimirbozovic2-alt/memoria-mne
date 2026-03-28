@@ -18,6 +18,7 @@ export function useCategoryManagement({
   setSubcategories,
   setCardMapState,
   cardMapRef,
+  getCategoryRecords,
 }: UseCategoryManagementParams) {
   const addCategory = useCallback(
     (name: string) => {
