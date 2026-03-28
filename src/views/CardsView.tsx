@@ -195,7 +195,7 @@ export default function CardsView() {
         return;
       }
       const sections = card.sections.map(s => ({ title: s.title, content: s.content }));
-      const clone = createMnemonicCard(card.id, card.question, sections, card.category, card.subcategory, card.tags);
+      const clone = createMnemonicCard(card.id, card.question, sections, card.categoryId, card.subcategory, card.tags);
       saveMnemonicCards([...existing, clone]);
       handleToggleTag(card.id, "mnemonic");
       toast.success("Klonirano u Mnemo radionicu");
@@ -439,7 +439,7 @@ export default function CardsView() {
               Sve
             </button>
             {categories.map(c => {
-              const count = cards.filter(card => card.category === c).length;
+              const count = cards.filter(card => card.categoryId === c).length;
               return (
                 <button
                   key={c}

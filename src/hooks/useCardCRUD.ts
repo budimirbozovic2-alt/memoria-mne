@@ -165,7 +165,7 @@ export function useCardCRUD({
       ...createCard(
         card.question,
         [{ title: section.title, content: section.content }],
-        card.category,
+        card.categoryId,
         card.subcategory,
       ),
       sections: [{ ...section }],

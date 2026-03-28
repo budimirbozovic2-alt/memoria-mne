@@ -19,7 +19,7 @@ function stripHtml(html: string): string {
  * from cards already linked to it. If no cards are linked yet,
  * the source is considered "uncategorized" and matches any card.
  *
- * Rule A: card.category must match the source's inferred category (or source has none).
+ * Rule A: card.categoryId must match the source's inferred category (or source has none).
  * Rule B: source.label exactly matches card.question (stripped), OR
  *         source.label appears as substring in card.question or any section content.
  */
@@ -51,7 +51,7 @@ export async function findBulkAutoLinkSuggestions(
 
     for (const { source, labelLower } of sourceIndex) {
       // Rule A: category must match (direct field)
-      if (source.category !== card.category) continue;
+      if (source.category !== card.categoryId) continue;
 
       // Rule B: content match
       let matched = false;

@@ -244,7 +244,7 @@ export function calculateForumState(
   // Group cards by category
   const byCategory = new Map<string, Card[]>();
   for (const card of cards) {
-    const cat = card.category || "Nekategorizovano";
+    const cat = card.categoryId || "Nekategorizovano";
     const arr = byCategory.get(cat);
     if (arr) arr.push(card);
     else byCategory.set(cat, [card]);

@@ -112,7 +112,7 @@ export default function SessionFilters({
             )}
             <span className="relative z-10">{c}</span>
             <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
-              {cards.filter(card => card.category === c).length}
+              {cards.filter(card => card.categoryId === c).length}
             </span>
           </motion.button>
         ))}

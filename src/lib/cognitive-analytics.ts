@@ -539,7 +539,7 @@ export function calcBlindSpots(cards: Card[]): BlindSpot[] {
       cardId,
       sectionId,
       question: card.question,
-      category: card.category,
+      category: card.categoryId,
       confidence: latest.confidence,
       actualGrade: latest.actualGrade,
       occurrences: data.entries.length,

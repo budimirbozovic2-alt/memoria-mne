@@ -153,7 +153,7 @@ export function useCards() {
 
     for (const card of cards) {
       // Card count by category
-      countByCategory[card.category] = (countByCategory[card.category] || 0) + 1;
+      countByCategory[card.categoryId] = (countByCategory[card.categoryId] || 0) + 1;
 
       // Section-level stats
       let cardIsDue = false;
@@ -172,7 +172,7 @@ export function useCards() {
       if (cardIsDue) dueList.push(card);
 
       // Category stats accumulation
-      const acc = catAccum[card.category];
+      const acc = catAccum[card.categoryId];
       if (acc) {
         acc.total++;
         acc.scoreSum += card.sections.length > 0 ? cardScoreSum / card.sections.length : 0;
