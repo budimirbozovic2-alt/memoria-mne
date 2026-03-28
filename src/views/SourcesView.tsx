@@ -90,6 +90,7 @@ export default function SourcesView() {
       outline,
       articles,
       officialGazetteInfo: importGazette.trim() || undefined,
+      category: importCategory || undefined,
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
