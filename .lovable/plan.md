@@ -1,25 +1,44 @@
 
 
-# Fix Electron Eternal Loading — 4 Changes
+# Rebuild & Test Electron App
 
-## Current State Assessment
+## Overview
+Build the Vite project, package with `@electron/packager`, and verify the app launches past the splash screen.
 
-After inspecting all 4 files:
+## Steps
 
-- **`src/main.tsx`**: SW Electron guard already applied (line 189). `notifyReady()` is correctly called from `useCardBootstrap.ts` (line 170-172), not from `main.tsx`. **No changes needed.**
-- **`main.cjs`**: CSP `file://` bypass already applied (lines 53-56). **No changes needed.**
-- **`electron/window.cjs`**: Missing `webSecurity: false`. **Needs fix.**
-- **`vite.config.ts`**: Has `manualChunks` that can cause TDZ errors with recharts. **Needs fix.**
+### 1. Build Vite production bundle
+```bash
+cd /dev-server && npx vite build
+```
 
-## Changes (2 files)
+### 2. Install Electron + Packager
+```bash
+cd /dev-server && npm install --save-dev electron @electron/packager
+```
 
-### 1. `electron/window.cjs` — Add `webSecurity: false`
-In `webPreferences` (line 84-91), add `webSecurity: false` so Chromium allows ES module `<script type="module">` over `file://` protocol.
+### 3. Package for Linux
+```bash
+cd /dev-server && npx @electron/packager . "Memoria" \
+  --platform=linux --arch=x64 \
+  --out=electron-release --overwrite \
+  --ignore='node_modules' \
+  --ignore='^/src' --ignore='^/public' \
+  --ignore='^/electron-release'
+```
 
-### 2. `vite.config.ts` — Remove `rollupOptions`, add `emptyOutDir`
-Replace lines 41-56 (`build: { rollupOptions: { ... } }`) with `build: { emptyOutDir: true }`. This eliminates the recharts TDZ `ReferenceError` caused by manual chunk splitting.
+### 4. Archive for download
+```bash
+tar czf /mnt/documents/Memoria-linux-x64.tar.gz -C /dev-server/electron-release Memoria-linux-x64/
+```
 
-## Files unchanged
-- `src/main.tsx` — already has Electron SW guard
-- `main.cjs` — already has `file://` CSP bypass
+### 5. Verify fixes are in place (pre-build checklist)
+Before building, confirm these 4 fixes are active in the current code:
+- `vite.config.ts`: `base: './'` and no `manualChunks` (just `emptyOutDir: true`)
+- `main.cjs`: CSP skips `file://` URLs
+- `src/main.tsx`: SW registration skipped when `electronAPI` present
+- `electron/window.cjs`: `webSecurity: false` in webPreferences
+
+### What this tests
+The eternal loading screen was caused by CSP blocking dynamic imports under `file://`, SW registration crashing, and potential rollup chunking TDZ errors. All three have been patched. A successful launch past the splash screen confirms the fix.
 
