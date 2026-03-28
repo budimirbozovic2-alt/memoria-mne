@@ -176,6 +176,8 @@ export default function CategoryView() {
               allCategories={allCategories}
               patchCard={patchCard}
               toggleTag={toggleTag}
+              addCard={addCard}
+              addFlashCard={addFlashCard}
             />
           )}
         </TabsContent>
