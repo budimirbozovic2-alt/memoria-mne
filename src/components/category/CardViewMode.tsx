@@ -182,7 +182,6 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
       </Dialog>
     );
   }
-  }
 
   return (
     <div className="space-y-3">
