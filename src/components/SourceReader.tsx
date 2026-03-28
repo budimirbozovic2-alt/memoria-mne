@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/sources-storage";
 
 const AutoSplitDialog = lazy(() => import("@/components/AutoSplitDialog"));
+const LinkToExistingCardModal = lazy(() => import("@/components/LinkToExistingCardModal"));
 
 // ── Coverage Stats Bar ──
 function CoverageStatsBar({ percent, linkedCount }: { percent: number; linkedCount: number }) {
