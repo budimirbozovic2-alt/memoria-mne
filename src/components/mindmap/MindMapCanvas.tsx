@@ -634,6 +634,11 @@ function MindMapCanvasInner({ doc, onBack }: { doc: MindMapDoc; onBack: () => vo
             </DropdownMenuContent>
           </DropdownMenu>
 
+          {/* Export to Category */}
+          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
+            <FolderDown className="h-4 w-4 mr-1" /> Eksportuj u Predmet
+          </Button>
+
           <Button size="sm" onClick={handleSave} variant={dirty ? "default" : "outline"}>
             <Save className="h-4 w-4 mr-1" />
             {dirty ? "Sačuvaj" : "Sačuvano"}
