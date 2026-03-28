@@ -252,7 +252,7 @@ export default function SourcesView() {
       // Show diff view
       setDiffView({
         result: diffResult,
-        sourceName: oldSource.label,
+        sourceName: oldSource.title,
         oldVersion: oldSource.version,
         newVersion: newSource.version,
         affectedCardCount: affectedCards.length,
