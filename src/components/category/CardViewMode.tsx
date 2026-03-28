@@ -12,6 +12,7 @@ import { type Card, CARD_TAGS, SectionState } from "@/lib/spaced-repetition";
 import { type CategoryRecord } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import BulkImportDialog from "./BulkImportDialog";
 
 interface Props {
   cards: Card[];
