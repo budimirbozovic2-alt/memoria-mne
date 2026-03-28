@@ -13,9 +13,7 @@ import MnemonicWorkshop from "./MnemonicWorkshop";
 import MnemonicTest from "./MnemonicTest";
 import MajorSystemSettings from "./MajorSystemSettings";
 import OnboardingModal, { type OnboardingSlide, hasSeenOnboarding } from "@/components/OnboardingModal";
-interface Props {
-  onBack: () => void;
-}
+
 
 const MNEMONIC_KEY = ["mnemonicCards"] as const;
 
