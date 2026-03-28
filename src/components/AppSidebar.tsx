@@ -89,14 +89,20 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Categories — from boot context, not useLiveQuery */}
+        {/* Categories — from boot context with fallback */}
         <SidebarGroup>
           <SidebarGroupLabel>Predmeti</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {categoryRecords.map((cat) => {
+              {displayCategories.length === 0 && (
+                <SidebarMenuItem>
+                  <span className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Učitavanje predmeta…
+                  </span>
+                </SidebarMenuItem>
+              )}
+              {displayCategories.map((cat) => {
                 const catPath = `/category/${cat.id}`;
-                const isActive = location.pathname.startsWith(catPath);
                 return (
                   <SidebarMenuItem key={cat.id}>
                     <SidebarMenuButton asChild tooltip={cat.name}>
