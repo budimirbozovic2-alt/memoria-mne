@@ -48,6 +48,11 @@ export async function loadSources(): Promise<Source[]> {
   return sources;
 }
 
+/** Load sources scoped to a single category */
+export async function loadSourcesByCategory(categoryId: string): Promise<Source[]> {
+  return db.sources.where("categoryId").equals(categoryId).toArray();
+}
+
 export async function saveSource(source: Source): Promise<void> {
   _cache = null;
   await db.sources.put(source);

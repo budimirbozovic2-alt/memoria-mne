@@ -1,6 +1,6 @@
 import type { Card } from "@/lib/spaced-repetition";
 import type { Source } from "@/lib/db";
-import { loadSources } from "@/lib/sources-storage";
+import { loadSourcesByCategory } from "@/lib/sources-storage";
 
 export interface AutoLinkPair {
   card: Card;
@@ -14,20 +14,14 @@ function stripHtml(html: string): string {
 
 /**
  * Bulk scan: find unlinked cards that match a source by label.
- *
- * Since Source has no `category` field, we infer a source's category
- * from cards already linked to it. If no cards are linked yet,
- * the source is considered "uncategorized" and matches any card.
- *
- * Rule A: card.categoryId must match the source's inferred category (or source has none).
- * Rule B: source.title exactly matches card.question (stripped), OR
- *         source.title appears as substring in card.question or any section content.
+ * Scoped by categoryId to prevent cross-category data leakage.
  */
 export async function findBulkAutoLinkSuggestions(
   cards: Card[],
+  categoryId: string,
   sourcesParam?: Source[],
 ): Promise<AutoLinkPair[]> {
-  const sources = sourcesParam ?? await loadSources();
+  const sources = sourcesParam ?? await loadSourcesByCategory(categoryId);
   if (sources.length === 0) return [];
 
   // Pre-compute lowercase labels
