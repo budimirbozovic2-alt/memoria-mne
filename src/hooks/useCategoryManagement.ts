@@ -60,6 +60,11 @@ export function useCategoryManagement({
         if (next[oldName]) { next[newName] = next[oldName]; delete next[oldName]; }
         return next;
       });
+
+      // F4 fix: Cascade rename to sources
+      db.sources.where("category").equals(oldName).modify({ category: newName })
+        .then(() => invalidateSourcesCache())
+        .catch(err => console.warn("[renameCategory] source cascade failed", err));
     },
     [setCategories, setCardMapState, setSubcategories, cardMapRef],
   );
