@@ -367,6 +367,11 @@ export default function SourcesView() {
                         </p>
                       )}
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                        {source.category && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {source.category}
+                          </Badge>
+                        )}
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {source.date}
