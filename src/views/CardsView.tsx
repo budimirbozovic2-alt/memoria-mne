@@ -116,7 +116,7 @@ export default function CardsView() {
 
     ids.forEach((id, i) => {
       const patch: Partial<Card> = {};
-      if (cat && (bulkCategory || !filterCategory)) patch.category = cat;
+      if (cat && (bulkCategory || !filterCategory)) patch.categoryId = cat;
       if (sub) patch.subcategory = sub;
       if (ch) { patch.chapter = ch; patch.chapterOrder = i; }
       if (Object.keys(patch).length > 0) updateCard(id, patch);

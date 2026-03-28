@@ -114,8 +114,8 @@ export function calcInterferencePairs(cards: Card[], limit = 10): InterferencePa
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(p => ({
-      cardA: { id: p.a.id, question: p.a.question, category: p.a.category },
-      cardB: { id: p.b.id, question: p.b.question, category: p.b.category },
+      cardA: { id: p.a.id, question: p.a.question, category: p.a.categoryId },
+      cardB: { id: p.b.id, question: p.b.question, category: p.b.categoryId },
       sharedErrors: p.shared.slice(0, 3),
       score: p.score,
     }));

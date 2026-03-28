@@ -8,7 +8,6 @@ import {
   getCategoryDepthMode,
   getCardMasterSource,
   type DepthMode,
-} from "@/lib/source-registry";
 import { getCardMasteryLevel } from "@/components/KnowledgeMap";
 
 export interface HierarchyNode {
