@@ -102,6 +102,7 @@ export default function SourcesView() {
     setImportLabel("");
     setImportDate("");
     setImportGazette("");
+    setImportCategory("");
     setImportFile(null);
     const articleCount = articles.length;
     toast({
