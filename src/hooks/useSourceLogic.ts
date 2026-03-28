@@ -209,7 +209,7 @@ export function useSourceLogic(source: Source) {
     setSelection(null);
     window.getSelection()?.removeAllRanges();
     const result = splitSelection(text);
-    const category = source.label || categories[0] || "Opšte";
+    const category = source.category || categories[0] || "Opšte";
     if (result.hasArticles && result.modules.length > 0) {
       const { modules } = result;
       const sections = modules.map((mod) => ({ title: mod.title, content: sanitizeHtml(mod.contentHtml) }));
