@@ -1,5 +1,5 @@
 import { useParams } from "react-router-dom";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type CategoryRecord, type Source } from "@/lib/db";
 import { saveSource, invalidateSourcesCache } from "@/lib/sources-storage";
@@ -10,7 +10,11 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText, Brain, Plus, Upload } from "lucide-react";
+import { BookOpen, FileText, Brain, Plus, Upload, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { sanitizeHtml } from "@/lib/sanitize";
+import { parseArticles } from "@/lib/article-parser";
+import { extractOutline, injectHeadingIds } from "@/lib/sources-storage";
 import SourceEditor from "@/components/category/SourceEditor";
 import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
@@ -47,11 +51,53 @@ export default function CategoryView() {
 
   // Sources tab: selected source for editor
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSourceUpdated = useCallback((updated: Source) => {
-    // Source was saved via SourceEditor; invalidate cache for other consumers
     invalidateSourcesCache();
   }, []);
+
+  const handleDocxImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !categoryId) return;
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+
+    setImporting(true);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const { parseDocxInWorker } = await import("@/lib/docx-parser");
+      const rawHtml = await parseDocxInWorker(arrayBuffer);
+      const cleanHtml = sanitizeHtml(rawHtml);
+      const promotedHtml = (await import("@/lib/heading-promotion")).promoteHeadings(cleanHtml);
+      const injectedHtml = injectHeadingIds(promotedHtml);
+      const outline = extractOutline(injectedHtml);
+      const articles = parseArticles(injectedHtml);
+      const title = file.name.replace(/\.docx?$/i, "");
+
+      const newSource: Source = {
+        id: crypto.randomUUID(),
+        categoryId,
+        title,
+        date: new Date().toISOString().slice(0, 10),
+        htmlContent: promotedHtml,
+        outline,
+        articles,
+        version: 1,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      await saveSource(newSource);
+      invalidateSourcesCache();
+      toast.success(`Izvor "${title}" uspješno importovan.`);
+    } catch (err) {
+      toast.error(`Greška pri importu: ${err instanceof Error ? err.message : "Nepoznata greška"}`);
+    } finally {
+      setImporting(false);
+    }
+  }, [categoryId]);
 
   // Loading state
   if (category === undefined) {
@@ -141,11 +187,33 @@ export default function CategoryView() {
             />
           ) : (
             <div className="space-y-3">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx"
+                className="hidden"
+                onChange={handleDocxImport}
+              />
+              {/* Import button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={importing}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {importing ? "Importujem…" : "Importuj DOCX"}
+                </Button>
+              </div>
+
               {sources.length === 0 ? (
                 <div className="text-center py-16 space-y-3">
                   <FileText className="h-10 w-10 mx-auto text-muted-foreground/40" />
                   <p className="text-sm text-muted-foreground">Nema izvora u ovoj kategoriji.</p>
-                  <p className="text-xs text-muted-foreground">Importujte dokument da biste započeli.</p>
+                  <p className="text-xs text-muted-foreground">Kliknite "Importuj DOCX" da biste započeli.</p>
                 </div>
               ) : (
                 sources.map(source => (
