@@ -92,11 +92,15 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
       </div>
 
       <Tabs defaultValue="algorithm" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="algorithm">Algoritam</TabsTrigger>
           <TabsTrigger value="interface">Interfejs</TabsTrigger>
           <TabsTrigger value="workflow">Tok rada</TabsTrigger>
           <TabsTrigger value="system">Sistem</TabsTrigger>
+          <TabsTrigger value="subjects" className="gap-1.5">
+            <FolderOpen className="h-3.5 w-3.5" />
+            Predmeti
+          </TabsTrigger>
         </TabsList>
 
         {/* ═══════════ TAB 1: ALGORITAM ═══════════ */}
