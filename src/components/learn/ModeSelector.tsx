@@ -11,7 +11,6 @@ interface Props {
   dueCount: number;
   reviewLog: ReviewLogEntry[];
   onSelectMode: (mode: LearnMode) => void;
-  onBack: () => void;
 }
 
 export default function ModeSelector({ cards, learnMode, dueCount, reviewLog, onSelectMode, onBack }: Props) {
