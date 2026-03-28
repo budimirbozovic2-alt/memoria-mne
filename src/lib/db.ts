@@ -70,6 +70,7 @@ export interface MindMapEdgeRecord {
 
 export interface MindMapDoc {
   id: string;
+  categoryId?: string;       // FK → categories.id (optional — global maps have no category)
   title: string;
   mode: MindMapMode;
   nodes: MindMapNodeRecord[];
