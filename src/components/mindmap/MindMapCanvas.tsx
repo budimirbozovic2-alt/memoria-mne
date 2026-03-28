@@ -294,6 +294,7 @@ function MindMapCanvasInner({ doc, onBack }: { doc: MindMapDoc; onBack: () => vo
   const [deletedStack, setDeletedStack] = useState<{ nodes: Node[]; edges: Edge[] }[]>([]);
   const [presentationMode, setPresentationMode] = useState(false);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const mode = doc.mode || "hierarchy";
   const isProcedure = mode === "procedure";
