@@ -107,12 +107,81 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
     setMoveCardId(null);
   }, [moveCardId, targetCategoryId, patchCard]);
 
-  if (cards.length === 0) {
+  const handleAddSave = useCallback(() => {
+    if (!newQuestion.trim()) return;
+    if (addMode === "flash") {
+      if (!newAnswer.trim()) return;
+      addFlashCard(newQuestion.trim(), newAnswer.trim(), categoryId);
+    } else {
+      if (!newSectionContent.trim()) return;
+      addCard(newQuestion.trim(), [{ title: newSectionTitle.trim() || "Odgovor", content: newSectionContent.trim() }], categoryId);
+    }
+    toast.success("Kartica kreirana.");
+    setNewQuestion(""); setNewAnswer(""); setNewSectionTitle("Odgovor"); setNewSectionContent("");
+    setAddDialogOpen(false);
+  }, [addMode, newQuestion, newAnswer, newSectionTitle, newSectionContent, categoryId, addCard, addFlashCard]);
+
+  if (cards.length === 0 && !addDialogOpen) {
     return (
-      <div className="text-center py-16 text-muted-foreground text-sm">
-        Nema kartica u ovoj kategoriji.
+      <div className="text-center py-16 space-y-4">
+        <p className="text-sm text-muted-foreground">Nema kartica u ovoj kategoriji.</p>
+        <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" /> Nova kartica
+        </Button>
+        {renderAddDialog()}
       </div>
     );
+  }
+
+  function renderAddDialog() {
+    return (
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova kartica</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Type toggle */}
+            <div className="flex items-center gap-0.5 rounded-md border p-0.5 w-fit">
+              <button onClick={() => setAddMode("flash")} className={cn("px-3 py-1 rounded text-xs font-medium transition-colors", addMode === "flash" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                Blic
+              </button>
+              <button onClick={() => setAddMode("essay")} className={cn("px-3 py-1 rounded text-xs font-medium transition-colors", addMode === "essay" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>
+                Esej
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Pitanje</Label>
+              <Input value={newQuestion} onChange={e => setNewQuestion(e.target.value)} placeholder="Unesite pitanje..." />
+            </div>
+
+            {addMode === "flash" ? (
+              <div className="space-y-2">
+                <Label className="text-xs">Odgovor</Label>
+                <Textarea value={newAnswer} onChange={e => setNewAnswer(e.target.value)} placeholder="Unesite odgovor..." rows={4} />
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs">Naslov sekcije</Label>
+                  <Input value={newSectionTitle} onChange={e => setNewSectionTitle(e.target.value)} placeholder="Odgovor" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Sadržaj</Label>
+                  <Textarea value={newSectionContent} onChange={e => setNewSectionContent(e.target.value)} placeholder="Unesite sadržaj..." rows={6} />
+                </div>
+              </>
+            )}
+
+            <Button onClick={handleAddSave} className="w-full gap-2" disabled={!newQuestion.trim()}>
+              <Plus className="h-4 w-4" /> Sačuvaj
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
   }
 
   return (
