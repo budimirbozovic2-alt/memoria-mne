@@ -1,8 +1,26 @@
-const { app, session, ipcMain } = require('electron');
+const { app, session, ipcMain, protocol, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 const isDev = !app.isPackaged;
+
+// ── Register custom protocol BEFORE app.whenReady ──
+// This gives us a stable origin (app://localhost) so IndexedDB persists across restarts.
+// Under file:// the origin is opaque/null and Chromium may wipe storage.
+if (!isDev) {
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: 'app',
+      privileges: {
+        standard: true,
+        secure: true,
+        supportFetchAPI: true,
+        bypassCSP: false,
+        corsEnabled: true,
+      },
+    },
+  ]);
+}
 const configPath = path.join(app.getPath('userData'), 'window-state.json');
 const crashLogPath = path.join(app.getPath('userData'), 'crash.log');
 const rendererLogPath = path.join(app.getPath('userData'), 'renderer-errors.log');
