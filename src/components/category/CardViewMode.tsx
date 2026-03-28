@@ -249,7 +249,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
           </SelectContent>
         </Select>
 
-        {/* Reset + count */}
+        {/* Reset + count + actions */}
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-[10px] text-muted-foreground">{filteredCards.length}/{cards.length}</span>
           {hasActiveFilters && (
@@ -257,6 +257,9 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
               <X className="h-3 w-3" /> Reset
             </Button>
           )}
+          <Button variant="default" size="sm" onClick={() => setAddDialogOpen(true)} className="h-7 gap-1.5 text-xs">
+            <Plus className="h-3.5 w-3.5" /> Nova kartica
+          </Button>
         </div>
       </div>
 
