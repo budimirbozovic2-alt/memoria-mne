@@ -1,91 +1,33 @@
 
 
-# Phase 2: Layout & Routing Shell
+# Phase 2.5: Sidebar UI Fixes
 
-## What Already Exists
-- `src/components/ui/sidebar.tsx` — full sidebar component system (SidebarProvider, Sidebar, SidebarContent, etc.)
-- `src/components/AppSidebar.tsx` — sidebar with static nav + dynamic categories + tools (has a local `cn` duplicate to fix)
-- `src/lib/db.ts` — already has the correct 9 categories seeded
-- `src/components/ui/tabs.tsx` — existing Tabs components
+## Current State Analysis
 
-## Changes Required
+The code already has most of what's requested but needs two adjustments:
 
-### 1. Create `src/views/CategoryView.tsx` (NEW)
-The bounded-context view for `/category/:categoryId`:
-- Read `categoryId` from `useParams()`
-- Load category name via `db.categories.get(categoryId)`
-- Load scoped cards via `db.cards.where("categoryId").equals(categoryId).toArray()`
-- Load scoped sources via `db.sources.where("categoryId").equals(categoryId).toArray()`
-- Render category name as page header
-- 3 tabs using existing `Tabs`/`TabsList`/`TabsTrigger`/`TabsContent`:
-  - **Kartice** — simple list showing card question + type badge + count in tab label
-  - **Izvori** — simple list showing source title + date + count in tab label
-  - **Mnemonička radionica** — placeholder text confirming scoped categoryId
+1. **Rename "Konsolidacija" → "Učenje"** in STATIC_NAV (line 20 of AppSidebar.tsx)
+2. **Categories may not load** because `idbLoadCategories()` fires once on mount via `useEffect`, but the DB may not be open yet at that point. Switch to `useLiveQuery` from `dexie-react-hooks` for reactive category loading.
+3. **Empty states already exist** in CategoryView — they show "Nema kartica/izvora u ovoj kategoriji." These can be enhanced with icons for better visual clarity.
 
-### 2. Update `src/App.tsx`
-- Add lazy import for `CategoryView`
-- Add route: `<Route path="/category/:categoryId" element={<CategoryView />} />`
-- Wrap the main layout area with `SidebarProvider` (from sidebar.tsx)
+## Changes
 
-### 3. Rewrite `src/components/MainLayout.tsx`
-- Replace `TopNav` rendering with sidebar-based layout:
-  - Render `<AppSidebar />` on the left
-  - Main content area on the right
-  - Small header bar with `<SidebarTrigger />`, dark mode toggle, search button, Ctrl+K shortcut
-- Keep all existing features: Breadcrumbs, NudgeWatcher, ZenMode, GlobalSearch, DocxImporter, AppOnboarding
-- Add `/category/` prefix to `SOURCE_ROUTES` for full-width layout
+### 1. `src/components/AppSidebar.tsx`
 
-### 4. Fix `src/components/AppSidebar.tsx`
-- Remove local `cn` function duplicate (use `import { cn } from "@/lib/utils"` instead)
-- Already correct otherwise
+- Change label from `"Konsolidacija"` to `"Učenje"` in STATIC_NAV
+- Replace the `useEffect` + `useState` pattern with `useLiveQuery(() => db.categories.orderBy("sortOrder").toArray())` from `dexie-react-hooks` for reliable reactive loading
+- Add `dexie-react-hooks` import (already in dependencies)
 
-### 5. Update `src/components/Breadcrumbs.tsx`
-- Add dynamic breadcrumb for `/category/:categoryId` paths
-- Show: Dashboard > {CategoryName} (load category name from IDB or pass via state)
+### 2. `src/views/CategoryView.tsx`
 
-### 6. Move TopNav utilities to header
-- Dark mode toggle, search trigger, version dialog — move to a compact header strip inside MainLayout
-- TopNav.tsx file stays but is no longer the primary navigation component
+- Enhance empty states with icons (`BookOpen` for cards, `FileText` for sources) and slightly more descriptive messages
+- No structural changes needed — the 3-tab layout and data fetching are already correct
 
-## Architecture
+### 3. `package.json`
 
-```text
-┌─────────────────────────────────────────────────┐
-│ TitleBar                                        │
-├──────────┬──────────────────────────────────────┤
-│          │ [≡] [breadcrumbs]        [🔍] [☀/🌙]│
-│ Sidebar  ├──────────────────────────────────────┤
-│          │                                      │
-│ Dashboard│  <Routes>                            │
-│ Učenje   │    /              → DashboardPage    │
-│ Konsolid.│    /category/:id  → CategoryView     │
-│ Forum    │      ┌───────┬────────┬───────────┐  │
-│ Podešav. │      │Kartice│Izvori  │Mnemo rad. │  │
-│ ──────── │      ├───────┴────────┴───────────┤  │
-│ Predmeti │      │ scoped card/source list    │  │
-│  Krivič..│      └────────────────────────────┘  │
-│  Građan..│    /review        → ReviewPage       │
-│  ...     │    /forum         → RomanForumPage   │
-│ ──────── │    ...                               │
-│ Alati    │                                      │
-│  Statist.│                                      │
-│  Planer  │                                      │
-└──────────┴──────────────────────────────────────┘
-```
+- Verify `dexie-react-hooks` is already a dependency (it should be from the Dexie setup). If not, add it.
 
-## Files Summary
+## Summary
 
-| File | Action |
-|---|---|
-| `src/views/CategoryView.tsx` | **CREATE** — bounded context with 3 tabs |
-| `src/App.tsx` | Add CategoryView route + SidebarProvider wrapping |
-| `src/components/MainLayout.tsx` | Replace TopNav with Sidebar layout + header bar |
-| `src/components/AppSidebar.tsx` | Fix `cn` import |
-| `src/components/Breadcrumbs.tsx` | Add `/category/:categoryId` breadcrumb |
-
-## What This Does NOT Touch
-- No Mode A/B card toggle
-- No Source Editor
-- No Forum changes
-- No complex card editing UI
+Two small edits — rename a label, swap `useEffect` for `useLiveQuery`, and polish empty states. No architectural changes.
 
