@@ -20,6 +20,7 @@ import {
   idbSaveSubcategories,
   idbSaveSettings,
 } from "@/lib/db";
+import { onCardLinksCleared } from "@/lib/sources-storage";
 
 export function useCards() {
   const [cardMap, setCardMapState] = useState<CardMap>({});
