@@ -93,6 +93,11 @@ export function useCategoryManagement({
         delete next[name];
         return next;
       });
+
+      // F3 fix: Cascade delete to sources — reassign to "Opšte"
+      db.sources.where("category").equals(name).modify({ category: "Opšte" })
+        .then(() => invalidateSourcesCache())
+        .catch(err => console.warn("[deleteCategory] source cascade failed", err));
     },
     [setCategories, setCardMapState, setSubcategories, cardMapRef],
   );
