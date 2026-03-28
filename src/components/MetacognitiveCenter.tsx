@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, Clock, Brain, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { BookOpen, Clock, Brain, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import { useState, useMemo, lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 
