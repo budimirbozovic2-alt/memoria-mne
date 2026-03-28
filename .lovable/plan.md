@@ -1,95 +1,98 @@
 
 
-# Phase 5: Feature Restoration & UI Refinement
+# Phase 5: Feature Restoration & UX Split (Revised)
 
 ## Overview
 
-Four tasks restoring orphaned features into the new Category-Centric architecture. No new dependencies needed.
+4 tasks: Split Reader/Editor in Izvori tab, restore global Mnemonic Pipeline, Settings overhaul, and filter/CRUD refinements in Kartice tab.
 
 ---
 
-## Task 1: Settings Overhaul — Export/Import + Predmeti Tab
+## Task 1: Split Source Reader & Source Editor (Izvori Tab)
 
-### 1A: Wire ExportImportDialog into Settings "Sistem" tab
+**Current state:** `SourceEditor.tsx` is a monolith handling both metadata editing AND full reading/extraction. A separate `SourceReader.tsx` already exists with rich reader features (width toggle S/M/L/XL/Full, coverage view, outline sidebar, exam sidebar, auto-split). It's just not wired from `CategoryView`.
 
-**`src/components/SRSettingsPanel.tsx`**
-- Import `ExportImportDialog` and `useCardContext` (for `exportData`, `exportTemplate`, `importData`, `cards`)
-- Add state `exportImportOpen` 
-- In the "Sistem" tab (`TabsContent value="system"`), add a "Backup & Restore" card with a button that opens `ExportImportDialog`
-- Render `<ExportImportDialog>` at bottom of component, passing through the export/import callbacks from context
+**The fix in `CategoryView.tsx` (Izvori tab):**
+- Each source in the list gets TWO buttons: **"Čitaj"** (opens `SourceReader`) and **"Uredi"** (opens `SourceEditor` as a Dialog/Drawer for metadata only)
+- Add state: `readerSource: Source | null` for full-screen reader mode
+- When `readerSource` is set, render `<SourceReader source={readerSource} onBack={...} />`
+- Keep `selectedSource` for the editor, but change it to a **Dialog** (not full-screen) containing only the metadata panel (title, SL markings, date, isExclusive) + a "Paste new source text" textarea for updating HTML content
 
-The export logic in `useCardExport.ts` already reads fresh data from IDB (`db.cards.toArray()`, `db.sources.toArray()`) and exports `CategoryRecord[]` as `categories`. It also exports sources with `categoryId`. **Schema is already v7-compliant.** The import in `useCardImport.ts` does migration with `migrateImported()` which adds all required FSRS fields. No schema audit changes needed.
+**Refactor `SourceEditor.tsx`:**
+- Strip out the reader/content panel, outline sidebar, selection tooltip, Smart Split, AutoSplit — all of that stays in `SourceReader`
+- Keep only: metadata fields (title, SL, date, exclusive toggle), Save button, and a new "Update source text" collapsible textarea
+- Render as a `<Dialog>` from `CategoryView`
 
-### 1B: Add "Predmeti" tab for main category CRUD
+**Wire `SourceReader` in `CategoryView`:**
+- Import existing `SourceReader` from `@/components/SourceReader`
+- Note: `SourceReader` uses `useSourceLogic` which pulls `cards` from `useAppContext()` — it's already self-contained
+- Pass `source` and `onBack`
 
-**`src/components/SRSettingsPanel.tsx`**
-- Change grid from `grid-cols-4` to `grid-cols-5`
-- Add new `TabsTrigger value="subjects"` → "Predmeti"
-- Add new `TabsContent value="subjects"` that renders `CategoryManager`
-- Import `CategoryManager` and wire it with `useCardContext()` actions: `addCategory`, `renameCategory`, `deleteCategory`, `addSubcategory`, `renameSubcategory`, `deleteSubcategory`, `categories`, `subcategories`, `cardCountByCategory`
-- The `CategoryManager` already handles rename/delete/add/monument-type/subcategories — just needs proper wiring
-
----
-
-## Task 2: Localized Structure CRUD in CardOrgMode
-
-**`src/components/category/CardOrgMode.tsx`**
-
-Add rename/delete for subcategories and chapters within the org mode UI:
-
-- Add props: `renameSubcategory`, `deleteSubcategory` (from context actions)
-- **Subcategory header**: Add inline edit (pencil icon) and delete (trash icon) buttons next to each subcategory name
-- **Chapter header**: Add rename (inline edit) and delete buttons next to each chapter name. Deleting a chapter unassigns all its cards (`patchCard(id, c => ({...c, chapter: undefined}))`)
-- Renaming a chapter: batch `patchCard` all cards in that chapter to the new name
+**Files changed:**
+- `src/views/CategoryView.tsx` — add reader state, two-button source list, SourceReader import, SourceEditor as Dialog
+- `src/components/category/SourceEditor.tsx` — strip to metadata-only Dialog content
 
 ---
 
-## Task 3: 3-Tier Filter System in CardViewMode
+## Task 2: Restore Mnemonic Workshop as Global Pipeline
 
-**`src/components/category/CardViewMode.tsx`**
+**Current state:** `MnemonicModule.tsx` at route `/mnemonic` already has the full global workshop with menu, test, major system. `CategoryMnemonicWorkshop.tsx` is the scoped version in CategoryView tab.
 
-Add filter state and toolbar above the card list:
+**The fix:**
+1. **Remove mnemonic tab from `CategoryView.tsx`** — delete the 3rd TabsTrigger and TabsContent, remove `CategoryMnemonicWorkshop` import
+2. **Add sidebar link** — in `AppSidebar.tsx`, add `{ path: "/mnemonic", icon: Brain, label: "Memorizacija" }` to either STATIC_NAV or TOOLS_NAV (fits best in TOOLS_NAV alongside other learning tools)
+3. **MnemonicModule already exists** at `/mnemonic` route — no route changes needed
+4. **Delete `src/components/category/CategoryMnemonicWorkshop.tsx`** — now orphaned
 
-- State: `filterSubcategory: string`, `filterChapter: string`, `filterType: "all" | "essay" | "flash"`, `filterTag: string`
-- Build unique subcategories/chapters/tags from `cards` array using `useMemo`
-- Filter toolbar row with:
-  1. **Subcategory dropdown** → on select, populate chapter dropdown with chapters from that subcategory
-  2. **Type toggle**: All / Essay / Flash (3 small buttons or select)
-  3. **Tag dropdown**: populated from `CARD_TAGS`
-- Apply all filters with `useMemo` on cards before mapping
-- Add a "Reset filters" button when any filter is active
+**Graduation logic (marking cards as "done"):**
+- In `MnemonicWorkshop.tsx`, when user marks a card as "ready" (status = "ready"), add logic to stamp the original card with tag `"mnemonic"` via `patchCard`
+- This requires `MnemonicWorkshop` to gain access to `patchCard` from context — wire through `MnemonicModule` → `MnemonicWorkshop`
+- The `mnemonic` tag gets treated like existing tags in the card system
 
----
-
-## Task 4: SourceEditor Power-Ups
-
-**`src/components/category/SourceEditor.tsx`**
-
-### 4A: Width toggle
-- Add state `wide: boolean` (default false)
-- Toggle button in toolbar (Expand/Contract icon)
-- When wide: content div uses `max-w-none`; when narrow: `max-w-prose mx-auto`
-
-### 4B: Extracted cards panel
-- Filter `cards` prop by `sourceId === source.id` to get linked cards
-- Show a collapsible sidebar/panel listing linked card questions with count badge
-- Position: inside the grid layout, as an additional column or below outline
-
-### 4C: Auto-Split tool button
-- Import `AutoSplitDialog` (already exists at `src/components/AutoSplitDialog.tsx`)
-- Add state `autoSplitOpen`
-- Add "Auto Split" button (Wand2 icon) in toolbar, next to Save
-- Render `<AutoSplitDialog open={autoSplitOpen} onClose={() => setAutoSplitOpen(false)} source={source} />`
+**Files changed:**
+- `src/views/CategoryView.tsx` — remove mnemonic tab
+- `src/components/AppSidebar.tsx` — add Memorizacija to TOOLS_NAV
+- `src/components/MnemonicWorkshop.tsx` — add graduation logic (tag original card)
+- `src/components/MnemonicModule.tsx` — pass `patchCard` through
+- Delete `src/components/category/CategoryMnemonicWorkshop.tsx`
 
 ---
 
-## File Changes Summary
+## Task 3: Settings Overhaul (Backup & Category CRUD)
+
+**Current state:** Already implemented in previous Phase 5. `SRSettingsPanel.tsx` already imports `ExportImportDialog` and `CategoryManager`, has `exportImportOpen` state, and uses `useCardContext()` for all CRUD actions.
+
+**Verify & confirm:** This task is already done. The "Sistem" tab has the backup button, and there's a "Predmeti" tab with CategoryManager. No additional work needed unless the previous implementation had issues.
+
+---
+
+## Task 4: Localized Structure CRUD & 3-Tier Filters
+
+**Current state:** Already implemented in previous Phase 5. `CardOrgMode.tsx` has rename/delete for subcategories and chapters. `CardViewMode.tsx` has filter dropdowns for subcategory, chapter, type, and tag.
+
+**Addition needed:** Add `"mnemonic"` as a filter option in the Type filter alongside `"essay"` and `"flash"`. Currently the type filter has `"all" | "essay" | "flash"` — extend to `"all" | "essay" | "flash" | "mnemonic"`.
+
+- In `CardViewMode.tsx`, update `filterType` state type and filter logic to check for cards with `tags?.includes("mnemonic")`
+- Add a "Mnemo" button/option in the type filter UI
+
+**Files changed:**
+- `src/components/category/CardViewMode.tsx` — add mnemonic type filter option
+
+---
+
+## Implementation Order
+
+Due to size, I'll implement **Tasks 1 & 2 first**, then Tasks 3 & 4.
+
+## File Change Summary
 
 | File | Change |
 |---|---|
-| `src/components/SRSettingsPanel.tsx` | Add ExportImport trigger in Sistem tab + new "Predmeti" tab with CategoryManager |
-| `src/components/category/CardOrgMode.tsx` | Add rename/delete UI for subcategories and chapters |
-| `src/components/category/CardViewMode.tsx` | Add 3-tier filter toolbar (subcategory, type, tag) |
-| `src/components/category/SourceEditor.tsx` | Add width toggle, extracted cards panel, AutoSplit button |
-| `src/views/CategoryView.tsx` | Pass `renameSubcategory`, `deleteSubcategory` to CardOrgMode |
+| `src/views/CategoryView.tsx` | Remove mnemonic tab, split source list into Read/Edit buttons, add SourceReader |
+| `src/components/category/SourceEditor.tsx` | Strip to metadata-only Dialog content |
+| `src/components/AppSidebar.tsx` | Add Memorizacija link to TOOLS_NAV |
+| `src/components/MnemonicModule.tsx` | Pass patchCard to Workshop |
+| `src/components/MnemonicWorkshop.tsx` | Add graduation logic (tag original card on "ready") |
+| `src/components/category/CardViewMode.tsx` | Add "Mnemo" to type filter |
+| **DELETE** `src/components/category/CategoryMnemonicWorkshop.tsx` | Orphaned |
 
