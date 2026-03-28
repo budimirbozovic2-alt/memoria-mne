@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText, Plus, Upload, Loader2, Eye, Pencil } from "lucide-react";
+import { BookOpen, FileText, Plus, Upload, Loader2, Eye, Pencil, GitBranch } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { parseArticles } from "@/lib/article-parser";
