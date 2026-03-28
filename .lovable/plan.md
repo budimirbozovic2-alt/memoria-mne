@@ -1,45 +1,21 @@
 
 
-# Electron Windows Build & Test
+# Filter Auto-Link to Essay Cards Only
 
-## Current State
+## Change
 
-All `app://` MIME fixes are already in place:
-- `main.cjs`: `protocol.handle('app', ...)` with explicit MIME map and `fs.readFileSync` + `Response` headers
-- `vite.config.ts`: `base: './'` and `build: { emptyOutDir: true }` (no risky `manualChunks`)
-- `electron/window.cjs`: loads `app://localhost/index.html` in production, CSP skips `file://`
+One line added in `src/lib/auto-link-suggestion.ts` — skip flash cards in the main loop.
 
-## Build Steps
+### `src/lib/auto-link-suggestion.ts` — Line 53 area (inside the `for (const card of cards)` loop)
 
-### 1. Vite production build
-```bash
-cd /dev-server && npx vite build
+Add a type check right after the existing `sourceId` skip:
+
+```ts
+// Skip cards already linked
+if (card.sourceId) continue;
+if (seen.has(card.id)) continue;
+if (card.type === "flash") continue;  // ← NEW: only essay cards
 ```
 
-### 2. Install Electron + Packager
-```bash
-cd /dev-server && npm install --save-dev electron @electron/packager
-```
-
-### 3. Package for Windows
-```bash
-cd /dev-server && npx @electron/packager . "Codex" \
-  --platform=win32 --arch=x64 \
-  --out=electron-release --overwrite \
-  --ignore='node_modules' \
-  --ignore='^/src' --ignore='^/public' \
-  --ignore='^/electron-release'
-```
-
-### 4. Archive for download
-```bash
-cd /dev-server/electron-release && \
-  nix run nixpkgs#zip -- -r /mnt/documents/Codex-win32-x64.zip Codex-win32-x64/
-```
-
-### 5. Verify (static check)
-Confirm `dist/index.html` exists and references relative `./assets/` paths. Confirm `main.cjs` and `preload.cjs` are included in the package.
-
-## Output
-A downloadable `Codex-win32-x64.zip` in `/mnt/documents/` ready to extract and run on Windows.
+No other files need changes.
 
