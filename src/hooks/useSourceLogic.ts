@@ -19,7 +19,7 @@ export function useSourceLogic(source: Source) {
   const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null);
   const [essayDialogOpen, setEssayDialogOpen] = useState(false);
   const [essayQuestion, setEssayQuestion] = useState("");
-  const [essayCategory, setEssayCategory] = useState(categories[0] ?? "Opšte");
+  // essayCategory removed — categoryId is always implicit from source.categoryId
   const [selectedText, setSelectedText] = useState("");
   const [autoSplitOpen, setAutoSplitOpen] = useState(false);
   const [splitSummaryOpen, setSplitSummaryOpen] = useState(false);
