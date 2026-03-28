@@ -3,6 +3,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 import { db } from "@/lib/db";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
+import { toast } from "@/hooks/use-toast";
 
 interface UseCategoryManagementParams {
   setCategories: (updater: (prev: string[]) => string[]) => void;
