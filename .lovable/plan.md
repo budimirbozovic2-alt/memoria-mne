@@ -1,98 +1,88 @@
 
 
-# Phase 5: Feature Restoration & UX Split (Revised)
-
-## Overview
-
-4 tasks: Split Reader/Editor in Izvori tab, restore global Mnemonic Pipeline, Settings overhaul, and filter/CRUD refinements in Kartice tab.
+# Deep Static System Audit Report
 
 ---
 
-## Task 1: Split Source Reader & Source Editor (Izvori Tab)
+## 🔴 CRITICAL (App crashes, infinite loops, data loss)
 
-**Current state:** `SourceEditor.tsx` is a monolith handling both metadata editing AND full reading/extraction. A separate `SourceReader.tsx` already exists with rich reader features (width toggle S/M/L/XL/Full, coverage view, outline sidebar, exam sidebar, auto-split). It's just not wired from `CategoryView`.
+### C1. `ensureDbOpen` retry creates orphan DB connection — potential data split
+**[src/lib/db.ts: 210-215]**
+After `VersionError` deletes the DB, the retry logic creates a `new MemoriaDB()` instance (`freshDb`) and opens it. But the app continues to use the module-level `db` singleton. The `freshDb` instance is never closed, creating a dangling open connection that can **block** the singleton's `tryOpen()` retry via the `"blocked"` event. If this happens, the app enters a dead state with `dbErrorState = timeout` and no recovery path — the user sees a permanent error screen.
 
-**The fix in `CategoryView.tsx` (Izvori tab):**
-- Each source in the list gets TWO buttons: **"Čitaj"** (opens `SourceReader`) and **"Uredi"** (opens `SourceEditor` as a Dialog/Drawer for metadata only)
-- Add state: `readerSource: Source | null` for full-screen reader mode
-- When `readerSource` is set, render `<SourceReader source={readerSource} onBack={...} />`
-- Keep `selectedSource` for the editor, but change it to a **Dialog** (not full-screen) containing only the metadata panel (title, SL markings, date, isExclusive) + a "Paste new source text" textarea for updating HTML content
+### C2. `categoryStats` keyed by category NAME, cards keyed by `categoryId` UUID — silent mismatch
+**[src/hooks/useCards.ts: 177-208]**
+The `catAccum` is initialized using `categories` (string names), but `card.categoryId` is a UUID. The lookup `catAccum[card.categoryId]` on line 203 will **always** return `undefined` because UUIDs never match category names. Result: `categoryStats` shows 0 score / 0 total / 0 due for ALL categories. Dashboard "weakest categories" and Stats "category chart" are both silently empty. **No crash, but complete data loss in analytics views.**
 
-**Refactor `SourceEditor.tsx`:**
-- Strip out the reader/content panel, outline sidebar, selection tooltip, Smart Split, AutoSplit — all of that stays in `SourceReader`
-- Keep only: metadata fields (title, SL, date, exclusive toggle), Save button, and a new "Update source text" collapsible textarea
-- Render as a `<Dialog>` from `CategoryView`
+### C3. `setCategories` persists by NAME lookup — loses UUID identity on reorder
+**[src/hooks/useCards.ts: 86-107]**
+`setCategories` loads existing `CategoryRecord[]`, builds a `Map<name, record>`, then reconstructs records by matching names. If two categories share the same name (edge case but possible via import), this silently merges them. More critically, any category rename that hasn't flushed to IDB yet will create a **duplicate** record with a new UUID, orphaning all cards that referenced the old UUID.
 
-**Wire `SourceReader` in `CategoryView`:**
-- Import existing `SourceReader` from `@/components/SourceReader`
-- Note: `SourceReader` uses `useSourceLogic` which pulls `cards` from `useAppContext()` — it's already self-contained
-- Pass `source` and `onBack`
-
-**Files changed:**
-- `src/views/CategoryView.tsx` — add reader state, two-button source list, SourceReader import, SourceEditor as Dialog
-- `src/components/category/SourceEditor.tsx` — strip to metadata-only Dialog content
+### C4. `persist-queue` visibilitychange listener never cleaned up
+**[src/lib/persist-queue.ts: 99-106]**
+The `document.addEventListener("visibilitychange", ...)` is registered at module scope with no cleanup. In Vite HMR, this module can be re-evaluated, stacking duplicate listeners. Each listener independently calls `flush()`, which can cause concurrent IDB writes on the same batch, potentially corrupting data or throwing `ConstraintError`.
 
 ---
 
-## Task 2: Restore Mnemonic Workshop as Global Pipeline
+## 🟠 HIGH RISK (UI bugs, logical offsets, missing fallbacks)
 
-**Current state:** `MnemonicModule.tsx` at route `/mnemonic` already has the full global workshop with menu, test, major system. `CategoryMnemonicWorkshop.tsx` is the scoped version in CategoryView tab.
+### H1. `cardCountByCategory` uses UUID, `categoryStats` uses NAME — inconsistent keys
+**[src/hooks/useCards.ts: 184 vs 203]**
+`countByCategory[card.categoryId]` correctly uses UUID (line 184). But `catAccum[card.categoryId]` is initialized by name (line 177). Components consuming both will get mismatched keys. Any UI rendering "due cards per category" alongside "card count per category" will show contradictory data.
 
-**The fix:**
-1. **Remove mnemonic tab from `CategoryView.tsx`** — delete the 3rd TabsTrigger and TabsContent, remove `CategoryMnemonicWorkshop` import
-2. **Add sidebar link** — in `AppSidebar.tsx`, add `{ path: "/mnemonic", icon: Brain, label: "Memorizacija" }` to either STATIC_NAV or TOOLS_NAV (fits best in TOOLS_NAV alongside other learning tools)
-3. **MnemonicModule already exists** at `/mnemonic` route — no route changes needed
-4. **Delete `src/components/category/CategoryMnemonicWorkshop.tsx`** — now orphaned
+### H2. `useDashboardData` and `useStatsData` access `categoryStats[cat]` where `cat` is a NAME string
+**[src/hooks/useDashboardData.ts: 189-191, src/hooks/useStatsData.ts: 93-97]**
+These access `categoryStats` by category name, which is technically correct if `categoryStats` were keyed by name (it is, per the `catAccum` initialization). But since `catAccum[card.categoryId]` never matches (C2 above), these views always show empty arrays. Even if C2 is fixed to use UUIDs, these consumers will need to be updated to use UUIDs too.
 
-**Graduation logic (marking cards as "done"):**
-- In `MnemonicWorkshop.tsx`, when user marks a card as "ready" (status = "ready"), add logic to stamp the original card with tag `"mnemonic"` via `patchCard`
-- This requires `MnemonicWorkshop` to gain access to `patchCard` from context — wire through `MnemonicModule` → `MnemonicWorkshop`
-- The `mnemonic` tag gets treated like existing tags in the card system
+### H3. MnemonicWorkshop graduation logic missing — `patchCard` not wired
+**[src/components/MnemonicWorkshop.tsx: 11-16]**
+The `Props` interface has no `patchCard` prop. The plan called for adding graduation logic (stamping cards with `"mnemonic"` tag when status = "ready"), but `MnemonicWorkshop` only receives `onUpdateCard` (which updates `MnemonicCard` in localStorage, not the real `Card` in IDB). The graduation bridge between the mnemonic system and the FSRS card system is **not connected**.
 
-**Files changed:**
-- `src/views/CategoryView.tsx` — remove mnemonic tab
-- `src/components/AppSidebar.tsx` — add Memorizacija to TOOLS_NAV
-- `src/components/MnemonicWorkshop.tsx` — add graduation logic (tag original card)
-- `src/components/MnemonicModule.tsx` — pass `patchCard` through
-- Delete `src/components/category/CategoryMnemonicWorkshop.tsx`
+### H4. `reorderCategories` bypasses `categoryRecordsState` — sidebar stale after reorder
+**[src/hooks/useCards.ts: 241-257]**
+`reorderCategories` updates `setCategoriesState` (string[]) and persists to IDB, but never calls `setCategoryRecordsState`. The sidebar reads from `categoryRecords` (from context), which remains in the old order until the next full page refresh.
 
----
+### H5. `dbError` check blocks ALL children including Toaster
+**[src/contexts/AppContext.tsx: 284-291]**
+When `h.dbError` is truthy, `CardProvider` returns `DatabaseRecoveryPanel` without wrapping it in `CardActionsContext.Provider` or `CardDataContext.Provider`. Any child that calls `useCardActions()` or `useCardData()` during the error state (e.g., `ProcessingOverlay` or `ForumTransition`) will throw "must be used within CardProvider", causing a cascade crash that hides the recovery panel.
 
-## Task 3: Settings Overhaul (Backup & Category CRUD)
-
-**Current state:** Already implemented in previous Phase 5. `SRSettingsPanel.tsx` already imports `ExportImportDialog` and `CategoryManager`, has `exportImportOpen` state, and uses `useCardContext()` for all CRUD actions.
-
-**Verify & confirm:** This task is already done. The "Sistem" tab has the backup button, and there's a "Predmeti" tab with CategoryManager. No additional work needed unless the previous implementation had issues.
+### H6. `reorderSubcategories` doesn't persist to IDB
+**[src/hooks/useCards.ts: 259-264]**
+Unlike `setSubcategories` which has async IDB persistence logic, `reorderSubcategories` only updates React state. Subcategory reordering is lost on refresh.
 
 ---
 
-## Task 4: Localized Structure CRUD & 3-Tier Filters
+## 🟡 BOTTLENECKS (Performance drops, unnecessary re-renders)
 
-**Current state:** Already implemented in previous Phase 5. `CardOrgMode.tsx` has rename/delete for subcategories and chapters. `CardViewMode.tsx` has filter dropdowns for subcategory, chapter, type, and tag.
+### B1. `useCardContext()` creates a new merged object on every data change
+**[src/contexts/AppContext.tsx: 117-121]**
+`useCardContext` calls `useMemo(() => ({ ...data, ...actions }), [data, actions])`. Since `data` changes on every card mutation and `actions` is a Proxy, this spread creates a new object every time `data` changes, causing re-renders in all 20+ consumers of `useCardContext()`. Components that only need actions still re-render on data changes.
 
-**Addition needed:** Add `"mnemonic"` as a filter option in the Type filter alongside `"essay"` and `"flash"`. Currently the type filter has `"all" | "essay" | "flash"` — extend to `"all" | "essay" | "flash" | "mnemonic"`.
+### B2. `getCategoryStats` in spaced-repetition.ts is O(N) per category — called redundantly
+**[src/lib/spaced-repetition.ts: 366-372]**
+The standalone `getCategoryStats()` function does a full `cards.filter()` per category. While `useCards.ts` has an optimized single-pass version (line 167), any component that imports and calls `getCategoryStats` directly bypasses the optimization and re-scans the entire card array.
 
-- In `CardViewMode.tsx`, update `filterType` state type and filter logic to check for cards with `tags?.includes("mnemonic")`
-- Add a "Mnemo" button/option in the type filter UI
+### B3. Pomodoro timer causes AppProvider subtree re-render every second
+**[src/contexts/AppContext.tsx: 189-216]**
+The `setSeconds` call fires every 1000ms while running, changing `pom.state.seconds`. The `PomodoroContext.Provider` value recalculates via `useMemo` every second. While `PomodoroContext` is isolated, any component using `usePomodoroContext()` re-renders every second — check if `PomodoroTimer` is the only consumer.
 
-**Files changed:**
-- `src/components/category/CardViewMode.tsx` — add mnemonic type filter option
+### B4. `mapToArray` cache uses module-level version counter — breaks with StrictMode double-render
+**[src/lib/persist-queue.ts: 17-29]**
+`bumpMapVersion()` is called inside action handlers. In React StrictMode, the action handler runs twice, bumping version twice but `setCardMapState` only commits once. The cached array stays valid, but `_mapVersion` drifts ahead of actual renders, causing unnecessary `Object.values()` recomputation on next access.
+
+### B5. `lazy(() => import(...))` inside render function (conditional)
+**[src/contexts/AppContext.tsx: 285]**
+`const DatabaseRecoveryPanel = lazy(...)` is created inside the render path of `CardProvider`. React docs warn against creating lazy components during render — it should be hoisted to module scope. Currently it works but creates a new lazy wrapper on every render when `dbError` is truthy.
 
 ---
 
-## Implementation Order
+## Summary
 
-Due to size, I'll implement **Tasks 1 & 2 first**, then Tasks 3 & 4.
+| Severity | Count | Most Urgent |
+|----------|-------|-------------|
+| 🔴 CRITICAL | 4 | C2 (categoryStats UUID mismatch) — silently breaks all analytics |
+| 🟠 HIGH | 6 | H5 (dbError cascade crash) |
+| 🟡 BOTTLENECK | 5 | B1 (useCardContext spread) |
 
-## File Change Summary
-
-| File | Change |
-|---|---|
-| `src/views/CategoryView.tsx` | Remove mnemonic tab, split source list into Read/Edit buttons, add SourceReader |
-| `src/components/category/SourceEditor.tsx` | Strip to metadata-only Dialog content |
-| `src/components/AppSidebar.tsx` | Add Memorizacija link to TOOLS_NAV |
-| `src/components/MnemonicModule.tsx` | Pass patchCard to Workshop |
-| `src/components/MnemonicWorkshop.tsx` | Add graduation logic (tag original card on "ready") |
-| `src/components/category/CardViewMode.tsx` | Add "Mnemo" to type filter |
-| **DELETE** `src/components/category/CategoryMnemonicWorkshop.tsx` | Orphaned |
+**Recommended fix order:** C2 → C1 → H5 → C3 → H4 → H3 → C4 → remainder
 
