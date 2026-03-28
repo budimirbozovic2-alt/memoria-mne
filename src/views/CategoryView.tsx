@@ -46,7 +46,7 @@ export default function CategoryView() {
     [categoryId]
   ) ?? 0;
 
-  const { addCard, patchCard, toggleTag, addSubcategory, renameSubcategory, deleteSubcategory } = useCardActions();
+  const { addCard, addFlashCard, patchCard, toggleTag, addSubcategory, renameSubcategory, deleteSubcategory } = useCardActions();
 
   const [orgMode, setOrgMode] = useState(false);
 
@@ -176,6 +176,8 @@ export default function CategoryView() {
               allCategories={allCategories}
               patchCard={patchCard}
               toggleTag={toggleTag}
+              addCard={addCard}
+              addFlashCard={addFlashCard}
             />
           )}
         </TabsContent>

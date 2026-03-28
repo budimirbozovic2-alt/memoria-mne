@@ -11,21 +11,14 @@ import {
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 
 interface UseCardCRUDParams {
-  categories: string[];
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
-  setCategories: (updater: (prev: string[]) => string[]) => void;
   cardMapRef: React.MutableRefObject<CardMap>;
 }
 
 export function useCardCRUD({
-  categories,
   setCardMapState,
-  setCategories,
   cardMapRef,
 }: UseCardCRUDParams) {
-  // Keep a ref to categories to avoid stale closures in addCard/addFlashCard
-  const categoriesRef = useRef(categories);
-  categoriesRef.current = categories;
 
   // ── Surgical single-card update (O(1) state + O(1) IDB) — Ref-Delta pattern ──
   const patchCard = useCallback((id: string, patcher: (card: Card) => Card) => {
@@ -68,12 +61,9 @@ export function useCardCRUD({
       schedulePersist({ type: "put", card });
       setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
-      if (!categoriesRef.current.includes(category)) {
-        setCategories((prev) => [...prev, category]);
-      }
       return card;
     },
-    [setCategories, setCardMapState],
+    [setCardMapState],
   );
 
   const addFlashCard = useCallback(
@@ -84,12 +74,9 @@ export function useCardCRUD({
       schedulePersist({ type: "put", card });
       setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
-      if (!categoriesRef.current.includes(category)) {
-        setCategories((prev) => [...prev, category]);
-      }
       return card;
     },
-    [setCategories, setCardMapState],
+    [setCardMapState],
   );
 
   // O(1) direct update — surgical IDB write (delegates to patchCard which handles persist)

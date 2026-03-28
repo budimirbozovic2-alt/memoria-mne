@@ -137,7 +137,7 @@ export function useCards() {
 
   // ── CRUD (extracted module) ──
   const { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard } = useCardCRUD({
-    categories, setCardMapState, setCategories, cardMapRef,
+    setCardMapState, cardMapRef,
   });
 
   // ── Annotations (extracted module) ──
