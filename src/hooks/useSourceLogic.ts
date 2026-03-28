@@ -29,6 +29,8 @@ export function useSourceLogic(source: Source) {
   const [splitModules, setSplitModules] = useState<SelectionModule[]>([]);
   const [examOpen, setExamOpen] = useState(false);
   const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [linkSelectedText, setLinkSelectedText] = useState("");
 
   // Only recompute coverage/linkedCount when cards linked to THIS source change
   const sourceCards = useMemo(
