@@ -63,9 +63,15 @@ export function useCategoryManagement({
       });
 
       // F4 fix: Cascade rename to sources
-      db.sources.where("category").equals(oldName).modify({ category: newName })
-        .then(() => invalidateSourcesCache())
-        .catch(err => console.warn("[renameCategory] source cascade failed", err));
+      (async () => {
+        try {
+          await db.sources.where("category").equals(oldName).modify({ category: newName });
+          invalidateSourcesCache();
+        } catch (err) {
+          console.error("[renameCategory] source cascade failed", err);
+          toast({ title: "Greška pri ažuriranju izvora", description: "Kategorija izvora nije ažurirana. Pokušajte ponovo.", variant: "destructive" });
+        }
+      })();
     },
     [setCategories, setCardMapState, setSubcategories, cardMapRef],
   );
