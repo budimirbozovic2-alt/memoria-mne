@@ -1,23 +1,25 @@
-import { ReactNode, useState, useEffect, useRef, lazy, Suspense, useMemo, memo } from "react";
+import { ReactNode, useState, useEffect, useRef, lazy, Suspense, memo, useCallback } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useLocation } from "react-router-dom";
 import { useUIContext, useCardContext } from "@/contexts/AppContext";
 import ZenMode from "@/components/ZenMode";
-import TopNav from "@/components/TopNav";
+import AppSidebar from "@/components/AppSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AnimatePresence } from "framer-motion";
 import { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
 import { toast } from "@/hooks/use-toast";
 import { type PlannerConfig, loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
+import { Moon, Sun, Search, Focus, HelpCircle } from "lucide-react";
+import { setDarkMode } from "@/lib/app-settings";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
 const AppOnboarding = lazy(() => import("@/components/AppOnboarding"));
 
-// Routes where the user is actively working on source material
-const SOURCE_ROUTES = ["/cards", "/categories", "/sources", "/database"];
+const SOURCE_ROUTES = ["/cards", "/categories", "/sources", "/database", "/category/"];
 
-/** Isolated component for planner nudge — prevents MainLayout re-render on card changes */
+/** Isolated component for planner nudge */
 const NudgeWatcher = memo(function NudgeWatcher() {
   const { cards } = useCardContext();
   const { pathname } = useLocation();
@@ -64,7 +66,7 @@ const NudgeWatcher = memo(function NudgeWatcher() {
   return null;
 });
 
-/** Isolated wrapper for GlobalSearch — accesses cards via own context */
+/** Isolated wrapper for GlobalSearch */
 const GlobalSearchWrapper = memo(function GlobalSearchWrapper({
   open, onClose,
 }: { open: boolean; onClose: () => void }) {
@@ -86,7 +88,7 @@ const GlobalSearchWrapper = memo(function GlobalSearchWrapper({
   );
 });
 
-/** Isolated wrapper for DocxImporter — accesses cards via own context */
+/** Isolated wrapper for DocxImporter */
 const DocxImporterWrapper = memo(function DocxImporterWrapper({
   open, onClose,
 }: { open: boolean; onClose: () => void }) {
@@ -123,6 +125,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const [showAppOnboarding, setShowAppOnboarding] = useState(
     () => !hasSeenOnboarding(APP_ONBOARDING_KEY)
   );
+  const [dark, setDarkState] = useState(() => document.documentElement.classList.contains("dark"));
+
+  const toggleDark = useCallback(() => {
+    const next = !dark;
+    setDarkState(next);
+    setDarkMode(next);
+  }, [dark]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -135,28 +144,58 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  const isFullWidth = SOURCE_ROUTES.some(r => pathname.startsWith(r));
+
   return (
-    <div className="flex-1 flex flex-col w-full overflow-auto">
-      <TopNav
-        onOpenSearch={() => setGlobalSearchOpen(true)}
-        onOpenDocxImport={() => setDocxOpen(true)}
-        onToggleZen={() => setZenMode(v => !v)}
-        zenActive={zenMode}
-        onOpenOnboarding={() => setShowAppOnboarding(true)}
-      />
+    <SidebarProvider>
+      <div className="flex min-h-0 flex-1 w-full">
+        <AppSidebar />
 
-      {/* Breadcrumbs */}
-      <Breadcrumbs />
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Compact header bar */}
+          <header className="sticky top-0 z-40 flex items-center h-11 px-4 border-b bg-background/90 backdrop-blur-md gap-2">
+            <SidebarTrigger className="shrink-0" />
+            <Breadcrumbs />
+            <div className="flex-1" />
+            <button
+              onClick={() => setGlobalSearchOpen(true)}
+              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+              title="Pretraži (Ctrl+K)"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setShowAppOnboarding(true)}
+              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+              title="Vodič"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setZenMode(v => !v)}
+              className={`p-1.5 rounded-md hover:bg-secondary transition-colors ${zenMode ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+              title="Zen Mode"
+            >
+              <Focus className="h-4 w-4" />
+            </button>
+            <button
+              onClick={toggleDark}
+              className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground"
+              title="Tema"
+            >
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+          </header>
 
-      {/* Nudge watcher — isolated to avoid re-renders */}
-      <NudgeWatcher />
+          <NudgeWatcher />
 
-      {/* Main content — full width for source routes, centered otherwise */}
-      <main className={`flex-1 px-4 md:px-8 py-6 w-full ${
-        SOURCE_ROUTES.some(r => pathname.startsWith(r)) ? "max-w-none" : "max-w-6xl mx-auto"
-      }`}>
-        {children}
-      </main>
+          <main className={`flex-1 px-4 md:px-8 py-6 w-full ${
+            isFullWidth ? "max-w-none" : "max-w-6xl mx-auto"
+          }`}>
+            {children}
+          </main>
+        </div>
+      </div>
 
       <DocxImporterWrapper open={docxOpen} onClose={() => setDocxOpen(false)} />
       <AnimatePresence>
@@ -170,6 +209,6 @@ export default function MainLayout({ children }: { children: ReactNode }) {
           </Suspense>
         )}
       </AnimatePresence>
-    </div>
+    </SidebarProvider>
   );
 }
