@@ -264,10 +264,10 @@ export default function SourceEditor({ source, categoryId, cards, onBack, onSour
         )}
       </div>
 
-      {/* Bottom Panel — Content + Outline */}
-      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
+      {/* Bottom Panel — Content + Outline + Linked Cards */}
+      <div className={cn("grid gap-4", wide ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-[220px_1fr]")}>
         {/* Outline sidebar */}
-        {outline.length > 0 && (
+        {!wide && outline.length > 0 && (
           <div className="rounded-lg border bg-card p-3 hidden lg:block">
             <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Sadržaj</h4>
             <ScrollArea className="h-[60vh]">
