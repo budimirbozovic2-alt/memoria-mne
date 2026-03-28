@@ -25,7 +25,6 @@ interface Props {
   categoryStats: Record<string, { score: number; total: number; due: number }>;
   reviewLog: ReviewLogEntry[];
   srSettings: SRSettings;
-  onBack: () => void;
   onShowKnowledgeMap?: () => void;
   onShowPlanner?: () => void;
 }
