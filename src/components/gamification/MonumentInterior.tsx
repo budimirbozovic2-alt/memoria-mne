@@ -1,4 +1,4 @@
-import { memo, useMemo, useState, lazy, Suspense } from "react";
+import { memo, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Play, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -13,25 +13,19 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { TabSkeleton } from "@/components/ui/page-skeleton";
 import type { Source } from "@/lib/db";
-
-const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
 
 interface Props {
   monument: Monument;
   sources: Source[];
   onBack: () => void;
-  onUpdateChapters?: (updates: { id: string; chapter: string; chapterOrder: number }[]) => void;
-  onReviewSection?: (cardId: string, sectionId: string, grade: number) => void;
 }
 
 export const MonumentInterior = memo(function MonumentInterior({
-  monument, sources, onBack, onUpdateChapters, onReviewSection,
+  monument, sources, onBack,
 }: Props) {
   const { cards } = useCardContext();
   const navigate = useNavigate();
-  const [selectedSub, setSelectedSub] = useState<string | null>(null);
 
   const catCards = useMemo(() => cards.filter((c) => c.categoryId === monument.category), [cards, monument.category]);
 
@@ -65,17 +59,6 @@ export const MonumentInterior = memo(function MonumentInterior({
     return catCards.filter((c: any) => c.sections.some((s: any) => s.nextReview && s.nextReview <= now)).length;
   }, [catCards]);
 
-  if (selectedSub && onUpdateChapters && onReviewSection) {
-    return (
-      <motion.div key="detail" initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: 0.2 }} className="space-y-3">
-        <Suspense fallback={<TabSkeleton />}>
-          <MentalSkeleton cards={cards} category={monument.category} subcategory={selectedSub} onBack={() => setSelectedSub(null)} onUpdateChapters={onUpdateChapters} onReviewSection={onReviewSection} />
-        </Suspense>
-      </motion.div>
-    );
-  }
-
-  const phaseLabel = PHASE_LABELS[monument.material];
   const modeLabel = mode === "A" ? "po izvoru" : "po potkategoriji";
 
   return (
@@ -125,13 +108,12 @@ export const MonumentInterior = memo(function MonumentInterior({
         )}
       </div>
 
-      {/* Body */}
+      {/* Read-only analytics body — no DnD, no editing */}
       <ScrollArea className="max-h-[calc(100vh-260px)]">
         {mode === "A" ? (
           <div className="space-y-6">
             {tree.map((wing, wi) => (
               <div key={wing.name} className="space-y-3">
-                {/* Wing divider */}
                 <div className="flex items-center gap-3 px-1">
                   <div className="h-px flex-1 bg-border/40" />
                   <span className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] shrink-0">
@@ -141,7 +123,7 @@ export const MonumentInterior = memo(function MonumentInterior({
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {wing.children.map((child, ci) => (
-                    <ArchNode key={child.name} name={child.name} cardCount={child.cardCount} levels={child.levels} avgStability={child.avgStability} index={wi * 10 + ci} onClick={() => setSelectedSub(child.name)} />
+                    <ArchNode key={child.name} name={child.name} cardCount={child.cardCount} levels={child.levels} avgStability={child.avgStability} index={wi * 10 + ci} />
                   ))}
                 </div>
               </div>
@@ -150,7 +132,7 @@ export const MonumentInterior = memo(function MonumentInterior({
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {tree.map((node, i) => (
-              <ArchNode key={node.name} name={node.name} cardCount={node.cardCount} levels={node.levels} avgStability={node.avgStability} index={i} onClick={() => setSelectedSub(node.name)} />
+              <ArchNode key={node.name} name={node.name} cardCount={node.cardCount} levels={node.levels} avgStability={node.avgStability} index={i} />
             ))}
           </div>
         )}
