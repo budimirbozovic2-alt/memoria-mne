@@ -57,6 +57,12 @@ export async function saveSource(source: Source): Promise<void> {
 
 export async function deleteSource(id: string): Promise<void> {
   _cache = null;
+
+  // Read source label before deletion for registry cleanup (F6)
+  const source = await db.sources.get(id);
+  const sourceLabel = source?.label;
+
+  const clearedIds: string[] = [];
   await db.transaction("rw", [db.sources, db.cards], async () => {
     const linkedCards = await db.cards.where("sourceId").equals(id).toArray();
     if (linkedCards.length > 0) {
@@ -67,9 +73,32 @@ export async function deleteSource(id: string): Promise<void> {
         needsReview: undefined,
       }));
       await db.cards.bulkPut(cleaned);
+      clearedIds.push(...linkedCards.map(c => c.id));
     }
     await db.sources.delete(id);
   });
+
+  // F5: Notify in-memory card state about cleared links
+  if (clearedIds.length > 0) {
+    for (const fn of _cardLinkListeners) {
+      try { fn(clearedIds); } catch { /* swallow */ }
+    }
+  }
+
+  // F6: Clean registry aliases referencing this source label
+  if (sourceLabel) {
+    try {
+      const remainingSources = await db.sources.where("label").equals(sourceLabel).count();
+      if (remainingSources === 0) {
+        const registry = loadSourceRegistry();
+        const filtered = registry.aliases.filter(a => a.rawLabel !== sourceLabel);
+        if (filtered.length !== registry.aliases.length) {
+          saveSourceRegistry({ ...registry, aliases: filtered });
+        }
+      }
+    } catch { /* non-critical */ }
+  }
+
   _notify();
 }
 
