@@ -589,6 +589,22 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
             </Collapsible>
           </div>
         </TabsContent>
+
+        {/* ═══════════ TAB 5: PREDMETI ═══════════ */}
+        <TabsContent value="subjects" className="mt-0">
+          <CategoryManager
+            categories={categories}
+            subcategories={subcategories}
+            cardCountByCategory={cardCountByCategory}
+            onAdd={addCategory}
+            onRename={renameCategory}
+            onDelete={deleteCategory}
+            onAddSub={addSubcategory}
+            onRenameSub={renameSubcategory}
+            onDeleteSub={deleteSubcategory}
+            onClose={onBack}
+          />
+        </TabsContent>
       </Tabs>
 
       {/* Action buttons — always visible */}
