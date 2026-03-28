@@ -27,13 +27,14 @@ function generateId() {
 }
 
 export default function SourcesView() {
-  const { cards, bulkFlagNeedsReview } = useCardContext();
+  const { cards, categories, bulkFlagNeedsReview } = useCardContext();
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
   const [importLabel, setImportLabel] = useState("");
   const [importDate, setImportDate] = useState("");
   const [importGazette, setImportGazette] = useState("");
+  const [importCategory, setImportCategory] = useState("");
   const [importHtml, setImportHtml] = useState("");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [readingSource, setReadingSource] = useState<Source | null>(null);
@@ -42,6 +43,7 @@ export default function SourcesView() {
   const [editingSource, setEditingSource] = useState<Source | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editGazette, setEditGazette] = useState("");
+  const [editCategory, setEditCategory] = useState("");
   const [editDate, setEditDate] = useState("");
   const [diffView, setDiffView] = useState<{
     result: DiffResult;
@@ -88,6 +90,7 @@ export default function SourcesView() {
       outline,
       articles,
       officialGazetteInfo: importGazette.trim() || undefined,
+      category: importCategory || undefined,
       version: 1,
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -99,13 +102,14 @@ export default function SourcesView() {
     setImportLabel("");
     setImportDate("");
     setImportGazette("");
+    setImportCategory("");
     setImportFile(null);
     const articleCount = articles.length;
     toast({
       title: "Izvor dodan",
       description: `"${source.label}" — ${articleCount > 1 ? `${articleCount} članova prepoznato` : "uvezeno"}`,
     });
-  }, [importHtml, importLabel, importDate, importGazette]);
+  }, [importHtml, importLabel, importDate, importGazette, importCategory]);
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -133,6 +137,7 @@ export default function SourcesView() {
     setEditLabel(source.label);
     setEditDate(source.date || "");
     setEditGazette(source.officialGazetteInfo || "");
+    setEditCategory(source.category || "");
   }, []);
 
   const handleSaveEdit = useCallback(async () => {
@@ -142,13 +147,14 @@ export default function SourcesView() {
       label: editLabel.trim(),
       date: editDate || editingSource.date,
       officialGazetteInfo: editGazette.trim() || undefined,
+      category: editCategory || undefined,
       updatedAt: Date.now(),
     };
     await saveSource(updated);
     setSources(prev => prev.map(s => s.id === updated.id ? updated : s));
     setEditingSource(null);
     toast({ title: "Izvor ažuriran" });
-  }, [editingSource, editLabel, editDate, editGazette]);
+  }, [editingSource, editLabel, editDate, editGazette, editCategory]);
 
   const handleNewVersion = useCallback(async () => {
     if (!versionFile || !versioningSourceId) return;
@@ -361,6 +367,11 @@ export default function SourcesView() {
                         </p>
                       )}
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                        {source.category && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {source.category}
+                          </Badge>
+                        )}
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
                           {source.date}
@@ -492,6 +503,19 @@ export default function SourcesView() {
                     placeholder='npr. "Sl. list CG", br. 47/2008'
                   />
                 </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Kategorija</label>
+                  <select
+                    value={importCategory}
+                    onChange={e => setImportCategory(e.target.value)}
+                    className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">— bez kategorije —</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="max-h-40 overflow-y-auto rounded-md border p-3">
                   <div className="prose prose-sm max-w-none text-xs" dangerouslySetInnerHTML={{ __html: importHtml.slice(0, 2000) + (importHtml.length > 2000 ? "…" : "") }} />
                 </div>
@@ -566,7 +590,7 @@ export default function SourcesView() {
                 onChange={e => setEditDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
-            </div>
+             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium">Službeni list (oznaka)</label>
               <input
@@ -575,6 +599,19 @@ export default function SourcesView() {
                 className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder='npr. "Sl. list CG", br. 47/2008'
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Kategorija</label>
+              <select
+                value={editCategory}
+                onChange={e => setEditCategory(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">— bez kategorije —</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
             <Button onClick={handleSaveEdit} disabled={!editLabel.trim()} className="w-full">
               Sačuvaj izmjene

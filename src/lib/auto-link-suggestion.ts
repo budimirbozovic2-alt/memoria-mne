@@ -30,20 +30,13 @@ export async function findBulkAutoLinkSuggestions(
   const sources = sourcesParam ?? await loadSources();
   if (sources.length === 0) return [];
 
-  // Build source → inferred category map from existing links
-  const sourceCategoryMap = new Map<string, string>();
-  for (const card of cards) {
-    if (card.sourceId && !sourceCategoryMap.has(card.sourceId)) {
-      sourceCategoryMap.set(card.sourceId, card.category);
-    }
-  }
-
   // Pre-compute lowercase labels
-  const sourceIndex = sources.map(s => ({
-    source: s,
-    labelLower: s.label.trim().toLowerCase(),
-    inferredCategory: sourceCategoryMap.get(s.id),
-  }));
+  const sourceIndex = sources
+    .filter(s => !!s.category) // skip sources with no category
+    .map(s => ({
+      source: s,
+      labelLower: s.label.trim().toLowerCase(),
+    }));
 
   const results: AutoLinkPair[] = [];
   const seen = new Set<string>(); // prevent duplicate card matches
@@ -56,9 +49,9 @@ export async function findBulkAutoLinkSuggestions(
 
     const questionPlain = stripHtml(card.question);
 
-    for (const { source, labelLower, inferredCategory } of sourceIndex) {
-      // Rule A: category must match (if source has an inferred category)
-      if (inferredCategory && inferredCategory !== card.category) continue;
+    for (const { source, labelLower } of sourceIndex) {
+      // Rule A: category must match (direct field)
+      if (source.category !== card.category) continue;
 
       // Rule B: content match
       let matched = false;
