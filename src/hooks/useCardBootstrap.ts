@@ -27,6 +27,7 @@ async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string
 interface BootSetters {
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   setCategoriesState: React.Dispatch<React.SetStateAction<string[]>>;
+  setCategoryRecordsState: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
   setSubcategoriesState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
   setReviewLogState: React.Dispatch<React.SetStateAction<ReviewLogEntry[]>>;
   setSrSettingsState: React.Dispatch<React.SetStateAction<SRSettings>>;
