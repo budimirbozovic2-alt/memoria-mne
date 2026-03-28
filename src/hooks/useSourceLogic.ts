@@ -151,7 +151,7 @@ export function useSourceLogic(source: Source) {
     toast({ title: "Esejsko pitanje kreirano", description: `Povezano sa izvorom "${source.title}"` });
     setEssayDialogOpen(false);
     incrementDailyMapped(1);
-  }, [essayQuestion, selectedText, essayCategory, source, addCard]);
+  }, [essayQuestion, selectedText, source, addCard]);
 
   const scrollToHeading = useCallback((id: string) => {
     const el = contentRef.current?.querySelector(`#${id}`);
