@@ -224,6 +224,10 @@ export function useCardImport({
         const { invalidateMonumentTypesCache } = await import("@/lib/forum-logic");
         invalidateSourceRegistryCache();
         invalidateMonumentTypesCache();
+        // H2 fix: Clear stale review session data on overwrite import
+        if (strategy === "overwrite") {
+          try { localStorage.removeItem("sr-review-session"); } catch {}
+        }
 
         const extraParts: string[] = [];
         if (Array.isArray(data.sources) && (data.sources as unknown[]).length > 0) extraParts.push(`${(data.sources as unknown[]).length} izvora`);

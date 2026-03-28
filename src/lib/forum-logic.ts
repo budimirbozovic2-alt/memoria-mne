@@ -48,9 +48,9 @@ export function saveMonumentType(category: string, type: BuildingType) {
 }
 
 /** Invalidate cache (e.g. after external import) */
-export function invalidateMonumentTypesCache() {
+export let invalidateMonumentTypesCache = function() {
   _monumentTypesCache = null;
-}
+};
 
 // ─── Construction Phase Logic ───────────────────────────
 
