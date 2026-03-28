@@ -141,7 +141,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
 
         {/* Type filter */}
         <div className="flex items-center gap-0.5 rounded-md border p-0.5">
-          {(["all", "essay", "flash"] as const).map(t => (
+          {(["all", "essay", "flash", "mnemonic"] as const).map(t => (
             <button
               key={t}
               onClick={() => setFilterType(t)}
@@ -150,7 +150,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                 filterType === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {t === "all" ? "Sve" : t === "essay" ? "Esej" : "Blic"}
+              {t === "all" ? "Sve" : t === "essay" ? "Esej" : t === "flash" ? "Blic" : "Mnemo"}
             </button>
           ))}
         </div>
