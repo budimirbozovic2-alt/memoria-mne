@@ -210,6 +210,12 @@ export default function CategoryView() {
               </div>
 
               {sources.length === 0 ? (
+                <div className="text-center py-16 space-y-3">
+                  <FileText className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">Nema izvora u ovoj kategoriji.</p>
+                  <p className="text-xs text-muted-foreground">Kliknite "Importuj DOCX" da biste započeli.</p>
+                </div>
+              ) : (
                 sources.map(source => (
                   <button
                     key={source.id}
