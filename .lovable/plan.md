@@ -1,86 +1,136 @@
 
 
-# Fix: Categories Not Rendering in Sidebar — Definitive Solution
+# Phase 4: Post-Refactoring System Integrity Audit
 
-## Root Cause Analysis
+## Executive Summary
 
-From live browser logs, I confirmed:
-- `[MemoriaDB] Seeded 9 default categories` ✅
-- `cards:data-load-done — 0 cards` ✅  
-- `cards:ready` at ~3867ms ✅
+The architecture is **structurally sound** with one critical scoping violation, several pieces of dead code, and a few legacy remnants. No "God Object" problems detected. Below is the full report with recommended fixes.
 
-The boot completes and calls `setCategoryRecordsState(catRecords)` at line 152 of `useCardBootstrap.ts`. But we have **zero visibility** into whether `catRecords` is actually populated at that point (the `withTimeout` fallback is `[]`), and zero visibility into what the sidebar receives.
+---
 
-## Plan: Debug Logs + Defensive Fallback
+## 1. Dead Code & Ghost Dependencies
 
-### 1. Add debug logging to `useCardBootstrap.ts`
+### Dead Components (no imports anywhere)
+| File | Status | Reason |
+|---|---|---|
+| `src/components/SourceManager.tsx` | **DEAD** | Zero imports. Was the old global source overview; replaced by `CategoryView` Sources tab |
 
-After `seedDefaultCategories()` returns, log the result:
+### Legacy Views (still routed but redundant under new architecture)
+| File | Status | Reason |
+|---|---|---|
+| `src/views/CardsView.tsx` (541 lines) | **Candidate for removal** | Global card browser with `codex-nav-category` localStorage filters. Replaced by scoped `CategoryView` Kartice tab. Still routed at `/cards` and `/database` |
+| `src/views/SourcesView.tsx` (639 lines) | **Candidate for removal** | Global source manager. Replaced by scoped `CategoryView` Izvori tab. Still routed at `/sources` |
+| `src/views/CardsPage.tsx` | **Wrapper for CardsView** — dies with it |
+| `src/views/SourcesRoutePage.tsx` | **Wrapper for SourcesView** — dies with it |
+| `src/views/CategoriesRoutePage.tsx` + `src/views/CategoriesPage.tsx` | **Review needed** — may still serve as a global category list |
+
+### Action
+- **Delete** `SourceManager.tsx` (zero consumers)
+- **Remove routes** `/cards`, `/database`, `/sources` from `App.tsx` and delete `CardsView.tsx`, `SourcesView.tsx`, `CardsPage.tsx`, `SourcesRoutePage.tsx` — OR keep them as legacy fallback if the user wants a global view. **Recommend asking user.**
+
+---
+
+## 2. "God Object" Detection
+
+| Component | Lines | Verdict |
+|---|---|---|
+| `CategoryView.tsx` | 253 | ✅ Clean — delegates to `CardViewMode`, `CardOrgMode`, `SourceEditor`, `CategoryMnemonicWorkshop` |
+| `AppSidebar.tsx` | 179 | ✅ Clean — pure navigation, no business logic |
+| `MainLayout.tsx` | ~180 | ✅ Clean — layout shell with isolated `NudgeWatcher`, `GlobalSearchWrapper`, `DocxImporterWrapper` |
+| `useCards.ts` | 309 | ✅ Acceptable — orchestrator hook, logic delegated to `useCardBootstrap`, `useCardCRUD`, `useCardAnnotations`, `useCategoryManagement` |
+| `AppContext.tsx` | 388 | ✅ Acceptable — provider composition, no business logic inline |
+
+**No God Objects detected.** The decomposition from Phase 1-3 is holding well.
+
+---
+
+## 3. Implicit vs. Explicit Scoping Conflicts
+
+### CRITICAL: `loadSources()` fetches ALL sources globally
+
+`src/lib/sources-storage.ts` line 44-48:
 ```ts
-const catRecords = await withTimeout(seedDefaultCategories(), 2500, "categories load", []);
-console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map(r => r.name));
+export async function loadSources(): Promise<Source[]> {
+  const sources = await db.sources.toArray(); // ALL sources, no category filter
+}
 ```
 
-Also log right before setting state:
-```ts
-console.log("[boot:diag] setting categoryRecords state:", catRecords.length);
-setCategoryRecordsState(catRecords);
-```
+**Consumers loading ALL sources (data leakage risk):**
+- `RomanForumPage.tsx` — Forum needs all sources for its cross-category analytics → **Acceptable**
+- `GlobalSearch.tsx` — Search across everything → **Acceptable**
+- `KnowledgeMap.tsx` — Cross-category overview → **Acceptable**
+- `auto-link-suggestion.ts` — **VIOLATION** — auto-link should be scoped to same category
 
-### 2. Add debug logging to `AppSidebar.tsx`
+**CategoryView.tsx** correctly uses `useLiveQuery` scoped by `categoryId` → ✅ No leakage
 
-Log what the sidebar actually receives from context:
-```ts
-const { stats, categoryRecords } = useCardData();
-console.log("[sidebar] categoryRecords from context:", categoryRecords.length);
-```
+### Action
+- Add `loadSourcesByCategory(categoryId)` to `sources-storage.ts`
+- Refactor `auto-link-suggestion.ts` to accept `categoryId` and filter sources
 
-### 3. Add defensive fallback in `AppSidebar.tsx`
+---
 
-If after 2 seconds `categoryRecords` is still empty, do a direct DB query as a one-time fallback:
-```ts
-const [fallbackCategories, setFallbackCategories] = useState<CategoryRecord[]>([]);
+## 4. Legacy Registry Remnants
 
-useEffect(() => {
-  if (categoryRecords.length > 0) return;
-  const timer = setTimeout(async () => {
-    try {
-      const { seedDefaultCategories } = await import("@/lib/db");
-      const cats = await seedDefaultCategories();
-      console.log("[sidebar] fallback loaded", cats.length, "categories");
-      setFallbackCategories(cats);
-    } catch (e) { console.error("[sidebar] fallback failed", e); }
-  }, 2000);
-  return () => clearTimeout(timer);
-}, [categoryRecords.length]);
+### localStorage references to old registry
+| Location | Key | Status |
+|---|---|---|
+| `src/lib/db.ts:247` | `codex-source-registry` removal | ✅ Cleanup code — correct |
+| `src/lib/db.ts:248` | `codex-monument-types` removal | ✅ Cleanup code — correct |
+| `src/lib/forum-logic.ts:22-41` | `codex-monument-types` in localStorage | ⚠️ **Active use** — Forum still reads/writes monument types to localStorage |
+| `src/components/CategoryManager.tsx:8,44,88-90` | `loadMonumentTypes`, `saveMonumentType` | ⚠️ **Active use** — CategoryManager still manages monument building types via localStorage |
+| `src/views/CardsView.tsx:29-35,93-98` | `codex-nav-category/subcategory/chapter` | ⚠️ **Legacy navigation state** — should die with CardsView removal |
 
-const displayCategories = categoryRecords.length > 0 ? categoryRecords : fallbackCategories;
-```
+### Action
+- Monument types in localStorage is **acceptable** for now (it's a UI preference, not domain data)
+- `codex-nav-*` localStorage keys will be eliminated when `CardsView` is removed
 
-Then map over `displayCategories` instead of `categoryRecords`.
+---
 
-### 4. Add empty-state indicator
+## 5. Component Prop Drilling vs. Context
 
-If `displayCategories` is still empty, show a visible indicator:
-```tsx
-{displayCategories.length === 0 && (
-  <SidebarMenuItem>
-    <span className="px-2 py-1 text-xs text-muted-foreground">Učitavanje...</span>
-  </SidebarMenuItem>
-)}
-```
+`categoryId` is passed through at most 1-2 levels:
+- `CategoryView` → `CardViewMode` / `CardOrgMode` / `SourceEditor` / `CategoryMnemonicWorkshop`
 
-## Files Changed
+This is **not excessive**. A `CategoryContext` would add complexity for no real benefit at this depth. **No action needed.**
 
-| File | Change |
+---
+
+## 6. FSRS & Forum Alignment
+
+- **ReviewSession** (`src/components/ReviewSession.tsx`) uses `Card.sections[].state`, `stability`, `difficulty`, `nextReview` — all v7 schema fields ✅
+- **Forum** (`src/lib/forum-logic.ts`) reads `card.sections` for stability/difficulty aggregation via `computeForumData()` ✅
+- **ReviewLog** linkage: `reviewLog.cardId` → `Card.id` (UUID) ✅
+- Forum uses `loadSources()` (global) which is correct for its cross-category analytics role ✅
+
+**FSRS and Forum are correctly aligned with the new schema.**
+
+---
+
+## Recommended Fix Plan
+
+### Priority 1 (Do Now)
+1. **Delete `src/components/SourceManager.tsx`** — zero imports, pure dead code
+2. **Remove debug `console.log` lines** from `AppSidebar.tsx` (line 58) and `useCardBootstrap.ts` (lines 86, 104, 113, 122, 129, 151)
+
+### Priority 2 (Ask User First)
+3. **Remove legacy global views** (`CardsView`, `SourcesView`, `CardsPage`, `SourcesRoutePage`) and their routes — these are redundant with `CategoryView` but may still be wanted as a "see everything" fallback
+4. **Remove `/cards`, `/database`, `/sources` routes** from `App.tsx`
+
+### Priority 3 (Next Sprint)
+5. **Add `loadSourcesByCategory()`** to `sources-storage.ts` and scope `auto-link-suggestion.ts`
+6. **Remove sidebar fallback mechanism** once category rendering is confirmed stable (the `setTimeout` + `seedDefaultCategories` fallback in AppSidebar)
+
+### Files to Change
+| File | Action |
 |---|---|
-| `src/hooks/useCardBootstrap.ts` | Add 2 debug console.log lines |
-| `src/components/AppSidebar.tsx` | Add debug log + defensive DB fallback + loading indicator |
-
-## Why This Works
-
-- Debug logs will definitively show where the chain breaks
-- The fallback guarantees categories appear even if context propagation fails
-- The loading indicator makes empty state visible instead of silently empty
-- No architectural changes — this is a safety net on top of the correct architecture
+| `src/components/SourceManager.tsx` | **DELETE** |
+| `src/components/AppSidebar.tsx` | Remove debug console.log |
+| `src/hooks/useCardBootstrap.ts` | Remove debug console.log |
+| `src/views/CardsView.tsx` | **DELETE** (pending user approval) |
+| `src/views/SourcesView.tsx` | **DELETE** (pending user approval) |
+| `src/views/CardsPage.tsx` | **DELETE** (pending user approval) |
+| `src/views/SourcesRoutePage.tsx` | **DELETE** (pending user approval) |
+| `src/App.tsx` | Remove dead routes (pending user approval) |
+| `src/lib/sources-storage.ts` | Add `loadSourcesByCategory()` |
+| `src/lib/auto-link-suggestion.ts` | Scope by `categoryId` |
 
