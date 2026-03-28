@@ -64,13 +64,12 @@ async function _tryLoadFromIDB(): Promise<void> {
   _idbFallbackAttempted = true;
   try {
     const { idbLoadSourceRegistry } = await import("./db");
-    const fromIDB = await idbLoadSourceRegistry();
+    const fromIDB = await idbLoadSourceRegistry() as SourceRegistry | null;
     if (fromIDB && (fromIDB.aliases?.length > 0 || fromIDB.overrides?.length > 0)) {
-      // Only hydrate if localStorage is still empty (avoid overwriting user edits)
       if (!localStorage.getItem(REGISTRY_KEY)) {
         localStorage.setItem(REGISTRY_KEY, JSON.stringify(fromIDB));
         _registryCache = fromIDB;
-        _notifyRegistry(); // Bust forum cache
+        _notifyRegistry();
       }
     }
   } catch { /* ignore — IDB may not have the table yet */ }
