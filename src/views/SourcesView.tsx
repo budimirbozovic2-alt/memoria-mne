@@ -34,6 +34,7 @@ export default function SourcesView() {
   const [importLabel, setImportLabel] = useState("");
   const [importDate, setImportDate] = useState("");
   const [importGazette, setImportGazette] = useState("");
+  const [importCategory, setImportCategory] = useState("");
   const [importHtml, setImportHtml] = useState("");
   const [importFile, setImportFile] = useState<File | null>(null);
   const [readingSource, setReadingSource] = useState<Source | null>(null);
