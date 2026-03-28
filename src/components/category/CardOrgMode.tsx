@@ -133,12 +133,56 @@ function CardDragOverlay({ card }: { card: Card }) {
 }
 
 // ─── Main component ─────────────────────────────────────
-export default function CardOrgMode({ cards, categoryId, category, patchCard, addSubcategory }: Props) {
+export default function CardOrgMode({ cards, categoryId, category, patchCard, addSubcategory, renameSubcategory, deleteSubcategory }: Props) {
   const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
   const [newSubName, setNewSubName] = useState("");
   const [newChapterName, setNewChapterName] = useState("");
   const [addingChapterFor, setAddingChapterFor] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [editingSubName, setEditingSubName] = useState<string | null>(null);
+  const [editSubValue, setEditSubValue] = useState("");
+  const [editingChapter, setEditingChapter] = useState<{ sub: string; chapter: string } | null>(null);
+  const [editChapterValue, setEditChapterValue] = useState("");
+
+  const handleRenameSubcategory = useCallback((oldName: string) => {
+    const newName = editSubValue.trim();
+    if (!newName || newName === oldName) { setEditingSubName(null); return; }
+    // If it's a real subcategory (not the placeholder), rename via context
+    if (oldName !== "(Bez potkategorije)") {
+      renameSubcategory(categoryId, oldName, newName);
+    }
+    // Also update all cards with old subcategory name
+    cards.filter(c => (c.subcategory || "(Bez potkategorije)") === oldName).forEach(c => {
+      patchCard(c.id, card => ({ ...card, subcategory: newName }));
+    });
+    setEditingSubName(null);
+  }, [editSubValue, categoryId, renameSubcategory, cards, patchCard]);
+
+  const handleDeleteSubcategory = useCallback((subName: string) => {
+    if (subName === "(Bez potkategorije)") return;
+    // Unassign all cards from this subcategory
+    cards.filter(c => c.subcategory === subName).forEach(c => {
+      patchCard(c.id, card => ({ ...card, subcategory: undefined }));
+    });
+    deleteSubcategory(categoryId, subName);
+  }, [categoryId, deleteSubcategory, cards, patchCard]);
+
+  const handleRenameChapter = useCallback((sub: string, oldChapter: string) => {
+    const newName = editChapterValue.trim();
+    if (!newName || newName === oldChapter) { setEditingChapter(null); return; }
+    const subFilter = sub === "(Bez potkategorije)" ? "" : sub;
+    cards.filter(c => (c.subcategory || "") === (subFilter || "") && c.chapter === oldChapter).forEach(c => {
+      patchCard(c.id, card => ({ ...card, chapter: newName }));
+    });
+    setEditingChapter(null);
+  }, [editChapterValue, cards, patchCard]);
+
+  const handleDeleteChapter = useCallback((sub: string, chapter: string) => {
+    const subFilter = sub === "(Bez potkategorije)" ? "" : sub;
+    cards.filter(c => (c.subcategory || "") === (subFilter || "") && c.chapter === chapter).forEach(c => {
+      patchCard(c.id, card => ({ ...card, chapter: undefined }));
+    });
+  }, [cards, patchCard]);
 
   const tree = useMemo(() => buildTree(cards), [cards]);
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards]);
