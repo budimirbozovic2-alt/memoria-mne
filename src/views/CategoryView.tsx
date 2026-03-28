@@ -161,6 +161,8 @@ export default function CategoryView() {
               category={category}
               patchCard={patchCard}
               addSubcategory={addSubcategory}
+              renameSubcategory={renameSubcategory}
+              deleteSubcategory={deleteSubcategory}
             />
           ) : (
             <CardViewMode
