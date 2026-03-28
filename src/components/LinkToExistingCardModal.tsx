@@ -39,8 +39,8 @@ export default function LinkToExistingCardModal({
     return eligible.filter(c => c.question.toLowerCase().includes(q));
   }, [eligible, search]);
 
-  const handleSelect = useCallback((cardId: string) => {
-    onLink(cardId);
+  const handleSelect = useCallback((cardId: string, appendSnippet: boolean) => {
+    onLink(cardId, appendSnippet);
     setSearch("");
   }, [onLink]);
 
