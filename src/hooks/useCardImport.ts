@@ -240,17 +240,17 @@ export function useCardImport({
     [setCardMapState, setCategories, setSubcategories, setReviewLog, updateSRSettings, cardMapRef],
   );
 
+  // H5 fix: importCards now syncs cardMapRef before setState
   const importCards = useCallback(
     (newCards: { question: string; sections: { title: string; content: string }[] }[], category: string) => {
       const created = newCards.map((c) => createCard(c.question, c.sections, category));
       created.forEach(c => { c.updatedAt = Date.now(); });
-      // Surgical persist with pre-computed cards
+      // Sync ref before state update to prevent stale ref reads
+      const nextRef = { ...cardMapRef.current };
+      created.forEach((c) => { nextRef[c.id] = c; });
+      cardMapRef.current = nextRef;
       schedulePersist({ type: "bulk", cards: created });
-      setCardMapState((prev) => {
-        const next = { ...prev };
-        created.forEach((c) => { next[c.id] = c; });
-        return next;
-      });
+      setCardMapState(() => nextRef);
       bumpMapVersion();
       setCategories((prev) => prev.includes(category) ? prev : [...prev, category]);
     },
