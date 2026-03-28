@@ -93,9 +93,14 @@ export default function LinkToExistingCardModal({
                         </Badge>
                       )}
                     </div>
-                    <Button size="sm" variant="secondary" onClick={() => handleSelect(card.id)}>
-                      Odaberi
-                    </Button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button size="sm" variant="secondary" onClick={() => handleSelect(card.id, true)} title="Poveži i dodaj isječak kao sekciju">
+                        Odaberi + isječak
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleSelect(card.id, false)} title="Samo poveži bez dodavanja sekcije">
+                        Samo poveži
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
