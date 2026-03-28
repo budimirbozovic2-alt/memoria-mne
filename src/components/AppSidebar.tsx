@@ -16,10 +16,9 @@ import { useCardContext } from "@/contexts/AppContext";
 
 const STATIC_NAV = [
   { path: "/", icon: Home, label: "Dashboard" },
-  { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
   { path: "/learn", icon: GraduationCap, label: "Učenje" },
+  { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
   { path: "/forum", icon: Landmark, label: "Forum" },
-  { path: "/settings", icon: SettingsIcon, label: "Podešavanja" },
 ];
 
 const TOOLS_NAV = [
