@@ -617,6 +617,16 @@ export default function SRSettingsPanel({ settings, onUpdate, onBack }: Props) {
         </Button>
       </div>
       <div className="pb-8" />
+
+      {/* Export/Import Dialog */}
+      <ExportImportDialog
+        open={exportImportOpen}
+        onOpenChange={setExportImportOpen}
+        onExportTemplate={exportTemplate}
+        onExportFull={exportData}
+        onImport={importData}
+        cards={cards}
+      />
     </div>
   );
 }

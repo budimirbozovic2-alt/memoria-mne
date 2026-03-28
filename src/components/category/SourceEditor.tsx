@@ -352,6 +352,32 @@ export default function SourceEditor({ source, categoryId, cards, onBack, onSour
         </DialogContent>
       </Dialog>
 
+      {/* Extracted cards panel */}
+      {linkedCards.length > 0 && (
+        <Collapsible defaultOpen={false}>
+          <div className="rounded-lg border bg-card">
+            <CollapsibleTrigger className="flex items-center gap-2 w-full px-4 py-3 text-left hover:bg-accent/30 transition-colors">
+              <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+              <BookOpen className="h-4 w-4 text-primary/70" />
+              <span className="text-sm font-medium text-foreground flex-1">Ekstraktovane kartice</span>
+              <Badge variant="secondary" className="text-[10px]">{linkedCards.length}</Badge>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="border-t px-4 py-2 space-y-1 max-h-48 overflow-y-auto">
+                {linkedCards.map(c => (
+                  <div key={c.id} className="text-xs text-foreground/80 py-1 px-2 rounded hover:bg-accent/20 truncate">
+                    {c.question || "(Bez pitanja)"}
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+
+      {/* Auto Split Dialog */}
+      <AutoSplitDialog open={autoSplitOpen} onClose={() => setAutoSplitOpen(false)} source={source} />
+
       {/* Link to existing card modal */}
       <LinkToExistingCardModal
         open={linkModalOpen}

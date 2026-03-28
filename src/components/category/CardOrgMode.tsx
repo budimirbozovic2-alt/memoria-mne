@@ -364,7 +364,26 @@ export default function CardOrgMode({ cards, categoryId, category, patchCard, ad
                   {/* Chapters with DnD */}
                   {node.chapters.map(ch => (
                     <div key={ch.chapter} className="space-y-1">
-                      <DroppableChapterHeader sub={node.subcategory} chapter={ch.chapter} count={ch.cards.length} />
+                      <div className="flex items-center gap-1">
+                        {editingChapter?.sub === node.subcategory && editingChapter?.chapter === ch.chapter ? (
+                          <div className="flex items-center gap-1.5 flex-1 px-1">
+                            <Input value={editChapterValue} onChange={e => setEditChapterValue(e.target.value)} className="h-6 text-xs flex-1"
+                              autoFocus onKeyDown={e => { if (e.key === "Enter") handleRenameChapter(node.subcategory, ch.chapter); if (e.key === "Escape") setEditingChapter(null); }} />
+                            <button onClick={() => handleRenameChapter(node.subcategory, ch.chapter)} className="p-0.5 hover:bg-secondary rounded text-green-500"><Check className="h-3 w-3" /></button>
+                            <button onClick={() => setEditingChapter(null)} className="p-0.5 hover:bg-secondary rounded text-muted-foreground"><X className="h-3 w-3" /></button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex-1">
+                              <DroppableChapterHeader sub={node.subcategory} chapter={ch.chapter} count={ch.cards.length} />
+                            </div>
+                            <button onClick={() => { setEditingChapter({ sub: node.subcategory, chapter: ch.chapter }); setEditChapterValue(ch.chapter); }}
+                              className="p-0.5 rounded hover:bg-secondary opacity-0 group-hover:opacity-100"><Edit2 className="h-3 w-3 text-muted-foreground" /></button>
+                            <button onClick={() => handleDeleteChapter(node.subcategory, ch.chapter)}
+                              className="p-0.5 rounded hover:bg-destructive/10 opacity-0 group-hover:opacity-100"><Trash2 className="h-3 w-3 text-destructive" /></button>
+                          </>
+                        )}
+                      </div>
                       <SortableContext items={ch.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
                         {ch.cards.map((card, idx) => (
                           <SortableCardTile key={card.id} card={card} index={idx} />
