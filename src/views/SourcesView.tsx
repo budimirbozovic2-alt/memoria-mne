@@ -590,7 +590,7 @@ export default function SourcesView() {
                 onChange={e => setEditDate(e.target.value)}
                 className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
-            </div>
+             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium">Službeni list (oznaka)</label>
               <input
@@ -599,6 +599,19 @@ export default function SourcesView() {
                 className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder='npr. "Sl. list CG", br. 47/2008'
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium">Kategorija</label>
+              <select
+                value={editCategory}
+                onChange={e => setEditCategory(e.target.value)}
+                className="w-full px-3 py-2 rounded-md border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">— bez kategorije —</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
             <Button onClick={handleSaveEdit} disabled={!editLabel.trim()} className="w-full">
               Sačuvaj izmjene
