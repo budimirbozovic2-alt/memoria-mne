@@ -168,9 +168,6 @@ export default function SourcesView() {
           await electronAPI.requestBackup("{}");
         } catch (_) { /* best-effort */ }
       }
-          await electronAPI.requestBackup(backupJson);
-        } catch (_) { /* best-effort */ }
-      }
 
       // Parse DOCX in Web Worker
       const arrayBuffer = await versionFile.arrayBuffer();
