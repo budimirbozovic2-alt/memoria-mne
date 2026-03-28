@@ -1,65 +1,60 @@
 
 
-# Task 5: Mind Map Export Pipeline & Category Gallery
+# Fix: Rogue Auto-Split Categories & Missing Card CRUD Buttons
 
-## Current State
+## Task 1: Stop Auto-Split from creating fake categories
 
-- `MindMapDoc` exists in `db.ts` with fields: `id, title, mode, nodes, edges, createdAt, updatedAt`
-- **No `categoryId` field** — maps are global-only
-- `mindMaps` table index: `"id, title, updatedAt"` — no `categoryId` index
-- Schema is at **v7** — adding `categoryId` index requires bumping to **v8**
-- `CategoryView.tsx` has 2 tabs: Kartice, Izvori
+### Root Cause
+**`src/components/AutoSplitDialog.tsx` line 178**: `const category = source.title || "Opšte"` passes the source *title* as the category. Then `addCard()` in `useCardCRUD.ts` (lines 71-73) checks `if (!categoriesRef.current.includes(category))` — since the source title is never in the categories list, it calls `setCategories(prev => [...prev, category])`, creating a rogue category named after the law.
 
-## Plan
+**`src/hooks/useSourceLogic.ts` line 122**: Same pattern — `const category = source.categoryId || categories[0] || "Opšte"` — the `categories[0]` fallback is a name string, not a UUID. If `source.categoryId` is somehow empty, this creates a name-based category.
 
-### 1. Schema: Add `categoryId` to `MindMapDoc` (v8 migration)
+### Fix
 
-**`src/lib/db.ts`**:
-- Add optional `categoryId?: string` to `MindMapDoc` interface
-- Bump schema to v8: keep v7 as-is, add `this.version(8).stores({ mindMaps: "id, categoryId, title, updatedAt" })` — only the mindMaps index changes, all other tables stay the same (Dexie carries forward unchanged stores)
+**`src/components/AutoSplitDialog.tsx`**:
+- Line 178: Change `const category = source.title || "Opšte"` → `const category = source.categoryId`
+- The `source` prop always has `categoryId` (it comes from CategoryView which scopes by category)
 
-### 2. Export Dialog in MindMapCanvas
+**`src/hooks/useSourceLogic.ts`**:
+- Line 122: Change fallback chain to `const category = source.categoryId` (remove the name-based fallbacks)
+- Line 156 (handleCreateEssay): Already uses `source.categoryId` — verify no fallback needed
+- Line 175 (handleMapSelection): Change `const category = source.categoryId || categories[0] || "Opšte"` → `const category = source.categoryId`
 
-**New: `src/components/mindmap/ExportToCategory.tsx`**:
-- Small dialog component with:
-  - Text input for map title (pre-filled with current doc title)
-  - Category dropdown (from `useCardData().categoryRecords`)
-  - Save button
-- On save: creates a **new** `MindMapDoc` record with `categoryId` set, copies current nodes/edges as snapshot data, saves via `saveMindMap()`
+**`src/hooks/useCardCRUD.ts`** (lines 71-73 and 87-89):
+- Remove the auto-create-category logic: delete `if (!categoriesRef.current.includes(category)) { setCategories(...) }` from both `addCard` and `addFlashCard`. Categories are now managed exclusively through the CategoryManager in Settings. Cards must use an existing `categoryId` UUID.
 
-**`src/components/mindmap/MindMapCanvas.tsx`**:
-- Add "Eksportuj u Predmet" button in the toolbar (next to Save)
-- State: `exportOpen: boolean`
-- Render `<ExportToCategory>` dialog, passing current doc's title/nodes/edges
+---
 
-### 3. Category Gallery — 3rd Tab
+## Task 2: Restore "Nova kartica" and "Importuj" buttons in Kartice tab
 
-**New: `src/components/category/CategoryMindMaps.tsx`**:
-- Query: `useLiveQuery(() => db.mindMaps.where("categoryId").equals(categoryId).toArray())`
-- Display as a grid of cards showing map title, date, node count
-- Click opens a **read-only** full-screen ReactFlow viewer (reuse `MindMapCanvas` with a `readOnly` prop, or render ReactFlow directly with `nodesDraggable={false}, nodesConnectable={false}, elementsSelectable={false}`)
-- Empty state with map icon
+### Current State
+`CardViewMode.tsx` and `CardOrgMode.tsx` have filter toolbars but no "Add" or "Import" buttons. The old `CreatePage.tsx` exists but navigates via the legacy `setView("cards")` pattern.
+
+### Fix
+
+**`src/components/category/CardViewMode.tsx`** — Add toolbar buttons:
+- "Nova kartica" button → opens a Dialog containing `CardForm` with `categoryId` pre-filled and locked (no category dropdown)
+- "Importuj" button → opens `ExportImportDialog` scoped to current category
+- Props interface: add `addCard`, `addFlashCard`, `updateCard` callbacks (passed from CategoryView)
 
 **`src/views/CategoryView.tsx`**:
-- Add 3rd tab: "Mentalne mape" with `GitBranch` icon and count badge
-- Query category mind maps via `useLiveQuery`
-- Render `<CategoryMindMaps>`
+- Pass `addCard`, `addFlashCard`, `updateCard` down to `CardViewMode` and `CardOrgMode`
+- The `categoryId` is already available from `useParams`
 
-### 4. Read-Only Viewer
+**`CardForm` integration**:
+- Wrap in a Dialog inside `CardViewMode`
+- Pre-fill category with `categoryId`, hide the category selector
+- On save: call `addCard(question, sections, categoryId, subcategory, chapter)`
 
-**New: `src/components/category/MindMapViewer.tsx`**:
-- Lightweight ReactFlow wrapper: takes nodes/edges, renders with `nodesDraggable={false}`, `nodesConnectable={false}`, presentation mode, `fitView`
-- Back button to return to gallery
-- Reuses `MindMapNodeComponent` for consistent node rendering
+---
 
 ## File Changes
 
 | File | Change |
 |---|---|
-| `src/lib/db.ts` | Add `categoryId?` to `MindMapDoc`, bump to v8 with categoryId index |
-| `src/components/mindmap/ExportToCategory.tsx` | **NEW** — export dialog |
-| `src/components/mindmap/MindMapCanvas.tsx` | Add export button + dialog state |
-| `src/components/category/CategoryMindMaps.tsx` | **NEW** — gallery grid |
-| `src/components/category/MindMapViewer.tsx` | **NEW** — read-only viewer |
-| `src/views/CategoryView.tsx` | Add 3rd tab with mind map query |
+| `src/components/AutoSplitDialog.tsx` | Line 178: `source.title` → `source.categoryId` |
+| `src/hooks/useSourceLogic.ts` | Lines 122, 175: remove name-string fallbacks, use `source.categoryId` only |
+| `src/hooks/useCardCRUD.ts` | Lines 71-73, 87-89: remove auto-category-creation logic |
+| `src/components/category/CardViewMode.tsx` | Add "Nova kartica" + "Importuj" toolbar buttons with embedded dialogs |
+| `src/views/CategoryView.tsx` | Pass CRUD actions to CardViewMode/CardOrgMode |
 
