@@ -292,7 +292,7 @@ export default function SourceEditor({ source, categoryId, cards, onBack, onSour
           <ScrollArea className="h-[60vh]">
             <div
               ref={contentRef}
-              className="prose prose-sm dark:prose-invert max-w-none p-4 md:p-6"
+              className={cn("prose prose-sm dark:prose-invert p-4 md:p-6", wide ? "max-w-none" : "max-w-prose mx-auto")}
               dangerouslySetInnerHTML={{ __html: safeHtml }}
               onMouseUp={handleMouseUp}
             />
