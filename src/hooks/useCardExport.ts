@@ -127,9 +127,13 @@ export function useCardExport({ cards, categories, subcategories, srSettings }: 
       if (dailyMapped?.value != null) localStorageData["sr-daily-mapped-count"] = dailyMapped.value;
       if (dailyMappedDate?.value) localStorageData["sr-daily-mapped-date"] = dailyMappedDate.value;
 
+      // H3 fix: Read cards fresh from IDB to avoid stale closure data
+      const allCards = await db.cards.toArray();
+      const freshCards = allCards.length > 0 ? allCards : cards; // fallback to prop if IDB empty
+
       const data = {
         version: 4, type: "full",
-        cards, categories, subcategories,
+        cards: freshCards, categories, subcategories,
         reviewLog: fullReviewLog, srSettings,
         sources, mindMaps, diary, calibrationLog, latencyLog,
         slippageLog, activityLog, disciplineLog, pomodoroLog,

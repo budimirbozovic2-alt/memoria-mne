@@ -50,8 +50,30 @@ export function loadSourceRegistry(): SourceRegistry {
       return _registryCache;
     }
   } catch { /* ignore */ }
+  // H1 fix: If localStorage is empty, attempt IDB fallback (async, best-effort)
+  // Return empty for now; the async loader will hydrate and invalidate cache
   _registryCache = { aliases: [], overrides: [] };
+  _tryLoadFromIDB();
   return _registryCache;
+}
+
+/** Best-effort async IDB fallback — hydrates localStorage if IDB has data but localStorage doesn't */
+let _idbFallbackAttempted = false;
+async function _tryLoadFromIDB(): Promise<void> {
+  if (_idbFallbackAttempted) return;
+  _idbFallbackAttempted = true;
+  try {
+    const { idbLoadSourceRegistry } = await import("./db");
+    const fromIDB = await idbLoadSourceRegistry();
+    if (fromIDB && (fromIDB.aliases?.length > 0 || fromIDB.overrides?.length > 0)) {
+      // Only hydrate if localStorage is still empty (avoid overwriting user edits)
+      if (!localStorage.getItem(REGISTRY_KEY)) {
+        localStorage.setItem(REGISTRY_KEY, JSON.stringify(fromIDB));
+        _registryCache = fromIDB;
+        _notifyRegistry(); // Bust forum cache
+      }
+    }
+  } catch { /* ignore — IDB may not have the table yet */ }
 }
 
 export function saveSourceRegistry(registry: SourceRegistry): void {

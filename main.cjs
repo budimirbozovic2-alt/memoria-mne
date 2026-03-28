@@ -68,14 +68,36 @@ app.whenReady().then(() => {
   // ── Register app:// protocol handler for production ──
   if (!isDev) {
     const distPath = path.join(__dirname, 'dist');
-    protocol.handle('app', (request) => {
+    // C4 fix: Serve files with correct MIME types via explicit Content-Type header
+    const MIME_TYPES = {
+      '.html': 'text/html', '.js': 'application/javascript', '.mjs': 'application/javascript',
+      '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml',
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2',
+      '.ttf': 'font/ttf', '.otf': 'font/otf',
+    };
+    protocol.handle('app', async (request) => {
       const url = new URL(request.url);
       let filePath = path.join(distPath, decodeURIComponent(url.pathname));
-      // Default to index.html for root or directory requests
       if (filePath.endsWith('/') || filePath === distPath) {
         filePath = path.join(distPath, 'index.html');
       }
-      return net.fetch('file://' + filePath.replace(/\\/g, '/'));
+      const ext = path.extname(filePath).toLowerCase();
+      const mime = MIME_TYPES[ext] || 'application/octet-stream';
+      try {
+        const data = fs.readFileSync(filePath);
+        return new Response(data, {
+          status: 200,
+          headers: { 'Content-Type': mime },
+        });
+      } catch {
+        // Fallback: serve index.html for SPA client-side routing
+        const indexData = fs.readFileSync(path.join(distPath, 'index.html'));
+        return new Response(indexData, {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' },
+        });
+      }
     });
   }
 
