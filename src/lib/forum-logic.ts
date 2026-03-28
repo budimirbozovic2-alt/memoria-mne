@@ -249,8 +249,14 @@ export function calculateForumState(
   }
 
   const monuments: Monument[] = [];
+  // B4 fix: accumulate overall totals during monument building (eliminates third pass)
+  let grandTotalSections = 0;
+  let grandTotalReview = 0;
   for (const [cat, catCards] of byCategory) {
-    const m = buildMonument(cat, catCards);
+    const result = buildMonument(cat, catCards);
+    const m = result.monument;
+    grandTotalSections += result.totalSections;
+    grandTotalReview += result.reviewSections;
     m.buildingType = monumentTypes[cat] || "insula";
 
     // Add source breakdown if sources available
@@ -281,26 +287,8 @@ export function calculateForumState(
   // Sort: highest mastery first
   monuments.sort((a, b) => b.mastery - a.mastery);
 
-  // B4 fix: Compute overall mastery from already-computed monument data (eliminates third pass)
-  let totalSections = 0;
-  let totalReview = 0;
-  for (const m of monuments) {
-    const mTotal = m.totalCards > 0 ? Math.round(m.mastery * m.totalCards / 100 * (m.totalCards > 0 ? 1 : 0)) : 0;
-    // Use the raw section counts from buildMonument — re-derive from mastery percentage
-    // Actually, we need raw counts. Let's accumulate during monument building instead.
-  }
-  // Simpler approach: use the fingerprint values we already computed
-  // The fingerprint pass already counted reviewSections and totalSections
-  // But those are in a different scope. Let's just reuse the monument data:
-  for (const card of cards) {
-    for (const sec of card.sections) {
-      totalSections++;
-      if (sec.state === SectionState.Review) totalReview++;
-    }
-  }
-
-  const overallMastery = totalSections > 0
-    ? Math.round((totalReview / totalSections) * 1000) / 10
+  const overallMastery = grandTotalSections > 0
+    ? Math.round((grandTotalReview / grandTotalSections) * 1000) / 10
     : 0;
 
   const velocity = calcVelocity(reviewLog);
