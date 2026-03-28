@@ -270,12 +270,13 @@ function CardProvider({ children }: { children: ReactNode }) {
   }), [actionKeys]);
 
   const data = useMemo<CardDataContextValue>(() => ({
-    cards: h.cards, categories: h.categories, subcategories: h.subcategories,
+    cards: h.cards, categories: h.categories, categoryRecords: h.categoryRecords,
+    subcategories: h.subcategories,
     dueCards: h.dueCards, stats: h.stats, categoryStats: h.categoryStats,
     cardCountByCategory: h.cardCountByCategory, reviewLog: h.reviewLog,
     srSettings: h.srSettings, ready: h.ready, dbError: h.dbError,
   }), [
-    h.cards, h.categories, h.subcategories, h.dueCards, h.stats,
+    h.cards, h.categories, h.categoryRecords, h.subcategories, h.dueCards, h.stats,
     h.categoryStats, h.cardCountByCategory, h.reviewLog, h.srSettings,
     h.ready, h.dbError,
   ]);

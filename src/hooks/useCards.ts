@@ -266,6 +266,7 @@ export function useCards() {
   return {
     cards,
     categories,
+    categoryRecords,
     subcategories,
     dueCards,
     stats,

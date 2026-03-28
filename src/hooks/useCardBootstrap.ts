@@ -149,6 +149,7 @@ export function useCardBootstrap(setters: BootSetters) {
 
         setCardMapState(arrayToMap(c));
         setCategoriesState(catNames);
+        setCategoryRecordsState(catRecords);
         setSubcategoriesState(subsMap);
         setReviewLogState(log);
         setSrSettingsState(settings);
