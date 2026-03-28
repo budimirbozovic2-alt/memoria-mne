@@ -262,7 +262,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
           <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
             <Zap className="h-10 w-10 text-primary" />
           </div>
-          <h2 className="text-3xl font-bold">Aktiviraj mentalni okidač</h2>
+          <h2 className="imperial-title">Aktiviraj mentalni okidač</h2>
           <div className="max-w-sm mx-auto space-y-3 text-sm text-muted-foreground">
             <p>Prije početka testiranja, pripremi se mentalno:</p>
             <div className="rounded-xl border bg-card p-4 text-left space-y-2">
