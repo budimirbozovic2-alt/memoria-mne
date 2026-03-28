@@ -14,7 +14,7 @@ import { BookOpen, FileText, Brain, Plus, Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { parseArticles } from "@/lib/article-parser";
-import { promoteHeadings } from "@/lib/heading-promotion";
+import { extractOutline, injectHeadingIds } from "@/lib/sources-storage";
 import SourceEditor from "@/components/category/SourceEditor";
 import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
