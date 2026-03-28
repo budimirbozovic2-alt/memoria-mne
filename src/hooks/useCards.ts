@@ -38,7 +38,7 @@ export function useCards() {
 
   // ── Boot (extracted module) ──
   const { ready: bootstrapReady, dbError } = useCardBootstrap({
-    setCardMapState, setCategoriesState, setSubcategoriesState, setReviewLogState, setSrSettingsState,
+    setCardMapState, setCategoriesState, setCategoryRecordsState, setSubcategoriesState, setReviewLogState, setSrSettingsState,
   });
 
   // ── Force-ready safety net: if bootstrap hangs, unlock UI after 5s ──
