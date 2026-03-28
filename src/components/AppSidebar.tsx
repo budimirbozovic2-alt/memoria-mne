@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useLiveQuery } from "dexie-react-hooks";
 import { NavLink } from "@/components/NavLink";
