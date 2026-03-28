@@ -1,15 +1,17 @@
-import { Plus, CheckSquare, BookOpen, X, Search, Flame, ArrowUpDown } from "lucide-react";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { Plus, CheckSquare, BookOpen, X, Search, Flame, ArrowUpDown, Link2 } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { idbLoadSettings } from "@/lib/db";
 import { useCardContext, useUIContext } from "@/contexts/AppContext";
 import { useDebounce } from "@/hooks/useDebounce";
-
 
 import { Card } from "@/lib/spaced-repetition";
 import ScrollableRow from "@/components/ScrollableRow";
 import CardList from "@/components/CardList";
 import ShortcutsHint from "@/components/ShortcutsHint";
 import { toast } from "sonner";
+import { findBulkAutoLinkSuggestions, type AutoLinkPair } from "@/lib/auto-link-suggestion";
+
+const AutoLinkReviewModal = lazy(() => import("@/components/AutoLinkReviewModal"));
 const CARDS_SHORTCUTS = [
   { keys: "Ctrl+K", description: "Globalna pretraga" },
 ];
