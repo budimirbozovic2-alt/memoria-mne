@@ -35,6 +35,28 @@ export default function AppSidebar() {
   const location = useLocation();
   const { stats, categoryRecords } = useCardData();
 
+  // Defensive fallback: if context categories are empty after 2s, load directly from DB
+  const [fallbackCategories, setFallbackCategories] = useState<CategoryRecord[]>([]);
+  useEffect(() => {
+    if (categoryRecords.length > 0) {
+      if (fallbackCategories.length > 0) setFallbackCategories([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const { seedDefaultCategories } = await import("@/lib/db");
+        const cats = await seedDefaultCategories();
+        console.log("[sidebar] fallback loaded", cats.length, "categories");
+        setFallbackCategories(cats);
+      } catch (e) { console.error("[sidebar] fallback failed", e); }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [categoryRecords.length]);
+
+  const displayCategories = categoryRecords.length > 0 ? categoryRecords : fallbackCategories;
+
+  console.log("[sidebar] categoryRecords:", categoryRecords.length, "fallback:", fallbackCategories.length, "display:", displayCategories.length);
+
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>

@@ -148,6 +148,7 @@ export function useCardBootstrap(setters: BootSetters) {
         );
         markBootStep("cards:data-load-done", `${c.length} cards`);
 
+        console.log("[boot:diag] setting state — cards:", c.length, "categories:", catRecords.length);
         setCardMapState(arrayToMap(c));
         setCategoriesState(catNames);
         setCategoryRecordsState(catRecords);
