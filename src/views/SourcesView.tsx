@@ -107,7 +107,7 @@ export default function SourcesView() {
     const articleCount = articles.length;
     toast({
       title: "Izvor dodan",
-      description: `"${source.label}" — ${articleCount > 1 ? `${articleCount} članova prepoznato` : "uvezeno"}`,
+      description: `"${source.title}" — ${articleCount > 1 ? `${articleCount} članova prepoznato` : "uvezeno"}`,
     });
   }, [importHtml, importLabel, importDate, importGazette, importCategory]);
 
@@ -134,7 +134,7 @@ export default function SourcesView() {
 
   const handleEditSource = useCallback((source: Source) => {
     setEditingSource(source);
-    setEditLabel(source.label);
+    setEditLabel(source.title);
     setEditDate(source.date || "");
     setEditGazette(source.officialGazetteInfo || "");
     setEditCategory(source.category || "");
@@ -360,7 +360,7 @@ export default function SourcesView() {
                       <FileText className="h-5 w-5 text-primary" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-medium text-sm truncate">{source.label}</h3>
+                      <h3 className="font-medium text-sm truncate">{source.title}</h3>
                       {source.officialGazetteInfo && (
                         <p className="text-[11px] italic text-muted-foreground/70 mt-0.5 max-w-[260px] truncate" title={source.officialGazetteInfo}>
                           {source.officialGazetteInfo}
@@ -416,7 +416,7 @@ export default function SourcesView() {
                           const diff = compareVersions(source.previousHtmlContent!, source.htmlContent);
                           setDiffView({
                             result: diff,
-                            sourceName: source.label,
+                            sourceName: source.title,
                             oldVersion: source.version - 1,
                             newVersion: source.version,
                             affectedCardCount: needsReviewCount(source.id),

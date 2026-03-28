@@ -20,8 +20,8 @@ function stripHtml(html: string): string {
  * the source is considered "uncategorized" and matches any card.
  *
  * Rule A: card.categoryId must match the source's inferred category (or source has none).
- * Rule B: source.label exactly matches card.question (stripped), OR
- *         source.label appears as substring in card.question or any section content.
+ * Rule B: source.title exactly matches card.question (stripped), OR
+ *         source.title appears as substring in card.question or any section content.
  */
 export async function findBulkAutoLinkSuggestions(
   cards: Card[],

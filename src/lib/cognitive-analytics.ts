@@ -27,9 +27,9 @@ export function calcInterferencePairs(cards: Card[], limit = 10): InterferencePa
   cards.forEach(c => {
     const activeErrors = (c.errorLog || []).filter(e => getErrorStatus(e) !== "mastered");
     if (activeErrors.length === 0) return;
-    const list = byCategory.get(c.category) || [];
+    const list = byCategory.get(c.categoryId) || [];
     list.push(c);
-    byCategory.set(c.category, list);
+    byCategory.set(c.categoryId, list);
   });
 
   // Step 2: For each category group, build error-prefix → cardId[] map
@@ -142,7 +142,7 @@ export function calcCategoryStability(
   const daysToExam = examDate ? Math.max(0, differenceInDays(examDate, new Date())) : null;
 
   return categories.map(cat => {
-    const catCards = cards.filter(c => c.category === cat);
+    const catCards = cards.filter(c => c.categoryId === cat);
     let totalStability = 0;
     let totalRetrievability = 0;
     let criticalCount = 0;
