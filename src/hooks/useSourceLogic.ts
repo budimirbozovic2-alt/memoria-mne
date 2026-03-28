@@ -3,6 +3,7 @@ import { useAppContext } from "@/contexts/AppContext";
 import { createTextAnchor, type Source } from "@/lib/sources-storage";
 import { incrementDailyMapped } from "@/lib/planner-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { createSection } from "@/lib/spaced-repetition";
 import { analyzeCoverage } from "@/lib/coverage-analysis";
 import { splitSelection, type SelectionModule } from "@/lib/selection-split-engine";
 import { toast } from "@/hooks/use-toast";
