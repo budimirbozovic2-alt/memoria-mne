@@ -41,6 +41,11 @@ export default function CategoryView() {
     [categoryId]
   ) ?? [];
 
+  const mindMapCount = useLiveQuery(
+    () => categoryId ? db.mindMaps.where("categoryId").equals(categoryId).count() : 0,
+    [categoryId]
+  ) ?? 0;
+
   const { addCard, patchCard, toggleTag, addSubcategory, renameSubcategory, deleteSubcategory } = useCardActions();
 
   const [orgMode, setOrgMode] = useState(false);
