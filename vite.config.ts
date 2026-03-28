@@ -39,19 +39,6 @@ export default defineConfig(({ mode }) => ({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("lucide-react")) return "icons";
-          if (id.includes("node_modules/react-dom")) return "vendor";
-          if (id.includes("node_modules/react/") || id.includes("node_modules/react-router-dom")) return "vendor";
-          if (id.includes("@tanstack/react-query")) return "vendor";
-          if (id.includes("@radix-ui")) return "ui";
-          if (id.includes("recharts")) return "charts";
-          if (id.includes("framer-motion")) return "motion";
-          if (id.includes("@xyflow")) return "flow";
-        },
-      },
-    },
+    emptyOutDir: true,
   },
 }));
