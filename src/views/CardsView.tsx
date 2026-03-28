@@ -227,6 +227,15 @@ export default function CardsView() {
           {!reorderMode && (
             <>
               <button
+                onClick={handleAutoLinkScan}
+                disabled={autoLinkLoading}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border text-muted-foreground hover:bg-secondary transition-colors disabled:opacity-50"
+                title="Pronađi predloge za uvezivanje kartica i izvora"
+              >
+                <Link2 className="h-4 w-4" />
+                {autoLinkLoading ? "Skeniram..." : "Pronađi predloge"}
+              </button>
+              <button
                 onClick={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors ${selectionMode ? "bg-secondary text-secondary-foreground" : "border text-muted-foreground hover:bg-secondary"}`}
               >
