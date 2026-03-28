@@ -20,6 +20,8 @@ import { incrementDailyMapped } from "@/lib/planner-storage";
 import { createSection, type Card } from "@/lib/spaced-repetition";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import AutoSplitDialog from "@/components/AutoSplitDialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Props {
   source: Source;
