@@ -16,6 +16,16 @@ let _cache: Source[] | null = null;
 type SourceListener = () => void;
 const _listeners = new Set<SourceListener>();
 
+// F5: Card-link-cleared listeners (notifies useCards to update in-memory cardMap)
+type CardLinkClearedListener = (clearedCardIds: string[]) => void;
+const _cardLinkListeners = new Set<CardLinkClearedListener>();
+
+/** Subscribe to card link cleared events (after source delete). Returns unsubscribe. */
+export function onCardLinksCleared(fn: CardLinkClearedListener): () => void {
+  _cardLinkListeners.add(fn);
+  return () => { _cardLinkListeners.delete(fn); };
+}
+
 /** Subscribe to source changes. Returns unsubscribe function. */
 export function onSourcesChanged(fn: SourceListener): () => void {
   _listeners.add(fn);
