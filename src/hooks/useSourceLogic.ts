@@ -184,10 +184,9 @@ export function useSourceLogic(source: Source) {
           elapsedDays: 0,
           scheduledDays: 0,
           nextReview: 0,
-          lastReview: 0,
-          reps: 0,
+          lastReviewed: null,
           lapses: 0,
-          errorLog: [],
+          firstReviewPending: false,
         },
       ],
     }));
