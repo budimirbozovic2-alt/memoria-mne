@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useLiveQuery } from "dexie-react-hooks";
 import { NavLink } from "@/components/NavLink";
-import { cn } from "@/lib/utils";
 import {
   Home, Landmark, Settings as SettingsIcon, RotateCcw,
   BarChart3, BookOpen, Gauge, Zap, Map, Scale,
@@ -11,13 +10,13 @@ import {
   SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { idbLoadCategories, type CategoryRecord } from "@/lib/db";
+import { db } from "@/lib/db";
 import { Badge } from "@/components/ui/badge";
 import { useCardContext } from "@/contexts/AppContext";
 
 const STATIC_NAV = [
   { path: "/", icon: Home, label: "Dashboard" },
-  { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
+  { path: "/review", icon: RotateCcw, label: "Učenje", badge: true },
   { path: "/forum", icon: Landmark, label: "Forum" },
   { path: "/settings", icon: SettingsIcon, label: "Podešavanja" },
 ];
@@ -35,11 +34,7 @@ export default function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { stats } = useCardContext();
-  const [categories, setCategories] = useState<CategoryRecord[]>([]);
-
-  useEffect(() => {
-    idbLoadCategories().then(setCategories).catch(() => {});
-  }, []);
+  const categories = useLiveQuery(() => db.categories.orderBy("sortOrder").toArray()) ?? [];
 
   return (
     <Sidebar collapsible="icon">
