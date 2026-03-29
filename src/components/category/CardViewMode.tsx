@@ -306,6 +306,19 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
         </div>
       </div>
 
+      {/* Batch delete toolbar */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-2.5">
+          <span className="text-xs font-medium text-foreground">{selectedIds.size} izabrano</span>
+          <Button variant="destructive" size="sm" onClick={handleBatchDelete} className="h-7 gap-1.5 text-xs">
+            <Trash2 className="h-3.5 w-3.5" /> Obriši izabrane
+          </Button>
+          <Button variant="ghost" size="sm" onClick={exitSelectionMode} className="h-7 text-xs">
+            Otkaži
+          </Button>
+        </div>
+      )}
+
       {/* Card list */}
       <div className="space-y-1">
         {filteredCards.map(card => {
