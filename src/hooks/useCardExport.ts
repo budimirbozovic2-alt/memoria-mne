@@ -125,6 +125,7 @@ export function useCardExport({ cards, subcategories, srSettings }: UseCardExpor
         db.disciplineLog.toArray(),
         db.pomodoroLog.toArray(),
         loadFullReviewLog(),
+        db.categories.orderBy('sortOrder').toArray(),
       ]);
 
       const localStorageData: Record<string, unknown> = {};
