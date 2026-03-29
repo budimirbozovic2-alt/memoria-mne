@@ -102,6 +102,28 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
     setExpandedId(prev => prev === id ? null : id);
   }, []);
 
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleBatchDelete = useCallback(() => {
+    if (!onDelete || selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    selectedIds.forEach(id => onDelete(id));
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+    toast.success(`Obrisano ${count} kartica.`);
+  }, [onDelete, selectedIds]);
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
   const openMoveModal = useCallback((cardId: string) => {
     setMoveCardId(cardId);
     setTargetCategoryId("");
