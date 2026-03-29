@@ -18,6 +18,7 @@ interface UseCardImportDeps {
 export function useCardImport({
   setCategories, setSubcategories,
   setReviewLog, updateSRSettings, setCardMapState, cardMapRef,
+  setCategoryRecordsState,
 }: UseCardImportDeps) {
   const importData = useCallback(
     async (file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {
