@@ -257,6 +257,7 @@ export default function CategoryView() {
           categoryId={categoryId!}
           onClose={() => setEditorSource(null)}
           onSourceUpdated={handleSourceUpdated}
+          bulkFlagNeedsReview={bulkFlagNeedsReview}
         />
       )}
     </div>
