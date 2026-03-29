@@ -79,6 +79,7 @@ interface CardActionsContextValue {
   updateCard: ReturnType<typeof useCards>["updateCard"];
   deleteCard: ReturnType<typeof useCards>["deleteCard"];
   splitCard: ReturnType<typeof useCards>["splitCard"];
+  bulkAddCards: ReturnType<typeof useCards>["bulkAddCards"];
   reviewSection: ReturnType<typeof useCards>["reviewSection"];
   markRead: ReturnType<typeof useCards>["markRead"];
   toggleTag: ReturnType<typeof useCards>["toggleTag"];
