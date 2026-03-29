@@ -24,6 +24,8 @@ interface Props {
   toggleTag: (cardId: string, tag: string) => void;
   addCard: (question: string, sections: { title: string; content: string }[], category: string, subcategory?: string, chapter?: string) => Card;
   addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => Card;
+  onDelete?: (id: string) => void;
+  onEdit?: (card: Card) => void;
 }
 
 function stabilityLabel(s: number): { text: string; color: string } {
