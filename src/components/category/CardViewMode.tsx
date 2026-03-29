@@ -331,11 +331,19 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
 
           return (
             <div key={card.id} className="rounded-lg border bg-card overflow-hidden">
-              <button
-                onClick={() => toggle(card.id)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-accent/30 transition-colors"
-              >
-                {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+              <div className="w-full flex items-center gap-3 px-4 py-3">
+                {selectionMode && (
+                  <Checkbox
+                    checked={selectedIds.has(card.id)}
+                    onCheckedChange={() => toggleSelection(card.id)}
+                    className="shrink-0"
+                  />
+                )}
+                <button
+                  onClick={() => toggle(card.id)}
+                  className="flex-1 flex items-center gap-3 text-left hover:bg-accent/30 transition-colors rounded"
+                >
+                  {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 <span className="text-sm text-foreground truncate flex-1">{card.question || "(Bez pitanja)"}</span>
                 <div className="flex items-center gap-2 shrink-0">
                   {hasTags && card.tags!.includes("često-na-ispitu") && (
