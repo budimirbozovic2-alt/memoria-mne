@@ -157,11 +157,12 @@ export function useCards() {
   });
 
   // ── Export/Import (extracted to separate modules) ──
-  const { exportData, exportTemplate } = useCardExport({ cards, categories, subcategories, srSettings });
+  const { exportData, exportTemplate } = useCardExport({ cards, subcategories, srSettings });
   const { importData, importCards } = useCardImport({
     setCategories, setSubcategories,
     setReviewLog: setReviewLogState, updateSRSettings,
     setCardMapState, cardMapRef,
+    setCategoryRecordsState,
   });
 
   // ── Single-pass derived data (B2+B5 fix: 4×O(n) → 1×O(n)) ──

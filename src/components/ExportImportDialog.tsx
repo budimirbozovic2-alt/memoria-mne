@@ -106,8 +106,11 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
         errors.push("Fajl ne sadrži validan JSON objekat.");
       }
 
-      // Validate Categories Schema
-      if (parsed.categories && Array.isArray(parsed.categories)) {
+      // Validate Categories Schema (backward compatible with legacy string[])
+      const isLegacyCategoryFormat = parsed.categories && Array.isArray(parsed.categories) &&
+        parsed.categories.length > 0 && typeof parsed.categories[0] === 'string';
+
+      if (parsed.categories && Array.isArray(parsed.categories) && !isLegacyCategoryFormat) {
         for (let i = 0; i < parsed.categories.length; i++) {
           const cat = parsed.categories[i];
           if (!isValidUUID(cat.id)) {
@@ -172,12 +175,20 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
       if (errors.length === 0) {
         const validCategoryIds = new Set<string>();
         if (parsed.categories && Array.isArray(parsed.categories)) {
-          parsed.categories.forEach((cat: any) => validCategoryIds.add(cat.id));
+          if (isLegacyCategoryFormat) {
+            // Legacy string[] — skip FK check for categories (no UUIDs to validate against)
+            // All existing DB category IDs are still valid
+          } else {
+            parsed.categories.forEach((cat: any) => validCategoryIds.add(cat.id));
+          }
         }
         const existingCats = await db.categories.toArray();
         existingCats.forEach(cat => validCategoryIds.add(cat.id));
 
-        if (importedCards.length > 0) {
+        // If legacy format, skip card/source FK check (categories have no UUIDs)
+        const skipFKCheck = isLegacyCategoryFormat;
+
+        if (!skipFKCheck && importedCards.length > 0) {
           for (let i = 0; i < importedCards.length; i++) {
             const c = importedCards[i];
             if (c.categoryId && !validCategoryIds.has(c.categoryId)) {
@@ -186,7 +197,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
             }
           }
         }
-        if (parsed.sources && Array.isArray(parsed.sources)) {
+        if (!skipFKCheck && parsed.sources && Array.isArray(parsed.sources)) {
           for (let i = 0; i < parsed.sources.length; i++) {
             const s = parsed.sources[i];
             if (s.categoryId && !validCategoryIds.has(s.categoryId)) {

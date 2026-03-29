@@ -61,17 +61,19 @@ async function buildJsonChunked(
 
 interface UseCardExportDeps {
   cards: Card[];
-  categories: string[];
   subcategories: Record<string, string[]>;
   srSettings: SRSettings;
 }
 
-export function useCardExport({ cards, categories, subcategories, srSettings }: UseCardExportDeps) {
+export function useCardExport({ cards, subcategories, srSettings }: UseCardExportDeps) {
   // H1 fix: Read fresh cards from IDB for templates too
   const exportTemplate = useCallback(
     async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
       const { db } = await import("@/lib/db");
-      const allCards = await db.cards.toArray();
+      const [allCards, catRecords] = await Promise.all([
+        db.cards.toArray(),
+        db.categories.orderBy('sortOrder').toArray(),
+      ]);
       const freshCards = allCards.length > 0 ? allCards : cards;
       const templateCards = freshCards.map((c) => ({
         id: c.id,
@@ -83,7 +85,7 @@ export function useCardExport({ cards, categories, subcategories, srSettings }: 
         type: c.type,
         tags: c.tags || [],
       }));
-      const data = { version: 2, type: "template", cards: templateCards, categories, subcategories };
+      const data = { version: 2, type: "template", cards: templateCards, categories: catRecords, subcategories };
       const dateStr = new Date().toISOString().slice(0, 10);
 
       const blob = await buildJsonChunked(data, onProgress);
@@ -101,7 +103,7 @@ export function useCardExport({ cards, categories, subcategories, srSettings }: 
         toast.success("Template uspješno exportovan.");
       }
     },
-    [cards, categories, subcategories],
+    [cards, subcategories],
   );
 
   const exportData = useCallback(
@@ -111,6 +113,7 @@ export function useCardExport({ cards, categories, subcategories, srSettings }: 
       const [
         sources, mindMaps, diary, calibrationLog, latencyLog,
         slippageLog, activityLog, disciplineLog, pomodoroLog, fullReviewLog,
+        catRecords,
       ] = await Promise.all([
         db.sources.toArray(),
         db.mindMaps.toArray(),
@@ -122,6 +125,7 @@ export function useCardExport({ cards, categories, subcategories, srSettings }: 
         db.disciplineLog.toArray(),
         db.pomodoroLog.toArray(),
         loadFullReviewLog(),
+        db.categories.orderBy('sortOrder').toArray(),
       ]);
 
       const localStorageData: Record<string, unknown> = {};
@@ -150,7 +154,7 @@ export function useCardExport({ cards, categories, subcategories, srSettings }: 
 
       const data = {
         version: 4, type: "full",
-        cards: freshCards, categories, subcategories,
+        cards: freshCards, categories: catRecords, subcategories,
         reviewLog: fullReviewLog, srSettings,
         sources, mindMaps, diary, calibrationLog, latencyLog,
         slippageLog, activityLog, disciplineLog, pomodoroLog,
@@ -174,7 +178,7 @@ export function useCardExport({ cards, categories, subcategories, srSettings }: 
       }
       setLastBackupTime();
     },
-    [cards, categories, subcategories, srSettings],
+    [cards, subcategories, srSettings],
   );
 
   return { exportData, exportTemplate };
