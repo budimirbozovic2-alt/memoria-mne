@@ -23,6 +23,7 @@ import CategoryMindMaps from "@/components/category/CategoryMindMaps";
 
 export default function CategoryView() {
   const { categoryId } = useParams<{ categoryId: string }>();
+  const navigate = useNavigate();
 
   const category = useLiveQuery(
     () => categoryId ? db.categories.get(categoryId) : undefined,
