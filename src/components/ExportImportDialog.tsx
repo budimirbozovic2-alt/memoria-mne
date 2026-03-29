@@ -1,6 +1,7 @@
 import { Download, Upload, FileBox, Package, AlertTriangle, Check, Clock, FileArchive, Loader2, ShieldCheck } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { db } from "@/lib/db";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -165,6 +166,36 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
           }
         }
       }
+
+      // --- STEP 2: RELATIONAL INTEGRITY GUARD ---
+      if (errors.length === 0) {
+        const validCategoryIds = new Set<string>();
+        if (parsed.categories && Array.isArray(parsed.categories)) {
+          parsed.categories.forEach((cat: any) => validCategoryIds.add(cat.id));
+        }
+        const existingCats = await db.categories.toArray();
+        existingCats.forEach(cat => validCategoryIds.add(cat.id));
+
+        if (importedCards.length > 0) {
+          for (let i = 0; i < importedCards.length; i++) {
+            const c = importedCards[i];
+            if (c.categoryId && !validCategoryIds.has(c.categoryId)) {
+              errors.push(`Kartica '${c.question?.substring(0,15)}...' pripada predmetu koji ne postoji u bazi ni u fajlu.`);
+              break;
+            }
+          }
+        }
+        if (parsed.sources && Array.isArray(parsed.sources)) {
+          for (let i = 0; i < parsed.sources.length; i++) {
+            const s = parsed.sources[i];
+            if (s.categoryId && !validCategoryIds.has(s.categoryId)) {
+              errors.push(`Izvor '${s.title?.substring(0,15)}...' pripada predmetu koji ne postoji.`);
+              break;
+            }
+          }
+        }
+      }
+      // --- END RELATIONAL INTEGRITY GUARD ---
 
       setProgress(80);
 
