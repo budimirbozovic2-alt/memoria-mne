@@ -61,11 +61,18 @@ async function buildJsonChunked(
 
 interface UseCardExportDeps {
   cards: Card[];
-  subcategories: Record<string, string[]>;
   srSettings: SRSettings;
 }
 
-export function useCardExport({ cards, subcategories, srSettings }: UseCardExportDeps) {
+function deriveSubMap(catRecords: { name: string; subcategories?: string[] }[]): Record<string, string[]> {
+  const subMap: Record<string, string[]> = {};
+  catRecords.forEach(r => {
+    if (r.subcategories && r.subcategories.length > 0) subMap[r.name] = r.subcategories;
+  });
+  return subMap;
+}
+
+export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
   // H1 fix: Read fresh cards from IDB for templates too
   const exportTemplate = useCallback(
     async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
@@ -85,7 +92,7 @@ export function useCardExport({ cards, subcategories, srSettings }: UseCardExpor
         type: c.type,
         tags: c.tags || [],
       }));
-      const data = { version: 2, type: "template", cards: templateCards, categories: catRecords, subcategories };
+      const data = { version: 2, type: "template", cards: templateCards, categories: catRecords, subcategories: deriveSubMap(catRecords) };
       const dateStr = new Date().toISOString().slice(0, 10);
 
       const blob = await buildJsonChunked(data, onProgress);
@@ -103,7 +110,7 @@ export function useCardExport({ cards, subcategories, srSettings }: UseCardExpor
         toast.success("Template uspješno exportovan.");
       }
     },
-    [cards, subcategories],
+    [cards],
   );
 
   const exportData = useCallback(
@@ -154,7 +161,7 @@ export function useCardExport({ cards, subcategories, srSettings }: UseCardExpor
 
       const data = {
         version: 4, type: "full",
-        cards: freshCards, categories: catRecords, subcategories,
+        cards: freshCards, categories: catRecords, subcategories: deriveSubMap(catRecords),
         reviewLog: fullReviewLog, srSettings,
         sources, mindMaps, diary, calibrationLog, latencyLog,
         slippageLog, activityLog, disciplineLog, pomodoroLog,
@@ -178,7 +185,7 @@ export function useCardExport({ cards, subcategories, srSettings }: UseCardExpor
       }
       setLastBackupTime();
     },
-    [cards, subcategories, srSettings],
+    [cards, srSettings],
   );
 
   return { exportData, exportTemplate };
