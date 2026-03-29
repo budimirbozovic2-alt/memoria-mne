@@ -1,33 +1,44 @@
 
 
-# Bulk Card Import (Masovni Import) — BulkImportDialog
+# Tier 3 Step 1: Strict UUID Validation in ExportImportDialog
 
 ## What
-Add a "Masovni Import" button to the CardViewMode toolbar that opens a dialog for pasting `Question;Answer` pairs (one per line). Cards are parsed, previewed, and saved as flash cards scoped to the current `categoryId`.
+Replace the weak sample-check validation (lines 98–132) with comprehensive UUID validation for all imported entities: categories, cards, sources, and mindMaps. Legacy v1 JSON files with string-based IDs will be rejected with clear error messages.
 
-## New File
+## Change
 
-**`src/components/category/BulkImportDialog.tsx`**
-- Dialog with imperial-styled header ("Masovni import blic pitanja")
-- Large `<Textarea>` for pasting raw text
-- Format hint: `Pitanje;Odgovor` (one pair per line, semicolon separator)
-- "Analiziraj" button that parses text, splits by newline, splits each line by `;`
-- Skips blank lines and lines without a separator
-- Shows preview: count of detected cards + first 5 as samples
-- "Uvezi {N} kartica" confirm button calls `addFlashCard` for each pair with the locked `categoryId`
-- Props: `open`, `onOpenChange`, `categoryId`, `addFlashCard`
+**`src/components/ExportImportDialog.tsx`** — lines 98–132
 
-## Modified File
+Replace the current validation block:
 
-**`src/components/category/CardViewMode.tsx`**
-- Import `BulkImportDialog`
-- Add `bulkImportOpen` state
-- Add "Masovni Import" button with `<Upload>` icon next to "Nova kartica" in the toolbar (line ~259)
-- Render `<BulkImportDialog>` at end of component
+```typescript
+// Current (REMOVE):
+const errors: string[] = [];
+if (!parsed || typeof parsed !== "object") { ... }
+if (!Array.isArray(parsed.cards)) { ... }
+const importedCards: any[] = (parsed.cards || []).map(...sanitize...);
+// sample check loop (10 cards, string-type only)
+```
 
-## Technical Details
-- Parser: `line.split(";")` with index 0 = question, rest joined = answer (handles answers containing semicolons)
-- Validation: skip lines where question or answer is empty after trim
-- Toast on success: `Uspješno uvezeno {N} blic pitanja`
-- No changes needed to CardOrgMode (it's for organization, not card creation)
+With the user-provided strict UUID validation block:
+
+```typescript
+const errors: string[] = [];
+const uuidRegex = /^[0-9a-f]{8}-...$/i;
+const isValidUUID = (id: any) => typeof id === 'string' && uuidRegex.test(id);
+
+// Structure check
+// Categories UUID check (break on first failure)
+// Sanitize + map importedCards
+// Cards UUID check: id, categoryId, sections (break on first failure)
+// Sources UUID check: id, categoryId (break on first failure)
+// MindMaps UUID check: id (break on first failure)
+```
+
+The exact replacement code is provided in the user's directive — lines 98–132 are replaced, `setProgress(80)` on line 132 stays as the boundary.
+
+## Scope
+- Only the validation block inside `handleFileSelect` changes
+- No UI, props, ZIP logic, or export logic touched
+- Net effect: ~34 lines replaced with ~50 lines of strict validation
 
