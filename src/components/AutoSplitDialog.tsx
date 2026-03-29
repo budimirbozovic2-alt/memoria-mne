@@ -12,7 +12,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { useAppContext } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { Card, SourceModule } from "@/lib/spaced-repetition";
+import { Card, SourceModule, createCard } from "@/lib/spaced-repetition";
 interface Props {
   open: boolean;
   onClose: () => void;
