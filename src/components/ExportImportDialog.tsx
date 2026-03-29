@@ -211,7 +211,8 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
 
       setProgress(80);
 
-      const existingIds = new Set(cards.map(c => c.id));
+      const freshCards = await db.cards.toArray();
+      const existingIds = new Set(freshCards.map(c => c.id));
       const duplicateCount = importedCards.filter(c => existingIds.has(c.id)).length;
 
       // Category conflict detection
