@@ -361,13 +361,20 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                 <div className="border-t px-4 py-3 space-y-3 bg-muted/20">
                   <div className="flex items-center gap-2 flex-wrap">
                     {card.subcategory && (
-                      <Badge variant="secondary" className="text-[10px] opacity-60">
+                      <Badge variant="secondary" className="text-[10px]">
                         Potkategorija: {card.subcategory}
                       </Badge>
                     )}
                     {card.chapter && (
-                      <Badge variant="secondary" className="text-[10px] opacity-60">
+                      <Badge variant="outline" className="text-[10px] gap-1 border-primary/30">
+                        <BookOpen className="h-3 w-3" />
                         Glava: {card.chapter}
+                      </Badge>
+                    )}
+                    {card.sourceId && (
+                      <Badge variant="outline" className="text-[10px] gap-1 border-accent">
+                        <Link2 className="h-3 w-3" />
+                        Povezano sa izvorom
                       </Badge>
                     )}
                   </div>
