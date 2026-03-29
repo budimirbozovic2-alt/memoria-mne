@@ -377,6 +377,12 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                         Povezano sa izvorom
                       </Badge>
                     )}
+                    {card.needsReview && (
+                      <Badge className="text-[10px] gap-1 bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30">
+                        <AlertTriangle className="h-3 w-3" />
+                        Izvor ažuriran
+                      </Badge>
+                    )}
                   </div>
 
                   <div className="space-y-2">
