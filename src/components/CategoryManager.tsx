@@ -42,6 +42,7 @@ export default function CategoryManager({
   const [addingSubFor, setAddingSubFor] = useState<string | null>(null);
   const [newSubName, setNewSubName] = useState("");
   const [monumentTypes, setMonumentTypes] = useState<Record<string, BuildingType>>(loadMonumentTypes);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const startEdit = (cat: string) => {
     setEditingCat(cat);
