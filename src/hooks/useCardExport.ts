@@ -92,7 +92,7 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
         type: c.type,
         tags: c.tags || [],
       }));
-      const data = { version: 2, type: "template", cards: templateCards, categories: catRecords, subcategories };
+      const data = { version: 2, type: "template", cards: templateCards, categories: catRecords, subcategories: deriveSubMap(catRecords) };
       const dateStr = new Date().toISOString().slice(0, 10);
 
       const blob = await buildJsonChunked(data, onProgress);
