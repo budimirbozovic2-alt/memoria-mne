@@ -71,7 +71,7 @@ export default function CategoryManager({
   };
 
   const confirmEditSub = () => {
-    if (editingSub && editSubValue.trim() && editSubValue.trim() !== editingSub.sub) {
+    if (editingSub && editSubValue.trim() && editSubValue.trim() !== editingSub.sub && onRenameSub) {
       onRenameSub(editingSub.cat, editingSub.sub, editSubValue.trim());
     }
     setEditingSub(null);
@@ -79,7 +79,7 @@ export default function CategoryManager({
   };
 
   const handleAddSub = (cat: string) => {
-    if (newSubName.trim()) {
+    if (newSubName.trim() && onAddSub) {
       onAddSub(cat, newSubName.trim());
       setNewSubName("");
       setAddingSubFor(null);
