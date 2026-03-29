@@ -175,10 +175,18 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
       if (errors.length === 0) {
         const validCategoryIds = new Set<string>();
         if (parsed.categories && Array.isArray(parsed.categories)) {
-          parsed.categories.forEach((cat: any) => validCategoryIds.add(cat.id));
+          if (isLegacyCategoryFormat) {
+            // Legacy string[] — skip FK check for categories (no UUIDs to validate against)
+            // All existing DB category IDs are still valid
+          } else {
+            parsed.categories.forEach((cat: any) => validCategoryIds.add(cat.id));
+          }
         }
         const existingCats = await db.categories.toArray();
         existingCats.forEach(cat => validCategoryIds.add(cat.id));
+
+        // If legacy format, skip card/source FK check (categories have no UUIDs)
+        const skipFKCheck = isLegacyCategoryFormat;
 
         if (importedCards.length > 0) {
           for (let i = 0; i < importedCards.length; i++) {
