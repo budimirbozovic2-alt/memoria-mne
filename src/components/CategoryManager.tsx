@@ -19,7 +19,7 @@ interface Props {
   cardCountByCategory: Record<string, number>;
   onAdd: (name: string) => void;
   onRename: (oldName: string, newName: string) => void;
-  onDelete: (name: string) => void;
+  onDelete: (name: string, purgeCards?: boolean) => void;
   onAddSub: (category: string, subcategory: string) => void;
   onRenameSub: (category: string, oldName: string, newName: string) => void;
   onDeleteSub: (category: string, subcategory: string) => void;
@@ -42,6 +42,7 @@ export default function CategoryManager({
   const [addingSubFor, setAddingSubFor] = useState<string | null>(null);
   const [newSubName, setNewSubName] = useState("");
   const [monumentTypes, setMonumentTypes] = useState<Record<string, BuildingType>>(loadMonumentTypes);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const startEdit = (cat: string) => {
     setEditingCat(cat);
@@ -188,9 +189,9 @@ export default function CategoryManager({
                           <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          onClick={() => onDelete(cat)}
+                          onClick={() => count > 0 ? setConfirmDelete(cat) : onDelete(cat)}
                           className="p-1.5 hover:bg-destructive/10 rounded-lg"
-                          title={count > 0 ? `${count} kartica će biti prebačeno u "Opšte"` : "Obriši kategoriju"}
+                          title={count > 0 ? `${count} kartica` : "Obriši kategoriju"}
                         >
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
                         </button>
@@ -296,6 +297,35 @@ export default function CategoryManager({
         <Button variant="outline" onClick={() => setShowAdd(true)} className="w-full">
           <Plus className="h-4 w-4 mr-2" /> Nova kategorija
         </Button>
+      )}
+
+      {/* Confirm delete dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-card border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg">Obriši kategoriju</h3>
+            <p className="text-sm text-muted-foreground">
+              Kategorija "{confirmDelete}" sadrži {cardCountByCategory[confirmDelete] ?? 0} kartica. Šta želite?
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { onDelete(confirmDelete, false); setConfirmDelete(null); }}
+              >
+                Prebaci kartice u drugu kategoriju
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => { onDelete(confirmDelete, true); setConfirmDelete(null); }}
+              >
+                Obriši sve kartice ({cardCountByCategory[confirmDelete] ?? 0})
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
+                Otkaži
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
