@@ -61,11 +61,18 @@ async function buildJsonChunked(
 
 interface UseCardExportDeps {
   cards: Card[];
-  subcategories: Record<string, string[]>;
   srSettings: SRSettings;
 }
 
-export function useCardExport({ cards, subcategories, srSettings }: UseCardExportDeps) {
+function deriveSubMap(catRecords: { name: string; subcategories?: string[] }[]): Record<string, string[]> {
+  const subMap: Record<string, string[]> = {};
+  catRecords.forEach(r => {
+    if (r.subcategories && r.subcategories.length > 0) subMap[r.name] = r.subcategories;
+  });
+  return subMap;
+}
+
+export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
   // H1 fix: Read fresh cards from IDB for templates too
   const exportTemplate = useCallback(
     async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
