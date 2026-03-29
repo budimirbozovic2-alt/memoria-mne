@@ -13,6 +13,8 @@ import { useAppContext } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Card, SourceModule, createCard } from "@/lib/spaced-repetition";
+import { persistQueue } from "@/lib/persist-queue";
+import { db } from "@/lib/db";
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -243,8 +245,16 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
       updateCard(u.id, u.patch);
     }
 
-    const count = newCards.length + updates.length;
+    // Post-import: flush persist queue to guarantee IDB write completes
+    // before user navigates away (prevents phantom cards scenario)
+    await persistQueue.flush();
+
+    // Verification: confirm cards landed in IDB
+    const idbCount = await db.cards.count();
+    console.log(`[AutoSplit] Bulk import done: ${newCards.length} new, ${updates.length} updated, IDB total: ${idbCount}`);
+
     setProgress(100);
+    const count = newCards.length + updates.length;
     setImportedCount(count);
     setImporting(false);
     setDone(true);
