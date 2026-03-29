@@ -96,15 +96,26 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
 
       const parsed = JSON.parse(jsonText);
       const errors: string[] = [];
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isValidUUID = (id: any) => typeof id === 'string' && uuidRegex.test(id);
 
       // Validate structure
       if (!parsed || typeof parsed !== "object") {
         errors.push("Fajl ne sadrži validan JSON objekat.");
       }
-      if (!Array.isArray(parsed.cards)) {
-        errors.push("Fajl ne sadrži 'cards' niz.");
+
+      // Validate Categories Schema
+      if (parsed.categories && Array.isArray(parsed.categories)) {
+        for (let i = 0; i < parsed.categories.length; i++) {
+          const cat = parsed.categories[i];
+          if (!isValidUUID(cat.id)) {
+            errors.push(`Kategorija '${cat.name || 'Nepoznato'}' nema validan UUID (id).`);
+            break;
+          }
+        }
       }
 
+      // Sanitize and Validate Cards Schema
       const importedCards: any[] = (parsed.cards || []).map((c: any) => ({
         ...c,
         question: typeof c.question === "string" ? sanitizeHtml(c.question) : c.question,
@@ -113,17 +124,43 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
           : c.sections,
       }));
 
-      // Validate individual cards (sample check)
       if (importedCards.length > 0) {
-        const sampleSize = Math.min(10, importedCards.length);
-        for (let i = 0; i < sampleSize; i++) {
+        for (let i = 0; i < importedCards.length; i++) {
           const c = importedCards[i];
-          if (!c.question || typeof c.question !== "string") {
-            errors.push(`Kartica #${i + 1} nema validno pitanje.`);
+          if (!isValidUUID(c.id)) {
+            errors.push(`Kartica na indeksu ${i} nema validan UUID (id).`);
+            break;
+          }
+          if (c.categoryId && !isValidUUID(c.categoryId)) {
+            errors.push(`Kartica '${c.question?.substring(0, 15)}...' ima neispravan categoryId UUID.`);
             break;
           }
           if (!Array.isArray(c.sections)) {
-            errors.push(`Kartica #${i + 1} nema 'sections' niz.`);
+            errors.push(`Kartica na indeksu ${i} nema validan 'sections' niz.`);
+            break;
+          }
+        }
+      } else if (!parsed.categories && !parsed.mindMaps) {
+        errors.push("Fajl ne sadrži podatke za import (cards, categories, ili mindMaps).");
+      }
+
+      // Validate Sources Schema (if present)
+      if (parsed.sources && Array.isArray(parsed.sources)) {
+        for (let i = 0; i < parsed.sources.length; i++) {
+          const s = parsed.sources[i];
+          if (!isValidUUID(s.id) || !isValidUUID(s.categoryId)) {
+            errors.push(`Izvor '${s.title || 'Nepoznato'}' nema validne UUID ključeve.`);
+            break;
+          }
+        }
+      }
+
+      // Validate MindMaps Schema (if present)
+      if (parsed.mindMaps && Array.isArray(parsed.mindMaps)) {
+        for (let i = 0; i < parsed.mindMaps.length; i++) {
+          const m = parsed.mindMaps[i];
+          if (!isValidUUID(m.id)) {
+            errors.push(`Mentalna mapa '${m.title || 'Nepoznato'}' nema validan UUID.`);
             break;
           }
         }
