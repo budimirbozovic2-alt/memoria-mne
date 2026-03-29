@@ -161,7 +161,7 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
 
       const data = {
         version: 4, type: "full",
-        cards: freshCards, categories: catRecords, subcategories,
+        cards: freshCards, categories: catRecords, subcategories: deriveSubMap(catRecords),
         reviewLog: fullReviewLog, srSettings,
         sources, mindMaps, diary, calibrationLog, latencyLog,
         slippageLog, activityLog, disciplineLog, pomodoroLog,
