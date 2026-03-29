@@ -1,8 +1,9 @@
 import { X, ChevronDown, Check, AlertTriangle } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { getCardMasteryLevel, getMasteryColor } from "@/components/KnowledgeMap";
 import { motion, AnimatePresence } from "framer-motion";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 const GRADES = [
   { value: 1, label: "1", color: "bg-red-500 hover:bg-red-600" },
