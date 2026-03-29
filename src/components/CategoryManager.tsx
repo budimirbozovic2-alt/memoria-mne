@@ -200,8 +200,8 @@ export default function CategoryManager({
                   )}
                 </div>
 
-                {/* Subcategories */}
-                {isExpanded && (
+                {/* Subcategories — only when management props are provided */}
+                {isExpanded && onAddSub && onRenameSub && onDeleteSub && (
                   <div className="border-t px-4 pb-4 pt-3 space-y-2 bg-secondary/20">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Podkategorije</span>
@@ -268,6 +268,13 @@ export default function CategoryManager({
                         <Plus className="h-3 w-3" /> Dodaj podkategoriju
                       </button>
                     )}
+                  </div>
+                )}
+
+                {/* Show subcategory count read-only when no management props */}
+                {isExpanded && (!onAddSub || !onRenameSub || !onDeleteSub) && subs.length > 0 && (
+                  <div className="border-t px-4 pb-3 pt-3 bg-secondary/20">
+                    <span className="text-xs text-muted-foreground">{subs.length} podkategorija (upravljanje u kategoriji)</span>
                   </div>
                 )}
               </motion.div>

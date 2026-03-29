@@ -179,6 +179,8 @@ export default function CategoryView() {
               toggleTag={toggleTag}
               addCard={addCard}
               addFlashCard={addFlashCard}
+              onDelete={deleteCard}
+              onEdit={(card) => navigate(`/edit/${card.id}`)}
             />
           )}
         </TabsContent>

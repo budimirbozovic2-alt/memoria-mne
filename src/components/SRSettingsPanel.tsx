@@ -466,9 +466,6 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
               onAdd={addCategory}
               onRename={renameCategory}
               onDelete={deleteCategory}
-              onAddSub={addSubcategory}
-              onRenameSub={renameSubcategory}
-              onDeleteSub={deleteSubcategory}
             />
           </div>
         </TabsContent>
