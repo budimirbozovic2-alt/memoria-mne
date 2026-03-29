@@ -61,7 +61,6 @@ async function buildJsonChunked(
 
 interface UseCardExportDeps {
   cards: Card[];
-  categories: string[];
   subcategories: Record<string, string[]>;
   srSettings: SRSettings;
 }
