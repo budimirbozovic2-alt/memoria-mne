@@ -162,6 +162,7 @@ export function useCards() {
     setCategories, setSubcategories,
     setReviewLog: setReviewLogState, updateSRSettings,
     setCardMapState, cardMapRef,
+    setCategoryRecordsState,
   });
 
   // ── Single-pass derived data (B2+B5 fix: 4×O(n) → 1×O(n)) ──

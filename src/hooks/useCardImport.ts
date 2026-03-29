@@ -263,7 +263,7 @@ export function useCardImport({
         toast.error(`Greška pri uvozu: ${err instanceof Error ? err.message : "Neispravan format fajla."}`);
       }
     },
-    [setCardMapState, setCategories, setSubcategories, setReviewLog, updateSRSettings, cardMapRef],
+    [setCardMapState, setCategories, setSubcategories, setReviewLog, updateSRSettings, cardMapRef, setCategoryRecordsState],
   );
 
   // H5 fix: importCards now syncs cardMapRef before setState

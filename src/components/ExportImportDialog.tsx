@@ -188,7 +188,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
         // If legacy format, skip card/source FK check (categories have no UUIDs)
         const skipFKCheck = isLegacyCategoryFormat;
 
-        if (importedCards.length > 0) {
+        if (!skipFKCheck && importedCards.length > 0) {
           for (let i = 0; i < importedCards.length; i++) {
             const c = importedCards[i];
             if (c.categoryId && !validCategoryIds.has(c.categoryId)) {
@@ -197,7 +197,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
             }
           }
         }
-        if (parsed.sources && Array.isArray(parsed.sources)) {
+        if (!skipFKCheck && parsed.sources && Array.isArray(parsed.sources)) {
           for (let i = 0; i < parsed.sources.length; i++) {
             const s = parsed.sources[i];
             if (s.categoryId && !validCategoryIds.has(s.categoryId)) {
