@@ -106,11 +106,32 @@ export function useCardImport({
         setCardMapState(() => nextMap);
         bumpMapVersion();
 
-        if (Array.isArray(data.categories)) {
-          if (strategy === "overwrite") {
-            setCategories(() => data.categories as string[]);
+        if (Array.isArray(data.categories) && (data.categories as unknown[]).length > 0) {
+          const firstCat = (data.categories as unknown[])[0];
+          const isRecordFormat = typeof firstCat === 'object' && firstCat !== null && 'id' in firstCat;
+
+          if (isRecordFormat) {
+            // v7+ CategoryRecord[] — write directly to IDB preserving UUIDs
+            const { db: dbCat, idbLoadCategories } = await import("@/lib/db");
+            const catRecords = data.categories as CategoryRecord[];
+            if (strategy === "overwrite") {
+              await dbCat.categories.clear();
+              await dbCat.categories.bulkPut(catRecords);
+            } else {
+              // Merge: bulkPut upserts, existing records preserved for skip
+              await dbCat.categories.bulkPut(catRecords);
+            }
+            // Sync React state from IDB
+            const freshRecords = await idbLoadCategories();
+            setCategoryRecordsState(freshRecords);
+            setCategories(() => freshRecords.map(r => r.name));
           } else {
-            setCategories((prev) => [...new Set([...prev, ...(data.categories as string[])])]);
+            // Legacy string[] format — fallback
+            if (strategy === "overwrite") {
+              setCategories(() => data.categories as string[]);
+            } else {
+              setCategories((prev) => [...new Set([...prev, ...(data.categories as string[])])]);
+            }
           }
         }
         if (strategy === "overwrite" && (!data.subcategories || Object.keys(data.subcategories as object).length === 0)) {
