@@ -416,10 +416,22 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                     })}
                   </div>
 
-                  <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => openMoveModal(card.id)}>
-                    <ArrowRightLeft className="h-3.5 w-3.5" />
-                    Premjesti u drugu kategoriju
-                  </Button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {onEdit && (
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => onEdit(card)}>
+                        <Pencil className="h-3.5 w-3.5" /> Uredi
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => openMoveModal(card.id)}>
+                      <ArrowRightLeft className="h-3.5 w-3.5" />
+                      Premjesti
+                    </Button>
+                    {onDelete && (
+                      <Button variant="outline" size="sm" className="gap-1.5 text-xs text-destructive hover:bg-destructive/10" onClick={() => { onDelete(card.id); toast.success("Kartica obrisana."); }}>
+                        <Trash2 className="h-3.5 w-3.5" /> Obriši
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
