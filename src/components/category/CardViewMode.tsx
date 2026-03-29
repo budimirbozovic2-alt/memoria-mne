@@ -353,8 +353,9 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                   <Badge variant="outline" className="text-[10px]">
                     {card.type === "flash" ? "Flash" : "Esej"}
                   </Badge>
-                </div>
-              </button>
+                  </div>
+                </button>
+              </div>
 
               {isExpanded && (
                 <div className="border-t px-4 py-3 space-y-3 bg-muted/20">
