@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { ChevronDown, ChevronRight, ArrowRightLeft, Star, Filter, X, Plus, Upload, Pencil, Trash2, CheckSquare, Link2, BookOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowRightLeft, Star, Filter, X, Plus, Upload, Pencil, Trash2, CheckSquare, Link2, BookOpen, AlertTriangle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -375,6 +375,12 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                       <Badge variant="outline" className="text-[10px] gap-1 border-accent">
                         <Link2 className="h-3 w-3" />
                         Povezano sa izvorom
+                      </Badge>
+                    )}
+                    {card.needsReview && (
+                      <Badge className="text-[10px] gap-1 bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30">
+                        <AlertTriangle className="h-3 w-3" />
+                        Izvor ažuriran
                       </Badge>
                     )}
                   </div>
