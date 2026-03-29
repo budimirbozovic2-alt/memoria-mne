@@ -1,5 +1,6 @@
 import { Plus, X, GripVertical, Scissors, Zap, FileText } from "lucide-react";
 import React, { memo } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import RichTextEditor from "@/components/RichTextEditor";
