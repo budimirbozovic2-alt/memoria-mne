@@ -103,7 +103,7 @@ export function useCardExport({ cards, subcategories, srSettings }: UseCardExpor
         toast.success("Template uspješno exportovan.");
       }
     },
-    [cards, categories, subcategories],
+    [cards, subcategories],
   );
 
   const exportData = useCallback(
@@ -113,6 +113,7 @@ export function useCardExport({ cards, subcategories, srSettings }: UseCardExpor
       const [
         sources, mindMaps, diary, calibrationLog, latencyLog,
         slippageLog, activityLog, disciplineLog, pomodoroLog, fullReviewLog,
+        catRecords,
       ] = await Promise.all([
         db.sources.toArray(),
         db.mindMaps.toArray(),
