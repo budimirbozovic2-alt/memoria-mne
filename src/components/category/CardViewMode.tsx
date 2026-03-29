@@ -325,7 +325,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                               <span className={cn("text-[10px] font-medium", secStab.color)}>S: {section.stability.toFixed(1)}</span>
                             </div>
                           </div>
-                          <div className="text-xs text-foreground/70 prose prose-xs dark:prose-invert max-w-none line-clamp-4" dangerouslySetInnerHTML={{ __html: section.content }} />
+                          <div className="text-xs text-foreground/70 prose prose-xs dark:prose-invert max-w-none line-clamp-4" dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.content) }} />
                         </div>
                       );
                     })}

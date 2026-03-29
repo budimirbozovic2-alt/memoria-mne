@@ -40,7 +40,7 @@ function CuttingView({ content, onCut, onCancel }: {
               <div className="flex-1 h-px bg-warning/30 group-hover:bg-warning" />
             </button>
           )}
-          <div className="text-sm px-2 py-1 rounded" dangerouslySetInnerHTML={{ __html: p }} />
+          <div className="text-sm px-2 py-1 rounded" dangerouslySetInnerHTML={{ __html: sanitizeHtml(p) }} />
         </div>
       ))}
     </div>

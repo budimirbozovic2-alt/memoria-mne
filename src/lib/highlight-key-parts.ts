@@ -23,5 +23,5 @@ export function highlightKeyParts(html: string, keyParts?: string[]): string {
       '<mark class="key-part-highlight">$1</mark>'
     );
   }
-  return result;
+  return sanitizeHtml(result);
 }
