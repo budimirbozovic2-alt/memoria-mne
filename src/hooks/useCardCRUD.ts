@@ -171,5 +171,16 @@ export function useCardCRUD({
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);
 
-  return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard };
+  // Bulk add — single state update + single IDB transaction (eliminates thrashing)
+  const bulkAddCards = useCallback((newCards: Card[]) => {
+    if (newCards.length === 0) return;
+    const nextRef = { ...cardMapRef.current };
+    for (const c of newCards) nextRef[c.id] = c;
+    cardMapRef.current = nextRef;
+    schedulePersist({ type: "bulk", cards: newCards });
+    setCardMapState(() => nextRef);
+    bumpMapVersion();
+  }, [setCardMapState, cardMapRef]);
+
+  return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard, bulkAddCards };
 }

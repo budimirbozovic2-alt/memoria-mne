@@ -79,6 +79,7 @@ interface CardActionsContextValue {
   updateCard: ReturnType<typeof useCards>["updateCard"];
   deleteCard: ReturnType<typeof useCards>["deleteCard"];
   splitCard: ReturnType<typeof useCards>["splitCard"];
+  bulkAddCards: ReturnType<typeof useCards>["bulkAddCards"];
   reviewSection: ReturnType<typeof useCards>["reviewSection"];
   markRead: ReturnType<typeof useCards>["markRead"];
   toggleTag: ReturnType<typeof useCards>["toggleTag"];
@@ -249,7 +250,8 @@ function CardProvider({ children }: { children: ReactNode }) {
   actionsRef.current = {
     patchCard: h.patchCard,
     addCard: h.addCard, addFlashCard: h.addFlashCard, updateCard: h.updateCard,
-    deleteCard: h.deleteCard, splitCard: h.splitCard, reviewSection: h.reviewSection,
+    deleteCard: h.deleteCard, splitCard: h.splitCard, bulkAddCards: h.bulkAddCards,
+    reviewSection: h.reviewSection,
     markRead: h.markRead, toggleTag: h.toggleTag, addKeyPart: h.addKeyPart,
     bulkFlagNeedsReview: h.bulkFlagNeedsReview, bulkUpdateSubcategory: h.bulkUpdateSubcategory,
     bulkUpdateChapter: h.bulkUpdateChapter, reorderCards: h.reorderCards,

@@ -136,7 +136,7 @@ export function useCards() {
   }, []);
 
   // ── CRUD (extracted module) ──
-  const { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard } = useCardCRUD({
+  const { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard, bulkAddCards } = useCardCRUD({
     setCardMapState, cardMapRef,
   });
 
@@ -307,6 +307,7 @@ export function useCards() {
     updateCard,
     deleteCard,
     splitCard,
+    bulkAddCards,
     reviewSection,
     markRead,
     toggleTag,

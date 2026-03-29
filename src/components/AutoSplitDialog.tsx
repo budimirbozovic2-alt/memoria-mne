@@ -12,7 +12,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { useAppContext } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { Card, SourceModule } from "@/lib/spaced-repetition";
+import { Card, SourceModule, createCard } from "@/lib/spaced-repetition";
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -39,7 +39,7 @@ interface ArticleRow {
 }
 
 export default function AutoSplitDialog({ open, onClose, source }: Props) {
-  const { addCard, cards, updateCard } = useAppContext();
+  const { bulkAddCards, cards, updateCard } = useAppContext();
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);
@@ -167,21 +167,21 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
   const existsCount = rows.filter((r) => r.status === "exists").length;
   const groupCount = rows.filter((r) => r.isGroup).length;
 
-  // ── Import ──
+  // ── Import (Bulk pattern — single state update + single IDB write) ──
   const handleImport = useCallback(async () => {
     const toImport = rows.filter((r) => r.selected);
     if (toImport.length === 0) return;
 
     setImporting(true);
     setProgress(0);
-    let count = 0;
     const category = source.categoryId;
 
-    for (let i = 0; i < toImport.length; i++) {
-      const row = toImport[i];
+    // Build phase: construct all cards in memory
+    const newCards: Card[] = [];
+    const updates: { id: string; patch: Parameters<typeof updateCard>[1] }[] = [];
 
+    for (const row of toImport) {
       if (row.isGroup) {
-        // Grouped essay: each article becomes a section (modul)
         const sections = row.articles.map((art) => ({
           title: `Član ${art.articleNum}${art.title ? ` — ${art.title}` : ""}`,
           content: sanitizeHtml(art.contentHtml),
@@ -198,59 +198,53 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
         const combinedSnippet = row.articles.map(a => a.plainSnippet).join("\n\n");
         const anchor = createTextAnchor(combinedSnippet);
 
-        addCard(
-          row.essayName,
-          sections,
-          category,
-          undefined,
-          undefined,
-          {
-            sourceId: source.id,
-            textAnchor: anchor,
-            originalSourceSnippet: combinedSnippet,
-            childCardIds: sourceModules.map(module => module.id),
-            sourceModules,
-          }
-        );
+        const card = createCard(row.essayName, sections, category);
+        card.updatedAt = Date.now();
+        card.sourceId = source.id;
+        card.textAnchor = anchor;
+        card.originalSourceSnippet = combinedSnippet;
+        card.childCardIds = sourceModules.map(m => m.id);
+        card.sourceModules = sourceModules;
+        newCards.push(card);
       } else {
-        // Single article essay
         const art = row.articles[0];
         const anchor = createTextAnchor(art.plainSnippet);
         const sections = [{ title: "Odgovor", content: sanitizeHtml(art.contentHtml) }];
 
         if (row.status === "exists" && row.existingCardId) {
-          updateCard(row.existingCardId, {
-            question: art.essayName,
-            sections,
-            sourceId: source.id,
-            textAnchor: anchor,
-            originalSourceSnippet: art.plainSnippet,
-            childCardIds: undefined,
-            sourceModules: undefined,
-          });
-        } else {
-          addCard(
-            art.essayName,
-            sections,
-            category,
-            undefined,
-            undefined,
-            {
+          updates.push({
+            id: row.existingCardId,
+            patch: {
+              question: art.essayName,
+              sections,
               sourceId: source.id,
               textAnchor: anchor,
               originalSourceSnippet: art.plainSnippet,
-            }
-          );
+              childCardIds: undefined,
+              sourceModules: undefined,
+            },
+          });
+        } else {
+          const card = createCard(art.essayName, sections, category);
+          card.updatedAt = Date.now();
+          card.sourceId = source.id;
+          card.textAnchor = anchor;
+          card.originalSourceSnippet = art.plainSnippet;
+          newCards.push(card);
         }
-      }
-      count++;
-      setProgress(Math.round(((i + 1) / toImport.length) * 100));
-
-      if (i % 10 === 9) {
-        await new Promise((r) => setTimeout(r, 0));
       }
     }
 
+    setProgress(50);
+
+    // Write phase: single bulk insert + individual updates (updates are rare)
+    bulkAddCards(newCards);
+    for (const u of updates) {
+      updateCard(u.id, u.patch);
+    }
+
+    const count = newCards.length + updates.length;
+    setProgress(100);
     setImportedCount(count);
     setImporting(false);
     setDone(true);
@@ -259,7 +253,7 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
       title: `Generisano ${count} eseja`,
       description: `Iz izvora "${source.title}"`,
     });
-  }, [rows, source, addCard, updateCard]);
+  }, [rows, source, bulkAddCards, updateCard]);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
