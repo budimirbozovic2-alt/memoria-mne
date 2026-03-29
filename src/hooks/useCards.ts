@@ -307,6 +307,7 @@ export function useCards() {
     updateCard,
     deleteCard,
     splitCard,
+    bulkAddCards,
     reviewSection,
     markRead,
     toggleTag,
