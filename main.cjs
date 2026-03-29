@@ -79,7 +79,8 @@ ipcMain.handle('show-open-dialog', async (_event, options) => {
 
 ipcMain.handle('save-file', async (_event, filePath, base64Data) => {
   try {
-    fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+    const cleanBase64 = base64Data.replace(/^data:.*?;base64,/, '');
+    fs.writeFileSync(filePath, Buffer.from(cleanBase64, 'base64'));
     return true;
   } catch (err) {
     logCrash('save-file', err);
