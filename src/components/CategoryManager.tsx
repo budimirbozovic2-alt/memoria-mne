@@ -298,6 +298,35 @@ export default function CategoryManager({
           <Plus className="h-4 w-4 mr-2" /> Nova kategorija
         </Button>
       )}
+
+      {/* Confirm delete dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-card border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-semibold text-lg">Obriši kategoriju</h3>
+            <p className="text-sm text-muted-foreground">
+              Kategorija "{confirmDelete}" sadrži {cardCountByCategory[confirmDelete] ?? 0} kartica. Šta želite?
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { onDelete(confirmDelete, false); setConfirmDelete(null); }}
+              >
+                Prebaci kartice u drugu kategoriju
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => { onDelete(confirmDelete, true); setConfirmDelete(null); }}
+              >
+                Obriši sve kartice ({cardCountByCategory[confirmDelete] ?? 0})
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
+                Otkaži
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
