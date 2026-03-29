@@ -13,7 +13,13 @@ async function downloadFile(blob: Blob, filename: string) {
     });
     if (result.canceled || !result.filePath) return;
     const arrayBuffer = await blob.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const bytes = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const CHUNK_SIZE = 8192;
+    for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK_SIZE));
+    }
+    const base64 = btoa(binary);
     await window.electronAPI.saveFile(result.filePath, base64);
     return;
   }
