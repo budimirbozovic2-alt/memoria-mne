@@ -13,6 +13,8 @@ import { useAppContext } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Card, SourceModule, createCard } from "@/lib/spaced-repetition";
+import { persistQueue } from "@/lib/persist-queue";
+import { db } from "@/lib/db";
 interface Props {
   open: boolean;
   onClose: () => void;
