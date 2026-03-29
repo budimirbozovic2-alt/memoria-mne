@@ -64,6 +64,39 @@ ipcMain.handle('log-error', (_event, message) => {
   return true;
 });
 
+// ── Native file dialogs ──
+ipcMain.handle('show-save-dialog', async (_event, options) => {
+  const win = getMainWindow();
+  if (!win) return { canceled: true };
+  return dialog.showSaveDialog(win, options);
+});
+
+ipcMain.handle('show-open-dialog', async (_event, options) => {
+  const win = getMainWindow();
+  if (!win) return { canceled: true, filePaths: [] };
+  return dialog.showOpenDialog(win, options);
+});
+
+ipcMain.handle('save-file', async (_event, filePath, base64Data) => {
+  try {
+    fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+    return true;
+  } catch (err) {
+    logCrash('save-file', err);
+    return false;
+  }
+});
+
+ipcMain.handle('read-file', async (_event, filePath) => {
+  try {
+    const data = fs.readFileSync(filePath);
+    return { data: data.toString('base64'), name: path.basename(filePath) };
+  } catch (err) {
+    logCrash('read-file', err);
+    return null;
+  }
+});
+
 app.whenReady().then(() => {
   // ── Register app:// protocol handler for production ──
   if (!isDev) {
