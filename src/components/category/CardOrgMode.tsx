@@ -41,7 +41,7 @@ function buildTree(cards: Card[], subcategoryNodes: SubcategoryNode[]): TreeNode
 
   for (const node of subcategoryNodes) {
     const chMap = new Map<string, Card[]>();
-    for (const ch of node.chapters) chMap.set(ch, []);
+    for (const ch of node.chapters) chMap.set(typeof ch === "string" ? ch : ch.name, []);
     nodeMap.set(node.name, { chapters: chMap, unassigned: [] });
   }
 
