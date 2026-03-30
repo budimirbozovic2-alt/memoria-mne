@@ -262,6 +262,9 @@ export default function CategoryView() {
                       <Pencil className="h-3.5 w-3.5" />
                       Uredi
                     </Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => setDeleteTarget(source)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))
