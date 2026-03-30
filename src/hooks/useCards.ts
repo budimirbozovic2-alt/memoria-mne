@@ -343,8 +343,12 @@ export function useCards() {
     addSubcategory,
     renameSubcategory,
     deleteSubcategory,
+    addChapter,
+    renameChapter,
+    deleteChapter,
     reorderCategories,
     reorderSubcategories,
+    reorderChapters,
     updateSRSettings,
   };
 }
