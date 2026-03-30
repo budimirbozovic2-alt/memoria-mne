@@ -1,8 +1,8 @@
-import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Gauge, BookOpen, Eye, Type, Layers, FileText, Volume2, VolumeX, Settings2 } from "lucide-react";
+import { Play, Pause, RotateCcw, ChevronLeft, ChevronRight, Gauge, BookOpen, Eye, Type, Layers, FileText, Volume2, VolumeX, Settings2, BookMarked } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAppContext } from "@/contexts/AppContext";
 import { Card } from "@/lib/spaced-repetition";
-
+import { loadSources, type Source } from "@/lib/sources-storage";
 
 import ScrollableRow from "@/components/ScrollableRow";
 import InfoPanel from "@/components/InfoPanel";
@@ -77,6 +77,57 @@ function buildSegments(selectedCards: Card[]): { segments: Segment[]; wordEntrie
   return { segments, wordEntries };
 }
 
+/** Build segments from a Source's HTML content, splitting by headings */
+function buildSourceSegments(source: Source): { segments: Segment[]; wordEntries: WordEntry[] } {
+  const segments: Segment[] = [];
+  const wordEntries: WordEntry[] = [];
+  const html = source.htmlContent || "";
+  if (!html) return { segments, wordEntries };
+
+  // Split HTML by headings to create logical sections
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(DOMPurify.sanitize(html), "text/html");
+  const children = Array.from(doc.body.children);
+
+  let currentTitle = source.title;
+  let currentContent: string[] = [];
+
+  const flush = () => {
+    const text = currentContent.join(" ").trim();
+    if (!text) return;
+    const titleWords = currentTitle.split(/\s+/).filter(Boolean);
+    const contentWords = text.split(/\s+/).filter(Boolean);
+    if (titleWords.length === 0 && contentWords.length === 0) return;
+    const segIdx = segments.length;
+    const globalStart = wordEntries.length;
+    titleWords.forEach(w => wordEntries.push({ text: w, isTitle: true, segmentIdx: segIdx }));
+    contentWords.forEach(w => wordEntries.push({ text: w, isTitle: false, segmentIdx: segIdx }));
+    segments.push({
+      cardQuestion: source.title,
+      sectionTitle: currentTitle,
+      cardIndex: 0,
+      sectionIndex: segIdx,
+      words: [...titleWords, ...contentWords],
+      globalStartIdx: globalStart,
+    });
+  };
+
+  for (const el of children) {
+    const tag = el.tagName;
+    if (/^H[1-4]$/.test(tag)) {
+      flush();
+      currentTitle = el.textContent?.trim() || "Sekcija";
+      currentContent = [];
+    } else {
+      const t = el.textContent?.trim();
+      if (t) currentContent.push(t);
+    }
+  }
+  flush();
+
+  return { segments, wordEntries };
+}
+
 function getActiveSegment(segments: Segment[], wordIdx: number): Segment | null {
   for (let i = segments.length - 1; i >= 0; i--) {
     if (wordIdx >= segments[i].globalStartIdx) return segments[i];
@@ -84,16 +135,19 @@ function getActiveSegment(segments: Segment[], wordIdx: number): Segment | null 
   return segments[0] || null;
 }
 
+type ContentSource = "cards" | "sources";
+
 const SPEED_READER_INFO = (
   <div className="space-y-3 text-sm">
     <div className="flex items-start gap-2"><Layers className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Čitaj podkategoriju</strong><p className="text-muted-foreground">Sve kartice se spajaju u kontinuirani tok teksta.</p></div></div>
+    <div className="flex items-start gap-2"><BookMarked className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Čitaj izvor</strong><p className="text-muted-foreground">Kompletni zakonski tekst ili dokument u speed reader formatu.</p></div></div>
     <div className="flex items-start gap-2"><Eye className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Highlighting</strong><p className="text-muted-foreground">Trenutna riječ se ističe u zadanom tempu (WPM).</p></div></div>
     <div className="flex items-start gap-2"><Volume2 className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Glasovno praćenje</strong><p className="text-muted-foreground">Uključi 🔊 za TTS čitanje naglas sa sinhronizovanim praćenjem teksta.</p></div></div>
     <div className="flex items-start gap-2"><Gauge className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Brzina</strong><p className="text-muted-foreground">WPM za vizuelno, ili brzina govora za TTS.</p></div></div>
   </div>
 );
 
-type ReadMode = "subcategory" | "card";
+type ReadMode = "subcategory" | "card" | "source";
 
 export default function SpeedReader() {
   const { cards, categories, subcategories, categoryRecords } = useAppContext();
@@ -108,6 +162,22 @@ export default function SpeedReader() {
   const [selCat, setSelCat] = useState<string | null>(null);
   const [selSub, setSelSub] = useState<string | null>(null);
   const [readMode, setReadMode] = useState<ReadMode>("subcategory");
+
+  // Content source toggle
+  const [contentSource, setContentSource] = useState<ContentSource>("cards");
+
+  // Sources
+  const [allSources, setAllSources] = useState<Source[]>([]);
+  const [selSource, setSelSource] = useState<Source | null>(null);
+
+  useEffect(() => {
+    loadSources().then(setAllSources);
+  }, []);
+
+  const filteredSources = useMemo(() => {
+    if (!selCat) return allSources;
+    return allSources.filter(s => s.categoryId === selCat);
+  }, [allSources, selCat]);
 
   // For single-card mode
   const [selCard, setSelCard] = useState<Card | null>(null);
@@ -166,7 +236,10 @@ export default function SpeedReader() {
     return [];
   }, [readMode, selCard, filteredCards]);
 
-  const { segments, wordEntries } = useMemo(() => buildSegments(selectedCards), [selectedCards]);
+  const { segments, wordEntries } = useMemo(() => {
+    if (readMode === "source" && selSource) return buildSourceSegments(selSource);
+    return buildSegments(selectedCards);
+  }, [readMode, selSource, selectedCards]);
   const totalWords = wordEntries.length;
 
   const activeSegment = getActiveSegment(segments, currentWordIdx);
@@ -397,6 +470,14 @@ export default function SpeedReader() {
   const startSingleCardRead = (card: Card) => {
     setReadMode("card");
     setSelCard(card);
+    setSelSource(null);
+    setReaderActive(true);
+  };
+
+  const startSourceRead = (source: Source) => {
+    setReadMode("source");
+    setSelSource(source);
+    setSelCard(null);
     setReaderActive(true);
   };
 
@@ -404,6 +485,7 @@ export default function SpeedReader() {
     setReaderActive(false);
     setPlaying(false);
     setSelCard(null);
+    setSelSource(null);
     stopTts();
   };
 
@@ -421,6 +503,28 @@ export default function SpeedReader() {
           <InfoPanel title="Speed Reader">{SPEED_READER_INFO}</InfoPanel>
         </div>
 
+        {/* Content source toggle: Cards | Sources */}
+        <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5 w-fit">
+          <button
+            onClick={() => setContentSource("cards")}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              contentSource === "cards" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Layers className="h-4 w-4" />
+            Kartice
+          </button>
+          <button
+            onClick={() => setContentSource("sources")}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              contentSource === "sources" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <BookMarked className="h-4 w-4" />
+            Izvori
+          </button>
+        </div>
+
         {/* Category filter */}
         <div className="rounded-xl border bg-card p-5 space-y-4">
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Kategorija</span>
@@ -435,7 +539,7 @@ export default function SpeedReader() {
             ))}
           </ScrollableRow>
 
-          {selCat && availableSubs.length > 0 && (
+          {contentSource === "cards" && selCat && availableSubs.length > 0 && (
             <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1">
               <button onClick={() => setSelSub(null)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 ${!selSub ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}>
                 Sve podkat.
@@ -449,55 +553,95 @@ export default function SpeedReader() {
           )}
         </div>
 
-        {/* Read entire subcategory CTA */}
-        {filteredCards.length > 0 && (
-          <button
-            onClick={startSubcategoryRead}
-            className="w-full rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 p-5 transition-colors group"
-          >
-            <div className="flex items-center justify-center gap-3">
-              <Layers className="h-5 w-5 text-primary" />
-              <div className="text-left">
-                <p className="text-lg font-medium text-foreground group-hover:text-primary transition-colors">
-                  Čitaj {selSub ? `"${selSub}"` : selCat ? `"${uuidToName[selCat] ?? selCat}"` : "sve kartice"} — {filteredCards.length} kartica
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {totalWords.toLocaleString()} riječi · ~{estMinutes} min pri {wpm} WPM
-                </p>
-              </div>
-            </div>
-          </button>
-        )}
+        {contentSource === "cards" ? (
+          <>
+            {/* Read entire subcategory CTA */}
+            {filteredCards.length > 0 && (
+              <button
+                onClick={startSubcategoryRead}
+                className="w-full rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 p-5 transition-colors group"
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <Layers className="h-5 w-5 text-primary" />
+                  <div className="text-left">
+                    <p className="text-lg font-medium text-foreground group-hover:text-primary transition-colors">
+                      Čitaj {selSub ? `"${selSub}"` : selCat ? `"${uuidToName[selCat] ?? selCat}"` : "sve kartice"} — {filteredCards.length} kartica
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {totalWords.toLocaleString()} riječi · ~{estMinutes} min pri {wpm} WPM
+                    </p>
+                  </div>
+                </div>
+              </button>
+            )}
 
-        {/* Individual card list */}
-        <div className="rounded-xl border bg-card p-5 space-y-3">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Ili odaberi pojedinačnu karticu ({filteredCards.length})
-          </span>
-          {filteredCards.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">Nema esejskih kartica za prikaz.</p>
-          ) : (
-            <div className="space-y-2 max-h-[40vh] overflow-y-auto">
-              {filteredCards.map(card => {
-                const wc = card.sections.reduce((s, sec) => s + stripHtml(sec.content).split(/\s+/).filter(Boolean).length, 0);
-                return (
-                  <button
-                    key={card.id}
-                    onClick={() => startSingleCardRead(card)}
-                    className="w-full text-left p-3 rounded-lg border hover:border-primary/30 hover:bg-secondary/30 transition-colors"
-                  >
-                    <div className="flex items-center gap-2 mb-0.5 text-xs text-muted-foreground">
-                      <span>{uuidToName[card.categoryId] ?? card.categoryId}</span>
-                      {card.subcategory && <span>› {card.subcategory}</span>}
-                      <span className="ml-auto">{card.sections.length} sek. · {wc} rij.</span>
-                    </div>
-                    <p className="text-sm font-medium line-clamp-1">{card.question}</p>
-                  </button>
-                );
-              })}
+            {/* Individual card list */}
+            <div className="rounded-xl border bg-card p-5 space-y-3">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Ili odaberi pojedinačnu karticu ({filteredCards.length})
+              </span>
+              {filteredCards.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">Nema esejskih kartica za prikaz.</p>
+              ) : (
+                <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+                  {filteredCards.map(card => {
+                    const wc = card.sections.reduce((s, sec) => s + stripHtml(sec.content).split(/\s+/).filter(Boolean).length, 0);
+                    return (
+                      <button
+                        key={card.id}
+                        onClick={() => startSingleCardRead(card)}
+                        className="w-full text-left p-3 rounded-lg border hover:border-primary/30 hover:bg-secondary/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 mb-0.5 text-xs text-muted-foreground">
+                          <span>{uuidToName[card.categoryId] ?? card.categoryId}</span>
+                          {card.subcategory && <span>› {card.subcategory}</span>}
+                          <span className="ml-auto">{card.sections.length} sek. · {wc} rij.</span>
+                        </div>
+                        <p className="text-sm font-medium line-clamp-1">{card.question}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        ) : (
+          /* Sources list */
+          <div className="rounded-xl border bg-card p-5 space-y-3">
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Odaberi izvor za čitanje ({filteredSources.length})
+            </span>
+            {filteredSources.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">
+                {selCat ? "Nema izvora u ovoj kategoriji." : "Nema učitanih izvora."}
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                {filteredSources.map(source => {
+                  const text = stripHtml(source.htmlContent || "");
+                  const wc = text.split(/\s+/).filter(Boolean).length;
+                  const estMin = Math.ceil(wc / wpm);
+                  return (
+                    <button
+                      key={source.id}
+                      onClick={() => startSourceRead(source)}
+                      className="w-full text-left p-3 rounded-lg border hover:border-primary/30 hover:bg-secondary/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 mb-0.5 text-xs text-muted-foreground">
+                        <span>{uuidToName[source.categoryId] ?? source.categoryId}</span>
+                        <span className="ml-auto">v{source.version} · {wc.toLocaleString()} rij. · ~{estMin} min</span>
+                      </div>
+                      <p className="text-sm font-medium line-clamp-1 flex items-center gap-2">
+                        <BookMarked className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        {source.title}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -514,18 +658,26 @@ export default function SpeedReader() {
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div>
-            {readMode === "subcategory" ? (
+            {readMode === "source" && selSource ? (
+              <>
+                <h2 className="text-xl font-medium flex items-center gap-2">
+                  <BookMarked className="h-5 w-5 text-primary" />
+                  {selSource.title}
+                </h2>
+                <p className="text-xs text-muted-foreground">{uuidToName[selSource.categoryId] ?? selSource.categoryId} · v{selSource.version} · {totalWords.toLocaleString()} riječi</p>
+              </>
+            ) : readMode === "subcategory" ? (
               <>
                 <h2 className="text-xl font-medium flex items-center gap-2">
                   <Layers className="h-5 w-5 text-primary" />
-                  {selSub || selCat || "Sve kartice"}
+                  {selSub || (selCat ? uuidToName[selCat] : null) || "Sve kartice"}
                 </h2>
                 <p className="text-xs text-muted-foreground">{selectedCards.length} kartica · {totalWords.toLocaleString()} riječi</p>
               </>
             ) : (
               <>
                 <h2 className="text-xl font-medium">{selCard?.question}</h2>
-                <p className="text-xs text-muted-foreground">{selCard?.categoryId}{selCard?.subcategory ? ` › ${selCard.subcategory}` : ""}</p>
+                <p className="text-xs text-muted-foreground">{uuidToName[selCard?.categoryId ?? ""] ?? selCard?.categoryId}{selCard?.subcategory ? ` › ${selCard.subcategory}` : ""}</p>
               </>
             )}
           </div>
