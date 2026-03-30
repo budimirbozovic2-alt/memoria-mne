@@ -235,6 +235,7 @@ function VirtualRow(props: RowComponentProps<VirtualRowData>) {
         onAssignChapter={onAssignChapter}
         onCloneToMnemonic={onCloneToMnemonic}
         onAddKeyPart={onAddKeyPart}
+        catNameMap={catNameMap}
       />
     </div>
   );
