@@ -15,6 +15,10 @@ import InfoPanel from "@/components/InfoPanel";
 import ExportImportDialog from "@/components/ExportImportDialog";
 import CategoryManager from "@/components/CategoryManager";
 import { useCardContext } from "@/contexts/AppContext";
+import { lazy, Suspense } from "react";
+import { TabSkeleton } from "@/components/ui/page-skeleton";
+
+const HealthMonitor = lazy(() => import("@/components/HealthMonitor"));
 
 interface Props {
   settings: SRSettings;
