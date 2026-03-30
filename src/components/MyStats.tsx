@@ -71,15 +71,12 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
               <Flame className="h-3.5 w-3.5" /> Otpor
             </TabsTrigger>
           </TabsList>
-          <TabsList className="w-full grid grid-cols-3">
+          <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="prediction" className="gap-1.5 text-xs sm:text-sm">
               <CalendarClock className="h-3.5 w-3.5" /> Predikcija
             </TabsTrigger>
             <TabsTrigger value="efficiency" className="gap-1.5 text-xs sm:text-sm">
               <Activity className="h-3.5 w-3.5" /> Efikasnost
-            </TabsTrigger>
-            <TabsTrigger value="health" className="gap-1.5 text-xs sm:text-sm">
-              <HeartPulse className="h-3.5 w-3.5" /> Zdravlje
             </TabsTrigger>
           </TabsList>
         </div>
