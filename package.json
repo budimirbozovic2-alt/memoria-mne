@@ -25,12 +25,15 @@
       "output": "release",
       "buildResources": "build"
     },
+    "asar": true,
     "files": [
       "dist/**/*",
       "main.cjs",
-      "preload.cjs",
       "electron/**/*.cjs",
       "package.json"
+    ],
+    "extraFiles": [
+      { "from": "preload.cjs", "to": "preload.cjs" }
     ],
     "win": {
       "target": "nsis",
