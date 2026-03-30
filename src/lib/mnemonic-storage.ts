@@ -88,9 +88,10 @@ export function detectHookType(sections: { content: string }[]): HookType {
 // Mnemonic Cards
 export function loadMnemonicCards(): MnemonicCard[] {
   const cards = loadFromStorage<MnemonicCard[]>(MNEMONIC_CARDS_KEY, []);
-  // Migration: add hookType if missing
+  // Migration: add hookType if missing, rename category→categoryId
   return cards.map(c => ({
     ...c,
+    categoryId: c.categoryId || (c as any).category || "",
     hookType: c.hookType || "ostalo",
     hookMode: c.hookMode || (c.mnemonicVideo ? "video" : "acronym"),
     tags: c.tags || [],
