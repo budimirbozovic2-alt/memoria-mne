@@ -1,4 +1,4 @@
-import { PenSquare, BarChart3, Wand2, ChevronUp, ChevronDown, Link as LinkIcon } from "lucide-react";
+import { PenSquare, BarChart3, Wand2, ChevronUp, ChevronDown, Link as LinkIcon, Heading1, Heading2, Heading3, Type } from "lucide-react";
 import { lazy, Suspense, memo, useCallback, useState, useEffect } from "react";
 import { useSourceLogic } from "@/hooks/useSourceLogic";
 import { SourceToolbar } from "@/components/source-reader/SourceToolbar";
@@ -90,9 +90,10 @@ const STORAGE_KEY = "codex-source-reader-width";
 interface Props {
   source: Source;
   onBack: () => void;
+  onSourceUpdated?: (source: Source) => void;
 }
 
-export default function SourceReader({ source, onBack }: Props) {
+export default function SourceReader({ source, onBack, onSourceUpdated }: Props) {
   const logic = useSourceLogic(source);
   const isCoverage = logic.viewMode === "coverage";
 
@@ -105,9 +106,68 @@ export default function SourceReader({ source, onBack }: Props) {
     localStorage.setItem(STORAGE_KEY, readerWidth);
   }, [readerWidth]);
 
+  // ─── Heading context menu ───
+  const [headingMenu, setHeadingMenu] = useState<{ x: number; y: number; element: HTMLElement } | null>(null);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const block = target.closest("p, h1, h2, h3, h4");
+    if (!block) return;
+    // Only allow within the content area
+    const container = logic.contentRef.current;
+    if (!container || !container.contains(block)) return;
+    e.preventDefault();
+    setHeadingMenu({ x: e.clientX, y: e.clientY, element: block as HTMLElement });
+  }, [logic.contentRef]);
+
+  const handleSetHeading = useCallback(async (level: number | null) => {
+    if (!headingMenu) return;
+    const el = headingMenu.element;
+    const container = logic.contentRef.current;
+    setHeadingMenu(null);
+    if (!container) return;
+
+    const text = el.textContent || "";
+    const currentTag = el.tagName.toLowerCase();
+    const targetTag = level ? `h${level}` : "p";
+
+    if (currentTag === targetTag) return; // no change
+
+    // Replace element in DOM
+    const newEl = document.createElement(targetTag);
+    newEl.textContent = text;
+    el.replaceWith(newEl);
+
+    // Get updated HTML and save
+    const { saveSource, extractOutline, injectHeadingIds } = await import("@/lib/sources-storage");
+    const updatedHtml = injectHeadingIds(container.innerHTML);
+    const outline = extractOutline(updatedHtml);
+    const { parseArticles } = await import("@/lib/article-parser");
+    const articles = parseArticles(updatedHtml);
+
+    const updated: Source = {
+      ...source,
+      htmlContent: updatedHtml,
+      outline,
+      articles,
+      updatedAt: Date.now(),
+    };
+    await saveSource(updated);
+    onSourceUpdated?.(updated);
+    const { toast } = await import("sonner");
+    toast.success(level ? `Postavljeno kao H${level}` : "Vraćeno na paragraf");
+  }, [headingMenu, source, onSourceUpdated, logic.contentRef]);
+
+  // Close heading menu on click elsewhere
+  useEffect(() => {
+    if (!headingMenu) return;
+    const close = () => setHeadingMenu(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, [headingMenu]);
+
   const handleOpenCoveredCard = (cardId: string) => {
     sessionStorage.setItem("sr-scroll-to-card", cardId);
-    // Navigate to dedicated cards route
     window.location.hash = "#/cards";
   };
 
@@ -149,11 +209,47 @@ export default function SourceReader({ source, onBack }: Props) {
           </div>
         )}
 
-        <div className={cn("flex-1 min-w-0 relative mx-auto px-6", WIDTH_CLASSES[readerWidth])}>
+        <div className={cn("flex-1 min-w-0 relative mx-auto px-6", WIDTH_CLASSES[readerWidth])} onContextMenu={handleContextMenu}>
           {isCoverage ? (
             <CoverageArticleList source={source} cards={logic.cards} onOpenCard={handleOpenCoveredCard} />
           ) : (
             <SourceContent html={logic.safeHtml} onMouseUp={logic.handleMouseUp} contentRef={logic.contentRef} />
+          )}
+
+          {/* Heading context menu */}
+          {headingMenu && (
+            <div
+              className="fixed z-[100] rounded-lg border bg-popover shadow-lg p-1 min-w-[180px] animate-in fade-in-0 zoom-in-95"
+              style={{ left: headingMenu.x, top: headingMenu.y }}
+              onClick={e => e.stopPropagation()}
+            >
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-1">Postavi kao</p>
+              {[
+                { level: 1, label: "Naslov 1 (H1)", icon: <Heading1 className="h-4 w-4" /> },
+                { level: 2, label: "Naslov 2 (H2)", icon: <Heading2 className="h-4 w-4" /> },
+                { level: 3, label: "Naslov 3 (H3)", icon: <Heading3 className="h-4 w-4" /> },
+                { level: null, label: "Paragraf (Normalan)", icon: <Type className="h-4 w-4" /> },
+              ].map(opt => {
+                const currentTag = headingMenu.element.tagName.toLowerCase();
+                const isActive = opt.level ? currentTag === `h${opt.level}` : currentTag === "p";
+                return (
+                  <button
+                    key={opt.level ?? "p"}
+                    onClick={() => handleSetHeading(opt.level)}
+                    className={cn(
+                      "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-foreground hover:bg-secondary"
+                    )}
+                  >
+                    {opt.icon}
+                    {opt.label}
+                    {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           {!isCoverage && logic.selection && (
