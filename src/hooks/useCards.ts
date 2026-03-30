@@ -148,7 +148,7 @@ export function useCards() {
   // ── Annotations (extracted module) ──
   const {
     reviewSection, markRead, toggleTag, logError, clearErrorLog,
-    addKeyPart, bulkFlagNeedsReview, reorderCards, bulkUpdateChapter,
+    addKeyPart, bulkFlagNeedsReview, bulkUpdateChapter,
   } = useCardAnnotations({ patchCard, setCardMapState, setReviewLog, cardMapRef });
 
   // ── Category management (extracted module) ──
