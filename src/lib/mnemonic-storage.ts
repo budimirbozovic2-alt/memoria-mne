@@ -106,7 +106,7 @@ export function createMnemonicCardFromSelection(
   originalCardId: string,
   question: string,
   selectedText: string,
-  category: string,
+  categoryId: string,
   subcategory?: string,
   tags?: string[],
 ): MnemonicCard {
@@ -115,7 +115,7 @@ export function createMnemonicCardFromSelection(
     originalCardId,
     question,
     sections: [{ title: "Isječak", content: selectedText }],
-    category,
+    categoryId,
     subcategory,
     tags: tags || [],
     hookType: detectHookType([{ content: selectedText }]),
