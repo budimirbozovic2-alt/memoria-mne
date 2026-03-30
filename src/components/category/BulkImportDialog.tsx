@@ -21,16 +21,39 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
   const [parsed, setParsed] = useState<ParsedPair[] | null>(null);
 
   const analyze = useCallback(() => {
-    const lines = raw.split("\n");
+    // Support two formats:
+    // 1) Single-line: Question;Answer
+    // 2) Multi-line: blocks separated by blank lines, first line = question, rest = answer
+    const trimmed = raw.trim();
+    if (!trimmed) { setParsed([]); return; }
+
+    // Detect format: if any line has `;`, use single-line mode
+    const lines = trimmed.split("\n");
+    const hasSemicolon = lines.some(l => l.includes(";") && l.indexOf(";") > 0);
+
     const pairs: ParsedPair[] = [];
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      const idx = trimmed.indexOf(";");
-      if (idx < 1) continue;
-      const question = trimmed.slice(0, idx).trim();
-      const answer = trimmed.slice(idx + 1).trim();
-      if (question && answer) pairs.push({ question, answer });
+
+    if (hasSemicolon) {
+      for (const line of lines) {
+        const t = line.trim();
+        if (!t) continue;
+        const idx = t.indexOf(";");
+        if (idx < 1) continue;
+        const question = t.slice(0, idx).trim();
+        const answer = t.slice(idx + 1).trim();
+        if (question && answer) pairs.push({ question, answer });
+      }
+    } else {
+      // Multi-line mode: blank line separates Q/A blocks
+      // First line of block = question, rest = answer
+      const blocks = trimmed.split(/\n\s*\n/);
+      for (const block of blocks) {
+        const blockLines = block.trim().split("\n");
+        if (blockLines.length < 2) continue;
+        const question = blockLines[0].trim();
+        const answer = blockLines.slice(1).map(l => l.trim()).join("\n");
+        if (question && answer) pairs.push({ question, answer });
+      }
     }
     setParsed(pairs);
   }, [raw]);
