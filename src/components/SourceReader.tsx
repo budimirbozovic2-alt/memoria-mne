@@ -190,6 +190,8 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
         onAutoSplit={() => logic.setAutoSplitOpen(true)}
         readerWidth={readerWidth}
         setReaderWidth={setReaderWidth}
+        editMode={editMode}
+        setEditMode={setEditMode}
       />
 
       {isCoverage && <CoverageStatsBar percent={logic.coverage.percent} linkedCount={logic.linkedCount} />}
