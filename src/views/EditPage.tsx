@@ -5,7 +5,7 @@ import { useEffect, useRef, useCallback } from "react";
 import type { Card } from "@/lib/spaced-repetition";
 
 export default function EditPage() {
-  const { categories, subcategories, categoryRecords, updateCard } = useCardContext();
+  const { categories, subcategories, categoryRecords, updateCard, splitCard } = useCardContext();
   const { setView, editingCard, setEditingCard } = useUIContext();
   const previousViewRef = useRef<View | null>(null);
 
