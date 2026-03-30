@@ -470,6 +470,14 @@ export default function SpeedReader() {
   const startSingleCardRead = (card: Card) => {
     setReadMode("card");
     setSelCard(card);
+    setSelSource(null);
+    setReaderActive(true);
+  };
+
+  const startSourceRead = (source: Source) => {
+    setReadMode("source");
+    setSelSource(source);
+    setSelCard(null);
     setReaderActive(true);
   };
 
@@ -477,6 +485,7 @@ export default function SpeedReader() {
     setReaderActive(false);
     setPlaying(false);
     setSelCard(null);
+    setSelSource(null);
     stopTts();
   };
 
