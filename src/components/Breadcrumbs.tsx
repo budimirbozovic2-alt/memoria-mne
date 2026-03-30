@@ -9,10 +9,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/review": "Konsolidacija",
   "/create": "Kreiranje",
   "/edit": "Uređivanje",
-  "/cards": "Kartice",
   "/categories": "Kategorije",
-  "/sources": "Izvori",
-  "/database": "Kartice",
   "/settings": "Podešavanja",
   "/stats": "Statistika",
   "/knowledge-map": "Mapa znanja",
@@ -22,7 +19,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "/speed-reader": "Speed Reader",
   "/mind-map": "Mentalne mape",
   "/frequent-errors": "Česte greške",
-  "/major-system-settings": "Major sistem",
   "/forum": "Forum",
 };
 

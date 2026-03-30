@@ -43,13 +43,22 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
             <button
               type="button"
               onClick={() => {
-                sessionStorage.setItem("sr-open-source-id", editCard.sourceId!);
-                window.location.hash = "#/sources";
+                window.location.hash = `#/category/${editCard.categoryId}`;
               }}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-success/10 text-success hover:bg-success/20 transition-colors"
             >
               <FileText className="h-3.5 w-3.5" />
               Vidi u izvoru
+            </button>
+          )}
+          {onSplit && editCard && editCard.sections && editCard.sections.length > 1 && (
+            <button
+              type="button"
+              onClick={() => onSplit(editCard.id)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-warning/10 text-warning hover:bg-warning/20 transition-colors"
+            >
+              <Scissors className="h-3.5 w-3.5" />
+              Podijeli karticu
             </button>
           )}
           <div className="hidden md:flex items-center gap-1 bg-secondary rounded-lg p-1">
