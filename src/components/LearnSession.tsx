@@ -70,9 +70,10 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
       case "weakest": return filtered.sort((a, b) => getCardScore(a) - getCardScore(b));
       case "leastRead": return filtered.sort((a, b) => (a.readCount || 0) - (b.readCount || 0));
       default: {
-        const chPos = (c: Card) => chapterPositionMap[c.chapter ?? ""] ?? 999;
+        const { subPos, chapPos } = positionMaps;
         return filtered.sort((a, b) =>
-          chPos(a) - chPos(b)
+          (subPos[a.subcategory ?? ""] ?? 999) - (subPos[b.subcategory ?? ""] ?? 999)
+          || (chapPos[a.chapter ?? ""] ?? 999) - (chapPos[b.chapter ?? ""] ?? 999)
           || (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0)
           || a.createdAt - b.createdAt
         );
