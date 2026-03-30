@@ -127,7 +127,13 @@ export default function CategoryView() {
 
   // Full-screen reader mode
   if (readerSource) {
-    return <SourceReader source={readerSource} onBack={() => setReaderSource(null)} />;
+    return (
+      <SourceReader
+        source={readerSource}
+        onBack={() => setReaderSource(null)}
+        onSourceUpdated={(updated) => { setReaderSource(updated); invalidateSourcesCache(); }}
+      />
+    );
   }
 
   if (category === undefined) {
