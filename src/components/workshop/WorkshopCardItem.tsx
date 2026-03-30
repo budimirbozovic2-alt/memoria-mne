@@ -31,6 +31,8 @@ interface Props {
 }
 
 function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDeleteCard, majorSystem }: Props) {
+  const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
+  const catName = catRecord?.name ?? card.categoryId;
   const [editMode, setEditMode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editQuestion, setEditQuestion] = useState("");

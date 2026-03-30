@@ -34,6 +34,8 @@ export default function ReviewCard({
   progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange, modeBadge,
 }: ReviewCardProps) {
   const { toast } = useToast();
+  const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
+  const catName = catRecord?.name ?? card.categoryId;
   const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);
   const [answerRevealedAt, setAnswerRevealedAt] = useState<number | null>(null);
   const [canGradeEasy, setCanGradeEasy] = useState(false);

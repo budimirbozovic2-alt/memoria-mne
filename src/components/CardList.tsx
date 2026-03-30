@@ -68,7 +68,7 @@ interface CardRowProps {
   onAddKeyPart?: (cardId: string, text: string) => void;
 }
 
-const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete, categories, subcategories, availableChapters, onMoveCategory, onAssignChapter, onCloneToMnemonic, onAddKeyPart }: CardRowProps) {
+const CardRowInner = memo(function CardRowInner({ card, expanded, highlighted, selectionMode, selectedIds, onToggleSelect, onToggleTag, onExpand, onEdit, onDelete, categories, subcategories, availableChapters, onMoveCategory, onAssignChapter, onCloneToMnemonic, onAddKeyPart, catNameMap }: CardRowProps & { catNameMap?: Record<string, string> }) {
   const score = getCardScore(card);
   const retention = getCardRetrievability(card);
   const isFlash = card.type === "flash";

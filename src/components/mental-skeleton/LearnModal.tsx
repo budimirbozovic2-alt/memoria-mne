@@ -25,6 +25,8 @@ export default function LearnModal({ card, onGradeSection, onClose }: LearnModal
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set());
   const [gradedSections, setGradedSections] = useState<Record<string, number>>({});
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
+  const catName = catRecord?.name ?? card.categoryId;
 
   // C4 fix: confirm close if revealed but ungraded sections exist
   const safeClose = useCallback(() => {
