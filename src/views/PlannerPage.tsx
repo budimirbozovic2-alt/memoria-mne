@@ -7,6 +7,11 @@ export default function PlannerPage() {
   const { cards, categories, reviewLog, ready } = useCardContext();
   const { setView } = useUIContext();
 
+  const handleNavigateToDatabase = useCallback((category: string) => {
+    sessionStorage.setItem("sr-deeplink-category", category);
+    setView("database");
+  }, [setView]);
+
   if (!ready) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -15,11 +20,6 @@ export default function PlannerPage() {
       </div>
     );
   }
-
-  const handleNavigateToDatabase = useCallback((category: string) => {
-    sessionStorage.setItem("sr-deeplink-category", category);
-    setView("database");
-  }, [setView]);
 
   return (
     <ErrorBoundary label="Planer" onNavigateHome={() => setView("dashboard")}>
