@@ -13,20 +13,10 @@ export default function ReviewPage() {
   const [searchParams] = useSearchParams();
   const preSelectedCategory = searchParams.get("category") || null;
 
-  if (!ready) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <p className="text-sm text-muted-foreground">Priprema gradiva...</p>
-      </div>
-    );
-  }
-
-  // Start session on mount
   useEffect(() => {
-    session.startSession(cards, reviewLog);
+    if (ready) session.startSession(cards, reviewLog);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ready]);
 
   const handleReviewSection = useCallback((cardId: string, sectionId: string, grade: number) => {
     if (session.isSessionActive) {
@@ -52,6 +42,15 @@ export default function ReviewPage() {
     }
     setView("dashboard");
   }, [session, setView]);
+
+  if (!ready) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Priprema gradiva...</p>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary label="Ponavljanje" onNavigateHome={() => setView("dashboard")}>
