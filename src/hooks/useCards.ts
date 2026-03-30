@@ -17,19 +17,28 @@ import { useCardAnnotations } from "./useCardAnnotations";
 import { CardMap, mapToArray, persistQueue, schedulePersist, bumpMapVersion } from "@/lib/persist-queue";
 import {
   idbSaveSettings,
-  idbLoadCategories,
-  idbSaveCategories,
   type CategoryRecord,
 } from "@/lib/db";
 import { onCardLinksCleared } from "@/lib/sources-storage";
 
 export function useCards() {
   const [cardMap, setCardMapState] = useState<CardMap>({});
-  const [categories, setCategoriesState] = useState<string[]>([]);
   const [categoryRecords, setCategoryRecordsState] = useState<CategoryRecord[]>([]);
-  const [subcategories, setSubcategoriesState] = useState<Record<string, string[]>>({});
   const [reviewLog, setReviewLogState] = useState<ReviewLogEntry[]>([]);
   const [srSettings, setSrSettingsState] = useState<SRSettings>(DEFAULT_SR_SETTINGS);
+
+  // ── Derived state: categories (UUID list) and subcategories (name map) ──
+  const categories = useMemo(() => categoryRecords.map(r => r.id), [categoryRecords]);
+
+  const subcategories = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const r of categoryRecords) {
+      map[r.id] = (r.subcategories || []).map((n: any) =>
+        typeof n === "string" ? n : n.name
+      );
+    }
+    return map;
+  }, [categoryRecords]);
 
   // Flush pending actions on unmount to prevent data loss
   useEffect(() => {
@@ -38,7 +47,7 @@ export function useCards() {
 
   // ── Boot (extracted module) ──
   const { ready: bootstrapReady, dbError } = useCardBootstrap({
-    setCardMapState, setCategoriesState, setCategoryRecordsState, setSubcategoriesState, setReviewLogState, setSrSettingsState,
+    setCardMapState, setCategoryRecordsState, setReviewLogState, setSrSettingsState,
   });
 
   // ── Force-ready safety net: if bootstrap hangs, unlock UI after 5s ──
@@ -82,55 +91,6 @@ export function useCards() {
     });
   }, []);
 
-  // Save categories: convert string[] names to CategoryRecord[] for IDB
-  // categories is now UUID[] — setCategories updates order/presence by UUID
-  const setCategories = useCallback((updater: (prev: string[]) => string[]) => {
-    setCategoriesState(prev => {
-      const next = updater(prev);
-      if (next !== prev) {
-        (async () => {
-          try {
-            const existing = await idbLoadCategories();
-            const byId = new Map(existing.map(c => [c.id, c]));
-            const records: CategoryRecord[] = next.map((id, i) => {
-              const rec = byId.get(id);
-              return rec
-                ? { ...rec, sortOrder: i }
-                : { id, name: id, sortOrder: i, subcategories: [] };
-            });
-            await idbSaveCategories(records);
-          } catch (e) { console.error("[useCards] category save failed", e); }
-        })();
-      }
-      return next;
-    });
-  }, []);
-
-  const setSubcategories = useCallback((updater: (prev: Record<string, string[]>) => Record<string, string[]>) => {
-    setSubcategoriesState(prev => {
-      const next = updater(prev);
-      // Persist subcategories to CategoryRecord.subcategories
-      if (next !== prev) {
-        (async () => {
-          try {
-            const existing = await idbLoadCategories();
-            const updated = existing.map(cat => ({
-              ...cat,
-              subcategories: (next[cat.id] || []).map((name: string) => {
-                // Preserve existing SubcategoryNode if present, otherwise create new
-                const existingNode = (cat.subcategories as any[])?.find((s: any) => (typeof s === "string" ? s : s.name) === name);
-                if (existingNode && typeof existingNode === "object") return existingNode;
-                return { name, chapters: [] as string[], sortOrder: 0 };
-              }),
-            }));
-            await idbSaveCategories(updated as CategoryRecord[]);
-          } catch (e) { console.error("[useCards] subcategory save failed", e); }
-        })();
-      }
-      return next;
-    });
-  }, []);
-
   const setReviewLog = useCallback((updater: (prev: ReviewLogEntry[]) => ReviewLogEntry[]) => {
     setReviewLogState((prev) => updater(prev));
   }, []);
@@ -158,23 +118,23 @@ export function useCards() {
     addSubcategory, renameSubcategory, deleteSubcategory,
     bulkUpdateSubcategory,
     addChapter, renameChapter, deleteChapter,
-    reorderSubcategories: reorderSubcategoriesManagement,
+    reorderSubcategories,
     reorderChapters,
+    reorderCategories,
   } = useCategoryManagement({
-    setCategories, setSubcategories, setCardMapState, cardMapRef, getCategoryRecords,
+    setCategoryRecords: setCategoryRecordsState,
+    setCardMapState, cardMapRef, getCategoryRecords,
   });
 
   // ── Export/Import (extracted to separate modules) ──
   const { exportData, exportTemplate } = useCardExport({ cards, srSettings });
   const { importData, importCards } = useCardImport({
-    setCategories, setSubcategories,
+    setCategoryRecords: setCategoryRecordsState,
     setReviewLog: setReviewLogState, updateSRSettings,
     setCardMapState, cardMapRef,
-    setCategoryRecordsState,
   });
 
   // ── Single-pass derived data (B2+B5 fix: 4×O(n) → 1×O(n)) ──
-  // C2 fix: Build UUID→name map so catAccum is keyed by NAME but matched by UUID
   const { dueCards, stats, categoryStats, cardCountByCategory } = useMemo(() => {
     const now = Date.now();
     const dueList: Card[] = [];
@@ -197,13 +157,9 @@ export function useCards() {
     }
 
     for (const card of cards) {
-      // Use UUID directly for accumulation
       const catKey = card.categoryId;
-
-      // Card count by category UUID
       countByCategory[catKey] = (countByCategory[catKey] || 0) + 1;
 
-      // Section-level stats
       let cardIsDue = false;
       let cardScoreSum = 0;
       for (const s of card.sections) {
@@ -219,7 +175,6 @@ export function useCards() {
 
       if (cardIsDue) dueList.push(card);
 
-      // Category stats accumulation — keyed by UUID
       const acc = catAccum[catKey];
       if (acc) {
         acc.total++;
@@ -228,7 +183,6 @@ export function useCards() {
       }
     }
 
-    // Pre-compute sort keys to avoid O(S) work during O(NlogN) sort
     const sortKeys = new Map<string, number>();
     for (const card of dueList) {
       let minNext = Infinity;
@@ -239,7 +193,6 @@ export function useCards() {
     }
     dueList.sort((a, b) => (sortKeys.get(a.id) ?? Infinity) - (sortKeys.get(b.id) ?? Infinity));
 
-    // Finalize category stats
     const finalCatStats: Record<string, { score: number; total: number; due: number }> = {};
     for (const cat of categories) {
       const a = catAccum[cat];
@@ -257,51 +210,6 @@ export function useCards() {
       cardCountByCategory: countByCategory,
     };
   }, [cards, categories, categoryRecords]);
-
-  // H4 fix: Also update categoryRecordsState so sidebar reflects reorder immediately
-  const reorderCategories = useCallback((ordered: string[]) => {
-    setCategoriesState(ordered);
-    (async () => {
-      try {
-        const existing = await idbLoadCategories();
-        const byId = new Map(existing.map(c => [c.id, c]));
-        const records: CategoryRecord[] = ordered.map((id, i) => {
-          const rec = byId.get(id);
-          return rec
-            ? { ...rec, sortOrder: i }
-            : { id, name: id, sortOrder: i, subcategories: [] };
-        });
-        await idbSaveCategories(records);
-        setCategoryRecordsState(records);
-      } catch (e) { console.error("[useCards] reorderCategories save failed", e); }
-    })();
-  }, [setCategoryRecordsState]);
-
-  // H6 fix: Persist subcategory reorder to IDB
-  const reorderSubcategories = useCallback((category: string, ordered: string[]) => {
-    setSubcategoriesState(prev => {
-      const next = { ...prev, [category]: ordered };
-      // Persist to IDB
-      (async () => {
-        try {
-          const existing = await idbLoadCategories();
-          const updated = existing.map(cat => {
-            if (cat.id !== category) return cat;
-            // Reorder SubcategoryNodes to match the ordered string[] names
-            const nodeMap = new Map((cat.subcategories as any[]).map((s: any) => [typeof s === "string" ? s : s.name, s]));
-            const reorderedNodes = ordered.map((name, i) => {
-              const existing = nodeMap.get(name);
-              if (existing && typeof existing === "object") return { ...existing, sortOrder: i };
-              return { name, chapters: [] as string[], sortOrder: i };
-            });
-            return { ...cat, subcategories: reorderedNodes };
-          });
-          await idbSaveCategories(updated as any);
-        } catch (e) { console.error("[useCards] reorderSubcategories save failed", e); }
-      })();
-      return next;
-    });
-  }, []);
 
   return {
     cards,

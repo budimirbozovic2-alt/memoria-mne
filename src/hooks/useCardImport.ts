@@ -6,19 +6,16 @@ import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 import { type CategoryRecord } from "@/lib/db";
 
 interface UseCardImportDeps {
-  setCategories: (updater: (prev: string[]) => string[]) => void;
-  setSubcategories: (updater: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
+  setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
   setReviewLog: (log: ReviewLogEntry[]) => void;
   updateSRSettings: (settings: SRSettings) => void;
   setCardMapState: (updater: (prev: CardMap) => CardMap) => void;
   cardMapRef: MutableRefObject<CardMap>;
-  setCategoryRecordsState: (records: CategoryRecord[]) => void;
 }
 
 export function useCardImport({
-  setCategories, setSubcategories,
+  setCategoryRecords,
   setReviewLog, updateSRSettings, setCardMapState, cardMapRef,
-  setCategoryRecordsState,
 }: UseCardImportDeps) {
   const importData = useCallback(
     async (file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {
@@ -77,7 +74,6 @@ export function useCardImport({
         });
 
         const importedCards: Card[] = cardsArr.map(c => migrateImported(c));
-        // H2 fix: Pre-compute merged array outside React updater using cardMapRef
         const currentMap = cardMapRef.current;
         const merged: Card[] = [];
         const nextMap = { ...currentMap };
@@ -89,10 +85,8 @@ export function useCardImport({
             else if (getLastReview(ic) > getLastReview(existing)) { nextMap[ic.id] = ic; merged.push(ic); }
           });
         } else if (strategy === "overwrite") {
-          // Full replace: start from empty map, not current map
           for (const key of Object.keys(nextMap)) delete nextMap[key];
           importedCards.forEach((ic) => { nextMap[ic.id] = ic; merged.push(ic); });
-          // Delete orphaned cards from IDB
           const { db: dbCards } = await import("@/lib/db");
           const allCardKeys = await dbCards.cards.toCollection().primaryKeys();
           const importedIdSet = new Set(importedCards.map(c => c.id));
@@ -106,16 +100,12 @@ export function useCardImport({
         setCardMapState(() => nextMap);
         bumpMapVersion();
 
-        let importedAsRecords = false;
-        let freshRecords: CategoryRecord[] = [];
-
+        // ── Categories import ──
         if (Array.isArray(data.categories) && (data.categories as unknown[]).length > 0) {
           const firstCat = (data.categories as unknown[])[0];
           const isRecordFormat = typeof firstCat === 'object' && firstCat !== null && 'id' in firstCat;
 
           if (isRecordFormat) {
-            importedAsRecords = true;
-            // v7+ CategoryRecord[] — write directly to IDB preserving UUIDs
             const { db: dbCat, idbLoadCategories } = await import("@/lib/db");
             const catRecords = data.categories as CategoryRecord[];
             if (strategy === "overwrite") {
@@ -124,46 +114,53 @@ export function useCardImport({
             } else {
               await dbCat.categories.bulkPut(catRecords);
             }
-            freshRecords = await idbLoadCategories();
-            setCategoryRecordsState(freshRecords);
-            setCategories(() => freshRecords.map(r => r.id));
+            const freshRecords = await idbLoadCategories();
+            setCategoryRecords(freshRecords);
           } else {
-            // Legacy string[] format — fallback
+            // Legacy string[] format — create CategoryRecord[] from names
+            const { idbLoadCategories } = await import("@/lib/db");
+            const existing = await idbLoadCategories();
+            const existingNames = new Set(existing.map(r => r.name));
+            const legacyNames = data.categories as string[];
+            const newRecs: CategoryRecord[] = [];
+            for (const name of legacyNames) {
+              if (!existingNames.has(name)) {
+                newRecs.push({ id: crypto.randomUUID(), name, sortOrder: existing.length + newRecs.length, subcategories: [] });
+              }
+            }
             if (strategy === "overwrite") {
-              setCategories(() => data.categories as string[]);
-            } else {
-              setCategories((prev) => [...new Set([...prev, ...(data.categories as string[])])]);
+              const { db: dbCat } = await import("@/lib/db");
+              const allRecs = legacyNames.map((name, i) => ({ id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] as any[] }));
+              await dbCat.categories.clear();
+              await dbCat.categories.bulkPut(allRecs);
+              setCategoryRecords(allRecs);
+            } else if (newRecs.length > 0) {
+              const { db: dbCat, idbLoadCategories: reload } = await import("@/lib/db");
+              await dbCat.categories.bulkPut(newRecs);
+              setCategoryRecords(await reload());
             }
           }
         }
 
-        // Subcategories: for v7+ records, derive from embedded data; for legacy, use separate field
-        if (importedAsRecords) {
-          const subMap: Record<string, string[]> = {};
-          freshRecords.forEach(r => {
-            if (r.subcategories && r.subcategories.length > 0) {
-              subMap[r.id] = (r.subcategories as any[]).map((s: any) => typeof s === "string" ? s : s.name);
-            }
+        // Subcategories: for v7+ records already embedded; for legacy, apply from separate field
+        if (data.subcategories && typeof data.subcategories === "object" && !Array.isArray(data.categories?.[0] && typeof data.categories[0] === 'object')) {
+          // Legacy subcategories — update categoryRecords nodes
+          const { idbLoadCategories, idbSaveCategories } = await import("@/lib/db");
+          const recs = await idbLoadCategories();
+          const subData = data.subcategories as Record<string, string[]>;
+          const updated = recs.map(r => {
+            const subs = subData[r.id] || subData[r.name] || [];
+            if (subs.length === 0) return r;
+            const existingNames = new Set(((r.subcategories || []) as any[]).map((n: any) => typeof n === "string" ? n : n.name));
+            const newNodes = subs.filter(s => !existingNames.has(s)).map((name, i) => ({ name, chapters: [] as string[], sortOrder: (r.subcategories?.length || 0) + i }));
+            return { ...r, subcategories: [...(r.subcategories || []), ...newNodes] };
           });
-          setSubcategories(() => subMap);
-        } else if (strategy === "overwrite" && (!data.subcategories || Object.keys(data.subcategories as object).length === 0)) {
-          setSubcategories(() => ({}));
-        } else if (data.subcategories && typeof data.subcategories === "object") {
-          if (strategy === "overwrite") {
-            setSubcategories(() => data.subcategories as Record<string, string[]>);
-          } else {
-            setSubcategories((prev) => {
-              const m = { ...prev };
-              for (const [cat, subs] of Object.entries(data.subcategories as Record<string, string[]>)) {
-                m[cat] = [...new Set([...(m[cat] || []), ...subs])];
-              }
-              return m;
-            });
-          }
+          await idbSaveCategories(updated as CategoryRecord[]);
+          setCategoryRecords(updated as CategoryRecord[]);
         }
+
         if (Array.isArray(data.reviewLog) && strategy === "overwrite") {
           setReviewLog(data.reviewLog as ReviewLogEntry[]);
-          // Also clear and replace IDB reviewLog table
           const { db: dbReview } = await import("@/lib/db");
           await dbReview.reviewLog.clear();
           if ((data.reviewLog as unknown[]).length > 0) {
@@ -217,8 +214,6 @@ export function useCardImport({
         ];
         const idbTables = [...uuidTables, ...autoIncTables];
         const autoIncKeys = new Set(autoIncTables.map((t) => t.key));
-        // C3 fix: Also enter the block when overwrite strategy has tables present (even if empty)
-        // to clear stale data from IDB
         const hasExtraTables = idbTables.some((t) => Array.isArray(data[t.key]) && (data[t.key] as unknown[]).length > 0);
         const needsClear = strategy === "overwrite" && idbTables.some((t) => Array.isArray(data[t.key]));
         if (hasExtraTables || needsClear) {
@@ -242,7 +237,6 @@ export function useCardImport({
                 }
               }
             } else if (strategy === "overwrite") {
-              // C3 fix: Empty array in backup = clear the table
               await dbRecord[table].clear();
             }
           }
@@ -254,10 +248,8 @@ export function useCardImport({
             localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
           }
         }
-        // C1 fix: Invalidate in-memory caches after localStorage restore
         const { invalidateMonumentTypesCache } = await import("@/lib/forum-logic");
         invalidateMonumentTypesCache();
-        // H2 fix: Clear stale review session data on overwrite import
         if (strategy === "overwrite") {
           try { localStorage.removeItem("sr-review-session"); } catch {}
         }
@@ -274,7 +266,7 @@ export function useCardImport({
         toast.error(`Greška pri uvozu: ${err instanceof Error ? err.message : "Neispravan format fajla."}`);
       }
     },
-    [setCardMapState, setCategories, setSubcategories, setReviewLog, updateSRSettings, cardMapRef, setCategoryRecordsState],
+    [setCardMapState, setCategoryRecords, setReviewLog, updateSRSettings, cardMapRef],
   );
 
   // H5 fix: importCards now syncs cardMapRef before setState
@@ -282,16 +274,16 @@ export function useCardImport({
     (newCards: { question: string; sections: { title: string; content: string }[] }[], category: string) => {
       const created = newCards.map((c) => createCard(c.question, c.sections, category));
       created.forEach(c => { c.updatedAt = Date.now(); });
-      // Sync ref before state update to prevent stale ref reads
       const nextRef = { ...cardMapRef.current };
       created.forEach((c) => { nextRef[c.id] = c; });
       cardMapRef.current = nextRef;
       schedulePersist({ type: "bulk", cards: created });
       setCardMapState(() => nextRef);
       bumpMapVersion();
-      setCategories((prev) => prev.includes(category) ? prev : [...prev, category]);
+      // Category existence is managed by categoryRecords — no separate update needed
+      // If the category UUID doesn't exist yet, caller is responsible for adding it
     },
-    [setCategories, setCardMapState, cardMapRef],
+    [setCardMapState, cardMapRef],
   );
 
   return { importData, importCards };
