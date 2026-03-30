@@ -44,7 +44,7 @@ const MODE_LABELS: Record<LearnMode, string> = {
 };
 
 export default function FilterSetup({
-  cards, sortedCardsCount, learnMode, categories, subcategories,
+  cards, sortedCardsCount, learnMode, categories, categoryRecords, subcategories,
   selectedCategory, selectedSubcategory, selectedChapter,
   filterExamFrequent, examFrequentCount, filterType, sortMode,
   onSelectCategory, onSelectSubcategory, onSelectChapter,
