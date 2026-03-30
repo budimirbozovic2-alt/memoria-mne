@@ -429,7 +429,7 @@ export function calcWeakHooks(): WeakHook[] {
         originalCardId: mc.originalCardId,
         question: mc.question,
         avgLatencyMs: Math.round(avgLatency),
-        category: mc.category,
+        category: mc.categoryId,
       });
 
       // Auto-tag "Slaba kuka"
