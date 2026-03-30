@@ -180,23 +180,15 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
             )}
           </div>
 
-          {/* Baza dropdown */}
-          {(() => {
-            const BAZA_NAV = [
-              { path: "/cards", label: "Kartice" },
-              { path: "/categories", label: "Kategorije" },
-              { path: "/sources", label: "Izvori" },
-            ];
-            const BAZA_PATHS = BAZA_NAV.map(i => i.path);
-            const isBazaActive = BAZA_PATHS.some(p => location.pathname === p) || location.pathname === "/database";
-            return (
-              <BazaDropdown
-                items={BAZA_NAV}
-                isActive={isBazaActive}
-                currentPath={location.pathname}
-              />
-            );
-          })()}
+          {/* Kategorije link */}
+          <NavLink
+            to="/categories"
+            className="relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+            activeClassName="bg-primary/10 text-primary"
+          >
+            <FolderOpen className="h-4 w-4 flex-shrink-0" />
+            <span>Kategorije</span>
+          </NavLink>
 
 
           <NavLink
