@@ -171,7 +171,11 @@ export function getSmartSuggestion(
   const goal = new Date(goalDateStr);
   const bufferDays = Math.round(differenceInDays(goal, new Date()) * (bufferPct / 100));
   const effectiveGoal = addDays(goal, -bufferDays);
-  const daysLeft = Math.max(1, differenceInDays(effectiveGoal, new Date()));
+  const rawDaysLeft = differenceInDays(effectiveGoal, new Date());
+  if (rawDaysLeft <= 0) {
+    return { suggestedToday: 0, message: "Rok je prošao. Ažuriraj datum ispita u planeru.", burnoutWarning: false };
+  }
+  const daysLeft = rawDaysLeft;
 
   let remaining: number;
   if (phase) {

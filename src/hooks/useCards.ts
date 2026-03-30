@@ -277,7 +277,7 @@ export function useCards() {
       (async () => {
         try {
           const existing = await idbLoadCategories();
-          const updated = existing.map(cat => cat.name === category
+          const updated = existing.map(cat => cat.id === category
             ? { ...cat, subcategories: ordered }
             : cat
           );

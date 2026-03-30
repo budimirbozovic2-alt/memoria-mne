@@ -7,11 +7,20 @@ import ReviewSession from "@/components/ReviewSession";
 import EmptyState from "@/components/EmptyState";
 
 export default function ReviewPage() {
-  const { dueCards, cards, categoryRecords, reviewLog, subcategories, srSettings, reviewSection, logError } = useCardContext();
+  const { dueCards, cards, categoryRecords, reviewLog, subcategories, srSettings, reviewSection, logError, ready } = useCardContext();
   const { setView } = useUIContext();
   const session = useSessionContext();
   const [searchParams] = useSearchParams();
   const preSelectedCategory = searchParams.get("category") || null;
+
+  if (!ready) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Priprema gradiva...</p>
+      </div>
+    );
+  }
 
   // Start session on mount
   useEffect(() => {

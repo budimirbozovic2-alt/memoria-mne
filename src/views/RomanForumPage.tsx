@@ -30,6 +30,15 @@ export default function RomanForumPage() {
     ? forumState.monuments.find((m) => m.category === selectedCategory) ?? null
     : null;
 
+  if (!ready) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Obnavljanje Foruma...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative max-w-6xl mx-auto px-6 py-8 min-h-[80vh]">
       <ForumAtmosphere dayPhase={forumState.dayPhase} warmth={forumState.warmth} />

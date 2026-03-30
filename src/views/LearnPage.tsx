@@ -6,9 +6,18 @@ import LearnSession from "@/components/LearnSession";
 import { Card } from "@/lib/spaced-repetition";
 
 export default function LearnPage() {
-  const { cards, categories, categoryRecords, subcategories, markRead, reviewSection, stats, reviewLog, addKeyPart } = useCardContext();
+  const { cards, categories, categoryRecords, subcategories, markRead, reviewSection, stats, reviewLog, addKeyPart, ready } = useCardContext();
   const { setView, setEditingCard } = useUIContext();
   const session = useSessionContext();
+
+  if (!ready) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Priprema gradiva...</p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     session.startSession(cards, reviewLog);
