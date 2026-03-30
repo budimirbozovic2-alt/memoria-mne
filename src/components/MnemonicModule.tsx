@@ -228,6 +228,15 @@ export default function MnemonicModule() {
           <p className="text-xs mt-1">Označi kartice tagom <strong>"Memorizacija"</strong> (ikona mozga) u listi kartica.</p>
         </div>
       )}
+
+      <Dialog open={majorOpen} onOpenChange={setMajorOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Mentalne tablice (Major sistem)</DialogTitle>
+          </DialogHeader>
+          <MajorSystemSettings />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
