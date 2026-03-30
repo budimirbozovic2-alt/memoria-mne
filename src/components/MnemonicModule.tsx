@@ -120,9 +120,6 @@ export default function MnemonicModule() {
     return <MnemonicTest cards={cards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
   }
 
-  if (subView === "major") {
-    return <MajorSystemSettings />;
-  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
