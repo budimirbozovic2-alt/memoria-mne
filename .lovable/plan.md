@@ -1,56 +1,159 @@
 
 
-# Edit režim za SourceReader
+# FAZA 1: Stabilizacija Temelja — Single Source of Truth & Service Layer
 
-## Koncept
-Dodati toggle dugme "Uredi izvor" u toolbar. Kada je aktivan edit režim:
-- Selekcija teksta prikazuje tooltip sa opcijama: H1, H2, H3, Paragraf, Numbered List, Bullet List (umjesto "Napravi esej" / "Poveži sa postojećim")
-- Desni klik kontekstni meni ostaje isti (heading opcije)
-- Keyboard shortcut `S` u edit režimu primjenjuje formatting umjesto kreiranja eseja
-- Exam sidebar mapping je onemogućen
-- Ukloniti heading context menu iz režima čitanja (sada je samo u edit režimu)
+## Rezime za korisnika
+Eliminišemo trostruko stanje kategorija, uvodimo pouzdane async operacije sa rollback-om, i popravljamo `addChapter` koji trenutno ne ažurira UI.
 
-## Promjene
+---
 
-### 1. SourceReader.tsx — edit mode state + tooltip zamjena
-- Dodati `editMode` state (`useState(false)`)
-- Proslijediti `editMode` i `setEditMode` u `SourceToolbar`
-- **Heading context menu**: prikazivati SAMO kad je `editMode === true`
-- **Selection tooltip** (L255-275): zamjena sadržaja ovisno o režimu:
-  - **Čitanje**: "Napravi esej" + "Poveži sa postojećim" (kao sada)
-  - **Uređivanje**: 6 dugmadi — H1, H2, H3, Paragraf, Numbered List, Bullet List
-- Dodati `handleFormatSelection` callback koji:
-  1. Uzima Range iz selekcije
-  2. Pronalazi parent block element(e) unutar contentRef
-  3. Zamijeni tag (h1/h2/h3/p/ol/ul) — ista logika kao `handleSetHeading` ali proširena za liste
-  4. Snimi source i pozove `onSourceUpdated`
-- Keyboard handler: kad je `editMode` i `selection` postoji, `S` ne poziva `handleConvertToEssay` nego otvara quick format (ili primjenjuje zadnji format)
+## Promjena 1: Konsolidacija category state-a (Finding #2)
 
-### 2. SourceToolbar.tsx — dodati "Uredi" dugme
-- Novi props: `editMode: boolean`, `setEditMode: (v: boolean) => void`
-- Dodati toggle dugme sa ikonom `Pencil` između view mode togglea i width selectora
-- Kad je aktivan: `variant="default"`, tekst "Uređivanje" ; kad nije: `variant="outline"`, tekst "Uredi"
-- U edit režimu sakriti "Auto-Split" i "Pitanja" dugmad (jer nisu relevantna)
+**Problem**: Trenutno postoje 3 paralelna stanja: `categories: string[]`, `categoryRecords: CategoryRecord[]`, `subcategories: Record<string, string[]>`. Svaka mutacija mora ručno sinhronizovati sva tri + IDB.
 
-### 3. useSourceLogic.ts — keyboard handler update
-- Keyboard handler za `S`: provjeriti da li je `editMode` (proslijediti kao ref ili flag). Ako jeste — ne pozivati `handleConvertToEssay`
-- Alternativa: SourceReader sam upravlja keyboard handlerom za edit mode, override-uje logiku iz hook-a
+**Rješenje**: `categoryRecords` postaje jedini kanonski state. Ostalo se derivira.
 
-## Formatting logika za liste
-Kada korisnik selektuje tekst i klikne "Numbered List" ili "Bullet List":
-- Pronađi sve block elemente (`p`, `div`) koji su dio selekcije
-- Zamijeni ih sa `<ol><li>...</li></ol>` ili `<ul><li>...</li></ul>`
-- Svaki paragraf postaje jedan `<li>`
-- Snimi ažurirani HTML
+### useCards.ts
+- **Ukloniti** `categories`, `setCategoriesState` i `subcategories`, `setSubcategoriesState`
+- **Zadržati** samo `categoryRecords`, `setCategoryRecordsState`
+- **Dodati** dva `useMemo` derivata:
+  ```ts
+  const categories = useMemo(() => 
+    categoryRecords.map(r => r.id), [categoryRecords]);
+  
+  const subcategories = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const r of categoryRecords) {
+      map[r.id] = (r.subcategories || []).map(n => 
+        typeof n === "string" ? n : n.name);
+    }
+    return map;
+  }, [categoryRecords]);
+  ```
+- **Ukloniti** `setCategories` wrapper (L87-107) i `setSubcategories` wrapper (L109-132) — više nisu potrebni
+- **Ukloniti** `reorderCategories` i `reorderSubcategories` inline funkcije (L262-304) — prebaciti u `useCategoryManagement`
+- Derived `useMemo` za `dueCards/stats/categoryStats` ostaje isti, samo zamijeni `categories` dependency sa `categoryRecords`
 
-## Fajlovi
+### useCategoryManagement.ts — novi interfejs
+- Promijeniti parametre: umjesto `setCategories` + `setSubcategories`, prima `setCategoryRecords: Dispatch<SetStateAction<CategoryRecord[]>>`
+- Sve CRUD operacije (add/rename/delete/reorder za kategorije, podkategorije, glave) mutiraju `categoryRecords` state direktno + pišu u IDB
+- Primjer za `addCategory`:
+  ```ts
+  const addCategory = useCallback((name: string) => {
+    const newRec: CategoryRecord = { 
+      id: crypto.randomUUID(), name, sortOrder: 9999, subcategories: [] 
+    };
+    setCategoryRecords(prev => [...prev, newRec]);
+    // async persist (sa rollback-om — vidi Promjenu 2)
+  }, [setCategoryRecords]);
+  ```
 
-| Fajl | Promjena |
-|------|----------|
-| `src/components/SourceReader.tsx` | editMode state, format tooltip, prošireni handleSetHeading za liste, sakrij heading menu u čitanju |
-| `src/components/source-reader/SourceToolbar.tsx` | Novi props + "Uredi" dugme, sakrij Auto-Split/Pitanja u edit modu |
-| `src/hooks/useSourceLogic.ts` | Dodati `editMode` ref da keyboard `S` ne triggeruje esej u edit modu |
+### useCardBootstrap.ts
+- Ukloniti `setCategoriesState` i `setSubcategoriesState` iz `BootSetters`
+- Zadržati samo `setCategoryRecordsState` za kategorije
+- Bootstrap i dalje čita iz IDB i postavlja `categoryRecords`
+
+### AppContext.tsx
+- `CardDataContextValue` zadržava `categories`, `categoryRecords`, `subcategories` — ali su sada derivirani, ne zasebni state-ovi
+- Nema promjena u interfejsu za potrošače (backward compatible)
+
+---
+
+## Promjena 2: Async integritet sa rollback-om (Finding #3)
+
+**Problem**: Fire-and-forget `(async () => { ... })()` pattern — ako IDB fail-uje, UI prikazuje promjenu koja ne postoji u bazi.
+
+**Rješenje**: Optimistički update sa rollback-om.
+
+### Helper funkcija u `useCategoryManagement.ts`
+```ts
+async function optimisticCategoryUpdate(
+  setCategoryRecords: Dispatch<SetStateAction<CategoryRecord[]>>,
+  updater: (prev: CategoryRecord[]) => CategoryRecord[],
+  persist: (records: CategoryRecord[]) => Promise<void>,
+  label: string
+) {
+  let rollbackSnapshot: CategoryRecord[] | null = null;
+  setCategoryRecords(prev => {
+    rollbackSnapshot = prev;
+    return updater(prev);
+  });
+  try {
+    // Čitaj trenutni state iz IDB, primijeni istu transformaciju, snimi
+    const current = await idbLoadCategories();
+    const updated = updater(current);
+    await idbSaveCategories(updated);
+  } catch (e) {
+    console.error(`[${label}] IDB persist failed, rolling back`, e);
+    if (rollbackSnapshot) setCategoryRecords(rollbackSnapshot);
+    toast({ title: "Greška", description: "Promjena nije sačuvana.", variant: "destructive" });
+  }
+}
+```
+
+Svaka CRUD operacija koristi ovaj helper umjesto fire-and-forget.
+
+---
+
+## Promjena 3: Fix addChapter — in-memory update (Finding #3, specifičan bug)
+
+**Problem**: `addChapter` (L248-260) samo piše u IDB, bez ažuriranja React state-a. UI ne prikazuje novi chapter do reload-a.
+
+**Rješenje**: Koristiti `optimisticCategoryUpdate` helper:
+```ts
+const addChapter = useCallback((categoryId, subName, chapterName) => {
+  optimisticCategoryUpdate(
+    setCategoryRecords,
+    records => records.map(r => {
+      if (r.id !== categoryId) return r;
+      return { ...r, subcategories: r.subcategories.map(n => {
+        if (n.name !== subName || n.chapters.includes(chapterName)) return n;
+        return { ...n, chapters: [...n.chapters, chapterName] };
+      })};
+    }),
+    async (updated) => {
+      const rec = updated.find(r => r.id === categoryId);
+      if (rec) await saveNodes(categoryId, rec.subcategories as SubcategoryNode[]);
+    },
+    "addChapter"
+  );
+}, [setCategoryRecords]);
+```
+
+---
+
+## Promjena 4: Smanjenje useCards.ts (Finding #7)
+
+Nakon Promjene 1, useCards.ts gubi:
+- `setCategories` wrapper (~20 linija)
+- `setSubcategories` wrapper (~22 linija)
+- `reorderCategories` (~17 linija)
+- `reorderSubcategories` (~24 linija)
+
+Ukupno ~83 linija manje. Hook pada sa ~354 na ~270 linija.
+
+`reorderCategories` i `reorderSubcategories` se prebacuju u `useCategoryManagement` jer sada direktno mutiraju `categoryRecords`.
+
+---
+
+## Fajlovi koji se mijenjaju
+
+| Fajl | Promjena | ~Linija |
+|------|----------|---------|
+| `src/hooks/useCards.ts` | Ukloni 3 state-a, dodaj 2 useMemo, ukloni inline wrappere | -83, +15 |
+| `src/hooks/useCategoryManagement.ts` | Novi interfejs (setCategoryRecords), rollback helper, fix addChapter, preuzmi reorder | -30, +60 |
+| `src/hooks/useCardBootstrap.ts` | Ukloni setCategoriesState/setSubcategoriesState iz BootSetters | -8, +2 |
+| `src/hooks/useCardImport.ts` | Prilagodi interfejs (setCategoryRecords umjesto setCategories+setSubcategories) | ~10 |
+| `src/contexts/AppContext.tsx` | Bez promjena interfejsa — derivirani `categories`/`subcategories` se i dalje proslijeđuju | ~5 |
+
+## Guardrails
+- FSRS logika: netaknuta
+- UUID kategorija: netaknut — ovo je refaktoring oko njega, ne zamjena
+- Ready Guard: svi `if (!ready)` ostaju
+- Backward compatibility: svi potrošači i dalje dobijaju `categories: string[]` i `subcategories: Record<string,string[]>` kroz context — samo je izvor podataka sada deriviran umjesto zasebnog state-a
 
 ## Scope
-- 3 fajla, ~80 linija promjena
+- 5 fajlova, ~180 linija promjena
+- Nema IDB schema promjena
+- Nema novih zavisnosti
 
