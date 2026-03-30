@@ -1,33 +1,27 @@
 
 
-# Health Monitor → Podešavanja + Orphan Detection + Error Log
+# Fix: Preagresivna detekcija naslova u izvorima
 
-## Promjene
+## Problem
+`promoteHeadings()` promovira **bold tekst** i **CAPS tekst** u H2/H3 tagove. To znači da se "Član 59", naslovi članova (bold) i slični elementi prikazuju kao naslovi u navigation panelu — a korisnik želi samo prave H1/H2/H3 tagove.
 
-### 1. Ukloni Health tab iz MyStats.tsx
-- Obriši `HeartPulse` import, `health` TabsTrigger i `TabsContent`
-- Promijeni drugi `TabsList` grid sa `grid-cols-3` na `grid-cols-2` (Predikcija, Efikasnost)
+## Rješenje
+Ukloniti bold/CAPS promociju iz `promoteHeadings()`. Zadržati **samo** promociju pravnih strukturnih obrazaca (DIO, GLAVA, POGLAVLJE, ODJELJAK) jer to su zaista strukturni naslovi dokumenta, ne članovi.
 
-### 2. Dodaj Health Monitor u SRSettingsPanel.tsx (tab "Sistem")
-- Lazy import `HealthMonitor`
-- Renderuj ga ispod CategoryManager sekcije unutar `TabsContent value="system"`
+### Izmjene u `src/lib/heading-promotion.ts`
 
-### 3. Proširi HealthMonitor.tsx sa orphan detekcijom i error logom
-- **Orphan detekcija**: Nakon refresh-a, učitaj sve kartice i sve kategorije iz IDB. Pronađi kartice čiji `categoryId` ne postoji u tabeli kategorija. Prikaži upozorenje sa brojem orphan kartica i dugme "Očisti" koje postavlja `categoryId` na prvu validnu kategoriju (ili briše).
-- **Error Log**: Čitaj `memoria-crash-log` iz localStorage. Prikaži listu crash entry-ja (timestamp, label, message) sa dugmetom za brisanje loga.
-- UI struktura:
-  - Postojeći storage/table widgets (nepromijenjeni)
-  - Nova sekcija "Integritet podataka" — orphan count, badge, cleanup dugme
-  - Nova sekcija "Error Log" — lista entry-ja, clear dugme
+1. **Obrisati** `isPureBold()` funkciju (neće se više koristiti)
+2. **Obrisati** `isMostlyUpperCase()` funkciju  
+3. **Pojednostaviti** `classifyHeading()` — samo legal section regex-i (DIO→H1, GLAVA/POGLAVLJE→H2, ODJELJAK→H3)
+4. **Pojednostaviti** `promoteHeadings()` — iterira paragraphe, provjerava samo legal pattern match, bez bold/CAPS provjere
+5. **Zadržati** `detectTitle()` — koristi `isPureBold`/`isMostlyUpperCase` ali samo za detekciju naslova dokumenta (ne za outline), pa premjestiti te pomoćne funkcije kao privatne samo za `detectTitle`
 
-### Fajlovi
-| Fajl | Promjena |
-|------|----------|
-| `src/components/MyStats.tsx` | Ukloni health tab (~15 linija) |
-| `src/components/SRSettingsPanel.tsx` | Dodaj lazy HealthMonitor u system tab (~10 linija) |
-| `src/components/HealthMonitor.tsx` | Dodaj orphan scan + error log viewer (~80 linija) |
+### Rezultat
+- Navigation panel prikazuje samo: DIO, GLAVA, POGLAVLJE, ODJELJAK + prave H1-H3 iz DOCX-a
+- Članovi ("Član 59") se više NE prikazuju kao naslovi
+- Bold paragrafi se više NE promovišu u headinge
+- `detectTitle()` i dalje radi za auto-detekciju naslova dokumenta
 
 ## Scope
-- 3 fajla, ~100 linija promjena
-- Bez IDB schema promjena
+- 1 fajl (`heading-promotion.ts`), ~30 linija promijenjeno
 
