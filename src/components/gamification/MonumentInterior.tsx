@@ -1,19 +1,20 @@
 import { memo, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Play, ChevronDown } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Play, ChevronDown, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCardContext } from "@/contexts/AppContext";
 import type { Monument } from "@/lib/forum-logic";
 import { PHASE_LABELS } from "@/lib/forum-logic";
 import { MonumentSVG } from "./monument-buildings";
 import { ArchNode } from "./ArchNode";
-import { useSourceHierarchy, type HierarchyNode } from "@/hooks/useSourceHierarchy";
-import { getCardMasteryLevel } from "@/components/KnowledgeMap";
+import { useSourceHierarchy, type HierarchyNode, type HierarchyLeaf } from "@/hooks/useSourceHierarchy";
+import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Source } from "@/lib/db";
+import type { Card } from "@/lib/spaced-repetition";
 
 interface Props {
   monument: Monument;
@@ -26,6 +27,8 @@ export const MonumentInterior = memo(function MonumentInterior({
 }: Props) {
   const { cards } = useCardContext();
   const navigate = useNavigate();
+  const [expandedSub, setExpandedSub] = useState<string | null>(null);
+  const [expandedChap, setExpandedChap] = useState<string | null>(null);
 
   const catCards = useMemo(() => cards.filter((c) => c.categoryId === monument.category), [cards, monument.category]);
 
@@ -60,6 +63,9 @@ export const MonumentInterior = memo(function MonumentInterior({
   }, [catCards]);
 
   const modeLabel = mode === "A" ? "po izvoru" : "po potkategoriji";
+
+  // Find currently expanded subcategory node
+  const expandedNode = expandedSub ? tree.find(n => n.name === expandedSub) : null;
 
   return (
     <motion.div
@@ -108,34 +114,96 @@ export const MonumentInterior = memo(function MonumentInterior({
         )}
       </div>
 
-      {/* Read-only analytics body — no DnD, no editing */}
+      {/* Breadcrumb when drilled in */}
+      {expandedSub && (
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-1">
+          <button onClick={() => { setExpandedSub(null); setExpandedChap(null); }} className="hover:text-foreground transition-colors">
+            Sve grupe
+          </button>
+          <ChevronRight className="h-3 w-3" />
+          <span className="text-foreground font-medium truncate">{expandedSub}</span>
+          {expandedChap && (
+            <>
+              <ChevronRight className="h-3 w-3" />
+              <span className="text-foreground font-medium truncate">{expandedChap}</span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Body */}
       <ScrollArea className="max-h-[calc(100vh-260px)]">
-        {mode === "A" ? (
-          <div className="space-y-6">
-            {tree.map((wing, wi) => (
-              <div key={wing.name} className="space-y-3">
-                <div className="flex items-center gap-3 px-1">
-                  <div className="h-px flex-1 bg-border/40" />
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-[0.15em] shrink-0">
-                    {wing.name}
-                  </span>
-                  <div className="h-px flex-1 bg-border/40" />
-                </div>
+        <AnimatePresence mode="wait">
+          {!expandedSub ? (
+            /* Level 1: Subcategory grid */
+            <motion.div
+              key="grid"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {tree.map((node, i) => (
+                <ArchNode
+                  key={node.name}
+                  name={node.name}
+                  cardCount={node.cardCount}
+                  levels={node.levels}
+                  avgStability={node.avgStability}
+                  index={i}
+                  onClick={() => { setExpandedSub(node.name); setExpandedChap(null); }}
+                />
+              ))}
+            </motion.div>
+          ) : expandedNode && !expandedChap ? (
+            /* Level 2: Chapters within subcategory */
+            <motion.div
+              key={`sub-${expandedSub}`}
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.15 }}
+              className="space-y-3"
+            >
+              {expandedNode.children.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {wing.children.map((child, ci) => (
-                    <ArchNode key={child.name} name={child.name} cardCount={child.cardCount} levels={child.levels} avgStability={child.avgStability} index={wi * 10 + ci} />
+                  {expandedNode.children.map((child, i) => (
+                    <ArchNode
+                      key={child.name}
+                      name={child.name}
+                      cardCount={child.cardCount}
+                      levels={child.levels}
+                      avgStability={child.avgStability}
+                      index={i}
+                      onClick={() => setExpandedChap(child.name)}
+                    />
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {tree.map((node, i) => (
-              <ArchNode key={node.name} name={node.name} cardCount={node.cardCount} levels={node.levels} avgStability={node.avgStability} index={i} />
-            ))}
-          </div>
-        )}
+              ) : (
+                /* No chapters — show cards directly */
+                <CardStrengthList cards={catCards.filter(c => (c.subcategory || "Ostalo") === expandedSub)} />
+              )}
+            </motion.div>
+          ) : expandedNode && expandedChap ? (
+            /* Level 3: Individual cards within chapter */
+            <motion.div
+              key={`chap-${expandedChap}`}
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -12 }}
+              transition={{ duration: 0.15 }}
+            >
+              <CardStrengthList
+                cards={
+                  expandedNode.children.find(c => c.name === expandedChap)?.cards
+                  ?? catCards.filter(c => (c.subcategory || "Ostalo") === expandedSub && (c.chapter || "Ostalo") === expandedChap)
+                }
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
         {tree.length === 0 && (
           <div className="flex items-center justify-center min-h-[20vh]">
             <p className="text-sm text-muted-foreground italic">Nema strukture u ovom monumentu.</p>
@@ -145,6 +213,74 @@ export const MonumentInterior = memo(function MonumentInterior({
     </motion.div>
   );
 });
+
+// ─── Card Strength List ─────────────────────────────────
+
+function CardStrengthList({ cards }: { cards: Card[] }) {
+  const sorted = useMemo(() =>
+    [...cards].sort((a, b) => getCardMasteryLevel(a) - getCardMasteryLevel(b)),
+    [cards]
+  );
+
+  if (sorted.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-10">
+        <p className="text-sm text-muted-foreground italic">Nema kartica.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {sorted.map(card => {
+        const level = getCardMasteryLevel(card);
+        const mastery = MASTERY_LEVELS[level] ?? MASTERY_LEVELS[0];
+        const sections = card.sections ?? [];
+        const avgStab = sections.length > 0
+          ? sections.reduce((s, sec) => s + (sec.stability ?? 0), 0) / sections.length
+          : 0;
+        const avgDiff = sections.length > 0
+          ? sections.reduce((s, sec) => s + (sec.difficulty ?? 5), 0) / sections.length
+          : 5;
+
+        return (
+          <div
+            key={card.id}
+            className="glass-card p-3 flex items-center gap-3"
+          >
+            {/* Mastery dot */}
+            <div
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: mastery.color }}
+              title={mastery.label}
+            />
+
+            {/* Question text */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-foreground truncate">
+                {card.question || "Bez pitanja"}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {sections.length} {sections.length === 1 ? "sekcija" : "sekcija"} · {mastery.label}
+              </p>
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center gap-3 text-[10px] text-muted-foreground tabular-nums shrink-0">
+              <span title="Prosječna stabilnost">S̄ {avgStab.toFixed(1)}d</span>
+              <span title="Prosječna težina">D̄ {avgDiff.toFixed(1)}</span>
+              {(card as any).errorLog?.length > 0 && (
+                <span className="text-destructive" title="Greške">⚠ {(card as any).errorLog.length}</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Source Breakdown ────────────────────────────────────
 
 function SourceBreakdown({ sources }: { sources: import("@/lib/forum-logic").MonumentSourceBreakdown[] }) {
   const [open, setOpen] = useState(false);
