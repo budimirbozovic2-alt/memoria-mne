@@ -472,6 +472,11 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
               onDelete={deleteCategory}
             />
           </div>
+
+          {/* Health Monitor */}
+          <Suspense fallback={<TabSkeleton />}>
+            <HealthMonitor />
+          </Suspense>
         </TabsContent>
       </Tabs>
 
