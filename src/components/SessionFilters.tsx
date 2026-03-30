@@ -117,7 +117,7 @@ export default function SessionFilters({
             {selectedCategory === c && (
               <motion.span layoutId={`${layoutPrefix}-cat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
             )}
-            <span className="relative z-10">{c}</span>
+            <span className="relative z-10">{catName(c)}</span>
             <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
               {cards.filter(card => card.categoryId === c).length}
             </span>

@@ -131,30 +131,31 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
       );
     }
 
-    return (
-      <FilterSetup
-        cards={cards}
-        sortedCardsCount={sortedCards.length}
-        learnMode={learnMode}
-        categories={availableCategories}
-        subcategories={subcategories}
-        selectedCategory={selectedCategory}
-        selectedSubcategory={selectedSubcategory}
-        selectedChapter={selectedChapter}
-        filterExamFrequent={filterExamFrequent}
-        examFrequentCount={examFrequentCount}
-        filterType={filterType}
-        sortMode={sortMode}
-        onSelectCategory={cat => { setSelectedCategory(cat); setSelectedSubcategory(null); setSelectedChapter(null); }}
-        onSelectSubcategory={sub => { setSelectedSubcategory(sub); setSelectedChapter(null); }}
-        onSelectChapter={setSelectedChapter}
-        onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
-        onFilterTypeChange={setFilterType}
-        onSortModeChange={setSortMode}
-        onStart={() => setStarted(true)}
-        onBackToMode={() => setSetupStep("mode")}
-      />
-    );
+      return (
+        <FilterSetup
+          cards={cards}
+          sortedCardsCount={sortedCards.length}
+          learnMode={learnMode}
+          categories={availableCategories}
+          categoryRecords={categoryRecords}
+          subcategories={subcategories}
+          selectedCategory={selectedCategory}
+          selectedSubcategory={selectedSubcategory}
+          selectedChapter={selectedChapter}
+          filterExamFrequent={filterExamFrequent}
+          examFrequentCount={examFrequentCount}
+          filterType={filterType}
+          sortMode={sortMode}
+          onSelectCategory={cat => { setSelectedCategory(cat); setSelectedSubcategory(null); setSelectedChapter(null); }}
+          onSelectSubcategory={sub => { setSelectedSubcategory(sub); setSelectedChapter(null); }}
+          onSelectChapter={setSelectedChapter}
+          onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
+          onFilterTypeChange={setFilterType}
+          onSortModeChange={setSortMode}
+          onStart={() => setStarted(true)}
+          onBackToMode={() => setSetupStep("mode")}
+        />
+      );
   }
 
   // ── FINISHED STATE ──
