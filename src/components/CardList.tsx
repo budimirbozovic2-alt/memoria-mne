@@ -207,6 +207,7 @@ interface VirtualRowData {
   onAssignChapter?: (cardId: string, chapter: string) => void;
   onCloneToMnemonic?: (card: Card) => void;
   onAddKeyPart?: (cardId: string, text: string) => void;
+  catNameMap?: Record<string, string>;
 }
 
 function VirtualRow(props: RowComponentProps<VirtualRowData>) {
