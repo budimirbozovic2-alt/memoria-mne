@@ -91,7 +91,7 @@ function validate(
 // ═════════════════════════════════════════════════════════
 // Hook
 // ═════════════════════════════════════════════════════════
-export function useCardActions({ categories, subcategories, editCard, onSave, onSaveFlash, onUpdate }: UseCardActionsProps) {
+export function useCardActions({ categories, subcategories, categoryRecords, editCard, onSave, onSaveFlash, onUpdate }: UseCardActionsProps) {
   // ── Core state ────────────────────────────────────────
   const [cardType, setCardType] = useState<CardType>(editCard?.type || "essay");
   const [question, setQuestion] = useState(editCard?.question ?? "");
