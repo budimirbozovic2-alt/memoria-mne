@@ -22,7 +22,7 @@ const STATUS_FILTERS: { value: MnemonicStatus | "all"; label: string; icon: type
   { value: "ready", label: "Spremne", icon: CheckCircle2 },
 ];
 
-export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: Props) {
+export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, categoryRecords = [] }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<MnemonicStatus | "all">("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -32,6 +32,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const majorSystem = useMemo(() => loadMajorSystem(), []);
+  const idToName = useMemo(() => Object.fromEntries(categoryRecords.map(r => [r.id, r.name])), [categoryRecords]);
 
   // Build category tree
   const categoryTree = useMemo(() => {
