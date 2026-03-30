@@ -658,18 +658,26 @@ export default function SpeedReader() {
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div>
-            {readMode === "subcategory" ? (
+            {readMode === "source" && selSource ? (
+              <>
+                <h2 className="text-xl font-medium flex items-center gap-2">
+                  <BookMarked className="h-5 w-5 text-primary" />
+                  {selSource.title}
+                </h2>
+                <p className="text-xs text-muted-foreground">{uuidToName[selSource.categoryId] ?? selSource.categoryId} · v{selSource.version} · {totalWords.toLocaleString()} riječi</p>
+              </>
+            ) : readMode === "subcategory" ? (
               <>
                 <h2 className="text-xl font-medium flex items-center gap-2">
                   <Layers className="h-5 w-5 text-primary" />
-                  {selSub || selCat || "Sve kartice"}
+                  {selSub || (selCat ? uuidToName[selCat] : null) || "Sve kartice"}
                 </h2>
                 <p className="text-xs text-muted-foreground">{selectedCards.length} kartica · {totalWords.toLocaleString()} riječi</p>
               </>
             ) : (
               <>
                 <h2 className="text-xl font-medium">{selCard?.question}</h2>
-                <p className="text-xs text-muted-foreground">{selCard?.categoryId}{selCard?.subcategory ? ` › ${selCard.subcategory}` : ""}</p>
+                <p className="text-xs text-muted-foreground">{uuidToName[selCard?.categoryId ?? ""] ?? selCard?.categoryId}{selCard?.subcategory ? ` › ${selCard.subcategory}` : ""}</p>
               </>
             )}
           </div>
