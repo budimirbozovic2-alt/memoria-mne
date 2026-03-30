@@ -32,6 +32,7 @@ export function useSourceLogic(source: Source) {
   const [examQuestions, setExamQuestions] = useState<ExamQuestion[]>([]);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const [linkSelectedText, setLinkSelectedText] = useState("");
+  const editModeRef = useRef(false);
 
   // Only recompute coverage/linkedCount when cards linked to THIS source change
   const sourceCards = useMemo(
@@ -102,7 +103,7 @@ export function useSourceLogic(source: Source) {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
       if (e.key === "s" || e.key === "S") {
-        if (selection) { e.preventDefault(); handleConvertToEssay(); }
+        if (selection && !editModeRef.current) { e.preventDefault(); handleConvertToEssay(); }
       } else if (e.key === "m" || e.key === "M") {
         e.preventDefault();
         setExamOpen(prev => !prev);
@@ -233,7 +234,7 @@ export function useSourceLogic(source: Source) {
     splitSummaryOpen, setSplitSummaryOpen, splitResult, setSplitResult,
     splitDone, splitCreatedCount, splitParentName, setSplitParentName,
     splitModules, setSplitModules, examOpen, setExamOpen, examQuestions, setExamQuestions,
-    linkModalOpen, setLinkModalOpen, linkSelectedText,
+    linkModalOpen, setLinkModalOpen, linkSelectedText, editModeRef,
     coverage, safeHtml, linkedCount, cards, categories,
     handleMouseUp, handleConvertToEssay, handleSmartSplitConfirm, handleCreateEssay,
     scrollToHeading, handleMapSelection, handleLinkToExisting, handleLinkConfirm,

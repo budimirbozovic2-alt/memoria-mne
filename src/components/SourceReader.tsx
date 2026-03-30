@@ -1,4 +1,4 @@
-import { PenSquare, BarChart3, Wand2, ChevronUp, ChevronDown, Link as LinkIcon, Heading1, Heading2, Heading3, Type } from "lucide-react";
+import { PenSquare, BarChart3, Wand2, ChevronUp, ChevronDown, Link as LinkIcon, Heading1, Heading2, Heading3, Type, List, ListOrdered } from "lucide-react";
 import { lazy, Suspense, memo, useCallback, useState, useEffect } from "react";
 import { useSourceLogic } from "@/hooks/useSourceLogic";
 import { SourceToolbar } from "@/components/source-reader/SourceToolbar";
@@ -96,6 +96,10 @@ interface Props {
 export default function SourceReader({ source, onBack, onSourceUpdated }: Props) {
   const logic = useSourceLogic(source);
   const isCoverage = logic.viewMode === "coverage";
+  const [editMode, setEditMode] = useState(false);
+
+  // Sync editModeRef in hook
+  logic.editModeRef.current = editMode;
 
   const [readerWidth, setReaderWidth] = useState<ReaderWidth>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -110,19 +114,19 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
   const [headingMenu, setHeadingMenu] = useState<{ x: number; y: number; element: HTMLElement } | null>(null);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (!editMode) return; // context menu only in edit mode
     const target = e.target as HTMLElement;
-    const block = target.closest("p, h1, h2, h3, h4");
+    const block = target.closest("p, h1, h2, h3, h4, li, ol, ul, div");
     if (!block) return;
-    // Only allow within the content area
     const container = logic.contentRef.current;
     if (!container || !container.contains(block)) return;
     e.preventDefault();
     setHeadingMenu({ x: e.clientX, y: e.clientY, element: block as HTMLElement });
-  }, [logic.contentRef]);
+  }, [editMode, logic.contentRef]);
 
-  const handleSetHeading = useCallback(async (level: number | null) => {
-    if (!headingMenu) return;
-    const el = headingMenu.element;
+  const handleSetHeading = useCallback(async (level: number | null, targetEl?: HTMLElement) => {
+    const el = targetEl || headingMenu?.element;
+    if (!el) return;
     const container = logic.contentRef.current;
     setHeadingMenu(null);
     if (!container) return;
@@ -131,14 +135,12 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
     const currentTag = el.tagName.toLowerCase();
     const targetTag = level ? `h${level}` : "p";
 
-    if (currentTag === targetTag) return; // no change
+    if (currentTag === targetTag) return;
 
-    // Replace element in DOM
     const newEl = document.createElement(targetTag);
     newEl.textContent = text;
     el.replaceWith(newEl);
 
-    // Get updated HTML and save
     const { saveSource, extractOutline, injectHeadingIds } = await import("@/lib/sources-storage");
     const updatedHtml = injectHeadingIds(container.innerHTML);
     const outline = extractOutline(updatedHtml);
@@ -157,6 +159,99 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
     const { toast } = await import("sonner");
     toast.success(level ? `Postavljeno kao H${level}` : "Vraćeno na paragraf");
   }, [headingMenu, source, onSourceUpdated, logic.contentRef]);
+
+  const handleFormatAsList = useCallback(async (type: "ol" | "ul") => {
+    const container = logic.contentRef.current;
+    setHeadingMenu(null);
+    if (!container) return;
+
+    // Use current selection to find affected block elements
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+
+    const range = sel.getRangeAt(0);
+    // Collect all block-level elements in the range
+    const blocks: HTMLElement[] = [];
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, {
+      acceptNode(node) {
+        const el = node as HTMLElement;
+        const tag = el.tagName.toLowerCase();
+        if (["p", "div", "h1", "h2", "h3", "h4", "li"].includes(tag) && range.intersectsNode(el)) {
+          return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+      },
+    });
+    let node: Node | null;
+    while ((node = walker.nextNode())) blocks.push(node as HTMLElement);
+
+    if (blocks.length === 0) return;
+
+    const listEl = document.createElement(type);
+    blocks[0].before(listEl);
+    for (const block of blocks) {
+      const li = document.createElement("li");
+      li.innerHTML = block.innerHTML;
+      listEl.appendChild(li);
+      block.remove();
+    }
+
+    sel.removeAllRanges();
+
+    const { saveSource, extractOutline, injectHeadingIds } = await import("@/lib/sources-storage");
+    const updatedHtml = injectHeadingIds(container.innerHTML);
+    const outline = extractOutline(updatedHtml);
+    const { parseArticles } = await import("@/lib/article-parser");
+    const articles = parseArticles(updatedHtml);
+
+    const updated: Source = {
+      ...source,
+      htmlContent: updatedHtml,
+      outline,
+      articles,
+      updatedAt: Date.now(),
+    };
+    await saveSource(updated);
+    onSourceUpdated?.(updated);
+    const { toast } = await import("sonner");
+    toast.success(type === "ol" ? "Pretvoreno u numerisanu listu" : "Pretvoreno u listu");
+  }, [source, onSourceUpdated, logic.contentRef]);
+
+  const handleFormatSelectionAs = useCallback(async (tag: "h1" | "h2" | "h3" | "p" | "ol" | "ul") => {
+    if (tag === "ol" || tag === "ul") {
+      await handleFormatAsList(tag);
+      return;
+    }
+    // For headings/paragraph: find block elements in selection range
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const container = logic.contentRef.current;
+    if (!container) return;
+
+    const range = sel.getRangeAt(0);
+    const blocks: HTMLElement[] = [];
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, {
+      acceptNode(node) {
+        const el = node as HTMLElement;
+        const t = el.tagName.toLowerCase();
+        if (["p", "div", "h1", "h2", "h3", "h4", "li"].includes(t) && range.intersectsNode(el)) {
+          return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+      },
+    });
+    let node: Node | null;
+    while ((node = walker.nextNode())) blocks.push(node as HTMLElement);
+
+    if (blocks.length === 0) return;
+
+    const level = tag === "p" ? null : parseInt(tag[1]);
+    for (const block of blocks) {
+      await handleSetHeading(level, block);
+    }
+    sel.removeAllRanges();
+    
+  }, [handleSetHeading, handleFormatAsList, logic.contentRef]);
 
   // Close heading menu on click elsewhere
   useEffect(() => {
@@ -186,6 +281,8 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
         onAutoSplit={() => logic.setAutoSplitOpen(true)}
         readerWidth={readerWidth}
         setReaderWidth={setReaderWidth}
+        editMode={editMode}
+        setEditMode={setEditMode}
       />
 
       {isCoverage && <CoverageStatsBar percent={logic.coverage.percent} linkedCount={logic.linkedCount} />}
@@ -249,6 +346,22 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
                   </button>
                 );
               })}
+              <div className="h-px bg-border my-1" />
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-1">Liste</p>
+              <button
+                onClick={() => { setHeadingMenu(null); handleFormatAsList("ol"); }}
+                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md transition-colors text-foreground hover:bg-secondary"
+              >
+                <ListOrdered className="h-4 w-4" />
+                Numerisana lista
+              </button>
+              <button
+                onClick={() => { setHeadingMenu(null); handleFormatAsList("ul"); }}
+                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md transition-colors text-foreground hover:bg-secondary"
+              >
+                <List className="h-4 w-4" />
+                Lista
+              </button>
             </div>
           )}
 
@@ -257,20 +370,42 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
               className="absolute z-50 -translate-x-1/2 -translate-y-full animate-in fade-in-0 zoom-in-95 duration-150"
               style={{ left: logic.selection.x, top: logic.selection.y }}>
               <div className="flex items-center gap-1 mb-1">
-                <button onClick={logic.handleConvertToEssay}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
-                  title="Prečica: S">
-                  <PenSquare className="h-3.5 w-3.5" />
-                  Napravi esej
-                  <kbd className="text-[9px] opacity-70 ml-0.5 border border-primary-foreground/30 rounded px-1">S</kbd>
-                </button>
-                <button onClick={logic.handleLinkToExisting}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium shadow-lg hover:bg-secondary/80 transition-colors">
-                  <LinkIcon className="h-3.5 w-3.5" />
-                  Poveži sa postojećim
-                </button>
+                {editMode ? (
+                  <>
+                    {([
+                      { tag: "h1" as const, label: "H1", icon: <Heading1 className="h-3.5 w-3.5" /> },
+                      { tag: "h2" as const, label: "H2", icon: <Heading2 className="h-3.5 w-3.5" /> },
+                      { tag: "h3" as const, label: "H3", icon: <Heading3 className="h-3.5 w-3.5" /> },
+                      { tag: "p" as const, label: "¶", icon: <Type className="h-3.5 w-3.5" /> },
+                      { tag: "ol" as const, label: "1.", icon: <ListOrdered className="h-3.5 w-3.5" /> },
+                      { tag: "ul" as const, label: "•", icon: <List className="h-3.5 w-3.5" /> },
+                    ]).map(opt => (
+                      <button key={opt.tag} onClick={() => handleFormatSelectionAs(opt.tag)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium shadow-lg hover:bg-secondary/80 transition-colors"
+                        title={opt.label}>
+                        {opt.icon}
+                        {opt.label}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <button onClick={logic.handleConvertToEssay}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium shadow-lg hover:bg-primary/90 transition-colors"
+                      title="Prečica: S">
+                      <PenSquare className="h-3.5 w-3.5" />
+                      Napravi esej
+                      <kbd className="text-[9px] opacity-70 ml-0.5 border border-primary-foreground/30 rounded px-1">S</kbd>
+                    </button>
+                    <button onClick={logic.handleLinkToExisting}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium shadow-lg hover:bg-secondary/80 transition-colors">
+                      <LinkIcon className="h-3.5 w-3.5" />
+                      Poveži sa postojećim
+                    </button>
+                  </>
+                )}
               </div>
-              <div className="w-2.5 h-2.5 bg-primary rotate-45 mx-auto -mt-1.5" />
+              <div className={cn("w-2.5 h-2.5 rotate-45 mx-auto -mt-1.5", editMode ? "bg-secondary" : "bg-primary")} />
             </div>
           )}
         </div>

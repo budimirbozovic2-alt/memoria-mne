@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar, Wand2, Eye, BarChart3, FileQuestion, List, X } from "lucide-react";
+import { ArrowLeft, Calendar, Wand2, Eye, BarChart3, FileQuestion, List, X, Pencil } from "lucide-react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,12 +23,14 @@ interface Props {
   onAutoSplit: () => void;
   readerWidth: ReaderWidth;
   setReaderWidth: (w: ReaderWidth) => void;
+  editMode: boolean;
+  setEditMode: (v: boolean) => void;
 }
 
 export const SourceToolbar = memo(function SourceToolbar({
   source, onBack, viewMode, setViewMode, examOpen, setExamOpen,
   examQuestions, outlineOpen, setOutlineOpen, onAutoSplit,
-  readerWidth, setReaderWidth,
+  readerWidth, setReaderWidth, editMode, setEditMode,
 }: Props) {
   const isCoverage = viewMode === "coverage";
   const pendingCount = examQuestions.filter(q => !q.done).length;
@@ -49,10 +51,12 @@ export const SourceToolbar = memo(function SourceToolbar({
         </div>
       </div>
 
-      <Button variant="outline" size="sm" onClick={onAutoSplit} className="gap-1.5" title="Generiši eseje iz članova">
-        <Wand2 className="h-3.5 w-3.5" />
-        Auto-Split
-      </Button>
+      {!editMode && (
+        <Button variant="outline" size="sm" onClick={onAutoSplit} className="gap-1.5" title="Generiši eseje iz članova">
+          <Wand2 className="h-3.5 w-3.5" />
+          Auto-Split
+        </Button>
+      )}
 
       <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
         <button
@@ -93,21 +97,34 @@ export const SourceToolbar = memo(function SourceToolbar({
       </div>
 
       <Button
-        variant={examOpen ? "default" : "outline"}
+        variant={editMode ? "default" : "outline"}
         size="sm"
-        onClick={() => setExamOpen(!examOpen)}
+        onClick={() => setEditMode(!editMode)}
         className="gap-1.5"
-        title="Ispitna pitanja sidebar (M)"
+        title="Režim uređivanja"
       >
-        <FileQuestion className="h-3.5 w-3.5" />
-        {examOpen ? "Zatvori pitanja" : "Pitanja"}
-        <kbd className="hidden sm:inline text-[9px] opacity-60 ml-0.5">M</kbd>
-        {pendingCount > 0 && (
-          <Badge variant="secondary" className="text-[10px] h-4 min-w-4 px-1">
-            {pendingCount}
-          </Badge>
-        )}
+        <Pencil className="h-3.5 w-3.5" />
+        {editMode ? "Uređivanje" : "Uredi"}
       </Button>
+
+      {!editMode && (
+        <Button
+          variant={examOpen ? "default" : "outline"}
+          size="sm"
+          onClick={() => setExamOpen(!examOpen)}
+          className="gap-1.5"
+          title="Ispitna pitanja sidebar (M)"
+        >
+          <FileQuestion className="h-3.5 w-3.5" />
+          {examOpen ? "Zatvori pitanja" : "Pitanja"}
+          <kbd className="hidden sm:inline text-[9px] opacity-60 ml-0.5">M</kbd>
+          {pendingCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] h-4 min-w-4 px-1">
+              {pendingCount}
+            </Badge>
+          )}
+        </Button>
+      )}
 
       <Button variant="outline" size="sm" onClick={() => setOutlineOpen(!outlineOpen)} className="gap-1.5">
         {outlineOpen ? <X className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
