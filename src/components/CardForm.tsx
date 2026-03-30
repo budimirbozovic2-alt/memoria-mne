@@ -30,7 +30,7 @@ const widthLabels: Record<FormWidth, string> = {
   compact: "S", normal: "M", wide: "L", full: "XL",
 };
 
-export default function CardForm({ categories, subcategories, categoryRecords, onSave, onSaveFlash, onCancel, editCard, onUpdate }: Props) {
+export default function CardForm({ categories, subcategories, categoryRecords, onSave, onSaveFlash, onCancel, editCard, onUpdate, onSplit }: Props) {
   const a = useCardActions({ categories, subcategories, categoryRecords, editCard, onSave, onSaveFlash, onUpdate });
 
   return (
