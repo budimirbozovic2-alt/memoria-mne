@@ -180,7 +180,7 @@ export default function CategoryView() {
               addCard={addCard}
               addFlashCard={addFlashCard}
               onDelete={deleteCard}
-              onEdit={(card) => navigate(`/edit/${card.id}`)}
+              onEdit={(card) => { setEditingCard(card); navigate('/edit'); }}
             />
           )}
         </TabsContent>
