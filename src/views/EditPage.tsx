@@ -5,7 +5,7 @@ import { useEffect, useRef, useCallback } from "react";
 import type { Card } from "@/lib/spaced-repetition";
 
 export default function EditPage() {
-  const { categories, subcategories, categoryRecords, updateCard } = useCardContext();
+  const { categories, subcategories, categoryRecords, updateCard, splitCard } = useCardContext();
   const { setView, editingCard, setEditingCard } = useUIContext();
   const previousViewRef = useRef<View | null>(null);
 
@@ -36,6 +36,12 @@ export default function EditPage() {
     navigateBack();
   };
 
+  const handleSplit = (id: string) => {
+    splitCard(id);
+    setEditingCard(null);
+    navigateBack();
+  };
+
   return (
     <ErrorBoundary label="Uredi karticu" onNavigateHome={() => setView("dashboard")}>
       <CardForm
@@ -47,6 +53,7 @@ export default function EditPage() {
         onCancel={handleCancel}
         editCard={editingCard}
         onUpdate={handleUpdate}
+        onSplit={handleSplit}
       />
     </ErrorBoundary>
   );

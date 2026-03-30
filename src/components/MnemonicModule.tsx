@@ -1,4 +1,5 @@
 import { CheckCircle2, Brain, Wrench, FlaskConical, Sparkles, Hash, HelpCircle, Film, Type } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useCallback, useMemo } from "react";
 import { useCardActions, useCardContext } from "@/contexts/AppContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -63,7 +64,8 @@ export default function MnemonicModule() {
     gcTime: Infinity,
   });
 
-  const [subView, setSubView] = useState<"menu" | "workshop" | "test" | "major">("menu");
+  const [subView, setSubView] = useState<"menu" | "workshop" | "test">("menu");
+  const [majorOpen, setMajorOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(
     () => !hasSeenOnboarding(MNEMO_ONBOARDING_KEY)
   );
@@ -118,9 +120,6 @@ export default function MnemonicModule() {
     return <MnemonicTest cards={cards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
   }
 
-  if (subView === "major") {
-    return <MajorSystemSettings />;
-  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -213,7 +212,7 @@ export default function MnemonicModule() {
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => setSubView("major")}
+          onClick={() => setMajorOpen(true)}
           className="rounded-xl border bg-card p-6 text-left hover:border-primary/40 transition-colors space-y-3"
         >
           <Hash className="h-8 w-8 text-accent-foreground" />
@@ -229,6 +228,15 @@ export default function MnemonicModule() {
           <p className="text-xs mt-1">Označi kartice tagom <strong>"Memorizacija"</strong> (ikona mozga) u listi kartica.</p>
         </div>
       )}
+
+      <Dialog open={majorOpen} onOpenChange={setMajorOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Mentalne tablice (Major sistem)</DialogTitle>
+          </DialogHeader>
+          <MajorSystemSettings />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

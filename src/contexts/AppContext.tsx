@@ -10,13 +10,13 @@ import { loadAppSettings } from "@/lib/app-settings";
 const LazyDatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
 
 // ─── Types ──────────────────────────────────────────────
-export type View = "dashboard" | "create" | "edit" | "cards" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "major-system-settings" | "metacognitive" | "stats" | "planner" | "database" | "speed-reader";
+export type View = "dashboard" | "create" | "edit" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "knowledge-map" | "mnemonic" | "metacognitive" | "stats" | "planner" | "speed-reader";
 
 const VIEW_TO_PATH: Record<View, string> = {
-  dashboard: "/", create: "/create", edit: "/edit", cards: "/cards", review: "/review",
-  categories: "/categories", learn: "/learn", settings: "/settings", database: "/database",
+  dashboard: "/", create: "/create", edit: "/edit", review: "/review",
+  categories: "/categories", learn: "/learn", settings: "/settings",
   "frequent-errors": "/frequent-errors", "knowledge-map": "/knowledge-map",
-  mnemonic: "/mnemonics", "major-system-settings": "/major-system-settings",
+  mnemonic: "/mnemonics",
   metacognitive: "/metacognitive", stats: "/stats", planner: "/planner",
   "speed-reader": "/speed-reader",
 };
@@ -87,7 +87,7 @@ interface CardActionsContextValue {
   bulkFlagNeedsReview: ReturnType<typeof useCards>["bulkFlagNeedsReview"];
   bulkUpdateSubcategory: ReturnType<typeof useCards>["bulkUpdateSubcategory"];
   bulkUpdateChapter: ReturnType<typeof useCards>["bulkUpdateChapter"];
-  reorderCards: ReturnType<typeof useCards>["reorderCards"];
+  
   logError: ReturnType<typeof useCards>["logError"];
   clearErrorLog: ReturnType<typeof useCards>["clearErrorLog"];
   exportData: ReturnType<typeof useCards>["exportData"];
@@ -258,7 +258,7 @@ function CardProvider({ children }: { children: ReactNode }) {
     reviewSection: h.reviewSection,
     markRead: h.markRead, toggleTag: h.toggleTag, addKeyPart: h.addKeyPart,
     bulkFlagNeedsReview: h.bulkFlagNeedsReview, bulkUpdateSubcategory: h.bulkUpdateSubcategory,
-    bulkUpdateChapter: h.bulkUpdateChapter, reorderCards: h.reorderCards,
+    bulkUpdateChapter: h.bulkUpdateChapter,
     logError: h.logError, clearErrorLog: h.clearErrorLog,
     exportData: h.exportData, exportTemplate: h.exportTemplate,
     importData: h.importData, importCards: h.importCards,

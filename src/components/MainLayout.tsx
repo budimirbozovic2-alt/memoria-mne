@@ -17,7 +17,7 @@ const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
 const AppOnboarding = lazy(() => import("@/components/AppOnboarding"));
 
-const SOURCE_ROUTES = ["/cards", "/categories", "/sources", "/database", "/category/"];
+const SOURCE_ROUTES = ["/categories", "/category/"];
 
 /** Isolated component for planner nudge */
 const NudgeWatcher = memo(function NudgeWatcher() {
