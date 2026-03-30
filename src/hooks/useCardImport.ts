@@ -126,7 +126,7 @@ export function useCardImport({
             }
             freshRecords = await idbLoadCategories();
             setCategoryRecordsState(freshRecords);
-            setCategories(() => freshRecords.map(r => r.name));
+            setCategories(() => freshRecords.map(r => r.id));
           } else {
             // Legacy string[] format — fallback
             if (strategy === "overwrite") {
@@ -142,7 +142,7 @@ export function useCardImport({
           const subMap: Record<string, string[]> = {};
           freshRecords.forEach(r => {
             if (r.subcategories && r.subcategories.length > 0) {
-              subMap[r.name] = (r.subcategories as any[]).map((s: any) => typeof s === "string" ? s : s.name);
+              subMap[r.id] = (r.subcategories as any[]).map((s: any) => typeof s === "string" ? s : s.name);
             }
           });
           setSubcategories(() => subMap);

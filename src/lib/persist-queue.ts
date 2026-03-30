@@ -57,7 +57,12 @@ function createPersistQueue() {
       }
 
       if (puts.length > 0) await idbBulkPutCards(puts);
-      for (const id of deletes) await idbDeleteCard(id);
+      if (deletes.length > 0) {
+        const results = await Promise.allSettled(deletes.map(id => idbDeleteCard(id)));
+        results.forEach((r, i) => {
+          if (r.status === "rejected") console.error(`[persistQueue] delete failed for ${deletes[i]}`, r.reason);
+        });
+      }
       try { sessionStorage.removeItem("codex-flush-pending"); } catch {}
     } catch (err: unknown) {
       try { sessionStorage.removeItem("codex-flush-pending"); } catch {}

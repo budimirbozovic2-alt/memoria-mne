@@ -54,35 +54,15 @@ export function useCategoryManagement({
           if (record) {
             await db.categories.update(categoryId, { name: newName });
           }
-          // Silent migration: fix any legacy cards that have name as categoryId
-          const legacyCards = await db.cards.where("categoryId").equals(record?.name || "").toArray();
-          if (legacyCards.length > 0) {
-            const now = Date.now();
-            const changed: Card[] = [];
-            const nextRef = { ...cardMapRef.current };
-            for (const c of legacyCards) {
-              const u = { ...c, categoryId, updatedAt: now };
-              nextRef[c.id] = u;
-              changed.push(u);
-            }
-            if (changed.length > 0) {
-              cardMapRef.current = nextRef;
-              schedulePersist({ type: "bulk", cards: changed });
-              setCardMapState(() => nextRef);
-              bumpMapVersion();
-            }
-          }
-          if (record?.name) {
-            await db.sources.where("categoryId").equals(record.name).modify({ categoryId });
-            invalidateSourcesCache();
-          }
+          // Sources already use UUID as categoryId — no migration needed
+          invalidateSourcesCache();
         } catch (err) {
           console.error("[renameCategory] failed", err);
           toast({ title: "Greška pri preimenovanju", description: "Pokušajte ponovo.", variant: "destructive" });
         }
       })();
     },
-    [setCardMapState, cardMapRef],
+    [],
   );
 
   const deleteCategory = useCallback(
