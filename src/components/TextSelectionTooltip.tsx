@@ -1,6 +1,6 @@
 import { Brain, Star } from "lucide-react";
 import { useState, useEffect, useCallback, useRef, ReactNode } from "react";
-
+import { useQueryClient } from "@tanstack/react-query";
 
 import { createMnemonicCardFromSelection, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
 import { toast } from "@/hooks/use-toast";
@@ -17,6 +17,7 @@ interface Props {
 
 export default function TextSelectionTooltip({ children, cardId, question, category, subcategory, tags, keyParts, onMarkKeyPart }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const qc = useQueryClient();
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
   const handleMouseUp = useCallback(() => {
@@ -63,10 +64,11 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
       cardId, question, tooltip.text, category, subcategory, tags
     );
     saveMnemonicCards([...cards, clone]);
+    qc.invalidateQueries({ queryKey: ["mnemonicCards"] });
     toast({ title: "Dodano u Mnemo radionicu", description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
     setTooltip(null);
     window.getSelection()?.removeAllRanges();
-  }, [tooltip, cardId, question, category, subcategory, tags]);
+  }, [tooltip, cardId, question, category, subcategory, tags, qc]);
 
   const handleKeyPart = useCallback(() => {
     if (!tooltip || !onMarkKeyPart) return;

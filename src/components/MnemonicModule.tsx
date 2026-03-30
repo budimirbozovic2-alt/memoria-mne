@@ -1,6 +1,6 @@
 import { CheckCircle2, Brain, Wrench, FlaskConical, Sparkles, Hash, HelpCircle, Film, Type } from "lucide-react";
 import { useState, useCallback, useMemo } from "react";
-import { useCardActions } from "@/contexts/AppContext";
+import { useCardActions, useCardContext } from "@/contexts/AppContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MnemonicCard, loadMnemonicCards, saveMnemonicCards,
@@ -55,6 +55,7 @@ const MNEMO_SLIDES: OnboardingSlide[] = [
 export default function MnemonicModule() {
   const qc = useQueryClient();
   const { patchCard } = useCardActions();
+  const { categoryRecords } = useCardContext();
   const { data: cards = [] } = useQuery({
     queryKey: MNEMONIC_KEY,
     queryFn: loadMnemonicCards,
@@ -110,7 +111,7 @@ export default function MnemonicModule() {
   const stats = useMemo(() => getMnemonicStats(cards), [cards]);
 
   if (subView === "workshop") {
-    return <MnemonicWorkshop cards={cards} onUpdateCard={updateCard} onDeleteCard={deleteCard} />;
+    return <MnemonicWorkshop cards={cards} onUpdateCard={updateCard} onDeleteCard={deleteCard} categoryRecords={categoryRecords} />;
   }
 
   if (subView === "test") {

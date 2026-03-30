@@ -1,7 +1,7 @@
 import { Brain, Wrench, FolderOpen, Search, Sparkles, ArrowUpDown, CheckCircle2 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { MnemonicCard, MnemonicStatus, loadMajorSystem } from "@/lib/mnemonic-storage";
-
+import { type CategoryRecord } from "@/lib/db";
 
 import InfoPanel from "@/components/InfoPanel";
 import WorkshopCardItem from "@/components/workshop/WorkshopCardItem";
@@ -12,6 +12,7 @@ interface Props {
   cards: MnemonicCard[];
   onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
   onDeleteCard: (id: string) => void;
+  categoryRecords?: CategoryRecord[];
 }
 
 const STATUS_FILTERS: { value: MnemonicStatus | "all"; label: string; icon: typeof Sparkles }[] = [
@@ -21,7 +22,7 @@ const STATUS_FILTERS: { value: MnemonicStatus | "all"; label: string; icon: type
   { value: "ready", label: "Spremne", icon: CheckCircle2 },
 ];
 
-export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: Props) {
+export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, categoryRecords = [] }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<MnemonicStatus | "all">("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -31,13 +32,14 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: 
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const majorSystem = useMemo(() => loadMajorSystem(), []);
+  const idToName = useMemo(() => Object.fromEntries(categoryRecords.map(r => [r.id, r.name])), [categoryRecords]);
 
   // Build category tree
   const categoryTree = useMemo(() => {
     const tree: Record<string, Set<string>> = {};
     cards.forEach(c => {
-      if (!tree[c.category]) tree[c.category] = new Set();
-      if (c.subcategory) tree[c.category].add(c.subcategory);
+      if (!tree[c.categoryId]) tree[c.categoryId] = new Set();
+      if (c.subcategory) tree[c.categoryId].add(c.subcategory);
     });
     return tree;
   }, [cards]);
@@ -48,7 +50,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: 
   const filtered = useMemo(() => {
     let result = cards;
     if (filterStatus !== "all") result = result.filter(c => c.mnemonicStatus === filterStatus);
-    if (selectedCategory) result = result.filter(c => c.category === selectedCategory);
+    if (selectedCategory) result = result.filter(c => c.categoryId === selectedCategory);
     if (selectedSubcategory) result = result.filter(c => c.subcategory === selectedSubcategory);
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
@@ -66,7 +68,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: 
         case "status":
           return statusOrder[a.mnemonicStatus] - statusOrder[b.mnemonicStatus];
         case "category":
-          return a.category.localeCompare(b.category) || (a.subcategory || "").localeCompare(b.subcategory || "");
+          return (idToName[a.categoryId] ?? a.categoryId).localeCompare(idToName[b.categoryId] ?? b.categoryId) || (a.subcategory || "").localeCompare(b.subcategory || "");
         case "success": {
           const aRate = a.testCount > 0 ? a.successCount / a.testCount : -1;
           const bRate = b.testCount > 0 ? b.successCount / b.testCount : -1;
@@ -176,7 +178,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: 
               Sve
             </button>
             {categories.map(cat => {
-              const count = cards.filter(c => c.category === cat).length;
+              const count = cards.filter(c => c.categoryId === cat).length;
               return (
                 <button
                   key={cat}
@@ -185,7 +187,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard }: 
                     selectedCategory === cat ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   }`}
                 >
-                  {cat}
+                  {idToName[cat] ?? cat}
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                     selectedCategory === cat ? "bg-primary-foreground/20" : "bg-secondary"
                   }`}>{count}</span>

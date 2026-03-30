@@ -9,7 +9,7 @@ export interface MnemonicCard {
   originalCardId: string;  // reference to original card
   question: string;
   sections: { title: string; content: string }[];
-  category: string;
+  categoryId: string;
   subcategory?: string;
   tags?: string[];          // cloned from original card
   hookType: HookType;       // auto-detected or manual
@@ -88,9 +88,10 @@ export function detectHookType(sections: { content: string }[]): HookType {
 // Mnemonic Cards
 export function loadMnemonicCards(): MnemonicCard[] {
   const cards = loadFromStorage<MnemonicCard[]>(MNEMONIC_CARDS_KEY, []);
-  // Migration: add hookType if missing
+  // Migration: add hookType if missing, rename category→categoryId
   return cards.map(c => ({
     ...c,
+    categoryId: c.categoryId || (c as any).category || "",
     hookType: c.hookType || "ostalo",
     hookMode: c.hookMode || (c.mnemonicVideo ? "video" : "acronym"),
     tags: c.tags || [],
@@ -105,7 +106,7 @@ export function createMnemonicCardFromSelection(
   originalCardId: string,
   question: string,
   selectedText: string,
-  category: string,
+  categoryId: string,
   subcategory?: string,
   tags?: string[],
 ): MnemonicCard {
@@ -114,7 +115,7 @@ export function createMnemonicCardFromSelection(
     originalCardId,
     question,
     sections: [{ title: "Isječak", content: selectedText }],
-    category,
+    categoryId,
     subcategory,
     tags: tags || [],
     hookType: detectHookType([{ content: selectedText }]),
@@ -134,7 +135,7 @@ export function createMnemonicCard(
   originalCardId: string,
   question: string,
   sections: { title: string; content: string }[],
-  category: string,
+  categoryId: string,
   subcategory?: string,
   tags?: string[],
 ): MnemonicCard {
@@ -143,7 +144,7 @@ export function createMnemonicCard(
     originalCardId,
     question,
     sections,
-    category,
+    categoryId,
     subcategory,
     tags: tags || [],
     hookType: detectHookType(sections),
