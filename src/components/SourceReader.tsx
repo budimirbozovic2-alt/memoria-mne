@@ -346,6 +346,22 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
                   </button>
                 );
               })}
+              <div className="h-px bg-border my-1" />
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-1">Liste</p>
+              <button
+                onClick={() => { setHeadingMenu(null); handleFormatAsList("ol"); }}
+                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md transition-colors text-foreground hover:bg-secondary"
+              >
+                <ListOrdered className="h-4 w-4" />
+                Numerisana lista
+              </button>
+              <button
+                onClick={() => { setHeadingMenu(null); handleFormatAsList("ul"); }}
+                className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md transition-colors text-foreground hover:bg-secondary"
+              >
+                <List className="h-4 w-4" />
+                Lista
+              </button>
             </div>
           )}
 
