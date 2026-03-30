@@ -178,7 +178,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
               Sve
             </button>
             {categories.map(cat => {
-              const count = cards.filter(c => c.category === cat).length;
+              const count = cards.filter(c => c.categoryId === cat).length;
               return (
                 <button
                   key={cat}
@@ -187,7 +187,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
                     selectedCategory === cat ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   }`}
                 >
-                  {cat}
+                  {idToName[cat] ?? cat}
                   <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
                     selectedCategory === cat ? "bg-primary-foreground/20" : "bg-secondary"
                   }`}>{count}</span>

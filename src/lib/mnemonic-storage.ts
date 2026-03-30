@@ -135,7 +135,7 @@ export function createMnemonicCard(
   originalCardId: string,
   question: string,
   sections: { title: string; content: string }[],
-  category: string,
+  categoryId: string,
   subcategory?: string,
   tags?: string[],
 ): MnemonicCard {
@@ -144,7 +144,7 @@ export function createMnemonicCard(
     originalCardId,
     question,
     sections,
-    category,
+    categoryId,
     subcategory,
     tags: tags || [],
     hookType: detectHookType(sections),

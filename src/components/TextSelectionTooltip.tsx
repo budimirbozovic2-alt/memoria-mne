@@ -64,10 +64,11 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
       cardId, question, tooltip.text, category, subcategory, tags
     );
     saveMnemonicCards([...cards, clone]);
+    qc.invalidateQueries({ queryKey: ["mnemonicCards"] });
     toast({ title: "Dodano u Mnemo radionicu", description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
     setTooltip(null);
     window.getSelection()?.removeAllRanges();
-  }, [tooltip, cardId, question, category, subcategory, tags]);
+  }, [tooltip, cardId, question, category, subcategory, tags, qc]);
 
   const handleKeyPart = useCallback(() => {
     if (!tooltip || !onMarkKeyPart) return;

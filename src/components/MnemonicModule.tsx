@@ -111,7 +111,7 @@ export default function MnemonicModule() {
   const stats = useMemo(() => getMnemonicStats(cards), [cards]);
 
   if (subView === "workshop") {
-    return <MnemonicWorkshop cards={cards} onUpdateCard={updateCard} onDeleteCard={deleteCard} />;
+    return <MnemonicWorkshop cards={cards} onUpdateCard={updateCard} onDeleteCard={deleteCard} categoryRecords={categoryRecords} />;
   }
 
   if (subView === "test") {
