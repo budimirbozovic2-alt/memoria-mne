@@ -256,12 +256,12 @@ export function useCards() {
     (async () => {
       try {
         const existing = await idbLoadCategories();
-        const byName = new Map(existing.map(c => [c.name, c]));
-        const records: CategoryRecord[] = ordered.map((name, i) => {
-          const rec = byName.get(name);
+        const byId = new Map(existing.map(c => [c.id, c]));
+        const records: CategoryRecord[] = ordered.map((id, i) => {
+          const rec = byId.get(id);
           return rec
             ? { ...rec, sortOrder: i }
-            : { id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] };
+            : { id, name: id, sortOrder: i, subcategories: [] };
         });
         await idbSaveCategories(records);
         setCategoryRecordsState(records);
