@@ -90,9 +90,10 @@ const STORAGE_KEY = "codex-source-reader-width";
 interface Props {
   source: Source;
   onBack: () => void;
+  onSourceUpdated?: (source: Source) => void;
 }
 
-export default function SourceReader({ source, onBack }: Props) {
+export default function SourceReader({ source, onBack, onSourceUpdated }: Props) {
   const logic = useSourceLogic(source);
   const isCoverage = logic.viewMode === "coverage";
 
