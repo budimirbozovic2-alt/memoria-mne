@@ -50,7 +50,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
   const filtered = useMemo(() => {
     let result = cards;
     if (filterStatus !== "all") result = result.filter(c => c.mnemonicStatus === filterStatus);
-    if (selectedCategory) result = result.filter(c => c.category === selectedCategory);
+    if (selectedCategory) result = result.filter(c => c.categoryId === selectedCategory);
     if (selectedSubcategory) result = result.filter(c => c.subcategory === selectedSubcategory);
     if (debouncedSearch) {
       const q = debouncedSearch.toLowerCase();
