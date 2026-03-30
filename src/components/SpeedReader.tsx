@@ -459,7 +459,7 @@ export default function SpeedReader() {
               <Layers className="h-5 w-5 text-primary" />
               <div className="text-left">
                 <p className="text-lg font-medium text-foreground group-hover:text-primary transition-colors">
-                  Čitaj {selSub ? `"${selSub}"` : selCat ? `"${selCat}"` : "sve kartice"} — {filteredCards.length} kartica
+                  Čitaj {selSub ? `"${selSub}"` : selCat ? `"${uuidToName[selCat] ?? selCat}"` : "sve kartice"} — {filteredCards.length} kartica
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {totalWords.toLocaleString()} riječi · ~{estMinutes} min pri {wpm} WPM
