@@ -107,7 +107,9 @@ setTimeout(() => {
         // Build subcategories map from CategoryRecord
         const subcategories: Record<string, string[]> = {};
         categories.forEach(r => {
-          if (r.subcategories?.length > 0) subcategories[r.name] = r.subcategories;
+          if (r.subcategories?.length > 0) {
+            subcategories[r.name] = r.subcategories.map((s: any) => typeof s === "string" ? s : s.name);
+          }
         });
 
         // Read planner data from IDB

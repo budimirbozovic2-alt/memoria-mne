@@ -116,9 +116,14 @@ export function useCards() {
             const existing = await idbLoadCategories();
             const updated = existing.map(cat => ({
               ...cat,
-              subcategories: next[cat.id] || [],
+              subcategories: (next[cat.id] || []).map((name: string) => {
+                // Preserve existing SubcategoryNode if present, otherwise create new
+                const existingNode = (cat.subcategories as any[])?.find((s: any) => (typeof s === "string" ? s : s.name) === name);
+                if (existingNode && typeof existingNode === "object") return existingNode;
+                return { name, chapters: [] as string[], sortOrder: 0 };
+              }),
             }));
-            await idbSaveCategories(updated);
+            await idbSaveCategories(updated as CategoryRecord[]);
           } catch (e) { console.error("[useCards] subcategory save failed", e); }
         })();
       }
@@ -152,6 +157,9 @@ export function useCards() {
     addCategory, renameCategory, deleteCategory,
     addSubcategory, renameSubcategory, deleteSubcategory,
     bulkUpdateSubcategory,
+    addChapter, renameChapter, deleteChapter,
+    reorderSubcategories: reorderSubcategoriesManagement,
+    reorderChapters,
   } = useCategoryManagement({
     setCategories, setSubcategories, setCardMapState, cardMapRef, getCategoryRecords,
   });
@@ -277,11 +285,18 @@ export function useCards() {
       (async () => {
         try {
           const existing = await idbLoadCategories();
-          const updated = existing.map(cat => cat.id === category
-            ? { ...cat, subcategories: ordered }
-            : cat
-          );
-          await idbSaveCategories(updated);
+          const updated = existing.map(cat => {
+            if (cat.id !== category) return cat;
+            // Reorder SubcategoryNodes to match the ordered string[] names
+            const nodeMap = new Map((cat.subcategories as any[]).map((s: any) => [typeof s === "string" ? s : s.name, s]));
+            const reorderedNodes = ordered.map((name, i) => {
+              const existing = nodeMap.get(name);
+              if (existing && typeof existing === "object") return { ...existing, sortOrder: i };
+              return { name, chapters: [] as string[], sortOrder: i };
+            });
+            return { ...cat, subcategories: reorderedNodes };
+          });
+          await idbSaveCategories(updated as any);
         } catch (e) { console.error("[useCards] reorderSubcategories save failed", e); }
       })();
       return next;
@@ -328,8 +343,12 @@ export function useCards() {
     addSubcategory,
     renameSubcategory,
     deleteSubcategory,
+    addChapter,
+    renameChapter,
+    deleteChapter,
     reorderCategories,
     reorderSubcategories,
+    reorderChapters,
     updateSRSettings,
   };
 }

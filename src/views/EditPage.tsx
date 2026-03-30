@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import type { Card } from "@/lib/spaced-repetition";
 
 export default function EditPage() {
-  const { categories, subcategories, updateCard } = useCardContext();
+  const { categories, subcategories, categoryRecords, updateCard } = useCardContext();
   const { setView, editingCard, setEditingCard } = useUIContext();
   const previousViewRef = useRef<View | null>(null);
 
@@ -34,6 +34,7 @@ export default function EditPage() {
       <CardForm
         categories={categories}
         subcategories={subcategories}
+        categoryRecords={categoryRecords}
         onSave={() => {}}
         onSaveFlash={() => {}}
         onCancel={handleCancel}

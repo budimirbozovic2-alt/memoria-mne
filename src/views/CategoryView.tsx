@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useCallback, useMemo, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type Source } from "@/lib/db";
+import { db, type Source, type SubcategoryNode } from "@/lib/db";
 import { saveSource, invalidateSourcesCache } from "@/lib/sources-storage";
 import type { Card } from "@/lib/spaced-repetition";
 import { useCardActions, useUIContext } from "@/contexts/AppContext";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText, Plus, Upload, Loader2, Eye, Pencil, GitBranch } from "lucide-react";
+import { BookOpen, FileText, Plus, Upload, Loader2, Eye, Pencil, GitBranch, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { parseArticles } from "@/lib/article-parser";
@@ -20,6 +20,7 @@ import SourceReader from "@/components/SourceReader";
 import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import CategoryMindMaps from "@/components/category/CategoryMindMaps";
+import StructureManagerDialog from "@/components/category/StructureManagerDialog";
 
 export default function CategoryView() {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -51,10 +52,17 @@ export default function CategoryView() {
     [categoryId]
   ) ?? 0;
 
-  const { addCard, addFlashCard, patchCard, toggleTag, addSubcategory, renameSubcategory, deleteSubcategory, deleteCard, bulkFlagNeedsReview } = useCardActions();
+  const {
+    addCard, addFlashCard, patchCard, toggleTag,
+    addSubcategory, renameSubcategory, deleteSubcategory,
+    addChapter, renameChapter, deleteChapter,
+    reorderSubcategories, reorderChapters,
+    deleteCard, bulkFlagNeedsReview,
+  } = useCardActions();
   const { setEditingCard } = useUIContext();
 
   const [orgMode, setOrgMode] = useState(false);
+  const [structureOpen, setStructureOpen] = useState(false);
 
   // Sources: separate state for reader (full-screen) and editor (dialog)
   const [readerSource, setReaderSource] = useState<Source | null>(null);
@@ -106,6 +114,14 @@ export default function CategoryView() {
     }
   }, [categoryId]);
 
+  // Derive SubcategoryNode[] from category record (must be before early returns)
+  const subcategoryNodes: SubcategoryNode[] = useMemo(() => {
+    if (!category?.subcategories) return [];
+    return (category.subcategories as any[]).map((s: any) =>
+      typeof s === "string" ? { name: s, chapters: [], sortOrder: 0 } : s
+    );
+  }, [category?.subcategories]);
+
   // Full-screen reader mode
   if (readerSource) {
     return <SourceReader source={readerSource} onBack={() => setReaderSource(null)} />;
@@ -134,10 +150,14 @@ export default function CategoryView() {
         {category.color && (
           <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
         )}
-        <h1 className="imperial-title text-foreground">{category.name}</h1>
+        <h1 className="imperial-title text-foreground flex-1">{category.name}</h1>
+        <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setStructureOpen(true)}>
+          <Settings className="h-3.5 w-3.5" />
+          Struktura
+        </Button>
       </div>
 
-      {/* Tabs — only Kartice & Izvori */}
+      {/* Tabs */}
       <Tabs defaultValue="cards" className="w-full">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="cards" className="gap-2">
@@ -169,11 +189,8 @@ export default function CategoryView() {
             <CardOrgMode
               cards={cards}
               categoryId={categoryId!}
-              category={category}
+              subcategoryNodes={subcategoryNodes}
               patchCard={patchCard}
-              addSubcategory={addSubcategory}
-              renameSubcategory={renameSubcategory}
-              deleteSubcategory={deleteSubcategory}
             />
           ) : (
             <CardViewMode
@@ -265,6 +282,23 @@ export default function CategoryView() {
           bulkFlagNeedsReview={bulkFlagNeedsReview}
         />
       )}
+
+      {/* Structure Manager Dialog */}
+      <StructureManagerDialog
+        open={structureOpen}
+        onOpenChange={setStructureOpen}
+        categoryId={categoryId!}
+        categoryName={category.name}
+        subcategoryNodes={subcategoryNodes}
+        onAddSubcategory={addSubcategory}
+        onRenameSubcategory={renameSubcategory}
+        onDeleteSubcategory={deleteSubcategory}
+        onReorderSubcategories={reorderSubcategories}
+        onAddChapter={addChapter}
+        onRenameChapter={renameChapter}
+        onDeleteChapter={deleteChapter}
+        onReorderChapters={reorderChapters}
+      />
     </div>
   );
 }

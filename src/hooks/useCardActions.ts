@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
+import type { CategoryRecord, SubcategoryNode } from "@/lib/db";
 import { Card } from "@/lib/spaced-repetition";
 import { toast } from "sonner";
 
@@ -14,6 +15,7 @@ export type FormWidth = "compact" | "normal" | "wide" | "full";
 interface UseCardActionsProps {
   categories: string[];
   subcategories: Record<string, string[]>;
+  categoryRecords?: CategoryRecord[];
   editCard?: Card | null;
   onSave: (question: string, sections: SectionInput[], category: string, subcategory?: string, chapter?: string) => void;
   onSaveFlash: (question: string, answer: string, category: string, subcategory?: string) => void;
@@ -89,7 +91,7 @@ function validate(
 // ═════════════════════════════════════════════════════════
 // Hook
 // ═════════════════════════════════════════════════════════
-export function useCardActions({ categories, subcategories, editCard, onSave, onSaveFlash, onUpdate }: UseCardActionsProps) {
+export function useCardActions({ categories, subcategories, categoryRecords, editCard, onSave, onSaveFlash, onUpdate }: UseCardActionsProps) {
   // ── Core state ────────────────────────────────────────
   const [cardType, setCardType] = useState<CardType>(editCard?.type || "essay");
   const [question, setQuestion] = useState(editCard?.question ?? "");
@@ -133,19 +135,19 @@ export function useCardActions({ categories, subcategories, editCard, onSave, on
     });
   }, [editCard?.sourceId]);
 
-  // ── Load available chapters ───────────────────────────
-  const [availableChapters, setAvailableChapters] = useState<string[]>([]);
-  useEffect(() => {
+  // ── Load available chapters from SubcategoryNode tree ──
+  const availableChapters = useMemo(() => {
     const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory;
     const cat = showNewCat && newCategory.trim() ? newCategory.trim() : category;
-    if (!sub) { setAvailableChapters([]); return; }
-    const key = `chapters-${cat}-${sub}`;
-    import("@/lib/db").then(({ idbLoadSettings }) => {
-      idbLoadSettings<string[]>(key, []).then(chapters => {
-        setAvailableChapters(Array.from(new Set(chapters)));
-      });
-    });
-  }, [category, subcategory, showNewCat, newCategory, showNewSub, newSubcategory]);
+    if (!sub || !cat || !categoryRecords) return [];
+    const catRec = categoryRecords.find(r => r.id === cat);
+    if (!catRec) return [];
+    const nodes: SubcategoryNode[] = (catRec.subcategories as any[] || []).map((s: any) =>
+      typeof s === "string" ? { name: s, chapters: [], sortOrder: 0 } : s
+    );
+    const node = nodes.find(n => n.name === sub);
+    return node?.chapters || [];
+  }, [category, subcategory, showNewCat, newCategory, showNewSub, newSubcategory, categoryRecords]);
 
   // ── Section actions ───────────────────────────────────
   const addSection = useCallback(() => {

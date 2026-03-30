@@ -141,7 +141,9 @@ export function useCardImport({
         if (importedAsRecords) {
           const subMap: Record<string, string[]> = {};
           freshRecords.forEach(r => {
-            if (r.subcategories && r.subcategories.length > 0) subMap[r.name] = r.subcategories;
+            if (r.subcategories && r.subcategories.length > 0) {
+              subMap[r.name] = (r.subcategories as any[]).map((s: any) => typeof s === "string" ? s : s.name);
+            }
           });
           setSubcategories(() => subMap);
         } else if (strategy === "overwrite" && (!data.subcategories || Object.keys(data.subcategories as object).length === 0)) {

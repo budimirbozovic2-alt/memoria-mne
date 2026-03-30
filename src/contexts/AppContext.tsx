@@ -100,8 +100,12 @@ interface CardActionsContextValue {
   addSubcategory: ReturnType<typeof useCards>["addSubcategory"];
   renameSubcategory: ReturnType<typeof useCards>["renameSubcategory"];
   deleteSubcategory: ReturnType<typeof useCards>["deleteSubcategory"];
+  addChapter: ReturnType<typeof useCards>["addChapter"];
+  renameChapter: ReturnType<typeof useCards>["renameChapter"];
+  deleteChapter: ReturnType<typeof useCards>["deleteChapter"];
   reorderCategories: ReturnType<typeof useCards>["reorderCategories"];
   reorderSubcategories: ReturnType<typeof useCards>["reorderSubcategories"];
+  reorderChapters: ReturnType<typeof useCards>["reorderChapters"];
   updateSRSettings: ReturnType<typeof useCards>["updateSRSettings"];
 }
 
@@ -260,7 +264,9 @@ function CardProvider({ children }: { children: ReactNode }) {
     importData: h.importData, importCards: h.importCards,
     addCategory: h.addCategory, renameCategory: h.renameCategory, deleteCategory: h.deleteCategory,
     addSubcategory: h.addSubcategory, renameSubcategory: h.renameSubcategory, deleteSubcategory: h.deleteSubcategory,
+    addChapter: h.addChapter, renameChapter: h.renameChapter, deleteChapter: h.deleteChapter,
     reorderCategories: h.reorderCategories, reorderSubcategories: h.reorderSubcategories,
+    reorderChapters: h.reorderChapters,
     updateSRSettings: h.updateSRSettings,
   };
 
