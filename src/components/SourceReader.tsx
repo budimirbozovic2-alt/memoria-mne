@@ -124,9 +124,9 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
     setHeadingMenu({ x: e.clientX, y: e.clientY, element: block as HTMLElement });
   }, [editMode, logic.contentRef]);
 
-  const handleSetHeading = useCallback(async (level: number | null) => {
-    if (!headingMenu) return;
-    const el = headingMenu.element;
+  const handleSetHeading = useCallback(async (level: number | null, targetEl?: HTMLElement) => {
+    const el = targetEl || headingMenu?.element;
+    if (!el) return;
     const container = logic.contentRef.current;
     setHeadingMenu(null);
     if (!container) return;
@@ -135,14 +135,12 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
     const currentTag = el.tagName.toLowerCase();
     const targetTag = level ? `h${level}` : "p";
 
-    if (currentTag === targetTag) return; // no change
+    if (currentTag === targetTag) return;
 
-    // Replace element in DOM
     const newEl = document.createElement(targetTag);
     newEl.textContent = text;
     el.replaceWith(newEl);
 
-    // Get updated HTML and save
     const { saveSource, extractOutline, injectHeadingIds } = await import("@/lib/sources-storage");
     const updatedHtml = injectHeadingIds(container.innerHTML);
     const outline = extractOutline(updatedHtml);
@@ -161,6 +159,100 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
     const { toast } = await import("sonner");
     toast.success(level ? `Postavljeno kao H${level}` : "Vraćeno na paragraf");
   }, [headingMenu, source, onSourceUpdated, logic.contentRef]);
+
+  const handleFormatAsList = useCallback(async (type: "ol" | "ul") => {
+    const container = logic.contentRef.current;
+    setHeadingMenu(null);
+    if (!container) return;
+
+    // Use current selection to find affected block elements
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+
+    const range = sel.getRangeAt(0);
+    // Collect all block-level elements in the range
+    const blocks: HTMLElement[] = [];
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, {
+      acceptNode(node) {
+        const el = node as HTMLElement;
+        const tag = el.tagName.toLowerCase();
+        if (["p", "div", "h1", "h2", "h3", "h4", "li"].includes(tag) && range.intersectsNode(el)) {
+          return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+      },
+    });
+    let node: Node | null;
+    while ((node = walker.nextNode())) blocks.push(node as HTMLElement);
+
+    if (blocks.length === 0) return;
+
+    const listEl = document.createElement(type);
+    blocks[0].before(listEl);
+    for (const block of blocks) {
+      const li = document.createElement("li");
+      li.innerHTML = block.innerHTML;
+      listEl.appendChild(li);
+      block.remove();
+    }
+
+    sel.removeAllRanges();
+    logic.setSelection?.(null);
+
+    const { saveSource, extractOutline, injectHeadingIds } = await import("@/lib/sources-storage");
+    const updatedHtml = injectHeadingIds(container.innerHTML);
+    const outline = extractOutline(updatedHtml);
+    const { parseArticles } = await import("@/lib/article-parser");
+    const articles = parseArticles(updatedHtml);
+
+    const updated: Source = {
+      ...source,
+      htmlContent: updatedHtml,
+      outline,
+      articles,
+      updatedAt: Date.now(),
+    };
+    await saveSource(updated);
+    onSourceUpdated?.(updated);
+    const { toast } = await import("sonner");
+    toast.success(type === "ol" ? "Pretvoreno u numerisanu listu" : "Pretvoreno u listu");
+  }, [source, onSourceUpdated, logic.contentRef]);
+
+  const handleFormatSelectionAs = useCallback(async (tag: "h1" | "h2" | "h3" | "p" | "ol" | "ul") => {
+    if (tag === "ol" || tag === "ul") {
+      await handleFormatAsList(tag);
+      return;
+    }
+    // For headings/paragraph: find block elements in selection range
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const container = logic.contentRef.current;
+    if (!container) return;
+
+    const range = sel.getRangeAt(0);
+    const blocks: HTMLElement[] = [];
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, {
+      acceptNode(node) {
+        const el = node as HTMLElement;
+        const t = el.tagName.toLowerCase();
+        if (["p", "div", "h1", "h2", "h3", "h4", "li"].includes(t) && range.intersectsNode(el)) {
+          return NodeFilter.FILTER_ACCEPT;
+        }
+        return NodeFilter.FILTER_SKIP;
+      },
+    });
+    let node: Node | null;
+    while ((node = walker.nextNode())) blocks.push(node as HTMLElement);
+
+    if (blocks.length === 0) return;
+
+    const level = tag === "p" ? null : parseInt(tag[1]);
+    for (const block of blocks) {
+      await handleSetHeading(level, block);
+    }
+    sel.removeAllRanges();
+    logic.setSelection?.(null);
+  }, [handleSetHeading, handleFormatAsList, logic.contentRef]);
 
   // Close heading menu on click elsewhere
   useEffect(() => {
