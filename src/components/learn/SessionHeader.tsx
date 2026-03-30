@@ -39,6 +39,8 @@ const SessionHeader = React.memo(function SessionHeader({
 }: Props) {
   const score = getCardScore(card);
   const isFlash = card.type === "flash";
+  const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
+  const catName = catRecord?.name ?? card.categoryId;
 
   return (
     <>
