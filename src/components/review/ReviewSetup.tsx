@@ -6,6 +6,7 @@ import SessionFilters from "@/components/SessionFilters";
 import { Button } from "@/components/ui/button";
 import OnboardingModal, { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { DueItem, ReviewMode, REVIEW_ONBOARDING_KEY, REVIEW_SLIDES } from "./review-constants";
+import type { CategoryRecord } from "@/lib/db";
 function HowItWorksCorner({ onShowOnboarding }: { onShowOnboarding: () => void }) {
   return (
     <div className="absolute top-0 right-0">
