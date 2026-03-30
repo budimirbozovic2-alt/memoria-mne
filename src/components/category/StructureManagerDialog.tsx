@@ -8,7 +8,7 @@ import {
   Plus, ChevronDown, ChevronRight, Edit2, Trash2, Check, X,
   ArrowUp, ArrowDown, FolderOpen, BookOpen, AlertTriangle,
 } from "lucide-react";
-import type { SubcategoryNode } from "@/lib/db";
+import type { SubcategoryNode, ChapterNode } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 interface StructureManagerDialogProps {
@@ -98,7 +98,7 @@ export default function StructureManagerDialog({
     const name = newChapterName.trim();
     if (!name) return;
     const node = sorted.find(s => s.name === subName);
-    if (node?.chapters.includes(name)) return;
+    if (node?.chapters.some(ch => ch.name === name)) return;
     onAddChapter(categoryId, subName, name);
     setNewChapterName("");
     setAddingChapterFor(null);
@@ -111,13 +111,13 @@ export default function StructureManagerDialog({
     setEditingChapter(null);
   }, [editChapterValue, categoryId, onRenameChapter]);
 
-  const handleMoveChapter = useCallback((subName: string, chapters: string[], index: number, dir: -1 | 1) => {
+  const handleMoveChapter = useCallback((subName: string, chapters: ChapterNode[], index: number, dir: -1 | 1) => {
     const newIdx = index + dir;
     if (newIdx < 0 || newIdx >= chapters.length) return;
     const reordered = [...chapters];
     const [item] = reordered.splice(index, 1);
     reordered.splice(newIdx, 0, item);
-    onReorderChapters(categoryId, subName, reordered);
+    onReorderChapters(categoryId, subName, reordered.map(ch => ch.name));
   }, [categoryId, onReorderChapters]);
 
   return (
@@ -156,8 +156,11 @@ export default function StructureManagerDialog({
         <div className="space-y-2">
           {sorted.map((node, idx) => {
             const isExpanded = expandedSubs.has(node.name);
+            const chapters: ChapterNode[] = (node.chapters || []).map((ch: any, ci: number) =>
+              typeof ch === "string" ? { id: crypto.randomUUID(), name: ch, sortOrder: ci } : ch
+            );
             return (
-              <Collapsible key={node.name} open={isExpanded} onOpenChange={() => toggleExpanded(node.name)}>
+              <Collapsible key={node.id || node.name} open={isExpanded} onOpenChange={() => toggleExpanded(node.name)}>
                 <div className="rounded-lg border bg-card overflow-hidden">
                   {/* Subcategory header */}
                   <div className="flex items-center gap-1.5 px-3 py-2">
@@ -177,7 +180,7 @@ export default function StructureManagerDialog({
                         )}
                       </button>
                     </CollapsibleTrigger>
-                    <Badge variant="secondary" className="text-[9px] h-4 px-1">{node.chapters.length} gl.</Badge>
+                    <Badge variant="secondary" className="text-[9px] h-4 px-1">{chapters.length} gl.</Badge>
                     <div className="flex items-center gap-0.5 shrink-0">
                       <button onClick={() => handleMoveSub(idx, -1)} disabled={idx === 0}
                         className="p-0.5 rounded hover:bg-secondary disabled:opacity-20"><ArrowUp className="h-3 w-3 text-muted-foreground" /></button>
@@ -192,28 +195,28 @@ export default function StructureManagerDialog({
 
                   <CollapsibleContent>
                     <div className="border-t px-3 py-2 space-y-1.5 bg-muted/20">
-                      {node.chapters.map((ch, chIdx) => (
-                        <div key={ch} className="flex items-center gap-1.5 group">
+                      {chapters.map((ch, chIdx) => (
+                        <div key={ch.id} className="flex items-center gap-1.5 group">
                           <BookOpen className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-                          {editingChapter?.sub === node.name && editingChapter?.ch === ch ? (
+                          {editingChapter?.sub === node.name && editingChapter?.ch === ch.name ? (
                             <div className="flex items-center gap-1 flex-1">
                               <Input value={editChapterValue} onChange={e => setEditChapterValue(e.target.value)}
                                 className="h-6 text-xs flex-1" autoFocus
-                                onKeyDown={e => { if (e.key === "Enter") handleRenameChapter(node.name, ch); if (e.key === "Escape") setEditingChapter(null); }} />
-                              <button onClick={() => handleRenameChapter(node.name, ch)} className="p-0.5 rounded hover:bg-secondary text-green-500"><Check className="h-3 w-3" /></button>
+                                onKeyDown={e => { if (e.key === "Enter") handleRenameChapter(node.name, ch.name); if (e.key === "Escape") setEditingChapter(null); }} />
+                              <button onClick={() => handleRenameChapter(node.name, ch.name)} className="p-0.5 rounded hover:bg-secondary text-green-500"><Check className="h-3 w-3" /></button>
                               <button onClick={() => setEditingChapter(null)} className="p-0.5 rounded hover:bg-secondary text-muted-foreground"><X className="h-3 w-3" /></button>
                             </div>
                           ) : (
                             <>
-                              <span className="text-xs text-foreground flex-1 truncate">{ch}</span>
+                              <span className="text-xs text-foreground flex-1 truncate">{ch.name}</span>
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleMoveChapter(node.name, node.chapters, chIdx, -1)} disabled={chIdx === 0}
+                                <button onClick={() => handleMoveChapter(node.name, chapters, chIdx, -1)} disabled={chIdx === 0}
                                   className="p-0.5 rounded hover:bg-secondary disabled:opacity-20"><ArrowUp className="h-2.5 w-2.5 text-muted-foreground" /></button>
-                                <button onClick={() => handleMoveChapter(node.name, node.chapters, chIdx, 1)} disabled={chIdx === node.chapters.length - 1}
+                                <button onClick={() => handleMoveChapter(node.name, chapters, chIdx, 1)} disabled={chIdx === chapters.length - 1}
                                   className="p-0.5 rounded hover:bg-secondary disabled:opacity-20"><ArrowDown className="h-2.5 w-2.5 text-muted-foreground" /></button>
-                                <button onClick={() => { setEditingChapter({ sub: node.name, ch }); setEditChapterValue(ch); }}
+                                <button onClick={() => { setEditingChapter({ sub: node.name, ch: ch.name }); setEditChapterValue(ch.name); }}
                                   className="p-0.5 rounded hover:bg-secondary"><Edit2 className="h-2.5 w-2.5 text-muted-foreground" /></button>
-                                <button onClick={() => confirmDeleteChapter(node.name, ch)}
+                                <button onClick={() => confirmDeleteChapter(node.name, ch.name)}
                                   className="p-0.5 rounded hover:bg-destructive/10"><Trash2 className="h-2.5 w-2.5 text-destructive" /></button>
                               </div>
                             </>

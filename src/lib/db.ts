@@ -6,9 +6,16 @@ import type { DisciplineEntry } from "./planner-storage";
 
 // ─── Database Schema ────────────────────────────────────
 
-export interface SubcategoryNode {
+export interface ChapterNode {
+  id: string;          // UUID
   name: string;
-  chapters: string[];
+  sortOrder: number;
+}
+
+export interface SubcategoryNode {
+  id: string;          // UUID
+  name: string;
+  chapters: ChapterNode[];
   sortOrder: number;
 }
 
@@ -150,6 +157,10 @@ class MemoriaDB extends Dexie {
     // v8: Add categoryId index to mindMaps for category-scoped gallery
     this.version(8).stores({
       mindMaps: "id, categoryId, title, updatedAt",
+    });
+    // v9: Add subcategoryId index to cards for UUID-based subcategory taxonomy
+    this.version(9).stores({
+      cards: "id, categoryId, subcategoryId, type, createdAt, sourceId, [categoryId+subcategoryId]",
     });
   }
 }

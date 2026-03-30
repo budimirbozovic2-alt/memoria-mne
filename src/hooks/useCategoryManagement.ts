@@ -1,9 +1,10 @@
 import { useCallback, MutableRefObject } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { db, idbLoadCategories, idbSaveCategories, type CategoryRecord, type SubcategoryNode } from "@/lib/db";
+import { db, idbLoadCategories, idbSaveCategories, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { toast } from "@/hooks/use-toast";
+import { optimisticCategoryUpdate } from "@/lib/category-service";
 
 interface UseCategoryManagementParams {
   setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
@@ -12,39 +13,23 @@ interface UseCategoryManagementParams {
   getCategoryRecords: () => { id: string; name: string }[];
 }
 
-// ─── Optimistic update with rollback ───
-async function optimisticCategoryUpdate(
-  setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>,
-  updater: (prev: CategoryRecord[]) => CategoryRecord[],
-  label: string
-) {
-  let rollbackSnapshot: CategoryRecord[] | null = null;
-  setCategoryRecords(prev => {
-    rollbackSnapshot = prev;
-    return updater(prev);
-  });
-  try {
-    const current = await idbLoadCategories();
-    const updated = updater(current);
-    await idbSaveCategories(updated);
-  } catch (e) {
-    console.error(`[${label}] IDB persist failed, rolling back`, e);
-    if (rollbackSnapshot) setCategoryRecords(rollbackSnapshot);
-    toast({ title: "Greška", description: "Promjena nije sačuvana.", variant: "destructive" });
+// ─── Helper: ensure a node has proper types ───
+function normalizeNode(s: any, i: number): SubcategoryNode {
+  if (typeof s === "string") {
+    return { id: crypto.randomUUID(), name: s, chapters: [], sortOrder: i };
   }
+  return {
+    id: s.id || crypto.randomUUID(),
+    name: s.name,
+    chapters: ((s.chapters || []) as any[]).map((ch: any, ci: number): ChapterNode =>
+      typeof ch === "string" ? { id: crypto.randomUUID(), name: ch, sortOrder: ci } : { id: ch.id || crypto.randomUUID(), name: ch.name, sortOrder: ch.sortOrder ?? ci }
+    ),
+    sortOrder: s.sortOrder ?? i,
+  };
 }
 
-// ─── Helper: read SubcategoryNode[] from IDB for a category ───
-async function getNodes(catId: string): Promise<SubcategoryNode[]> {
-  const rec = await db.categories.get(catId);
-  if (!rec) return [];
-  return (rec.subcategories || []).map((s: any) =>
-    typeof s === "string" ? { name: s, chapters: [], sortOrder: 0 } : s
-  );
-}
-
-async function saveNodes(catId: string, nodes: SubcategoryNode[]): Promise<void> {
-  await db.categories.update(catId, { subcategories: nodes });
+function getNodes(rec: CategoryRecord): SubcategoryNode[] {
+  return ((rec.subcategories || []) as any[]).map(normalizeNode);
 }
 
 export function useCategoryManagement({
@@ -85,7 +70,6 @@ export function useCategoryManagement({
       const fallbackId = remaining.length > 0 ? remaining[0].id : "";
       const now = Date.now();
 
-      // Remove from categoryRecords
       setCategoryRecords(prev => prev.filter(r => r.id !== categoryId));
 
       if (purgeCards) {
@@ -112,7 +96,7 @@ export function useCategoryManagement({
         const nextRef = { ...cardMapRef.current };
         for (const [id, c] of Object.entries(nextRef)) {
           if (c.categoryId === categoryId) {
-            const u = { ...c, categoryId: fallbackId, subcategory: "", updatedAt: now };
+            const u = { ...c, categoryId: fallbackId, subcategory: "", subcategoryId: "", updatedAt: now };
             nextRef[id] = u;
             changed.push(u);
           }
@@ -153,9 +137,9 @@ export function useCategoryManagement({
         setCategoryRecords,
         prev => prev.map(r => {
           if (r.id !== categoryId) return r;
-          const nodes = (r.subcategories || []) as SubcategoryNode[];
-          if (nodes.some(n => n.name === subcategory)) return r;
-          return { ...r, subcategories: [...nodes, { name: subcategory, chapters: [], sortOrder: nodes.length }] };
+          const nodes = getNodes(r);
+          if (nodes.some(n => n.name === subcategory)) return { ...r, subcategories: nodes };
+          return { ...r, subcategories: [...nodes, { id: crypto.randomUUID(), name: subcategory, chapters: [], sortOrder: nodes.length }] };
         }),
         "addSubcategory"
       );
@@ -165,18 +149,17 @@ export function useCategoryManagement({
 
   const renameSubcategory = useCallback(
     (categoryId: string, oldName: string, newName: string) => {
-      // Update categoryRecords with rollback
       optimisticCategoryUpdate(
         setCategoryRecords,
         prev => prev.map(r => {
           if (r.id !== categoryId) return r;
-          const nodes = (r.subcategories || []) as SubcategoryNode[];
-          if (nodes.some(n => n.name === newName)) return r;
+          const nodes = getNodes(r);
+          if (nodes.some(n => n.name === newName)) return { ...r, subcategories: nodes };
           return { ...r, subcategories: nodes.map(n => n.name === oldName ? { ...n, name: newName } : n) };
         }),
         "renameSubcategory"
       );
-      // Update cards
+      // Update cards that reference old name
       const now = Date.now();
       const changed: Card[] = [];
       const nextRef = { ...cardMapRef.current };
@@ -199,12 +182,11 @@ export function useCategoryManagement({
 
   const deleteSubcategory = useCallback(
     (categoryId: string, subcategory: string) => {
-      // Update categoryRecords with rollback
       optimisticCategoryUpdate(
         setCategoryRecords,
         prev => prev.map(r => {
           if (r.id !== categoryId) return r;
-          const nodes = (r.subcategories || []) as SubcategoryNode[];
+          const nodes = getNodes(r);
           return { ...r, subcategories: nodes.filter(n => n.name !== subcategory) };
         }),
         "deleteSubcategory"
@@ -215,7 +197,7 @@ export function useCategoryManagement({
       const nextRef = { ...cardMapRef.current };
       for (const [id, c] of Object.entries(nextRef)) {
         if (c.categoryId === categoryId && c.subcategory === subcategory) {
-          const u = { ...c, subcategory: "", chapter: "", updatedAt: now };
+          const u = { ...c, subcategory: "", subcategoryId: "", chapter: "", chapterId: "", updatedAt: now };
           nextRef[id] = u;
           changed.push(u);
         }
@@ -250,7 +232,7 @@ export function useCategoryManagement({
   }, [setCardMapState, cardMapRef]);
 
   // ═══════════════════════════════════════════════════════
-  // Chapter CRUD — now updates in-memory state immediately
+  // Chapter CRUD — now uses ChapterNode with UUID
   // ═══════════════════════════════════════════════════════
 
   const addChapter = useCallback((categoryId: string, subName: string, chapterName: string) => {
@@ -258,12 +240,14 @@ export function useCategoryManagement({
       setCategoryRecords,
       prev => prev.map(r => {
         if (r.id !== categoryId) return r;
-        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        const nodes = getNodes(r);
         return {
           ...r,
           subcategories: nodes.map(n => {
-            if (n.name !== subName || n.chapters.includes(chapterName)) return n;
-            return { ...n, chapters: [...n.chapters, chapterName] };
+            if (n.name !== subName) return n;
+            if (n.chapters.some(ch => ch.name === chapterName)) return n;
+            const newChapter: ChapterNode = { id: crypto.randomUUID(), name: chapterName, sortOrder: n.chapters.length };
+            return { ...n, chapters: [...n.chapters, newChapter] };
           }),
         };
       }),
@@ -289,17 +273,17 @@ export function useCategoryManagement({
       setCardMapState(() => nextRef);
       bumpMapVersion();
     }
-    // Update node with rollback
+    // Update node
     optimisticCategoryUpdate(
       setCategoryRecords,
       prev => prev.map(r => {
         if (r.id !== categoryId) return r;
-        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        const nodes = getNodes(r);
         return {
           ...r,
           subcategories: nodes.map(n => {
             if (n.name !== subName) return n;
-            return { ...n, chapters: n.chapters.map(ch => ch === oldChapter ? newChapter : ch) };
+            return { ...n, chapters: n.chapters.map(ch => ch.name === oldChapter ? { ...ch, name: newChapter } : ch) };
           }),
         };
       }),
@@ -314,7 +298,7 @@ export function useCategoryManagement({
     const nextRef = { ...cardMapRef.current };
     for (const [id, c] of Object.entries(nextRef)) {
       if (c.categoryId === categoryId && c.subcategory === subName && c.chapter === chapterName) {
-        const u = { ...c, chapter: "", updatedAt: now };
+        const u = { ...c, chapter: "", chapterId: "", updatedAt: now };
         nextRef[id] = u;
         changed.push(u);
       }
@@ -325,17 +309,17 @@ export function useCategoryManagement({
       setCardMapState(() => nextRef);
       bumpMapVersion();
     }
-    // Update node with rollback
+    // Update node
     optimisticCategoryUpdate(
       setCategoryRecords,
       prev => prev.map(r => {
         if (r.id !== categoryId) return r;
-        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        const nodes = getNodes(r);
         return {
           ...r,
           subcategories: nodes.map(n => {
             if (n.name !== subName) return n;
-            return { ...n, chapters: n.chapters.filter(ch => ch !== chapterName) };
+            return { ...n, chapters: n.chapters.filter(ch => ch.name !== chapterName) };
           }),
         };
       }),
@@ -348,11 +332,11 @@ export function useCategoryManagement({
       setCategoryRecords,
       prev => prev.map(r => {
         if (r.id !== categoryId) return r;
-        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        const nodes = getNodes(r);
         const nodeMap = new Map(nodes.map(n => [n.name, n]));
         const reordered = ordered.map((name, i) => {
           const n = nodeMap.get(name);
-          return n ? { ...n, sortOrder: i } : { name, chapters: [] as string[], sortOrder: i };
+          return n ? { ...n, sortOrder: i } : { id: crypto.randomUUID(), name, chapters: [] as ChapterNode[], sortOrder: i };
         });
         return { ...r, subcategories: reordered };
       }),
@@ -365,12 +349,18 @@ export function useCategoryManagement({
       setCategoryRecords,
       prev => prev.map(r => {
         if (r.id !== categoryId) return r;
-        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        const nodes = getNodes(r);
         return {
           ...r,
           subcategories: nodes.map(n => {
             if (n.name !== subName) return n;
-            return { ...n, chapters: ordered };
+            // Reorder by name, preserving ChapterNode objects
+            const chMap = new Map(n.chapters.map(ch => [ch.name, ch]));
+            const reordered = ordered.map((name, i) => {
+              const ch = chMap.get(name);
+              return ch ? { ...ch, sortOrder: i } : { id: crypto.randomUUID(), name, sortOrder: i };
+            });
+            return { ...n, chapters: reordered };
           }),
         };
       }),

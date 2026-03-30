@@ -131,10 +131,32 @@ export function useCardBootstrap(setters: BootSetters) {
         let needsPersist = false;
 
         for (const r of catRecords) {
-          // Migrate legacy string[] to SubcategoryNode[]
-          let nodes: SubcategoryNode[] = (r.subcategories || []).map((s: any, i: number) =>
-            typeof s === "string" ? { name: s, chapters: [], sortOrder: i } : s
-          );
+          // Migrate legacy string[] to SubcategoryNode[] with UUID
+          let nodes: SubcategoryNode[] = (r.subcategories || []).map((s: any, i: number) => {
+            if (typeof s === "string") {
+              needsPersist = true;
+              return { id: crypto.randomUUID(), name: s, chapters: [] as import("@/lib/db").ChapterNode[], sortOrder: i };
+            }
+            // Ensure node has id
+            const node: SubcategoryNode = {
+              id: s.id || crypto.randomUUID(),
+              name: s.name,
+              sortOrder: s.sortOrder ?? i,
+              chapters: ((s.chapters || []) as any[]).map((ch: any, ci: number): import("@/lib/db").ChapterNode => {
+                if (typeof ch === "string") {
+                  needsPersist = true;
+                  return { id: crypto.randomUUID(), name: ch, sortOrder: ci };
+                }
+                if (!ch.id) {
+                  needsPersist = true;
+                  return { ...ch, id: crypto.randomUUID(), sortOrder: ch.sortOrder ?? ci };
+                }
+                return ch;
+              }),
+            };
+            if (!s.id) needsPersist = true;
+            return node;
+          });
 
           // Scan cards belonging to this category for orphaned subcategories/chapters
           const catCards = c.filter((card) => card.categoryId === r.id);
@@ -145,13 +167,13 @@ export function useCardBootstrap(setters: BootSetters) {
 
             let node = nodes.find((n) => n.name === sub);
             if (!node) {
-              node = { name: sub, chapters: [], sortOrder: nodes.length };
+              node = { id: crypto.randomUUID(), name: sub, chapters: [], sortOrder: nodes.length };
               nodes.push(node);
               needsPersist = true;
               console.log(`[boot] fallback SubcategoryNode created: "${sub}" in category ${r.name}`);
             }
-            if (ch && !node.chapters.includes(ch)) {
-              node.chapters.push(ch);
+            if (ch && !node.chapters.some(c => c.name === ch)) {
+              node.chapters.push({ id: crypto.randomUUID(), name: ch, sortOrder: node.chapters.length });
               needsPersist = true;
               console.log(`[boot] fallback chapter registered: "${ch}" under "${sub}" in ${r.name}`);
             }
