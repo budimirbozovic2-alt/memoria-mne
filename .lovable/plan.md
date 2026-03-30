@@ -1,159 +1,135 @@
 
 
-# FAZA 1: Stabilizacija Temelja — Single Source of Truth & Service Layer
+# FAZA 2: UUID Taksonomija za Potkategorije i Glave
 
-## Rezime za korisnika
-Eliminišemo trostruko stanje kategorija, uvodimo pouzdane async operacije sa rollback-om, i popravljamo `addChapter` koji trenutno ne ažurira UI.
+## Rezime
+Prebacujemo identifikaciju potkategorija i glava sa mutable string naziva na UUID-ove. Kartice će čuvati `subcategoryId` i `chapterId` umjesto `subcategory` i `chapter` stringova. Tiha migracija pri boot-u mapira postojeće podatke bez gubitka.
 
----
-
-## Promjena 1: Konsolidacija category state-a (Finding #2)
-
-**Problem**: Trenutno postoje 3 paralelna stanja: `categories: string[]`, `categoryRecords: CategoryRecord[]`, `subcategories: Record<string, string[]>`. Svaka mutacija mora ručno sinhronizovati sva tri + IDB.
-
-**Rješenje**: `categoryRecords` postaje jedini kanonski state. Ostalo se derivira.
-
-### useCards.ts
-- **Ukloniti** `categories`, `setCategoriesState` i `subcategories`, `setSubcategoriesState`
-- **Zadržati** samo `categoryRecords`, `setCategoryRecordsState`
-- **Dodati** dva `useMemo` derivata:
-  ```ts
-  const categories = useMemo(() => 
-    categoryRecords.map(r => r.id), [categoryRecords]);
-  
-  const subcategories = useMemo(() => {
-    const map: Record<string, string[]> = {};
-    for (const r of categoryRecords) {
-      map[r.id] = (r.subcategories || []).map(n => 
-        typeof n === "string" ? n : n.name);
-    }
-    return map;
-  }, [categoryRecords]);
-  ```
-- **Ukloniti** `setCategories` wrapper (L87-107) i `setSubcategories` wrapper (L109-132) — više nisu potrebni
-- **Ukloniti** `reorderCategories` i `reorderSubcategories` inline funkcije (L262-304) — prebaciti u `useCategoryManagement`
-- Derived `useMemo` za `dueCards/stats/categoryStats` ostaje isti, samo zamijeni `categories` dependency sa `categoryRecords`
-
-### useCategoryManagement.ts — novi interfejs
-- Promijeniti parametre: umjesto `setCategories` + `setSubcategories`, prima `setCategoryRecords: Dispatch<SetStateAction<CategoryRecord[]>>`
-- Sve CRUD operacije (add/rename/delete/reorder za kategorije, podkategorije, glave) mutiraju `categoryRecords` state direktno + pišu u IDB
-- Primjer za `addCategory`:
-  ```ts
-  const addCategory = useCallback((name: string) => {
-    const newRec: CategoryRecord = { 
-      id: crypto.randomUUID(), name, sortOrder: 9999, subcategories: [] 
-    };
-    setCategoryRecords(prev => [...prev, newRec]);
-    // async persist (sa rollback-om — vidi Promjenu 2)
-  }, [setCategoryRecords]);
-  ```
-
-### useCardBootstrap.ts
-- Ukloniti `setCategoriesState` i `setSubcategoriesState` iz `BootSetters`
-- Zadržati samo `setCategoryRecordsState` za kategorije
-- Bootstrap i dalje čita iz IDB i postavlja `categoryRecords`
-
-### AppContext.tsx
-- `CardDataContextValue` zadržava `categories`, `categoryRecords`, `subcategories` — ali su sada derivirani, ne zasebni state-ovi
-- Nema promjena u interfejsu za potrošače (backward compatible)
+**Obim**: ~33 fajlova, ~500 linija promjena. Predlažem podjelu na 3 pod-faze radi stabilnosti.
 
 ---
 
-## Promjena 2: Async integritet sa rollback-om (Finding #3)
+## Pod-faza 2A: Schema + Service Layer + Migracija (Temelj)
 
-**Problem**: Fire-and-forget `(async () => { ... })()` pattern — ako IDB fail-uje, UI prikazuje promjenu koja ne postoji u bazi.
-
-**Rješenje**: Optimistički update sa rollback-om.
-
-### Helper funkcija u `useCategoryManagement.ts`
+### 1. Ažuriranje `SubcategoryNode` i dodavanje `ChapterNode` u `db.ts`
 ```ts
-async function optimisticCategoryUpdate(
-  setCategoryRecords: Dispatch<SetStateAction<CategoryRecord[]>>,
-  updater: (prev: CategoryRecord[]) => CategoryRecord[],
-  persist: (records: CategoryRecord[]) => Promise<void>,
-  label: string
-) {
-  let rollbackSnapshot: CategoryRecord[] | null = null;
-  setCategoryRecords(prev => {
-    rollbackSnapshot = prev;
-    return updater(prev);
-  });
-  try {
-    // Čitaj trenutni state iz IDB, primijeni istu transformaciju, snimi
-    const current = await idbLoadCategories();
-    const updated = updater(current);
-    await idbSaveCategories(updated);
-  } catch (e) {
-    console.error(`[${label}] IDB persist failed, rolling back`, e);
-    if (rollbackSnapshot) setCategoryRecords(rollbackSnapshot);
-    toast({ title: "Greška", description: "Promjena nije sačuvana.", variant: "destructive" });
-  }
+export interface SubcategoryNode {
+  id: string;          // UUID (NOVO)
+  name: string;
+  chapters: ChapterNode[];  // zamjena za string[]
+  sortOrder: number;
+}
+
+export interface ChapterNode {
+  id: string;          // UUID (NOVO)
+  name: string;
+  sortOrder: number;
 }
 ```
 
-Svaka CRUD operacija koristi ovaj helper umjesto fire-and-forget.
+### 2. Ažuriranje `Card` interfejsa u `spaced-repetition.ts`
+- Dodati `subcategoryId?: string` i `chapterId?: string`
+- Zadržati stare `subcategory` i `chapter` polja kao `@deprecated` tokom migracije — uklanjamo ih tek u pod-fazi 2C
+- `createCard()` i `createFlashCard()` primaju `subcategoryId` umjesto `subcategory`
 
----
+### 3. Kreiranje `src/lib/category-service.ts` — Oficir za vezu
+Centralni service layer koji:
+- Re-exportuje `optimisticCategoryUpdate` (premjesti iz `useCategoryManagement.ts`)
+- Sadrži helpere za UUID lookup:
+  ```ts
+  findSubcategoryById(records: CategoryRecord[], subId: string): SubcategoryNode | null
+  findChapterById(records: CategoryRecord[], chapId: string): ChapterNode | null
+  findSubcategoryByName(records: CategoryRecord[], catId: string, name: string): SubcategoryNode | null
+  getSubcategoryName(records: CategoryRecord[], subId: string): string
+  getChapterName(records: CategoryRecord[], chapId: string): string
+  ```
+- Ovi helperi eliminišu potrebu da 33 UI komponenti ručno pretražuju niz
 
-## Promjena 3: Fix addChapter — in-memory update (Finding #3, specifičan bug)
-
-**Problem**: `addChapter` (L248-260) samo piše u IDB, bez ažuriranja React state-a. UI ne prikazuje novi chapter do reload-a.
-
-**Rješenje**: Koristiti `optimisticCategoryUpdate` helper:
+### 4. IDB Schema bump (v9) u `db.ts`
 ```ts
-const addChapter = useCallback((categoryId, subName, chapterName) => {
-  optimisticCategoryUpdate(
-    setCategoryRecords,
-    records => records.map(r => {
-      if (r.id !== categoryId) return r;
-      return { ...r, subcategories: r.subcategories.map(n => {
-        if (n.name !== subName || n.chapters.includes(chapterName)) return n;
-        return { ...n, chapters: [...n.chapters, chapterName] };
-      })};
-    }),
-    async (updated) => {
-      const rec = updated.find(r => r.id === categoryId);
-      if (rec) await saveNodes(categoryId, rec.subcategories as SubcategoryNode[]);
-    },
-    "addChapter"
-  );
-}, [setCategoryRecords]);
+this.version(9).stores({
+  cards: "id, categoryId, subcategoryId, type, createdAt, sourceId, [categoryId+subcategoryId]",
+}).upgrade(tx => {
+  // Migracija se radi u useCardBootstrap, ne ovdje — samo schema indeksi
+});
 ```
 
+### 5. Tiha migracija u `useCardBootstrap.ts`
+Pri boot-u, nakon učitavanja `categoryRecords` i `cards`:
+1. Za svaki `SubcategoryNode` bez `id` polja: dodijeli `crypto.randomUUID()`
+2. Za svaki `chapter` string u `SubcategoryNode.chapters`: konvertuj u `ChapterNode { id, name, sortOrder }`
+3. Za svaku karticu sa `subcategory` (string) ali bez `subcategoryId`:
+   - Nađi odgovarajući `SubcategoryNode` po imenu unutar iste kategorije
+   - Postavi `card.subcategoryId = node.id`
+   - Isto za `chapter` → `chapterId`
+4. Persisti ažurirane `categoryRecords` i kartice nazad u IDB
+
+### 6. Ažuriranje `useCategoryManagement.ts`
+- `optimisticCategoryUpdate` premjestiti u `category-service.ts`, uvesti odatle
+- Svi CRUD-ovi (addSubcategory, renameSubcategory, deleteSubcategory, addChapter, renameChapter, deleteChapter) rade sa UUID-ovima
+- `addSubcategory` generira UUID za novi node
+- `addChapter` generira UUID za novi `ChapterNode`
+- `renameSubcategory` / `renameChapter`: O(1) — ažurira samo `name` polje u nodu, **ne dira kartice** (ovo je cijela poenta migracije!)
+- `deleteSubcategory` / `deleteChapter`: kartice dobijaju `subcategoryId: ""` / `chapterId: ""`
+
 ---
 
-## Promjena 4: Smanjenje useCards.ts (Finding #7)
+## Pod-faza 2B: Ažuriranje svih potrošača (UI komponente + hookovi)
 
-Nakon Promjene 1, useCards.ts gubi:
-- `setCategories` wrapper (~20 linija)
-- `setSubcategories` wrapper (~22 linija)
-- `reorderCategories` (~17 linija)
-- `reorderSubcategories` (~24 linija)
+Ovo je najobimniji dio. Svaka komponenta koja čita `card.subcategory` mora preći na `card.subcategoryId` + lookup ime iz `categoryRecords`.
 
-Ukupno ~83 linija manje. Hook pada sa ~354 na ~270 linija.
+### Hookovi
+| Fajl | Promjena |
+|------|----------|
+| `useCardCRUD.ts` | `addCard`/`updateCard` koriste `subcategoryId`/`chapterId` |
+| `useCardAnnotations.ts` | `bulkUpdateChapter` koristi `chapterId`/`chapterOrder` |
+| `useChapterManagement.ts` | Prelazi na `chapterId` |
+| `useCardImport.ts` | Migracija importovanih kartica (stari format → UUID) |
+| `useCardExport.ts` | Export uključuje i `subcategoryId`/`chapterId` |
 
-`reorderCategories` i `reorderSubcategories` se prebacuju u `useCategoryManagement` jer sada direktno mutiraju `categoryRecords`.
+### Komponente (ključne)
+| Fajl | Promjena |
+|------|----------|
+| `CardForm.tsx` + `MetadataSection.tsx` | Dropdown koristi UUID, prikazuje name |
+| `CardList.tsx` | Prikaz: lookup ime iz categoryRecords |
+| `SessionFilters.tsx` | Filter po subcategoryId |
+| `LearnSession.tsx` | Sort po subcategoryId, hronološki sort lookup |
+| `CategoryView.tsx` | Filter/grupiranje po UUID |
+| `CardViewMode.tsx` + `CardOrgMode.tsx` | Grupiranje po UUID, drag-drop sa UUID |
+| `MentalSkeleton.tsx` + `ChapterBox.tsx` | UUID za filtriranje i sortiranje |
+| `KnowledgeMap` komponente | Statistike po UUID |
+| `MonumentInterior.tsx` | Forum drill-down po UUID |
+| `MnemonicWorkshop.tsx` + `MnemonicTest.tsx` | Filter po UUID |
+| `SpeedReader.tsx` | Filter po UUID |
+| `SessionHeader.tsx` | Prikaz imena iz lookup-a |
+| `CardContextMenu.tsx` | Move-to koristi UUID |
+
+### Context
+| Fajl | Promjena |
+|------|----------|
+| `AppContext.tsx` | `subcategories` derivat: `Record<string, {id: string, name: string}[]>` umjesto `Record<string, string[]>` |
 
 ---
 
-## Fajlovi koji se mijenjaju
+## Pod-faza 2C: Čišćenje + Planner fix
 
-| Fajl | Promjena | ~Linija |
-|------|----------|---------|
-| `src/hooks/useCards.ts` | Ukloni 3 state-a, dodaj 2 useMemo, ukloni inline wrappere | -83, +15 |
-| `src/hooks/useCategoryManagement.ts` | Novi interfejs (setCategoryRecords), rollback helper, fix addChapter, preuzmi reorder | -30, +60 |
-| `src/hooks/useCardBootstrap.ts` | Ukloni setCategoriesState/setSubcategoriesState iz BootSetters | -8, +2 |
-| `src/hooks/useCardImport.ts` | Prilagodi interfejs (setCategoryRecords umjesto setCategories+setSubcategories) | ~10 |
-| `src/contexts/AppContext.tsx` | Bez promjena interfejsa — derivirani `categories`/`subcategories` se i dalje proslijeđuju | ~5 |
+- Ukloniti `@deprecated` polja `subcategory` i `chapter` sa `Card` interfejsa
+- Potvrditi da `StudyPhase.categories` koristi UUID-ove (već koristi — dodati JSDoc komentar)
+- Ukloniti legacy fallback logiku iz bootstrap-a
+
+---
 
 ## Guardrails
-- FSRS logika: netaknuta
-- UUID kategorija: netaknut — ovo je refaktoring oko njega, ne zamjena
+- FSRS logika: **netaknuta** — `Section`, `reviewSection`, `getCardScore` ne zavise od subcategory/chapter
+- UUID kategorija: **netaknut** — ovo proširuje isti pattern na niži nivo hijerarhije
 - Ready Guard: svi `if (!ready)` ostaju
-- Backward compatibility: svi potrošači i dalje dobijaju `categories: string[]` i `subcategories: Record<string,string[]>` kroz context — samo je izvor podataka sada deriviran umjesto zasebnog state-a
+- Backward compatibility za export: stari JSON format (sa `subcategory` string) se i dalje može importovati — migracija u `useCardImport`
+- `chapterOrder` ostaje na kartici (sortiranje unutar glave)
 
-## Scope
-- 5 fajlova, ~180 linija promjena
-- Nema IDB schema promjena
-- Nema novih zavisnosti
+## Procjena
+- Pod-faza 2A: ~150 linija (5 fajlova) — može u jednom koraku
+- Pod-faza 2B: ~300 linija (20+ fajlova) — treba 2-3 koraka
+- Pod-faza 2C: ~30 linija (2 fajla) — trivijalno
+
+Predlažem da krenemo sa **Pod-fazom 2A** prvo, pa nakon potvrde čistog builda nastavimo sa 2B.
 
