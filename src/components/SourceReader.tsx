@@ -114,15 +114,15 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
   const [headingMenu, setHeadingMenu] = useState<{ x: number; y: number; element: HTMLElement } | null>(null);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (!editMode) return; // context menu only in edit mode
     const target = e.target as HTMLElement;
-    const block = target.closest("p, h1, h2, h3, h4");
+    const block = target.closest("p, h1, h2, h3, h4, li, ol, ul, div");
     if (!block) return;
-    // Only allow within the content area
     const container = logic.contentRef.current;
     if (!container || !container.contains(block)) return;
     e.preventDefault();
     setHeadingMenu({ x: e.clientX, y: e.clientY, element: block as HTMLElement });
-  }, [logic.contentRef]);
+  }, [editMode, logic.contentRef]);
 
   const handleSetHeading = useCallback(async (level: number | null) => {
     if (!headingMenu) return;
