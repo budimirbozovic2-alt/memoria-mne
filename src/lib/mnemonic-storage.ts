@@ -9,7 +9,7 @@ export interface MnemonicCard {
   originalCardId: string;  // reference to original card
   question: string;
   sections: { title: string; content: string }[];
-  category: string;
+  categoryId: string;
   subcategory?: string;
   tags?: string[];          // cloned from original card
   hookType: HookType;       // auto-detected or manual
