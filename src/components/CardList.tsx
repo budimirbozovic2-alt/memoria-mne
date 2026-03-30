@@ -435,6 +435,7 @@ export default function CardList({
                 onAssignChapter={onAssignChapter}
                 onCloneToMnemonic={onCloneToMnemonic}
                 onAddKeyPart={onAddKeyPart}
+                catNameMap={catNameMap}
               />
             </div>
           </div>
