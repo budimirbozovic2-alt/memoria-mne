@@ -53,6 +53,7 @@ export default function EditPage() {
         onCancel={handleCancel}
         editCard={editingCard}
         onUpdate={handleUpdate}
+        onSplit={handleSplit}
       />
     </ErrorBoundary>
   );
