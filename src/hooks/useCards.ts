@@ -83,20 +83,20 @@ export function useCards() {
   }, []);
 
   // Save categories: convert string[] names to CategoryRecord[] for IDB
+  // categories is now UUID[] — setCategories updates order/presence by UUID
   const setCategories = useCallback((updater: (prev: string[]) => string[]) => {
     setCategoriesState(prev => {
       const next = updater(prev);
       if (next !== prev) {
-        // Async save: load existing records, update names/order
         (async () => {
           try {
             const existing = await idbLoadCategories();
-            const byName = new Map(existing.map(c => [c.name, c]));
-            const records: CategoryRecord[] = next.map((name, i) => {
-              const rec = byName.get(name);
+            const byId = new Map(existing.map(c => [c.id, c]));
+            const records: CategoryRecord[] = next.map((id, i) => {
+              const rec = byId.get(id);
               return rec
                 ? { ...rec, sortOrder: i }
-                : { id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] };
+                : { id, name: id, sortOrder: i, subcategories: [] };
             });
             await idbSaveCategories(records);
           } catch (e) { console.error("[useCards] category save failed", e); }
@@ -116,7 +116,7 @@ export function useCards() {
             const existing = await idbLoadCategories();
             const updated = existing.map(cat => ({
               ...cat,
-              subcategories: next[cat.name] || [],
+              subcategories: next[cat.id] || [],
             }));
             await idbSaveCategories(updated);
           } catch (e) { console.error("[useCards] subcategory save failed", e); }

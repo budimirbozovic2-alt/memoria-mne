@@ -127,11 +127,11 @@ export function useCardBootstrap(setters: BootSetters) {
         // Load CategoryRecord[] from IDB, seed defaults if empty
         const catRecords = await withTimeout(seedDefaultCategories(), 2500, "categories load", []);
         console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
-        const catNames = catRecords.map((r: CategoryRecord) => r.name);
-        // Build subcategories map from CategoryRecord.subcategories
+        const catNames = catRecords.map((r: CategoryRecord) => r.id);
+        // Build subcategories map from CategoryRecord.subcategories — keyed by UUID
         const subsMap: Record<string, string[]> = {};
         catRecords.forEach((r: CategoryRecord) => {
-          if (r.subcategories && r.subcategories.length > 0) subsMap[r.name] = r.subcategories;
+          if (r.subcategories && r.subcategories.length > 0) subsMap[r.id] = r.subcategories;
         });
 
         splashProgress(65, "Učitavanje kategorija…");

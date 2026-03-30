@@ -1,5 +1,6 @@
 import { Card } from "@/lib/spaced-repetition";
 import { LearnMode, LearnCardProgress, ReviewLogEntry } from "@/lib/storage";
+import type { CategoryRecord } from "@/lib/db";
 
 export type { LearnCardProgress };
 
@@ -40,6 +41,7 @@ export const GRADE_COLORS = [
 export interface LearnSessionProps {
   cards: Card[];
   categories: string[];
+  categoryRecords: CategoryRecord[];
   subcategories: Record<string, string[]>;
   onMarkRead: (id: string) => void;
   onReviewSection: (cardId: string, sectionId: string, grade: number) => void;

@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, type Source } from "@/lib/db";
 import { saveSource, invalidateSourcesCache } from "@/lib/sources-storage";
 import type { Card } from "@/lib/spaced-repetition";
-import { useCardActions } from "@/contexts/AppContext";
+import { useCardActions, useUIContext } from "@/contexts/AppContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -48,6 +48,7 @@ export default function CategoryView() {
   ) ?? 0;
 
   const { addCard, addFlashCard, patchCard, toggleTag, addSubcategory, renameSubcategory, deleteSubcategory, deleteCard, bulkFlagNeedsReview } = useCardActions();
+  const { setEditingCard } = useUIContext();
 
   const [orgMode, setOrgMode] = useState(false);
 
@@ -180,7 +181,7 @@ export default function CategoryView() {
               addCard={addCard}
               addFlashCard={addFlashCard}
               onDelete={deleteCard}
-              onEdit={(card) => navigate(`/edit/${card.id}`)}
+              onEdit={(card) => { setEditingCard(card); navigate('/edit'); }}
             />
           )}
         </TabsContent>
