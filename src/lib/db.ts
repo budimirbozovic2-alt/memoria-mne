@@ -158,6 +158,10 @@ class MemoriaDB extends Dexie {
     this.version(8).stores({
       mindMaps: "id, categoryId, title, updatedAt",
     });
+    // v9: Add subcategoryId index to cards for UUID-based subcategory taxonomy
+    this.version(9).stores({
+      cards: "id, categoryId, subcategoryId, type, createdAt, sourceId, [categoryId+subcategoryId]",
+    });
   }
 }
 
