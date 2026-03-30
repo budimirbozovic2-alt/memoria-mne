@@ -36,6 +36,12 @@ export default function EditPage() {
     navigateBack();
   };
 
+  const handleSplit = (id: string) => {
+    splitCard(id);
+    setEditingCard(null);
+    navigateBack();
+  };
+
   return (
     <ErrorBoundary label="Uredi karticu" onNavigateHome={() => setView("dashboard")}>
       <CardForm
