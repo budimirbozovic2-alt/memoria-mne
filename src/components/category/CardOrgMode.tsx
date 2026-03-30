@@ -166,6 +166,9 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
           return { sub: node.subcategory, chapter: ch.chapter };
         }
       }
+      if (node.unassigned.some(c => c.id === cardId)) {
+        return { sub: node.subcategory, chapter: "" };
+      }
     }
     return null;
   }, [tree]);
