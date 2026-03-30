@@ -1,42 +1,43 @@
 
 
-# Targeted Fixes — Only What's Actually Missing
+# Mnemonic Module UUID Migration & Cache Sync
 
-## Findings
+## Confirmed Problems
 
-| File | Claim | Verdict |
-|------|-------|---------|
-| `useCardBootstrap.ts` | `bumpMapVersion()` deleted | **TRUE** — must add |
-| `CategoryView.tsx` | Infinite loading fix deleted | **TRUE** — `undefined` ambiguity exists |
-| `CategoryView.tsx` | Edit navigation deleted | **FALSE** — already fixed (line 184) |
-| `LearnPage.tsx` | Ready guard deleted | **FALSE** — exists (lines 45-52) |
-| `ReviewPage.tsx` | Ready guard deleted | **FALSE** — exists (lines 46-53) |
+1. **`MnemonicCard.category` stores UUID** (callers pass `card.categoryId`), but Workshop filters display raw UUIDs and compare by UUID — so filter pills show UUIDs instead of human names
+2. **No react-query invalidation** when `TextSelectionTooltip` writes to localStorage — Workshop shows stale data until page reload
+3. **Interface field named `category`** should be `categoryId` for consistency with rest of codebase
 
-## Plan: Apply only the 2 real fixes
+## Changes
 
-### Fix 1: `src/hooks/useCardBootstrap.ts`
-- Add `bumpMapVersion` to the import from `@/lib/persist-queue` (line 4)
-- Add `bumpMapVersion();` call after `setCardMapState(arrayToMap(c));` (after line 152)
+### 1. `src/lib/mnemonic-storage.ts`
+- Rename `category: string` → `categoryId: string` in `MnemonicCard` interface
+- In `loadMnemonicCards()` migration block, add: `categoryId: c.categoryId || (c as any).category`
+- Update `createMnemonicCard` and `createMnemonicCardFromSelection` parameter names and return objects
 
-### Fix 2: `src/views/CategoryView.tsx`
-- Change `useLiveQuery` for category (lines 28-31) to return `null` explicitly when record not found:
-```ts
-const category = useLiveQuery(
-  async () => {
-    if (!categoryId) return null;
-    const cat = await db.categories.get(categoryId);
-    return cat || null;
-  },
-  [categoryId]
-);
-```
-- Update the loading check (line 110) to `category === undefined` (stays same — means "still loading")
-- The `!category` check (line 118) now correctly catches `null` (not found)
+### 2. `src/components/TextSelectionTooltip.tsx`
+- After `saveMnemonicCards(...)`, invalidate the react-query cache:
+  - Import `useQueryClient` from `@tanstack/react-query`
+  - Call `qc.invalidateQueries({ queryKey: ["mnemonicCards"] })` after save
+- This is the sync fix — Workshop picks up new cards immediately
 
-### NOT applying LearnPage/ReviewPage changes
-The user's proposed code adds `cards, reviewLog, session` to useEffect dependency arrays. The current code intentionally uses `eslint-disable-next-line` to run `startSession` only once when `ready` flips. Adding unstable references to deps would cause repeated session restarts on every card mutation. The existing code is correct.
+### 3. `src/components/MnemonicWorkshop.tsx`
+- Accept new prop: `categoryRecords?: CategoryRecord[]`
+- Build `idToName` map: `Object.fromEntries(categoryRecords.map(r => [r.id, r.name]))`
+- Category tree keys stay as UUIDs (they already are), but display `idToName[cat] ?? cat` in filter pills
+- Filter comparison stays `c.categoryId === selectedCategory` (UUID match — correct)
+- Sort by category uses `idToName` for display name comparison
+
+### 4. `src/components/MnemonicModule.tsx`
+- Import `useCardContext` to get `categoryRecords`
+- Pass `categoryRecords` to `<MnemonicWorkshop>`
+- All `c.category` references → `c.categoryId`
+
+### 5. `src/components/MnemonicTest.tsx` + `src/components/workshop/WorkshopCardItem.tsx`
+- Update any `card.category` references → `card.categoryId`
 
 ## Scope
-- 2 files, ~5 lines changed
-- No schema, FSRS, or context changes
+- 6 files, ~40 lines changed
+- No IDB schema changes, no FSRS changes, no context provider changes
+- localStorage format: backward-compatible via migration in `loadMnemonicCards`
 
