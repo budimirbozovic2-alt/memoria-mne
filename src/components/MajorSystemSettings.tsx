@@ -13,6 +13,7 @@ export default function MajorSystemSettings() {
 
   const handleSave = () => {
     saveMajorSystem(system);
+    toast.success("Izmjene sačuvane");
   };
 
   const handleReset = () => {
