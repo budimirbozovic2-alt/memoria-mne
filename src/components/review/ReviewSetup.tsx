@@ -36,7 +36,7 @@ interface ReviewSetupProps {
 }
 
 export default function ReviewSetup({
-  dueCards, allCards, subcategories, srSettings,
+  dueCards, allCards, categoryRecords, subcategories, srSettings,
   onSelectMode, onBack, savedSession, onResumeSession, onClearSavedSession,
   preSelectedCategory,
 }: ReviewSetupProps) {
