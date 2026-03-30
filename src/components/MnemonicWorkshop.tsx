@@ -68,7 +68,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
         case "status":
           return statusOrder[a.mnemonicStatus] - statusOrder[b.mnemonicStatus];
         case "category":
-          return a.category.localeCompare(b.category) || (a.subcategory || "").localeCompare(b.subcategory || "");
+          return (idToName[a.categoryId] ?? a.categoryId).localeCompare(idToName[b.categoryId] ?? b.categoryId) || (a.subcategory || "").localeCompare(b.subcategory || "");
         case "success": {
           const aRate = a.testCount > 0 ? a.successCount / a.testCount : -1;
           const bRate = b.testCount > 0 ? b.successCount / b.testCount : -1;
