@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useCallback, useMemo, useRef } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { db, type Source } from "@/lib/db";
+import { db, type Source, type SubcategoryNode } from "@/lib/db";
 import { saveSource, invalidateSourcesCache } from "@/lib/sources-storage";
 import type { Card } from "@/lib/spaced-repetition";
 import { useCardActions, useUIContext } from "@/contexts/AppContext";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText, Plus, Upload, Loader2, Eye, Pencil, GitBranch } from "lucide-react";
+import { BookOpen, FileText, Plus, Upload, Loader2, Eye, Pencil, GitBranch, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { parseArticles } from "@/lib/article-parser";
@@ -20,6 +20,7 @@ import SourceReader from "@/components/SourceReader";
 import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import CategoryMindMaps from "@/components/category/CategoryMindMaps";
+import StructureManagerDialog from "@/components/category/StructureManagerDialog";
 
 export default function CategoryView() {
   const { categoryId } = useParams<{ categoryId: string }>();
