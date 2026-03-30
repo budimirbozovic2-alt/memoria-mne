@@ -85,27 +85,13 @@ const MetadataSection = memo(function MetadataSection({
       {/* Subcategory */}
       <div className="space-y-1.5">
         <label className="text-sm font-medium text-muted-foreground">Podkategorija (opciono)</label>
-        {!showNewSub ? (
-          <div className="flex gap-2">
-            <Select value={subcategory || "__none__"} onValueChange={(v) => setSubcategory(v === "__none__" ? "" : v)}>
-              <SelectTrigger className="bg-background"><SelectValue placeholder="Bez podkategorije" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Bez podkategorije</SelectItem>
-                {availableSubs.map((sc) => <SelectItem key={sc} value={sc}>{sc}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            <Button type="button" variant="outline" size="icon" onClick={() => setShowNewSub(true)}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex gap-2">
-            <Input value={newSubcategory} onChange={(e) => setNewSubcategory(e.target.value)} placeholder="Nova podkategorija..." className="bg-background" />
-            <Button type="button" variant="outline" size="icon" onClick={() => { setShowNewSub(false); if (newSubcategory.trim()) setSubcategory(newSubcategory.trim()); }}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        <Select value={subcategory || "__none__"} onValueChange={(v) => setSubcategory(v === "__none__" ? "" : v)}>
+          <SelectTrigger className="bg-background"><SelectValue placeholder="Bez podkategorije" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">Bez podkategorije</SelectItem>
+            {availableSubs.map((sc) => <SelectItem key={sc} value={sc}>{sc}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Chapter */}
