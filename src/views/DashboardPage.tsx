@@ -9,7 +9,7 @@ import { AnimatePresence } from "framer-motion";
 const DashboardOnboarding = lazy(() => import("@/components/DashboardOnboarding"));
 
 export default function DashboardPage() {
-  const { cards, stats, categoryStats, categories, subcategories, reviewLog, srSettings } = useCardContext();
+  const { cards, stats, categoryStats, categories, subcategories, reviewLog, srSettings, ready } = useCardContext();
   const { setView } = useUIContext();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -17,6 +17,15 @@ export default function DashboardPage() {
     const lastUsed = localStorage.getItem("sr-last-source-label");
     return lastUsed || (cards.some(c => c.sourceId) ? "Izvor" : null);
   }, [cards]);
+
+  if (!ready) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Učitavanje kontrolne table...</p>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary label="Dashboard" onNavigateHome={() => setView("dashboard")}>
