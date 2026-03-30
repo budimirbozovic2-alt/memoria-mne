@@ -167,7 +167,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
               Svi ({allTestable.length})
             </button>
             {Object.entries(categoryTree).map(([cat, subs]) => {
-              const count = allTestable.filter(c => c.category === cat).length;
+              const count = allTestable.filter(c => c.categoryId === cat).length;
               return (
                 <button
                   key={cat}
