@@ -13,6 +13,11 @@ export default function DashboardPage() {
   const { setView } = useUIContext();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  const lastSourceLabel = useMemo(() => {
+    const lastUsed = localStorage.getItem("sr-last-source-label");
+    return lastUsed || (cards.some(c => c.sourceId) ? "Izvor" : null);
+  }, [cards]);
+
   if (!ready) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -21,11 +26,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const lastSourceLabel = useMemo(() => {
-    const lastUsed = localStorage.getItem("sr-last-source-label");
-    return lastUsed || (cards.some(c => c.sourceId) ? "Izvor" : null);
-  }, [cards]);
 
   return (
     <ErrorBoundary label="Dashboard" onNavigateHome={() => setView("dashboard")}>
