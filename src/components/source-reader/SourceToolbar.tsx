@@ -97,21 +97,34 @@ export const SourceToolbar = memo(function SourceToolbar({
       </div>
 
       <Button
-        variant={examOpen ? "default" : "outline"}
+        variant={editMode ? "default" : "outline"}
         size="sm"
-        onClick={() => setExamOpen(!examOpen)}
+        onClick={() => setEditMode(!editMode)}
         className="gap-1.5"
-        title="Ispitna pitanja sidebar (M)"
+        title="Režim uređivanja"
       >
-        <FileQuestion className="h-3.5 w-3.5" />
-        {examOpen ? "Zatvori pitanja" : "Pitanja"}
-        <kbd className="hidden sm:inline text-[9px] opacity-60 ml-0.5">M</kbd>
-        {pendingCount > 0 && (
-          <Badge variant="secondary" className="text-[10px] h-4 min-w-4 px-1">
-            {pendingCount}
-          </Badge>
-        )}
+        <Pencil className="h-3.5 w-3.5" />
+        {editMode ? "Uređivanje" : "Uredi"}
       </Button>
+
+      {!editMode && (
+        <Button
+          variant={examOpen ? "default" : "outline"}
+          size="sm"
+          onClick={() => setExamOpen(!examOpen)}
+          className="gap-1.5"
+          title="Ispitna pitanja sidebar (M)"
+        >
+          <FileQuestion className="h-3.5 w-3.5" />
+          {examOpen ? "Zatvori pitanja" : "Pitanja"}
+          <kbd className="hidden sm:inline text-[9px] opacity-60 ml-0.5">M</kbd>
+          {pendingCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] h-4 min-w-4 px-1">
+              {pendingCount}
+            </Badge>
+          )}
+        </Button>
+      )}
 
       <Button variant="outline" size="sm" onClick={() => setOutlineOpen(!outlineOpen)} className="gap-1.5">
         {outlineOpen ? <X className="h-3.5 w-3.5" /> : <List className="h-3.5 w-3.5" />}
