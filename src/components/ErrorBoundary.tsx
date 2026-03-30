@@ -72,7 +72,9 @@ export class ErrorBoundary extends Component<Props, State> {
       // Derive subcategories from CategoryRecords
       const subcategories: Record<string, string[]> = {};
       categories.forEach(r => {
-        if (r.subcategories && r.subcategories.length > 0) subcategories[r.name] = r.subcategories;
+        if (r.subcategories && r.subcategories.length > 0) {
+          subcategories[r.name] = r.subcategories.map((s: any) => typeof s === "string" ? s : s.name);
+        }
       });
 
       const backup = {

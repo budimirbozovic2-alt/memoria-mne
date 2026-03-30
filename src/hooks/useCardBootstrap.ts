@@ -129,9 +129,12 @@ export function useCardBootstrap(setters: BootSetters) {
         console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
         const catNames = catRecords.map((r: CategoryRecord) => r.id);
         // Build subcategories map from CategoryRecord.subcategories — keyed by UUID
+        // Supports both legacy string[] and new SubcategoryNode[] format
         const subsMap: Record<string, string[]> = {};
         catRecords.forEach((r: CategoryRecord) => {
-          if (r.subcategories && r.subcategories.length > 0) subsMap[r.id] = r.subcategories;
+          if (r.subcategories && r.subcategories.length > 0) {
+            subsMap[r.id] = r.subcategories.map((s: any) => typeof s === "string" ? s : s.name);
+          }
         });
 
         splashProgress(65, "Učitavanje kategorija…");
