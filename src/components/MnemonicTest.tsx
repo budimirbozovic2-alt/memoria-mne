@@ -33,8 +33,8 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
   const categoryTree = useMemo(() => {
     const tree: Record<string, Set<string>> = {};
     allTestable.forEach(c => {
-      if (!tree[c.category]) tree[c.category] = new Set();
-      if (c.subcategory) tree[c.category].add(c.subcategory);
+      if (!tree[c.categoryId]) tree[c.categoryId] = new Set();
+      if (c.subcategory) tree[c.categoryId].add(c.subcategory);
     });
     return tree;
   }, [allTestable]);
