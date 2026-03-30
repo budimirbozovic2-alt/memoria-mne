@@ -158,6 +158,22 @@ export default function SpeedReader() {
     return m;
   }, [categoryRecords]);
 
+  // Content source toggle
+  const [contentSource, setContentSource] = useState<ContentSource>("cards");
+
+  // Sources
+  const [allSources, setAllSources] = useState<Source[]>([]);
+  const [selSource, setSelSource] = useState<Source | null>(null);
+
+  useEffect(() => {
+    loadSources().then(setAllSources);
+  }, []);
+
+  const filteredSources = useMemo(() => {
+    if (!selCat) return allSources;
+    return allSources.filter(s => s.categoryId === selCat);
+  }, [allSources, selCat]);
+
   // Filters
   const [selCat, setSelCat] = useState<string | null>(null);
   const [selSub, setSelSub] = useState<string | null>(null);
