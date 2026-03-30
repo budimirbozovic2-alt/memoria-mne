@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
+import type { CategoryRecord, SubcategoryNode } from "@/lib/db";
 import { Card } from "@/lib/spaced-repetition";
 import { toast } from "sonner";
 
