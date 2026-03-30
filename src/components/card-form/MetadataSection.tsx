@@ -94,30 +94,19 @@ const MetadataSection = memo(function MetadataSection({
         </Select>
       </div>
 
-      {/* Chapter */}
-      {cardType === "essay" && (subcategory || (showNewSub && newSubcategory.trim())) && (
+      {/* Chapter — cascading: only when subcategory selected */}
+      {cardType === "essay" && subcategory && (
         <div className="space-y-1.5">
           <label className="text-sm font-medium text-muted-foreground">Glava (opciono)</label>
-          {!showNewChapter ? (
-            <div className="flex gap-2">
-              <Select value={chapter || "__none__"} onValueChange={(v) => setChapter(v === "__none__" ? "" : v)}>
-                <SelectTrigger className="bg-background"><SelectValue placeholder="Bez glave" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Bez glave</SelectItem>
-                  {availableChapters.map((ch) => <SelectItem key={ch} value={ch}>{ch}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button type="button" variant="outline" size="icon" onClick={() => setShowNewChapter(true)}>
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Input value={newChapter} onChange={(e) => setNewChapter(e.target.value)} placeholder="Nova glava (npr. Glava 1)..." className="bg-background" />
-              <Button type="button" variant="outline" size="icon" onClick={() => { setShowNewChapter(false); if (newChapter.trim()) setChapter(newChapter.trim()); }}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+          <Select value={chapter || "__none__"} onValueChange={(v) => setChapter(v === "__none__" ? "" : v)}>
+            <SelectTrigger className="bg-background"><SelectValue placeholder="Bez glave" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">Bez glave</SelectItem>
+              {availableChapters.map((ch) => <SelectItem key={ch} value={ch}>{ch}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {availableChapters.length === 0 && (
+            <p className="text-[10px] text-muted-foreground/60">Koristite "Struktura" dugme u prikazu kategorije za dodavanje glava.</p>
           )}
         </div>
       )}
