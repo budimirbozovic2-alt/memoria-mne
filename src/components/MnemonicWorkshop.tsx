@@ -1,7 +1,7 @@
 import { Brain, Wrench, FolderOpen, Search, Sparkles, ArrowUpDown, CheckCircle2 } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { MnemonicCard, MnemonicStatus, loadMajorSystem } from "@/lib/mnemonic-storage";
-
+import { type CategoryRecord } from "@/lib/db";
 
 import InfoPanel from "@/components/InfoPanel";
 import WorkshopCardItem from "@/components/workshop/WorkshopCardItem";
@@ -12,6 +12,7 @@ interface Props {
   cards: MnemonicCard[];
   onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
   onDeleteCard: (id: string) => void;
+  categoryRecords?: CategoryRecord[];
 }
 
 const STATUS_FILTERS: { value: MnemonicStatus | "all"; label: string; icon: typeof Sparkles }[] = [
