@@ -258,7 +258,7 @@ function CardProvider({ children }: { children: ReactNode }) {
     reviewSection: h.reviewSection,
     markRead: h.markRead, toggleTag: h.toggleTag, addKeyPart: h.addKeyPart,
     bulkFlagNeedsReview: h.bulkFlagNeedsReview, bulkUpdateSubcategory: h.bulkUpdateSubcategory,
-    bulkUpdateChapter: h.bulkUpdateChapter, reorderCards: h.reorderCards,
+    bulkUpdateChapter: h.bulkUpdateChapter,
     logError: h.logError, clearErrorLog: h.clearErrorLog,
     exportData: h.exportData, exportTemplate: h.exportTemplate,
     importData: h.importData, importCards: h.importCards,
