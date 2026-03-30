@@ -42,7 +42,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="imperial-title">Laboratorija znanja</h2>
+            <h2 className="imperial-title">Statistika</h2>
             <p className="text-muted-foreground mt-1">FSRS analitika, grafikoni i kvantitativni podaci</p>
           </div>
           <InfoPanel title="Kako radi Laboratorija znanja?">

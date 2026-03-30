@@ -84,7 +84,8 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
         {!parsed ? (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Zalijepite tekst u formatu <code className="bg-muted px-1 rounded">Pitanje;Odgovor</code> — jedan par po redu.
+              Format 1: <code className="bg-muted px-1 rounded">Pitanje;Odgovor</code> — jedan par po redu.<br/>
+              Format 2: Pitanje u prvom redu, odgovor u sljedećim redovima, prazan red razdvaja parove.
             </p>
             <Textarea
               value={raw}

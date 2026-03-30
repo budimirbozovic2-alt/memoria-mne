@@ -22,8 +22,8 @@ export default function RomanForumPage() {
   const deferredCards = useDeferredValue(cards);
 
   const forumState = useMemo(
-    () => calculateForumState(deferredCards, reviewLog, sources),
-    [deferredCards, reviewLog, sources],
+    () => calculateForumState(deferredCards, reviewLog, sources, categoryRecords),
+    [deferredCards, reviewLog, sources, categoryRecords],
   );
 
   const selectedMonument = selectedCategory

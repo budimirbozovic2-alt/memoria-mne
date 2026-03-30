@@ -262,6 +262,7 @@ export function calculateForumState(
     grandTotalSections += result.totalSections;
     grandTotalReview += result.reviewSections;
     m.buildingType = monumentTypes[cat] || "insula";
+    m.categoryName = uuidToName[cat] || cat;
 
     // Add source breakdown using source.title directly
     if (sourceMap.size > 0) {
