@@ -77,6 +77,57 @@ function buildSegments(selectedCards: Card[]): { segments: Segment[]; wordEntrie
   return { segments, wordEntries };
 }
 
+/** Build segments from a Source's HTML content, splitting by headings */
+function buildSourceSegments(source: Source): { segments: Segment[]; wordEntries: WordEntry[] } {
+  const segments: Segment[] = [];
+  const wordEntries: WordEntry[] = [];
+  const html = source.htmlContent || "";
+  if (!html) return { segments, wordEntries };
+
+  // Split HTML by headings to create logical sections
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(DOMPurify.sanitize(html), "text/html");
+  const children = Array.from(doc.body.children);
+
+  let currentTitle = source.title;
+  let currentContent: string[] = [];
+
+  const flush = () => {
+    const text = currentContent.join(" ").trim();
+    if (!text) return;
+    const titleWords = currentTitle.split(/\s+/).filter(Boolean);
+    const contentWords = text.split(/\s+/).filter(Boolean);
+    if (titleWords.length === 0 && contentWords.length === 0) return;
+    const segIdx = segments.length;
+    const globalStart = wordEntries.length;
+    titleWords.forEach(w => wordEntries.push({ text: w, isTitle: true, segmentIdx: segIdx }));
+    contentWords.forEach(w => wordEntries.push({ text: w, isTitle: false, segmentIdx: segIdx }));
+    segments.push({
+      cardQuestion: source.title,
+      sectionTitle: currentTitle,
+      cardIndex: 0,
+      sectionIndex: segIdx,
+      words: [...titleWords, ...contentWords],
+      globalStartIdx: globalStart,
+    });
+  };
+
+  for (const el of children) {
+    const tag = el.tagName;
+    if (/^H[1-4]$/.test(tag)) {
+      flush();
+      currentTitle = el.textContent?.trim() || "Sekcija";
+      currentContent = [];
+    } else {
+      const t = el.textContent?.trim();
+      if (t) currentContent.push(t);
+    }
+  }
+  flush();
+
+  return { segments, wordEntries };
+}
+
 function getActiveSegment(segments: Segment[], wordIdx: number): Segment | null {
   for (let i = segments.length - 1; i >= 0; i--) {
     if (wordIdx >= segments[i].globalStartIdx) return segments[i];
@@ -84,16 +135,19 @@ function getActiveSegment(segments: Segment[], wordIdx: number): Segment | null 
   return segments[0] || null;
 }
 
+type ContentSource = "cards" | "sources";
+
 const SPEED_READER_INFO = (
   <div className="space-y-3 text-sm">
     <div className="flex items-start gap-2"><Layers className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Čitaj podkategoriju</strong><p className="text-muted-foreground">Sve kartice se spajaju u kontinuirani tok teksta.</p></div></div>
+    <div className="flex items-start gap-2"><BookMarked className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Čitaj izvor</strong><p className="text-muted-foreground">Kompletni zakonski tekst ili dokument u speed reader formatu.</p></div></div>
     <div className="flex items-start gap-2"><Eye className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Highlighting</strong><p className="text-muted-foreground">Trenutna riječ se ističe u zadanom tempu (WPM).</p></div></div>
     <div className="flex items-start gap-2"><Volume2 className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Glasovno praćenje</strong><p className="text-muted-foreground">Uključi 🔊 za TTS čitanje naglas sa sinhronizovanim praćenjem teksta.</p></div></div>
     <div className="flex items-start gap-2"><Gauge className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" /><div><strong>Brzina</strong><p className="text-muted-foreground">WPM za vizuelno, ili brzina govora za TTS.</p></div></div>
   </div>
 );
 
-type ReadMode = "subcategory" | "card";
+type ReadMode = "subcategory" | "card" | "source";
 
 export default function SpeedReader() {
   const { cards, categories, subcategories, categoryRecords } = useAppContext();
