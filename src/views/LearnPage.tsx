@@ -47,6 +47,7 @@ export default function LearnPage() {
       <LearnSession
         cards={cards}
         categories={categories}
+        categoryRecords={categoryRecords}
         subcategories={subcategories}
         onMarkRead={handleMarkRead}
         onReviewSection={handleReviewSection}

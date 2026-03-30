@@ -62,7 +62,7 @@ export default function FilterSetup({
       </div>
 
       <SessionFilters
-        layoutPrefix="learn" cards={cards} categories={categories} subcategories={subcategories}
+        layoutPrefix="learn" cards={cards} categories={categories} categoryRecords={categoryRecords} subcategories={subcategories}
         selectedCategory={selectedCategory} selectedSubcategory={selectedSubcategory} selectedChapter={selectedChapter}
         filterExamFrequent={filterExamFrequent} examFrequentCount={examFrequentCount} filterType={filterType}
         onSelectCategory={onSelectCategory}
