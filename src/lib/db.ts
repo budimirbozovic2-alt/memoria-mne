@@ -6,9 +6,16 @@ import type { DisciplineEntry } from "./planner-storage";
 
 // ─── Database Schema ────────────────────────────────────
 
-export interface SubcategoryNode {
+export interface ChapterNode {
+  id: string;          // UUID
   name: string;
-  chapters: string[];
+  sortOrder: number;
+}
+
+export interface SubcategoryNode {
+  id: string;          // UUID
+  name: string;
+  chapters: ChapterNode[];
   sortOrder: number;
 }
 

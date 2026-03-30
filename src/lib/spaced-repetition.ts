@@ -67,9 +67,13 @@ export interface Card {
   id: string;
   question: string;
   sections: Section[];
-  categoryId: string;        // FK → categories.id (was `category: string`)
+  categoryId: string;        // FK → categories.id
+  /** @deprecated Use subcategoryId instead */
   subcategory?: string;
+  /** @deprecated Use chapterId instead */
   chapter?: string;
+  subcategoryId?: string;    // FK → SubcategoryNode.id (UUID)
+  chapterId?: string;        // FK → ChapterNode.id (UUID)
   chapterOrder?: number;
   createdAt: number;
   updatedAt?: number;
