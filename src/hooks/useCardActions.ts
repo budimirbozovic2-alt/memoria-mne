@@ -135,19 +135,19 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
     });
   }, [editCard?.sourceId]);
 
-  // ── Load available chapters ───────────────────────────
-  const [availableChapters, setAvailableChapters] = useState<string[]>([]);
-  useEffect(() => {
+  // ── Load available chapters from SubcategoryNode tree ──
+  const availableChapters = useMemo(() => {
     const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory;
     const cat = showNewCat && newCategory.trim() ? newCategory.trim() : category;
-    if (!sub) { setAvailableChapters([]); return; }
-    const key = `chapters-${cat}-${sub}`;
-    import("@/lib/db").then(({ idbLoadSettings }) => {
-      idbLoadSettings<string[]>(key, []).then(chapters => {
-        setAvailableChapters(Array.from(new Set(chapters)));
-      });
-    });
-  }, [category, subcategory, showNewCat, newCategory, showNewSub, newSubcategory]);
+    if (!sub || !cat || !categoryRecords) return [];
+    const catRec = categoryRecords.find(r => r.id === cat);
+    if (!catRec) return [];
+    const nodes: SubcategoryNode[] = (catRec.subcategories as any[] || []).map((s: any) =>
+      typeof s === "string" ? { name: s, chapters: [], sortOrder: 0 } : s
+    );
+    const node = nodes.find(n => n.name === sub);
+    return node?.chapters || [];
+  }, [category, subcategory, showNewCat, newCategory, showNewSub, newSubcategory, categoryRecords]);
 
   // ── Section actions ───────────────────────────────────
   const addSection = useCallback(() => {
