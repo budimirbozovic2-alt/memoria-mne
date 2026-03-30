@@ -193,7 +193,6 @@ export function useCardAnnotations({
     clearErrorLog,
     addKeyPart,
     bulkFlagNeedsReview,
-    reorderCards,
     bulkUpdateChapter,
   };
 }

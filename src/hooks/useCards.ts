@@ -330,7 +330,7 @@ export function useCards() {
     bulkFlagNeedsReview,
     bulkUpdateSubcategory,
     bulkUpdateChapter,
-    reorderCards,
+    
     logError,
     clearErrorLog,
     exportData,
