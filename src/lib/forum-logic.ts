@@ -100,7 +100,7 @@ function buildMonument(category: string, cards: Card[]): MonumentResult {
   if (cards.length === 0) {
     return {
       monument: {
-        category, totalCards: 0, masteredCards: 0, mastery: 0,
+        category, categoryName: category, totalCards: 0, masteredCards: 0, mastery: 0,
         material: "foundation", avgStability: 0, avgDifficulty: 5,
         leechCount: 0, crumbling: false, buildingType: "insula",
       },
