@@ -197,7 +197,6 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
     }
 
     sel.removeAllRanges();
-    logic.setSelection?.(null);
 
     const { saveSource, extractOutline, injectHeadingIds } = await import("@/lib/sources-storage");
     const updatedHtml = injectHeadingIds(container.innerHTML);
