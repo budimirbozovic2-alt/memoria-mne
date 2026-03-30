@@ -69,6 +69,8 @@ export default function CategoryView() {
   const [readerSource, setReaderSource] = useState<Source | null>(null);
   const [editorSource, setEditorSource] = useState<Source | null>(null);
   const [importing, setImporting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Source | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSourceUpdated = useCallback(() => {
