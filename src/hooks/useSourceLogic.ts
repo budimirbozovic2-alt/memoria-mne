@@ -103,7 +103,7 @@ export function useSourceLogic(source: Source) {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
       if (e.key === "s" || e.key === "S") {
-        if (selection) { e.preventDefault(); handleConvertToEssay(); }
+        if (selection && !editModeRef.current) { e.preventDefault(); handleConvertToEssay(); }
       } else if (e.key === "m" || e.key === "M") {
         e.preventDefault();
         setExamOpen(prev => !prev);
