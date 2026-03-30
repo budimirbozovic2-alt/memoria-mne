@@ -250,7 +250,7 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
       await handleSetHeading(level, block);
     }
     sel.removeAllRanges();
-    logic.setSelection?.(null);
+    
   }, [handleSetHeading, handleFormatAsList, logic.contentRef]);
 
   // Close heading menu on click elsewhere
