@@ -116,7 +116,7 @@ export function useCards() {
             const existing = await idbLoadCategories();
             const updated = existing.map(cat => ({
               ...cat,
-              subcategories: next[cat.name] || [],
+              subcategories: next[cat.id] || [],
             }));
             await idbSaveCategories(updated);
           } catch (e) { console.error("[useCards] subcategory save failed", e); }

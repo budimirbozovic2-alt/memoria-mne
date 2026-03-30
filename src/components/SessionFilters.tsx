@@ -31,6 +31,7 @@ export default function SessionFilters({
   layoutPrefix,
   cards,
   categories,
+  categoryRecords,
   subcategories,
   selectedCategory,
   selectedSubcategory,
@@ -44,6 +45,8 @@ export default function SessionFilters({
   onToggleExamFrequent,
   onFilterTypeChange,
 }: SessionFiltersProps) {
+  // Helper to resolve UUID → display name
+  const catName = (id: string) => categoryRecords?.find(r => r.id === id)?.name ?? id;
   const availableSubs = selectedCategory ? (subcategories[selectedCategory] || []) : [];
 
   const chaptersInSub = useMemo(() => {
