@@ -234,7 +234,7 @@ export function useSourceLogic(source: Source) {
     splitSummaryOpen, setSplitSummaryOpen, splitResult, setSplitResult,
     splitDone, splitCreatedCount, splitParentName, setSplitParentName,
     splitModules, setSplitModules, examOpen, setExamOpen, examQuestions, setExamQuestions,
-    linkModalOpen, setLinkModalOpen, linkSelectedText,
+    linkModalOpen, setLinkModalOpen, linkSelectedText, editModeRef,
     coverage, safeHtml, linkedCount, cards, categories,
     handleMouseUp, handleConvertToEssay, handleSmartSplitConfirm, handleCreateEssay,
     scrollToHeading, handleMapSelection, handleLinkToExisting, handleLinkConfirm,
