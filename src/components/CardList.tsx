@@ -251,6 +251,8 @@ export default function CardList({
   const listRef = useRef<any>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const allCats = useLiveQuery(() => db.categories.toArray(), []);
+  const catNameMap = useMemo(() => Object.fromEntries((allCats ?? []).map(r => [r.id, r.name])), [allCats]);
 
   const filtered = useMemo(() => {
     let result = filterCategory ? cards.filter(c => c.categoryId === filterCategory) : cards;
