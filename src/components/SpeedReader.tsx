@@ -158,6 +158,11 @@ export default function SpeedReader() {
     return m;
   }, [categoryRecords]);
 
+  // Filters
+  const [selCat, setSelCat] = useState<string | null>(null);
+  const [selSub, setSelSub] = useState<string | null>(null);
+  const [readMode, setReadMode] = useState<ReadMode>("subcategory");
+
   // Content source toggle
   const [contentSource, setContentSource] = useState<ContentSource>("cards");
 
@@ -173,11 +178,6 @@ export default function SpeedReader() {
     if (!selCat) return allSources;
     return allSources.filter(s => s.categoryId === selCat);
   }, [allSources, selCat]);
-
-  // Filters
-  const [selCat, setSelCat] = useState<string | null>(null);
-  const [selSub, setSelSub] = useState<string | null>(null);
-  const [readMode, setReadMode] = useState<ReadMode>("subcategory");
 
   // For single-card mode
   const [selCard, setSelCard] = useState<Card | null>(null);
