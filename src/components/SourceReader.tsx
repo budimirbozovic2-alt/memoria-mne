@@ -209,11 +209,47 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
           </div>
         )}
 
-        <div className={cn("flex-1 min-w-0 relative mx-auto px-6", WIDTH_CLASSES[readerWidth])}>
+        <div className={cn("flex-1 min-w-0 relative mx-auto px-6", WIDTH_CLASSES[readerWidth])} onContextMenu={handleContextMenu}>
           {isCoverage ? (
             <CoverageArticleList source={source} cards={logic.cards} onOpenCard={handleOpenCoveredCard} />
           ) : (
             <SourceContent html={logic.safeHtml} onMouseUp={logic.handleMouseUp} contentRef={logic.contentRef} />
+          )}
+
+          {/* Heading context menu */}
+          {headingMenu && (
+            <div
+              className="fixed z-[100] rounded-lg border bg-popover shadow-lg p-1 min-w-[180px] animate-in fade-in-0 zoom-in-95"
+              style={{ left: headingMenu.x, top: headingMenu.y }}
+              onClick={e => e.stopPropagation()}
+            >
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground px-2 py-1">Postavi kao</p>
+              {[
+                { level: 1, label: "Naslov 1 (H1)", icon: <Heading1 className="h-4 w-4" /> },
+                { level: 2, label: "Naslov 2 (H2)", icon: <Heading2 className="h-4 w-4" /> },
+                { level: 3, label: "Naslov 3 (H3)", icon: <Heading3 className="h-4 w-4" /> },
+                { level: null, label: "Paragraf (Normalan)", icon: <Type className="h-4 w-4" /> },
+              ].map(opt => {
+                const currentTag = headingMenu.element.tagName.toLowerCase();
+                const isActive = opt.level ? currentTag === `h${opt.level}` : currentTag === "p";
+                return (
+                  <button
+                    key={opt.level ?? "p"}
+                    onClick={() => handleSetHeading(opt.level)}
+                    className={cn(
+                      "flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded-md transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-foreground hover:bg-secondary"
+                    )}
+                  >
+                    {opt.icon}
+                    {opt.label}
+                    {isActive && <span className="ml-auto text-[10px] text-primary">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           {!isCoverage && logic.selection && (
