@@ -1,16 +1,37 @@
 import { useCallback, MutableRefObject } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { db, type SubcategoryNode } from "@/lib/db";
+import { db, idbLoadCategories, idbSaveCategories, type CategoryRecord, type SubcategoryNode } from "@/lib/db";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { toast } from "@/hooks/use-toast";
 
 interface UseCategoryManagementParams {
-  setCategories: (updater: (prev: string[]) => string[]) => void;
-  setSubcategories: (updater: (prev: Record<string, string[]>) => Record<string, string[]>) => void;
+  setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   cardMapRef: MutableRefObject<CardMap>;
   getCategoryRecords: () => { id: string; name: string }[];
+}
+
+// ─── Optimistic update with rollback ───
+async function optimisticCategoryUpdate(
+  setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>,
+  updater: (prev: CategoryRecord[]) => CategoryRecord[],
+  label: string
+) {
+  let rollbackSnapshot: CategoryRecord[] | null = null;
+  setCategoryRecords(prev => {
+    rollbackSnapshot = prev;
+    return updater(prev);
+  });
+  try {
+    const current = await idbLoadCategories();
+    const updated = updater(current);
+    await idbSaveCategories(updated);
+  } catch (e) {
+    console.error(`[${label}] IDB persist failed, rolling back`, e);
+    if (rollbackSnapshot) setCategoryRecords(rollbackSnapshot);
+    toast({ title: "Greška", description: "Promjena nije sačuvana.", variant: "destructive" });
+  }
 }
 
 // ─── Helper: read SubcategoryNode[] from IDB for a category ───
@@ -27,8 +48,7 @@ async function saveNodes(catId: string, nodes: SubcategoryNode[]): Promise<void>
 }
 
 export function useCategoryManagement({
-  setCategories,
-  setSubcategories,
+  setCategoryRecords,
   setCardMapState,
   cardMapRef,
   getCategoryRecords,
@@ -36,43 +56,37 @@ export function useCategoryManagement({
   const addCategory = useCallback(
     (name: string) => {
       const newId = crypto.randomUUID();
-      (async () => {
-        try {
-          await db.categories.add({ id: newId, name, sortOrder: 9999, subcategories: [] });
-        } catch (e) { console.error("[addCategory] IDB add failed", e); }
-      })();
-      setCategories((prev) => prev.includes(newId) ? prev : [...prev, newId]);
+      const newRec: CategoryRecord = { id: newId, name, sortOrder: 9999, subcategories: [] };
+      optimisticCategoryUpdate(
+        setCategoryRecords,
+        prev => prev.some(r => r.id === newId) ? prev : [...prev, newRec],
+        "addCategory"
+      );
     },
-    [setCategories],
+    [setCategoryRecords],
   );
 
   const renameCategory = useCallback(
     (categoryId: string, newName: string) => {
-      (async () => {
-        try {
-          const record = await db.categories.get(categoryId);
-          if (record) {
-            await db.categories.update(categoryId, { name: newName });
-          }
-          // Sources already use UUID as categoryId — no migration needed
-          invalidateSourcesCache();
-        } catch (err) {
-          console.error("[renameCategory] failed", err);
-          toast({ title: "Greška pri preimenovanju", description: "Pokušajte ponovo.", variant: "destructive" });
-        }
-      })();
+      optimisticCategoryUpdate(
+        setCategoryRecords,
+        prev => prev.map(r => r.id === categoryId ? { ...r, name: newName } : r),
+        "renameCategory"
+      );
+      invalidateSourcesCache();
     },
-    [],
+    [setCategoryRecords],
   );
 
   const deleteCategory = useCallback(
     (categoryId: string, purgeCards = false) => {
-      setCategories((prev) => prev.filter((c) => c !== categoryId));
-
       const records = getCategoryRecords();
       const remaining = records.filter(r => r.id !== categoryId);
       const fallbackId = remaining.length > 0 ? remaining[0].id : "";
       const now = Date.now();
+
+      // Remove from categoryRecords
+      setCategoryRecords(prev => prev.filter(r => r.id !== categoryId));
 
       if (purgeCards) {
         const toDelete: string[] = [];
@@ -111,12 +125,6 @@ export function useCategoryManagement({
         }
       }
 
-      setSubcategories((prev) => {
-        const next = { ...prev };
-        delete next[categoryId];
-        return next;
-      });
-
       (async () => {
         try {
           if (purgeCards) {
@@ -132,39 +140,43 @@ export function useCategoryManagement({
         }
       })();
     },
-    [setCategories, setCardMapState, setSubcategories, cardMapRef, getCategoryRecords],
+    [setCategoryRecords, setCardMapState, cardMapRef, getCategoryRecords],
   );
 
   // ═══════════════════════════════════════════════════════
-  // Subcategory CRUD — persists SubcategoryNode[] to IDB
+  // Subcategory CRUD
   // ═══════════════════════════════════════════════════════
 
   const addSubcategory = useCallback(
     (categoryId: string, subcategory: string) => {
-      setSubcategories((prev) => {
-        const list = prev[categoryId] || [];
-        if (list.includes(subcategory)) return prev;
-        return { ...prev, [categoryId]: [...list, subcategory] };
-      });
-      (async () => {
-        try {
-          const nodes = await getNodes(categoryId);
-          if (nodes.some(n => n.name === subcategory)) return;
-          nodes.push({ name: subcategory, chapters: [], sortOrder: nodes.length });
-          await saveNodes(categoryId, nodes);
-        } catch (e) { console.error("[addSubcategory] IDB failed", e); }
-      })();
+      optimisticCategoryUpdate(
+        setCategoryRecords,
+        prev => prev.map(r => {
+          if (r.id !== categoryId) return r;
+          const nodes = (r.subcategories || []) as SubcategoryNode[];
+          if (nodes.some(n => n.name === subcategory)) return r;
+          return { ...r, subcategories: [...nodes, { name: subcategory, chapters: [], sortOrder: nodes.length }] };
+        }),
+        "addSubcategory"
+      );
     },
-    [setSubcategories],
+    [setCategoryRecords],
   );
 
   const renameSubcategory = useCallback(
     (categoryId: string, oldName: string, newName: string) => {
-      setSubcategories((prev) => {
-        const list = prev[categoryId] || [];
-        if (list.includes(newName)) return prev;
-        return { ...prev, [categoryId]: list.map((s) => (s === oldName ? newName : s)) };
-      });
+      // Update categoryRecords with rollback
+      optimisticCategoryUpdate(
+        setCategoryRecords,
+        prev => prev.map(r => {
+          if (r.id !== categoryId) return r;
+          const nodes = (r.subcategories || []) as SubcategoryNode[];
+          if (nodes.some(n => n.name === newName)) return r;
+          return { ...r, subcategories: nodes.map(n => n.name === oldName ? { ...n, name: newName } : n) };
+        }),
+        "renameSubcategory"
+      );
+      // Update cards
       const now = Date.now();
       const changed: Card[] = [];
       const nextRef = { ...cardMapRef.current };
@@ -181,20 +193,22 @@ export function useCategoryManagement({
         setCardMapState(() => nextRef);
         bumpMapVersion();
       }
-      (async () => {
-        try {
-          const nodes = await getNodes(categoryId);
-          const updated = nodes.map(n => n.name === oldName ? { ...n, name: newName } : n);
-          await saveNodes(categoryId, updated);
-        } catch (e) { console.error("[renameSubcategory] IDB failed", e); }
-      })();
     },
-    [setSubcategories, setCardMapState, cardMapRef],
+    [setCategoryRecords, setCardMapState, cardMapRef],
   );
 
   const deleteSubcategory = useCallback(
     (categoryId: string, subcategory: string) => {
-      setSubcategories((prev) => ({ ...prev, [categoryId]: (prev[categoryId] || []).filter((s) => s !== subcategory) }));
+      // Update categoryRecords with rollback
+      optimisticCategoryUpdate(
+        setCategoryRecords,
+        prev => prev.map(r => {
+          if (r.id !== categoryId) return r;
+          const nodes = (r.subcategories || []) as SubcategoryNode[];
+          return { ...r, subcategories: nodes.filter(n => n.name !== subcategory) };
+        }),
+        "deleteSubcategory"
+      );
       // Non-destructive: move cards to uncategorized
       const now = Date.now();
       const changed: Card[] = [];
@@ -212,14 +226,8 @@ export function useCategoryManagement({
         setCardMapState(() => nextRef);
         bumpMapVersion();
       }
-      (async () => {
-        try {
-          const nodes = await getNodes(categoryId);
-          await saveNodes(categoryId, nodes.filter(n => n.name !== subcategory));
-        } catch (e) { console.error("[deleteSubcategory] IDB failed", e); }
-      })();
     },
-    [setSubcategories, setCardMapState, cardMapRef],
+    [setCategoryRecords, setCardMapState, cardMapRef],
   );
 
   const bulkUpdateSubcategory = useCallback((ids: string[], subcategory: string) => {
@@ -242,22 +250,26 @@ export function useCategoryManagement({
   }, [setCardMapState, cardMapRef]);
 
   // ═══════════════════════════════════════════════════════
-  // Chapter CRUD — operates on SubcategoryNode.chapters
+  // Chapter CRUD — now updates in-memory state immediately
   // ═══════════════════════════════════════════════════════
 
   const addChapter = useCallback((categoryId: string, subName: string, chapterName: string) => {
-    (async () => {
-      try {
-        const nodes = await getNodes(categoryId);
-        const updated = nodes.map(n => {
-          if (n.name !== subName) return n;
-          if (n.chapters.includes(chapterName)) return n;
-          return { ...n, chapters: [...n.chapters, chapterName] };
-        });
-        await saveNodes(categoryId, updated);
-      } catch (e) { console.error("[addChapter] IDB failed", e); }
-    })();
-  }, []);
+    optimisticCategoryUpdate(
+      setCategoryRecords,
+      prev => prev.map(r => {
+        if (r.id !== categoryId) return r;
+        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        return {
+          ...r,
+          subcategories: nodes.map(n => {
+            if (n.name !== subName || n.chapters.includes(chapterName)) return n;
+            return { ...n, chapters: [...n.chapters, chapterName] };
+          }),
+        };
+      }),
+      "addChapter"
+    );
+  }, [setCategoryRecords]);
 
   const renameChapter = useCallback((categoryId: string, subName: string, oldChapter: string, newChapter: string) => {
     // Update cards
@@ -277,18 +289,23 @@ export function useCategoryManagement({
       setCardMapState(() => nextRef);
       bumpMapVersion();
     }
-    // Update node
-    (async () => {
-      try {
-        const nodes = await getNodes(categoryId);
-        const updated = nodes.map(n => {
-          if (n.name !== subName) return n;
-          return { ...n, chapters: n.chapters.map(ch => ch === oldChapter ? newChapter : ch) };
-        });
-        await saveNodes(categoryId, updated);
-      } catch (e) { console.error("[renameChapter] IDB failed", e); }
-    })();
-  }, [setCardMapState, cardMapRef]);
+    // Update node with rollback
+    optimisticCategoryUpdate(
+      setCategoryRecords,
+      prev => prev.map(r => {
+        if (r.id !== categoryId) return r;
+        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        return {
+          ...r,
+          subcategories: nodes.map(n => {
+            if (n.name !== subName) return n;
+            return { ...n, chapters: n.chapters.map(ch => ch === oldChapter ? newChapter : ch) };
+          }),
+        };
+      }),
+      "renameChapter"
+    );
+  }, [setCategoryRecords, setCardMapState, cardMapRef]);
 
   const deleteChapter = useCallback((categoryId: string, subName: string, chapterName: string) => {
     // Non-destructive: move cards to chapter=""
@@ -308,45 +325,73 @@ export function useCategoryManagement({
       setCardMapState(() => nextRef);
       bumpMapVersion();
     }
-    (async () => {
-      try {
-        const nodes = await getNodes(categoryId);
-        const updated = nodes.map(n => {
-          if (n.name !== subName) return n;
-          return { ...n, chapters: n.chapters.filter(ch => ch !== chapterName) };
-        });
-        await saveNodes(categoryId, updated);
-      } catch (e) { console.error("[deleteChapter] IDB failed", e); }
-    })();
-  }, [setCardMapState, cardMapRef]);
+    // Update node with rollback
+    optimisticCategoryUpdate(
+      setCategoryRecords,
+      prev => prev.map(r => {
+        if (r.id !== categoryId) return r;
+        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        return {
+          ...r,
+          subcategories: nodes.map(n => {
+            if (n.name !== subName) return n;
+            return { ...n, chapters: n.chapters.filter(ch => ch !== chapterName) };
+          }),
+        };
+      }),
+      "deleteChapter"
+    );
+  }, [setCategoryRecords, setCardMapState, cardMapRef]);
 
   const reorderSubcategories = useCallback((categoryId: string, ordered: string[]) => {
-    setSubcategories((prev) => ({ ...prev, [categoryId]: ordered }));
-    (async () => {
-      try {
-        const nodes = await getNodes(categoryId);
+    optimisticCategoryUpdate(
+      setCategoryRecords,
+      prev => prev.map(r => {
+        if (r.id !== categoryId) return r;
+        const nodes = (r.subcategories || []) as SubcategoryNode[];
         const nodeMap = new Map(nodes.map(n => [n.name, n]));
         const reordered = ordered.map((name, i) => {
           const n = nodeMap.get(name);
-          return n ? { ...n, sortOrder: i } : { name, chapters: [], sortOrder: i };
+          return n ? { ...n, sortOrder: i } : { name, chapters: [] as string[], sortOrder: i };
         });
-        await saveNodes(categoryId, reordered);
-      } catch (e) { console.error("[reorderSubcategories] IDB failed", e); }
-    })();
-  }, [setSubcategories]);
+        return { ...r, subcategories: reordered };
+      }),
+      "reorderSubcategories"
+    );
+  }, [setCategoryRecords]);
 
   const reorderChapters = useCallback((categoryId: string, subName: string, ordered: string[]) => {
-    (async () => {
-      try {
-        const nodes = await getNodes(categoryId);
-        const updated = nodes.map(n => {
-          if (n.name !== subName) return n;
-          return { ...n, chapters: ordered };
+    optimisticCategoryUpdate(
+      setCategoryRecords,
+      prev => prev.map(r => {
+        if (r.id !== categoryId) return r;
+        const nodes = (r.subcategories || []) as SubcategoryNode[];
+        return {
+          ...r,
+          subcategories: nodes.map(n => {
+            if (n.name !== subName) return n;
+            return { ...n, chapters: ordered };
+          }),
+        };
+      }),
+      "reorderChapters"
+    );
+  }, [setCategoryRecords]);
+
+  // ── Category reorder ──
+  const reorderCategories = useCallback((ordered: string[]) => {
+    optimisticCategoryUpdate(
+      setCategoryRecords,
+      prev => {
+        const byId = new Map(prev.map(r => [r.id, r]));
+        return ordered.map((id, i) => {
+          const rec = byId.get(id);
+          return rec ? { ...rec, sortOrder: i } : { id, name: id, sortOrder: i, subcategories: [] };
         });
-        await saveNodes(categoryId, updated);
-      } catch (e) { console.error("[reorderChapters] IDB failed", e); }
-    })();
-  }, []);
+      },
+      "reorderCategories"
+    );
+  }, [setCategoryRecords]);
 
   return {
     addCategory,
@@ -361,5 +406,6 @@ export function useCategoryManagement({
     deleteChapter,
     reorderSubcategories,
     reorderChapters,
+    reorderCategories,
   };
 }

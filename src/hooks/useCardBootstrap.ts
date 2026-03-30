@@ -6,7 +6,6 @@ import {
   ensureDbOpen,
   migrateFromLocalStorage,
   idbLoadCards,
-  idbLoadCategories,
   idbLoadRecentReviewLog,
   idbLoadSettings,
   getDbErrorState,
@@ -28,15 +27,13 @@ async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string
 
 interface BootSetters {
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
-  setCategoriesState: React.Dispatch<React.SetStateAction<string[]>>;
   setCategoryRecordsState: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
-  setSubcategoriesState: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
   setReviewLogState: React.Dispatch<React.SetStateAction<ReviewLogEntry[]>>;
   setSrSettingsState: React.Dispatch<React.SetStateAction<SRSettings>>;
 }
 
 export function useCardBootstrap(setters: BootSetters) {
-  const { setCardMapState, setCategoriesState, setCategoryRecordsState, setSubcategoriesState, setReviewLogState, setSrSettingsState } = setters;
+  const { setCardMapState, setCategoryRecordsState, setReviewLogState, setSrSettingsState } = setters;
   const [ready, setReady] = useState(false);
   const [dbError, setDbError] = useState<{ type: "version" | "timeout"; message: string } | null>(null);
   const initialLoadDone = useRef(false);
@@ -129,9 +126,7 @@ export function useCardBootstrap(setters: BootSetters) {
         // Load CategoryRecord[] from IDB, seed defaults if empty
         const catRecords = await withTimeout(seedDefaultCategories(), 2500, "categories load", []);
         console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
-        const catNames = catRecords.map((r: CategoryRecord) => r.id);
         // Build subcategories map + fallback "Opšte" nodes for orphaned cards
-        const subsMap: Record<string, string[]> = {};
         const updatedRecords: CategoryRecord[] = [];
         let needsPersist = false;
 
@@ -150,21 +145,18 @@ export function useCardBootstrap(setters: BootSetters) {
 
             let node = nodes.find((n) => n.name === sub);
             if (!node) {
-              // Orphaned subcategory → create fallback node
               node = { name: sub, chapters: [], sortOrder: nodes.length };
               nodes.push(node);
               needsPersist = true;
               console.log(`[boot] fallback SubcategoryNode created: "${sub}" in category ${r.name}`);
             }
             if (ch && !node.chapters.includes(ch)) {
-              // Orphaned chapter → register under its subcategory
               node.chapters.push(ch);
               needsPersist = true;
               console.log(`[boot] fallback chapter registered: "${ch}" under "${sub}" in ${r.name}`);
             }
           }
 
-          subsMap[r.id] = nodes.map((n) => n.name);
           updatedRecords.push({ ...r, subcategories: nodes });
         }
 
@@ -177,9 +169,10 @@ export function useCardBootstrap(setters: BootSetters) {
               )
             )
           ).catch(() => {});
-          // Use updated records downstream
-          catRecords.splice(0, catRecords.length, ...updatedRecords);
         }
+
+        // Always use updatedRecords (with migrated nodes) as canonical state
+        const finalRecords = needsPersist ? updatedRecords : catRecords;
 
         splashProgress(65, "Učitavanje kategorija…");
 
@@ -195,12 +188,10 @@ export function useCardBootstrap(setters: BootSetters) {
         );
         markBootStep("cards:data-load-done", `${c.length} cards`);
 
-        console.log("[boot:diag] setting state — cards:", c.length, "categories:", catRecords.length);
+        console.log("[boot:diag] setting state — cards:", c.length, "categories:", finalRecords.length);
         setCardMapState(arrayToMap(c));
         bumpMapVersion();
-        setCategoriesState(catNames);
-        setCategoryRecordsState(catRecords);
-        setSubcategoriesState(subsMap);
+        setCategoryRecordsState(finalRecords);
         setReviewLogState(log);
         setSrSettingsState(settings);
 
