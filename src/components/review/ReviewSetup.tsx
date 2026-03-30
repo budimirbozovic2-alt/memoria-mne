@@ -24,6 +24,7 @@ function HowItWorksCorner({ onShowOnboarding }: { onShowOnboarding: () => void }
 interface ReviewSetupProps {
   dueCards: Card[];
   allCards: Card[];
+  categoryRecords: CategoryRecord[];
   subcategories: Record<string, string[]>;
   srSettings: SRSettings;
   onSelectMode: (mode: ReviewMode, category: string | null, subcategory: string | null, chapter: string | null, examFrequent: boolean, filterType: "all" | "essay" | "flash", items: DueItem[]) => void;
