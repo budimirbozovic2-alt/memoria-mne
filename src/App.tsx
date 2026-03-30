@@ -29,7 +29,7 @@ const PlannerPage = lazy(() => import("@/views/PlannerPage"));
 const KnowledgeMapPage = lazy(() => import("@/views/KnowledgeMapPage"));
 const MetacognitivePage = lazy(() => import("@/views/MetacognitivePage"));
 const FrequentErrorsPage = lazy(() => import("@/views/FrequentErrorsPage"));
-const MajorSystemPage = lazy(() => import("@/views/MajorSystemPage"));
+
 const CategoriesRoutePage = lazy(() => import("@/views/CategoriesRoutePage"));
 const SpeedReaderPage = lazy(() => import("@/views/SpeedReaderPage"));
 const MindMapPage = lazy(() => import("@/views/MindMapPage"));
