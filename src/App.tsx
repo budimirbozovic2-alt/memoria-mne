@@ -31,7 +31,7 @@ const FrequentErrorsPage = lazy(() => import("@/views/FrequentErrorsPage"));
 const CategoriesRoutePage = lazy(() => import("@/views/CategoriesRoutePage"));
 const SpeedReaderPage = lazy(() => import("@/views/SpeedReaderPage"));
 const MindMapPage = lazy(() => import("@/views/MindMapPage"));
-const RomanForumPage = lazy(() => import("@/views/RomanForumPage"));
+
 const CategoryView = lazy(() => import("@/views/CategoryView"));
 
 const queryClient = new QueryClient();
