@@ -20,9 +20,10 @@ interface Props {
   cards: Card[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
+  catNameMap: Record<string, string>;
 }
 
-export default function CognitiveAnalytics({ cards, categories, reviewLog }: Props) {
+export default function CognitiveAnalytics({ cards, categories, reviewLog, catNameMap }: Props) {
   return (
     <div className="space-y-6">
       {/* 1. Interference Index */}
