@@ -1,7 +1,7 @@
 import { useCallback, MutableRefObject } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { db, idbLoadCategories, idbSaveCategories, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
+import { db, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { toast } from "@/hooks/use-toast";
 import { optimisticCategoryUpdate } from "@/lib/category-service";
@@ -13,7 +13,7 @@ interface UseCategoryManagementParams {
   getCategoryRecords: () => { id: string; name: string }[];
 }
 
-// ─── Helper: ensure a node has proper types ───
+// ─── Helper: osigurava da čvorovi imaju UUID sistemsku strukturu ───
 function normalizeNode(s: any, i: number): SubcategoryNode {
   if (typeof s === "string") {
     return { id: crypto.randomUUID(), name: s, chapters: [], sortOrder: i };
@@ -38,6 +38,7 @@ export function useCategoryManagement({
   cardMapRef,
   getCategoryRecords,
 }: UseCategoryManagementParams) {
+  
   const addCategory = useCallback(
     (name: string) => {
       const newId = crypto.randomUUID();
@@ -96,7 +97,8 @@ export function useCategoryManagement({
         const nextRef = { ...cardMapRef.current };
         for (const [id, c] of Object.entries(nextRef)) {
           if (c.categoryId === categoryId) {
-            const u = { ...c, categoryId: fallbackId, subcategory: "", subcategoryId: "", updatedAt: now };
+            // ✓ FIX: subcategoryId i chapterId na undefined (čist UUID pristup)
+            const u = { ...c, categoryId: fallbackId, subcategoryId: undefined, chapterId: undefined, updatedAt: now };
             nextRef[id] = u;
             changed.push(u);
           }
@@ -127,19 +129,15 @@ export function useCategoryManagement({
     [setCategoryRecords, setCardMapState, cardMapRef, getCategoryRecords],
   );
 
-  // ═══════════════════════════════════════════════════════
-  // Subcategory CRUD
-  // ═══════════════════════════════════════════════════════
-
   const addSubcategory = useCallback(
-    (categoryId: string, subcategory: string) => {
+    (categoryId: string, subName: string) => {
       optimisticCategoryUpdate(
         setCategoryRecords,
         prev => prev.map(r => {
           if (r.id !== categoryId) return r;
           const nodes = getNodes(r);
-          if (nodes.some(n => n.name === subcategory)) return { ...r, subcategories: nodes };
-          return { ...r, subcategories: [...nodes, { id: crypto.randomUUID(), name: subcategory, chapters: [], sortOrder: nodes.length }] };
+          if (nodes.some(n => n.name === subName)) return { ...r, subcategories: nodes };
+          return { ...r, subcategories: [...nodes, { id: crypto.randomUUID(), name: subName, chapters: [], sortOrder: nodes.length }] };
         }),
         "addSubcategory"
       );
@@ -148,56 +146,40 @@ export function useCategoryManagement({
   );
 
   const renameSubcategory = useCallback(
-    (categoryId: string, oldName: string, newName: string) => {
+    (categoryId: string, subcategoryId: string, newName: string) => {
       optimisticCategoryUpdate(
         setCategoryRecords,
         prev => prev.map(r => {
           if (r.id !== categoryId) return r;
           const nodes = getNodes(r);
-          if (nodes.some(n => n.name === newName)) return { ...r, subcategories: nodes };
-          return { ...r, subcategories: nodes.map(n => n.name === oldName ? { ...n, name: newName } : n) };
+          return { ...r, subcategories: nodes.map(n => n.id === subcategoryId ? { ...n, name: newName } : n) };
         }),
         "renameSubcategory"
       );
-      // Update cards that reference old name
-      const now = Date.now();
-      const changed: Card[] = [];
-      const nextRef = { ...cardMapRef.current };
-      for (const [id, c] of Object.entries(nextRef)) {
-        if (c.categoryId === categoryId && c.subcategory === oldName) {
-          const u = { ...c, subcategory: newName, updatedAt: now };
-          nextRef[id] = u;
-          changed.push(u);
-        }
-      }
-      if (changed.length > 0) {
-        cardMapRef.current = nextRef;
-        schedulePersist({ type: "bulk", cards: changed });
-        setCardMapState(() => nextRef);
-        bumpMapVersion();
-      }
+      // Nema potrebe za ažuriranjem kartica jer referenciraju subcategoryId koji se NE mijenja
     },
-    [setCategoryRecords, setCardMapState, cardMapRef],
+    [setCategoryRecords],
   );
 
   const deleteSubcategory = useCallback(
-    (categoryId: string, subcategory: string) => {
+    (categoryId: string, subcategoryId: string) => {
       optimisticCategoryUpdate(
         setCategoryRecords,
         prev => prev.map(r => {
           if (r.id !== categoryId) return r;
           const nodes = getNodes(r);
-          return { ...r, subcategories: nodes.filter(n => n.name !== subcategory) };
+          return { ...r, subcategories: nodes.filter(n => n.id !== subcategoryId) };
         }),
         "deleteSubcategory"
       );
-      // Non-destructive: move cards to uncategorized
+      
       const now = Date.now();
       const changed: Card[] = [];
       const nextRef = { ...cardMapRef.current };
       for (const [id, c] of Object.entries(nextRef)) {
-        if (c.categoryId === categoryId && c.subcategory === subcategory) {
-          const u = { ...c, subcategory: "", subcategoryId: "", chapter: "", chapterId: "", updatedAt: now };
+        if (c.categoryId === categoryId && c.subcategoryId === subcategoryId) {
+          // ✓ FIX: Samo UUID reset
+          const u = { ...c, subcategoryId: undefined, chapterId: undefined, updatedAt: now };
           nextRef[id] = u;
           changed.push(u);
         }
@@ -212,13 +194,13 @@ export function useCategoryManagement({
     [setCategoryRecords, setCardMapState, cardMapRef],
   );
 
-  const bulkUpdateSubcategory = useCallback((ids: string[], subcategory: string) => {
+  const bulkUpdateSubcategory = useCallback((ids: string[], subcategoryId: string) => {
     const now = Date.now();
     const changed: Card[] = [];
     const nextRef = { ...cardMapRef.current };
     for (const id of ids) {
       if (nextRef[id]) {
-        const u = { ...nextRef[id], subcategory, updatedAt: now };
+        const u = { ...nextRef[id], subcategoryId, updatedAt: now };
         nextRef[id] = u;
         changed.push(u);
       }
@@ -231,11 +213,7 @@ export function useCategoryManagement({
     }
   }, [setCardMapState, cardMapRef]);
 
-  // ═══════════════════════════════════════════════════════
-  // Chapter CRUD — now uses ChapterNode with UUID
-  // ═══════════════════════════════════════════════════════
-
-  const addChapter = useCallback((categoryId: string, subName: string, chapterName: string) => {
+  const addChapter = useCallback((categoryId: string, subcategoryId: string, chapterName: string) => {
     optimisticCategoryUpdate(
       setCategoryRecords,
       prev => prev.map(r => {
@@ -244,8 +222,7 @@ export function useCategoryManagement({
         return {
           ...r,
           subcategories: nodes.map(n => {
-            if (n.name !== subName) return n;
-            if (n.chapters.some(ch => ch.name === chapterName)) return n;
+            if (n.id !== subcategoryId) return n;
             const newChapter: ChapterNode = { id: crypto.randomUUID(), name: chapterName, sortOrder: n.chapters.length };
             return { ...n, chapters: [...n.chapters, newChapter] };
           }),
@@ -255,25 +232,7 @@ export function useCategoryManagement({
     );
   }, [setCategoryRecords]);
 
-  const renameChapter = useCallback((categoryId: string, subName: string, oldChapter: string, newChapter: string) => {
-    // Update cards
-    const now = Date.now();
-    const changed: Card[] = [];
-    const nextRef = { ...cardMapRef.current };
-    for (const [id, c] of Object.entries(nextRef)) {
-      if (c.categoryId === categoryId && c.subcategory === subName && c.chapter === oldChapter) {
-        const u = { ...c, chapter: newChapter, updatedAt: now };
-        nextRef[id] = u;
-        changed.push(u);
-      }
-    }
-    if (changed.length > 0) {
-      cardMapRef.current = nextRef;
-      schedulePersist({ type: "bulk", cards: changed });
-      setCardMapState(() => nextRef);
-      bumpMapVersion();
-    }
-    // Update node
+  const renameChapter = useCallback((categoryId: string, subcategoryId: string, chapterId: string, newName: string) => {
     optimisticCategoryUpdate(
       setCategoryRecords,
       prev => prev.map(r => {
@@ -282,23 +241,23 @@ export function useCategoryManagement({
         return {
           ...r,
           subcategories: nodes.map(n => {
-            if (n.name !== subName) return n;
-            return { ...n, chapters: n.chapters.map(ch => ch.name === oldChapter ? { ...ch, name: newChapter } : ch) };
+            if (n.id !== subcategoryId) return n;
+            return { ...n, chapters: n.chapters.map(ch => ch.id === chapterId ? { ...ch, name: newName } : ch) };
           }),
         };
       }),
       "renameChapter"
     );
-  }, [setCategoryRecords, setCardMapState, cardMapRef]);
+  }, [setCategoryRecords]);
 
-  const deleteChapter = useCallback((categoryId: string, subName: string, chapterName: string) => {
-    // Non-destructive: move cards to chapter=""
+  const deleteChapter = useCallback((categoryId: string, subcategoryId: string, chapterId: string) => {
     const now = Date.now();
     const changed: Card[] = [];
     const nextRef = { ...cardMapRef.current };
     for (const [id, c] of Object.entries(nextRef)) {
-      if (c.categoryId === categoryId && c.subcategory === subName && c.chapter === chapterName) {
-        const u = { ...c, chapter: "", chapterId: "", updatedAt: now };
+      if (c.categoryId === categoryId && c.subcategoryId === subcategoryId && c.chapterId === chapterId) {
+        // ✓ FIX: chapterId na undefined
+        const u = { ...c, chapterId: undefined, updatedAt: now };
         nextRef[id] = u;
         changed.push(u);
       }
@@ -309,7 +268,7 @@ export function useCategoryManagement({
       setCardMapState(() => nextRef);
       bumpMapVersion();
     }
-    // Update node
+
     optimisticCategoryUpdate(
       setCategoryRecords,
       prev => prev.map(r => {
@@ -318,8 +277,8 @@ export function useCategoryManagement({
         return {
           ...r,
           subcategories: nodes.map(n => {
-            if (n.name !== subName) return n;
-            return { ...n, chapters: n.chapters.filter(ch => ch.name !== chapterName) };
+            if (n.id !== subcategoryId) return n;
+            return { ...n, chapters: n.chapters.filter(ch => ch.id !== chapterId) };
           }),
         };
       }),
@@ -327,16 +286,16 @@ export function useCategoryManagement({
     );
   }, [setCategoryRecords, setCardMapState, cardMapRef]);
 
-  const reorderSubcategories = useCallback((categoryId: string, ordered: string[]) => {
+  const reorderSubcategories = useCallback((categoryId: string, orderedIds: string[]) => {
     optimisticCategoryUpdate(
       setCategoryRecords,
       prev => prev.map(r => {
         if (r.id !== categoryId) return r;
         const nodes = getNodes(r);
-        const nodeMap = new Map(nodes.map(n => [n.name, n]));
-        const reordered = ordered.map((name, i) => {
-          const n = nodeMap.get(name);
-          return n ? { ...n, sortOrder: i } : { id: crypto.randomUUID(), name, chapters: [] as ChapterNode[], sortOrder: i };
+        const nodeMap = new Map(nodes.map(n => [n.id, n]));
+        const reordered = orderedIds.map((id, i) => {
+          const n = nodeMap.get(id);
+          return n ? { ...n, sortOrder: i } : { id, name: "Nepoznato", chapters: [], sortOrder: i };
         });
         return { ...r, subcategories: reordered };
       }),
@@ -344,7 +303,7 @@ export function useCategoryManagement({
     );
   }, [setCategoryRecords]);
 
-  const reorderChapters = useCallback((categoryId: string, subName: string, ordered: string[]) => {
+  const reorderChapters = useCallback((categoryId: string, subcategoryId: string, orderedIds: string[]) => {
     optimisticCategoryUpdate(
       setCategoryRecords,
       prev => prev.map(r => {
@@ -353,12 +312,11 @@ export function useCategoryManagement({
         return {
           ...r,
           subcategories: nodes.map(n => {
-            if (n.name !== subName) return n;
-            // Reorder by name, preserving ChapterNode objects
-            const chMap = new Map(n.chapters.map(ch => [ch.name, ch]));
-            const reordered = ordered.map((name, i) => {
-              const ch = chMap.get(name);
-              return ch ? { ...ch, sortOrder: i } : { id: crypto.randomUUID(), name, sortOrder: i };
+            if (n.id !== subcategoryId) return n;
+            const chMap = new Map(n.chapters.map(ch => [ch.id, ch]));
+            const reordered = orderedIds.map((id, i) => {
+              const ch = chMap.get(id);
+              return ch ? { ...ch, sortOrder: i } : { id, name: "Nepoznato", sortOrder: i };
             });
             return { ...n, chapters: reordered };
           }),
@@ -368,15 +326,14 @@ export function useCategoryManagement({
     );
   }, [setCategoryRecords]);
 
-  // ── Category reorder ──
-  const reorderCategories = useCallback((ordered: string[]) => {
+  const reorderCategories = useCallback((orderedIds: string[]) => {
     optimisticCategoryUpdate(
       setCategoryRecords,
       prev => {
         const byId = new Map(prev.map(r => [r.id, r]));
-        return ordered.map((id, i) => {
+        return orderedIds.map((id, i) => {
           const rec = byId.get(id);
-          return rec ? { ...rec, sortOrder: i } : { id, name: id, sortOrder: i, subcategories: [] };
+          return rec ? { ...rec, sortOrder: i } : { id, name: "Kategorija", sortOrder: i, subcategories: [] };
         });
       },
       "reorderCategories"
