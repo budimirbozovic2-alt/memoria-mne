@@ -36,6 +36,7 @@ export default function ReviewCard({
   const { toast } = useToast();
   const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
   const catName = catRecord?.name ?? card.categoryId;
+  const subName = catRecord?.subcategories?.find(s => s.id === card.subcategoryId)?.name ?? card.subcategoryId;
   const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);
   const [answerRevealedAt, setAnswerRevealedAt] = useState<number | null>(null);
   const [canGradeEasy, setCanGradeEasy] = useState(false);
