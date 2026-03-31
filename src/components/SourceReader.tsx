@@ -1,9 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import ExamSidebar from "@/components/ExamSidebar";
 import CoverageArticleList from "@/components/source-reader/CoverageArticleList";
 import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/sources-storage";
-import { useSourceReaderLogic, WIDTH_CLASSES } from "@/hooks/useSourceReaderLogic";
+import { useSourceReaderStore, WIDTH_CLASSES } from "@/store/useSourceReaderStore";
+import { useSourceReaderActions } from "@/hooks/useSourceReaderActions";
 import { SourceToolbar } from "@/components/source-reader/SourceToolbar";
 import { SourceContent } from "@/components/source-reader/SourceContent";
 import { SourceNavigation } from "@/components/source-reader/SourceNavigation";
@@ -17,94 +18,89 @@ const AutoSplitDialog = lazy(() => import("@/components/AutoSplitDialog"));
 const LinkToExistingCardModal = lazy(() => import("@/components/LinkToExistingCardModal"));
 
 interface Props {
-  /** The source to be read and managed */
   source: Source;
-  /** Callback to return to the previous view */
   onBack: () => void;
-  /** Optional callback when the source data is modified */
   onSourceUpdated?: (source: Source) => void;
 }
 
-/**
- * Main container component for the Source Reader view.
- * This component orchestrates all sub-components and logic related to reading,
- * editing, and mapping cards from a source document.
- */
 export default function SourceReader({ source, onBack, onSourceUpdated }: Props) {
-  const { state, actions, refs } = useSourceReaderLogic(source, onSourceUpdated);
-  const isCoverage = state.viewMode === "coverage";
+  const { contentRef, derived, actions } = useSourceReaderActions(source, onSourceUpdated);
+
+  // Granular store selectors
+  const viewMode = useSourceReaderStore(s => s.viewMode);
+  const readerWidth = useSourceReaderStore(s => s.readerWidth);
+  const outlineOpen = useSourceReaderStore(s => s.outlineOpen);
+  const examOpen = useSourceReaderStore(s => s.examOpen);
+  const editMode = useSourceReaderStore(s => s.editMode);
+  const selection = useSourceReaderStore(s => s.selection);
+  const headingMenu = useSourceReaderStore(s => s.headingMenu);
+  const essayDialogOpen = useSourceReaderStore(s => s.essayDialogOpen);
+  const splitSummaryOpen = useSourceReaderStore(s => s.splitSummaryOpen);
+  const autoSplitOpen = useSourceReaderStore(s => s.autoSplitOpen);
+  const linkModalOpen = useSourceReaderStore(s => s.linkModalOpen);
+  const linkSelectedText = useSourceReaderStore(s => s.linkSelectedText);
+  const examQuestions = useSourceReaderStore(s => s.examQuestions);
+  const setExamQuestions = useSourceReaderStore(s => s.setExamQuestions);
+
+  // Reset store on unmount
+  useEffect(() => () => useSourceReaderStore.getState().reset(), []);
+
+  const isCoverage = viewMode === "coverage";
 
   return (
     <div className="space-y-4">
-      {/* Top navigation and settings bar */}
       <SourceToolbar
         source={source}
         onBack={onBack}
-        viewMode={state.viewMode}
-        setViewMode={actions.setViewMode}
-        examOpen={state.examOpen}
-        setExamOpen={actions.setExamOpen}
-        examQuestions={state.examQuestions}
-        outlineOpen={state.outlineOpen}
-        setOutlineOpen={actions.setOutlineOpen}
-        onAutoSplit={() => actions.setAutoSplitOpen(true)}
-        readerWidth={state.readerWidth}
-        setReaderWidth={actions.setReaderWidth}
-        editMode={state.editMode}
-        setEditMode={actions.setEditMode}
+        onAutoSplit={() => useSourceReaderStore.getState().setAutoSplitOpen(true)}
       />
 
-      {/* Progress indicator for card coverage */}
       {isCoverage && (
-        <CoverageStatsBar 
-          percent={state.coverage.percent} 
-          linkedCount={state.linkedCount} 
+        <CoverageStatsBar
+          percent={derived.coverage.percent}
+          linkedCount={derived.linkedCount}
         />
       )}
 
       <div className="flex gap-4">
-        {/* Left sidebar: Outline navigation */}
-        {state.outlineOpen && (
-          <SourceNavigation 
-            source={source} 
-            onScrollToHeading={actions.scrollToHeading} 
+        {outlineOpen && (
+          <SourceNavigation
+            source={source}
+            onScrollToHeading={actions.scrollToHeading}
           />
         )}
 
-        {/* Main content area: Reader or Coverage List */}
-        <div 
-          className={cn("flex-1 min-w-0 relative mx-auto px-6", WIDTH_CLASSES[state.readerWidth])} 
+        <div
+          className={cn("flex-1 min-w-0 relative mx-auto px-6", WIDTH_CLASSES[readerWidth])}
           onContextMenu={actions.handleContextMenu}
         >
           {isCoverage ? (
-            <CoverageArticleList 
-              source={source} 
-              cards={state.cards} 
-              onOpenCard={actions.handleOpenCoveredCard} 
+            <CoverageArticleList
+              source={source}
+              cards={derived.cards}
+              onOpenCard={actions.handleOpenCoveredCard}
             />
           ) : (
-            <SourceContent 
-              html={state.safeHtml} 
-              onMouseUp={actions.handleMouseUp} 
-              contentRef={refs.contentRef} 
+            <SourceContent
+              html={derived.safeHtml}
+              onMouseUp={actions.handleMouseUp}
+              contentRef={contentRef}
             />
           )}
 
-          {/* Floating context menu for formatting blocks (Edit mode only) */}
-          {state.headingMenu && (
+          {headingMenu && (
             <SourceContextMenu
-              menu={state.headingMenu}
+              menu={headingMenu}
               onSetHeading={actions.handleSetHeading}
               onFormatAsList={actions.handleFormatAsList}
-              onClose={() => actions.setHeadingMenu(null)}
+              onClose={() => useSourceReaderStore.getState().setHeadingMenu(null)}
             />
           )}
 
-          {/* Floating action tooltip for selected text */}
-          {!isCoverage && state.selection && (
+          {!isCoverage && selection && (
             <SourceTooltip
-              selection={state.selection}
-              editMode={state.editMode}
+              selection={selection}
+              editMode={editMode}
               onConvertToEssay={actions.handleConvertToEssay}
               onLinkToExisting={actions.handleLinkToExisting}
               onFormatSelectionAs={actions.handleFormatSelectionAs}
@@ -112,65 +108,42 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
           )}
         </div>
 
-        {/* Right sidebar: Exam mapping logic */}
-        {state.examOpen && (
+        {examOpen && (
           <ExamSidebar
-            questions={state.examQuestions}
-            onSetQuestions={actions.setExamQuestions}
+            questions={examQuestions}
+            onSetQuestions={setExamQuestions}
             onMapSelection={actions.handleMapSelection}
-            hasSelection={!!state.selection}
+            hasSelection={!!selection}
           />
         )}
       </div>
 
-      {/* Dialog for creating a single essay card */}
       <EssayCreationDialog
-        open={state.essayDialogOpen}
-        onOpenChange={actions.setEssayDialogOpen}
-        essayQuestion={state.essayQuestion}
-        setEssayQuestion={actions.setEssayQuestion}
-        selectedText={state.selectedText}
         source={source}
         onCreateEssay={actions.handleCreateEssay}
       />
 
-      {/* Dialog for summarizing and confirming a smart-split operation */}
       <SmartSplitSummaryDialog
-        open={state.splitSummaryOpen}
-        onOpenChange={(o) => { 
-          if (!o) { 
-            actions.setSplitSummaryOpen(false); 
-            actions.setSplitResult(null); 
-          } 
-        }}
-        splitDone={state.splitDone}
-        splitResult={state.splitResult}
-        splitCreatedCount={state.splitCreatedCount}
         source={source}
-        splitParentName={state.splitParentName}
-        setSplitParentName={actions.setSplitParentName}
-        splitModules={state.splitModules}
-        setSplitModules={actions.setSplitModules}
         onSmartSplitConfirm={actions.handleSmartSplitConfirm}
       />
 
-      {/* Lazy-loaded modals for bulk operations */}
       <Suspense fallback={null}>
-        {state.autoSplitOpen && (
-          <AutoSplitDialog 
-            open={state.autoSplitOpen} 
-            onClose={() => actions.setAutoSplitOpen(false)} 
-            source={source} 
+        {autoSplitOpen && (
+          <AutoSplitDialog
+            open={autoSplitOpen}
+            onClose={() => useSourceReaderStore.getState().setAutoSplitOpen(false)}
+            source={source}
           />
         )}
-        {state.linkModalOpen && (
+        {linkModalOpen && (
           <LinkToExistingCardModal
-            open={state.linkModalOpen}
-            onOpenChange={actions.setLinkModalOpen}
+            open={linkModalOpen}
+            onOpenChange={useSourceReaderStore.getState().setLinkModalOpen}
             sourceId={source.id}
             sourceLabel={source.categoryId || source.title || ""}
-            selectedText={state.linkSelectedText}
-            cards={state.cards}
+            selectedText={linkSelectedText}
+            cards={derived.cards}
             onLink={actions.handleLinkConfirm}
           />
         )}
