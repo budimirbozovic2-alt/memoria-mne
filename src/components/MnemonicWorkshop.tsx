@@ -128,6 +128,32 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
     setExpandedId(prev => prev === id ? null : id);
   }, []);
 
+  const listRef = useRef<any>(null);
+
+  const getRowHeight = useCallback((index: number) => {
+    const card = filtered[index];
+    if (!card || expandedId !== card.id) return COLLAPSED_HEIGHT + GAP;
+    return EXPANDED_BASE + GAP;
+  }, [filtered, expandedId]);
+
+  const useVirtualization = filtered.length >= VIRTUALIZATION_THRESHOLD;
+
+  const virtualRowProps = useMemo<VirtualRowData>(() => ({
+    filteredCards: filtered,
+    expandedId,
+    onToggle: handleToggle,
+    onUpdateCard,
+    onDeleteCard,
+    majorSystem,
+  }), [filtered, expandedId, handleToggle, onUpdateCard, onDeleteCard, majorSystem]);
+
+  // Reset list when expanded card changes (row heights change)
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.resetAfterIndex(0);
+    }
+  }, [expandedId]);
+
   const statusCounts = useMemo(() => ({
     all: cards.length,
     new: cards.filter(c => c.mnemonicStatus === "new").length,
