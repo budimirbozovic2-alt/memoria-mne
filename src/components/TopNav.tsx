@@ -67,8 +67,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
     const next = !dark;
     setDarkState(next);
     setDarkMode(next);
-    _handleThemeSeq(next);
-  }, [dark, _handleThemeSeq]);
+  }, [dark]);
 
   // Close mega menu on click outside
   useEffect(() => {
