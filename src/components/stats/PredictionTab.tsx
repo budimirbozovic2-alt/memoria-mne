@@ -14,9 +14,10 @@ interface Props {
   cards: Card[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
+  catNameMap: Record<string, string>;
 }
 
-export default function PredictionTab({ cards, categories, reviewLog }: Props) {
+export default function PredictionTab({ cards, categories, reviewLog, catNameMap }: Props) {
   const velocity = useMemo(() => getLearningVelocity(reviewLog, categories), [reviewLog, categories]);
 
   const predictions = useMemo(() => {
@@ -35,7 +36,7 @@ export default function PredictionTab({ cards, categories, reviewLog }: Props) {
         const predictedDate = daysRemaining !== null ? new Date(Date.now() + daysRemaining * 86400000) : null;
 
         return {
-          category: cat, totalSections, masteredSections, remaining,
+          category: catNameMap[cat] || cat, totalSections, masteredSections, remaining,
           percent: totalSections > 0 ? Math.round((masteredSections / totalSections) * 100) : 0,
           dailyVelocity, daysRemaining, predictedDate,
           cardCount: catCards.length,
@@ -63,7 +64,7 @@ export default function PredictionTab({ cards, categories, reviewLog }: Props) {
     .filter(v => v.velocity > 0)
     .sort((a, b) => b.velocity - a.velocity)
     .map(v => ({
-      category: v.category.length > 12 ? v.category.slice(0, 12) + "…" : v.category,
+      category: ((catNameMap[v.category] || v.category) as string).length > 12 ? (catNameMap[v.category] || v.category).slice(0, 12) + "…" : (catNameMap[v.category] || v.category),
       velocity: +v.velocity.toFixed(1),
     }));
 

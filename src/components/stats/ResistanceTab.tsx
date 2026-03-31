@@ -22,9 +22,10 @@ interface Props {
   categories: string[];
   reviewLog: ReviewLogEntry[];
   weights: { lapses: number; latency: number; forgetting: number };
+  catNameMap: Record<string, string>;
 }
 
-export default function ResistanceTab({ cards, categories, reviewLog, weights }: Props) {
+export default function ResistanceTab({ cards, categories, reviewLog, weights, catNameMap }: Props) {
   const latencyData = useMemo(() => loadLatency(), []);
 
   const resistanceData = useMemo<ResistanceData[]>(() => {
@@ -58,7 +59,7 @@ export default function ResistanceTab({ cards, categories, reviewLog, weights }:
         );
 
         return {
-          category: cat,
+          category: catNameMap[cat] || cat,
           lapseCount: catLapses.length,
           avgLatency: +avgLatency.toFixed(1),
           cognitiveLoad: Math.min(100, cognitiveLoad),

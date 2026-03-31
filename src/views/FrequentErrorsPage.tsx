@@ -3,7 +3,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import FrequentErrors from "@/pages/FrequentErrors";
 
 export default function FrequentErrorsPage() {
-  const { cards, clearErrorLog, ready } = useCardContext();
+  const { cards, categoryRecords, clearErrorLog, ready } = useCardContext();
   const { setView } = useUIContext();
 
   if (!ready) {
@@ -17,7 +17,7 @@ export default function FrequentErrorsPage() {
 
   return (
     <ErrorBoundary label="Česte greške" onNavigateHome={() => setView("dashboard")}>
-      <FrequentErrors cards={cards} onClearErrorLog={clearErrorLog} />
+      <FrequentErrors cards={cards} categoryRecords={categoryRecords} onClearErrorLog={clearErrorLog} />
     </ErrorBoundary>
   );
 }

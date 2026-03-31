@@ -1,11 +1,12 @@
 import { TrendingUp, Target, Clock, Flame, CalendarClock, Activity } from "lucide-react";
-import { useState, lazy, Suspense } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { motion } from "framer-motion";
 
 import InfoPanel from "@/components/InfoPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, SRSettings } from "@/lib/spaced-repetition";
+import { type CategoryRecord } from "@/lib/db";
 import { ReviewLogEntry } from "@/lib/storage";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
 import { useStatsData } from "@/hooks/useStatsData";
@@ -20,6 +21,7 @@ const CalibrationTab = lazy(() => import("./stats/CalibrationTab"));
 interface Props {
   cards: Card[];
   categories: string[];
+  categoryRecords: CategoryRecord[];
   subcategories: Record<string, string[]>;
   categoryStats: Record<string, { score: number; total: number; due: number }>;
   reviewLog: ReviewLogEntry[];
@@ -28,8 +30,14 @@ interface Props {
   onShowPlanner?: () => void;
 }
 
-export default function MyStats({ cards, categories, subcategories, categoryStats, reviewLog, srSettings, onShowKnowledgeMap, onShowPlanner }: Props) {
+export default function MyStats({ cards, categories, categoryRecords, subcategories, categoryStats, reviewLog, srSettings, onShowKnowledgeMap, onShowPlanner }: Props) {
   const [activeTab, setActiveTab] = useState<string>("overview");
+
+  const catNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of categoryRecords) map[r.id] = r.name;
+    return map;
+  }, [categoryRecords]);
 
   const {
     weights, focusRatio, ratioHistory, todayTime,
@@ -120,7 +128,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         <TabsContent value="resistance">
           <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Otpor">
-              <ResistanceTab cards={cards} categories={categories} reviewLog={reviewLog} weights={weights} />
+              <ResistanceTab cards={cards} categories={categories} reviewLog={reviewLog} weights={weights} catNameMap={catNameMap} />
             </ErrorBoundary>
           </Suspense>
         </TabsContent>
@@ -128,7 +136,7 @@ export default function MyStats({ cards, categories, subcategories, categoryStat
         <TabsContent value="prediction">
           <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Predikcija">
-              <PredictionTab cards={cards} categories={categories} reviewLog={reviewLog} />
+              <PredictionTab cards={cards} categories={categories} reviewLog={reviewLog} catNameMap={catNameMap} />
             </ErrorBoundary>
           </Suspense>
         </TabsContent>

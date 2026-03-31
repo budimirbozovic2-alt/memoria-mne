@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ReviewLogEntry } from "@/lib/storage";
 import { Card, SRSettings } from "@/lib/spaced-repetition";
+import { type CategoryRecord } from "@/lib/db";
+import { getSubcategoryName } from "@/lib/category-service";
 import {
   loadDiary, addDiaryEntry, DiaryEntry, setLastAnalysisDate,
   getTodayReviewStats,
@@ -25,13 +27,19 @@ const CognitiveAnalytics = lazy(() => import("./CognitiveAnalytics"));
 interface Props {
   cards: Card[];
   categories: string[];
+  categoryRecords: CategoryRecord[];
   reviewLog: ReviewLogEntry[];
   settings?: SRSettings;
   embedded?: boolean;
   onClearErrorLog?: (cardId: string) => void;
 }
 
-export default function MetacognitiveCenter({ cards, categories, reviewLog, settings, embedded, onClearErrorLog }: Props) {
+export default function MetacognitiveCenter({ cards, categories, categoryRecords, reviewLog, settings, embedded, onClearErrorLog }: Props) {
+  const catNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of categoryRecords) map[r.id] = r.name;
+    return map;
+  }, [categoryRecords]);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto space-y-6">
       {!embedded && (
@@ -55,13 +63,13 @@ export default function MetacognitiveCenter({ cards, categories, reviewLog, sett
         </TabsList>
 
         <TabsContent value="diary">
-          <DiaryTab cards={cards} reviewLog={reviewLog} />
+          <DiaryTab cards={cards} reviewLog={reviewLog} catNameMap={catNameMap} />
         </TabsContent>
         <TabsContent value="errors">
           <Suspense fallback={<div className="py-8 text-center text-muted-foreground text-sm">Učitavanje…</div>}>
             <div className="space-y-8 mt-4">
               {/* Frequent Errors section */}
-              <FrequentErrors cards={cards} onClearErrorLog={onClearErrorLog || (() => {})} embedded />
+              <FrequentErrors cards={cards} categoryRecords={categoryRecords} onClearErrorLog={onClearErrorLog || (() => {})} embedded />
 
               {/* Cognitive Analytics — mnemonic recommendations integrated here */}
               <div className="border-t pt-6">
@@ -72,7 +80,7 @@ export default function MetacognitiveCenter({ cards, categories, reviewLog, sett
                 <p className="text-xs text-muted-foreground mb-4">
                   Analiza interferencija, slijepih tačaka i slabih kuka — sa preporukama za mnemoničku obradu problematičnih kartica.
                 </p>
-                <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} />
+                <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} catNameMap={catNameMap} />
               </div>
             </div>
           </Suspense>
@@ -86,7 +94,7 @@ export default function MetacognitiveCenter({ cards, categories, reviewLog, sett
 // DIARY TAB
 // ═══════════════════════════════════════════════════════════
 
-function DiaryTab({ cards, reviewLog }: { cards: Card[]; reviewLog: ReviewLogEntry[] }) {
+function DiaryTab({ cards, reviewLog, catNameMap }: { cards: Card[]; reviewLog: ReviewLogEntry[]; catNameMap: Record<string, string> }) {
   const [diary, setDiary] = useState<DiaryEntry[]>(() => loadDiary());
   const [dailyGoal, setDailyGoal] = useState("");
   const [selfAnalysis, setSelfAnalysis] = useState("");
@@ -196,7 +204,7 @@ function DiaryTab({ cards, reviewLog }: { cards: Card[]; reviewLog: ReviewLogEnt
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm truncate">{card?.question || "Nepoznata kartica"}</p>
-                    <p className="text-xs text-muted-foreground">{l.category}</p>
+                    <p className="text-xs text-muted-foreground">{catNameMap[l.category] || l.category}</p>
                   </div>
                 </div>
               );
@@ -220,7 +228,7 @@ function DiaryTab({ cards, reviewLog }: { cards: Card[]; reviewLog: ReviewLogEnt
                   <div className="min-w-0 flex-1">
                     <p className="text-sm truncate">{card?.question || "Nepoznata kartica"}</p>
                     <p className="text-xs text-muted-foreground">
-                      {s.category}
+                      {catNameMap[s.category] || s.category}
                       {hasMnemonic && " · Mnemotehnika"}
                     </p>
                   </div>

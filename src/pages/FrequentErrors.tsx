@@ -1,6 +1,8 @@
 import { Trash2, AlertCircle, Target, TrendingUp, Trophy, ChevronDown, ChevronRight, Flame, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Card, ErrorLogEntry, getErrorStatus, ErrorStatus } from "@/lib/spaced-repetition";
+import { type CategoryRecord } from "@/lib/db";
+import { getSubcategoryName } from "@/lib/category-service";
 
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,6 +50,7 @@ function HighlightedSentence({ sectionContent, errorText }: { sectionContent: st
 
 interface Props {
   cards: Card[];
+  categoryRecords: CategoryRecord[];
   onClearErrorLog: (cardId: string) => void;
   embedded?: boolean;
 }
@@ -89,9 +92,20 @@ function ProgressBar({ count, successes, streak }: { count: number; successes: n
   );
 }
 
-export default function FrequentErrors({ cards, onClearErrorLog, embedded }: Props) {
+export default function FrequentErrors({ cards, categoryRecords, onClearErrorLog, embedded }: Props) {
   const { toast } = useToast();
   const [showMastered, setShowMastered] = useState(false);
+
+  const catNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of categoryRecords) {
+      map[r.id] = r.name;
+      for (const sub of (r.subcategories || [])) {
+        map[sub.id] = sub.name;
+      }
+    }
+    return map;
+  }, [categoryRecords]);
 
   const { criticalAndRecovering, mastered, totalErrors, cardIdsWithErrors } = useMemo(() => {
     const allErrors: AggregatedError[] = [];
@@ -214,7 +228,7 @@ export default function FrequentErrors({ cards, onClearErrorLog, embedded }: Pro
               className="rounded-xl border bg-card overflow-hidden"
             >
               <div className="px-5 py-3 bg-secondary/30 border-b flex items-center justify-between">
-                <h3 className="font-medium text-sm">{category}</h3>
+                <h3 className="font-medium text-sm">{catNameMap[category] || category}</h3>
                 <span className="text-xs text-muted-foreground">
                   {errors.reduce((s, e) => s + e.count, 0)} promašaja
                 </span>
@@ -230,7 +244,7 @@ export default function FrequentErrors({ cards, onClearErrorLog, embedded }: Pro
                         <HighlightedSentence sectionContent={error.sectionContent} errorText={error.text} />
                         <p className="text-xs text-muted-foreground mt-1 truncate">
                           {error.cardQuestion}
-                          {error.subcategory && <span> · {error.subcategory}</span>}
+                          {error.subcategory && <span> · {catNameMap[error.subcategory] || error.subcategory}</span>}
                         </p>
                       </div>
                       <StatusBadge status={error.status} />
@@ -291,7 +305,7 @@ export default function FrequentErrors({ cards, onClearErrorLog, embedded }: Pro
                     {masteredGroups.map(([category, errors]) => (
                       <div key={category} className="rounded-xl border border-success/20 bg-success/5 overflow-hidden mb-3">
                         <div className="px-5 py-2.5 border-b border-success/10 flex items-center justify-between">
-                          <h3 className="font-medium text-sm text-success">{category}</h3>
+                          <h3 className="font-medium text-sm text-success">{catNameMap[category] || category}</h3>
                           <Trophy className="h-4 w-4 text-success/50" />
                         </div>
                         <div className="divide-y divide-success/10">
@@ -302,7 +316,7 @@ export default function FrequentErrors({ cards, onClearErrorLog, embedded }: Pro
                                 <HighlightedSentence sectionContent={error.sectionContent} errorText={error.text} />
                                 <p className="text-xs text-muted-foreground mt-1 truncate">
                                   {error.cardQuestion}
-                                  {error.subcategory && <span> · {error.subcategory}</span>}
+                                  {error.subcategory && <span> · {catNameMap[error.subcategory] || error.subcategory}</span>}
                                 </p>
                               </div>
                               <span className="flex items-center gap-0.5 text-[10px] text-success">

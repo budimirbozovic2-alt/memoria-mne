@@ -3,7 +3,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MyStats from "@/components/MyStats";
 
 export default function StatsPage() {
-  const { cards, categories, subcategories, categoryStats, reviewLog, srSettings, ready } = useCardContext();
+  const { cards, categories, categoryRecords, subcategories, categoryStats, reviewLog, srSettings, ready } = useCardContext();
   const { setView } = useUIContext();
 
   if (!ready) {
@@ -20,6 +20,7 @@ export default function StatsPage() {
       <MyStats
         cards={cards}
         categories={categories}
+        categoryRecords={categoryRecords}
         subcategories={subcategories}
         categoryStats={categoryStats}
         reviewLog={reviewLog}

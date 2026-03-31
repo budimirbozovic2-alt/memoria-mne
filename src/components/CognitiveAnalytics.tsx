@@ -20,9 +20,10 @@ interface Props {
   cards: Card[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
+  catNameMap: Record<string, string>;
 }
 
-export default function CognitiveAnalytics({ cards, categories, reviewLog }: Props) {
+export default function CognitiveAnalytics({ cards, categories, reviewLog, catNameMap }: Props) {
   return (
     <div className="space-y-6">
       {/* 1. Interference Index */}
@@ -46,11 +47,11 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog }: Pro
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="text-xs p-2 rounded-md bg-background border">
                     <p className="font-medium truncate">{pair.cardA.question}</p>
-                    <p className="text-muted-foreground text-[10px] mt-0.5">{pair.cardA.category}</p>
+                    <p className="text-muted-foreground text-[10px] mt-0.5">{catNameMap[pair.cardA.category] || pair.cardA.category}</p>
                   </div>
                   <div className="text-xs p-2 rounded-md bg-background border">
                     <p className="font-medium truncate">{pair.cardB.question}</p>
-                    <p className="text-muted-foreground text-[10px] mt-0.5">{pair.cardB.category}</p>
+                    <p className="text-muted-foreground text-[10px] mt-0.5">{catNameMap[pair.cardB.category] || pair.cardB.category}</p>
                   </div>
                 </div>
                 {pair.sharedErrors.length > 0 && (
@@ -85,7 +86,7 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog }: Pro
               return (
                 <div key={cat.category} className="space-y-1.5">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium truncate">{cat.category}</span>
+                    <span className="font-medium truncate">{catNameMap[cat.category] || cat.category}</span>
                     <span className="text-xs text-muted-foreground tabular-nums">{stabDays}d stabilnost • {retPct}% pamćenje</span>
                   </div>
                   <Progress value={retPct} className="h-2" />
@@ -157,9 +158,9 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog }: Pro
             {friction.transitions.slice(0, 6).map((t, i) => (
               <div key={i} className={`flex items-center justify-between p-2.5 rounded-lg text-sm ${t.isSlow ? "border border-warning/20 bg-warning/5" : "bg-secondary/30"}`}>
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="truncate text-xs font-medium">{t.fromCategory}</span>
+                  <span className="truncate text-xs font-medium">{catNameMap[t.fromCategory] || t.fromCategory}</span>
                   <span className="text-muted-foreground text-xs">→</span>
-                  <span className="truncate text-xs font-medium">{t.toCategory}</span>
+                  <span className="truncate text-xs font-medium">{catNameMap[t.toCategory] || t.toCategory}</span>
                 </div>
                 <span className={`text-xs tabular-nums font-medium ${t.isSlow ? "text-warning" : "text-muted-foreground"}`}>
                   {t.avgTransitionMinutes} min
@@ -231,7 +232,7 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog }: Pro
                   <span className="text-[10px] text-muted-foreground ml-2 flex-shrink-0">{spot.occurrences}× detektovano</span>
                 </div>
                 <div className="flex items-center gap-3 text-[10px]">
-                  <span className="text-muted-foreground">{spot.category}</span>
+                  <span className="text-muted-foreground">{catNameMap[spot.category] || spot.category}</span>
                   <span className="text-warning">Sigurnost: {spot.confidence}/5</span>
                   <span className="text-destructive">Ocjena: {spot.actualGrade}/4</span>
                 </div>
@@ -257,7 +258,7 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog }: Pro
               <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning/5">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium truncate">{hook.question}</p>
-                  <p className="text-[10px] text-muted-foreground">{hook.category} • {(hook.avgLatencyMs / 1000).toFixed(1)}s prosjek</p>
+                  <p className="text-[10px] text-muted-foreground">{catNameMap[hook.category] || hook.category} • {(hook.avgLatencyMs / 1000).toFixed(1)}s prosjek</p>
                 </div>
               </div>
             ))}
