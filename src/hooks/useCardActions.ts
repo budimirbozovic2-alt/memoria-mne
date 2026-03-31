@@ -122,7 +122,13 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
   const [isSaving, setIsSaving] = useState(false);
 
   // ── Derived ───────────────────────────────────────────
-  const availableSubs = subcategories[category] || [];
+  const availableSubs: { id: string; name: string }[] = useMemo(() => {
+    const catRec = categoryRecords?.find(r => r.id === category);
+    if (!catRec) return [];
+    return (catRec.subcategories || []).map((n: any) =>
+      typeof n === "string" ? { id: n, name: n } : { id: n.id, name: n.name }
+    );
+  }, [category, categoryRecords]);
 
   // ── Linked source gazette info (read-only) ────────────
   const [linkedGazetteInfo, setLinkedGazetteInfo] = useState<string | null>(null);
