@@ -22,18 +22,19 @@ interface Props {
 }
 
 interface TreeNode {
-  subcategory: string;
-  chapters: { chapter: string; cards: Card[] }[];
+  subcategory: string;      // display name
+  subcategoryId: string;    // UUID (or "" for unassigned)
+  chapters: { chapter: string; chapterId: string; cards: Card[] }[];
   unassigned: Card[];
 }
 
-const chapterDropId = (sub: string, chapter: string) => `__drop__${sub}__${chapter}`;
+const chapterDropId = (subId: string, chapId: string) => `__drop__${subId}__${chapId}`;
 const parseChapterDropId = (id: string) => {
   if (!id.startsWith("__drop__")) return null;
   const rest = id.slice("__drop__".length);
   const sepIdx = rest.indexOf("__");
   if (sepIdx < 0) return null;
-  return { subcategory: rest.slice(0, sepIdx), chapter: rest.slice(sepIdx + 2) };
+  return { subcategoryId: rest.slice(0, sepIdx), chapterId: rest.slice(sepIdx + 2) };
 };
 
 function buildTree(cards: Card[], subcategoryNodes: SubcategoryNode[]): TreeNode[] {
