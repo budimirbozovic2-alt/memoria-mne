@@ -3,7 +3,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import KnowledgeMap from "@/components/KnowledgeMap";
 
 export default function KnowledgeMapPage() {
-  const { cards, categories, subcategories, bulkUpdateChapter, reviewSection, reorderCategories, reorderSubcategories, ready } = useCardContext();
+  const { cards, categories, subcategories, reorderCategories, reorderSubcategories, ready } = useCardContext();
   const { setView } = useUIContext();
 
   if (!ready) {
@@ -21,8 +21,6 @@ export default function KnowledgeMapPage() {
         cards={cards}
         categories={categories}
         subcategories={subcategories}
-        onUpdateChapters={bulkUpdateChapter}
-        onReviewSection={reviewSection}
         onReorderCategories={reorderCategories}
         onReorderSubcategories={reorderSubcategories}
       />
