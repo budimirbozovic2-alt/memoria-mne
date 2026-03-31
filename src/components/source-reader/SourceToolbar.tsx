@@ -4,38 +4,30 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/sources-storage";
-import type { ExamQuestion } from "@/components/ExamSidebar";
 import { SourceHeader } from "./SourceHeader";
-
-type ReaderWidth = "S" | "M" | "L" | "XL" | "Full";
+import { useSourceReaderStore, type ReaderWidth } from "@/store/useSourceReaderStore";
 
 const WIDTH_OPTIONS: ReaderWidth[] = ["S", "M", "L", "XL", "Full"];
 
 interface Props {
   source: Source;
   onBack: () => void;
-  viewMode: "standard" | "coverage";
-  setViewMode: (m: "standard" | "coverage") => void;
-  examOpen: boolean;
-  setExamOpen: (v: boolean) => void;
-  examQuestions: ExamQuestion[];
-  outlineOpen: boolean;
-  setOutlineOpen: (v: boolean) => void;
   onAutoSplit: () => void;
-  readerWidth: ReaderWidth;
-  setReaderWidth: (w: ReaderWidth) => void;
-  editMode: boolean;
-  setEditMode: (v: boolean) => void;
 }
 
-/**
- * Toolbar component for the SourceReader, providing navigation, view modes, width settings, and edit mode toggle.
- */
-export const SourceToolbar = memo(function SourceToolbar({
-  source, onBack, viewMode, setViewMode, examOpen, setExamOpen,
-  examQuestions, outlineOpen, setOutlineOpen, onAutoSplit,
-  readerWidth, setReaderWidth, editMode, setEditMode,
-}: Props) {
+export const SourceToolbar = memo(function SourceToolbar({ source, onBack, onAutoSplit }: Props) {
+  const viewMode = useSourceReaderStore(s => s.viewMode);
+  const setViewMode = useSourceReaderStore(s => s.setViewMode);
+  const editMode = useSourceReaderStore(s => s.editMode);
+  const setEditMode = useSourceReaderStore(s => s.setEditMode);
+  const readerWidth = useSourceReaderStore(s => s.readerWidth);
+  const setReaderWidth = useSourceReaderStore(s => s.setReaderWidth);
+  const examOpen = useSourceReaderStore(s => s.examOpen);
+  const setExamOpen = useSourceReaderStore(s => s.setExamOpen);
+  const outlineOpen = useSourceReaderStore(s => s.outlineOpen);
+  const setOutlineOpen = useSourceReaderStore(s => s.setOutlineOpen);
+  const examQuestions = useSourceReaderStore(s => s.examQuestions);
+
   const isCoverage = viewMode === "coverage";
   const pendingCount = examQuestions.filter(q => !q.done).length;
 
@@ -44,7 +36,7 @@ export const SourceToolbar = memo(function SourceToolbar({
       <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
         <ArrowLeft className="h-4 w-4" />
       </Button>
-      
+
       <SourceHeader source={source} />
 
       {!editMode && (

@@ -3,46 +3,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Source } from "@/lib/sources-storage";
-import type { SelectionModule } from "@/lib/selection-split-engine";
+import { useSourceReaderStore } from "@/store/useSourceReaderStore";
 
-/**
- * Props for the SmartSplitSummaryDialog component.
- */
 interface Props {
-  /** Whether the dialog is open */
-  open: boolean;
-  /** Callback when the open state changes */
-  onOpenChange: (open: boolean) => void;
-  /** Whether the split operation is complete */
-  splitDone: boolean;
-  /** The result of the split analysis */
-  splitResult: { modules: SelectionModule[]; rangeLabel: string; parentName: string } | null;
-  /** Number of cards created during the split */
-  splitCreatedCount: number;
-  /** The source being read */
   source: Source;
-  /** The parent name for the newly created cards */
-  splitParentName: string;
-  /** Callback to update the parent name */
-  setSplitParentName: (val: string) => void;
-  /** The modules detected in the split */
-  splitModules: SelectionModule[];
-  /** Callback to update the modules */
-  setSplitModules: (updater: (prev: SelectionModule[]) => SelectionModule[]) => void;
-  /** Callback to confirm the smart split */
   onSmartSplitConfirm: () => void;
 }
 
-/**
- * Dialog that shows a preview of the "Smart-Split" operation, allowing users to rename modules and the parent card.
- */
-export function SmartSplitSummaryDialog({
-  open, onOpenChange, splitDone, splitResult, splitCreatedCount,
-  source, splitParentName, setSplitParentName, splitModules,
-  setSplitModules, onSmartSplitConfirm
-}: Props) {
+export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) {
+  const open = useSourceReaderStore(s => s.splitSummaryOpen);
+  const splitDone = useSourceReaderStore(s => s.splitDone);
+  const splitResult = useSourceReaderStore(s => s.splitResult);
+  const splitCreatedCount = useSourceReaderStore(s => s.splitCreatedCount);
+  const splitParentName = useSourceReaderStore(s => s.splitParentName);
+  const setSplitParentName = useSourceReaderStore(s => s.setSplitParentName);
+  const splitModules = useSourceReaderStore(s => s.splitModules);
+  const setSplitModules = useSourceReaderStore(s => s.setSplitModules);
+  const setSplitSummaryOpen = useSourceReaderStore(s => s.setSplitSummaryOpen);
+  const setSplitResult = useSourceReaderStore(s => s.setSplitResult);
+
+  const handleOpenChange = (o: boolean) => {
+    if (!o) {
+      setSplitSummaryOpen(false);
+      setSplitResult(null);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -61,7 +49,7 @@ export function SmartSplitSummaryDialog({
                 <p className="text-xs text-muted-foreground mt-0.5">{splitResult?.rangeLabel} • Izvor: "{source.title}"</p>
               </div>
             </div>
-            <Button onClick={() => onOpenChange(false)} className="w-full">Zatvori</Button>
+            <Button onClick={() => handleOpenChange(false)} className="w-full">Zatvori</Button>
           </div>
         ) : splitResult ? (
           <div className="space-y-4">
@@ -107,7 +95,7 @@ export function SmartSplitSummaryDialog({
               <span>Svi moduli će biti automatski povezani sa izvorom "{source.title}"</span>
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Otkaži</Button>
+              <Button variant="outline" onClick={() => handleOpenChange(false)} className="flex-1">Otkaži</Button>
               <Button onClick={onSmartSplitConfirm} className="flex-1 gap-2">
                 <Wand2 className="h-4 w-4" />Potvrdi
               </Button>

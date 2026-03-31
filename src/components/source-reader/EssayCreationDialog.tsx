@@ -2,33 +2,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Source } from "@/lib/sources-storage";
+import { useSourceReaderStore } from "@/store/useSourceReaderStore";
 
-/**
- * Props for the EssayCreationDialog component.
- */
 interface Props {
-  /** Whether the dialog is open */
-  open: boolean;
-  /** Callback when the open state changes */
-  onOpenChange: (open: boolean) => void;
-  /** The question for the essay card */
-  essayQuestion: string;
-  /** Callback to update the essay question */
-  setEssayQuestion: (val: string) => void;
-  /** The selected text from the source (the answer) */
-  selectedText: string;
-  /** The source being read */
   source: Source;
-  /** Callback to create the essay card */
   onCreateEssay: () => void;
 }
 
-/**
- * Dialog for creating a new essay card from a text selection.
- */
-export function EssayCreationDialog({ open, onOpenChange, essayQuestion, setEssayQuestion, selectedText, source, onCreateEssay }: Props) {
+export function EssayCreationDialog({ source, onCreateEssay }: Props) {
+  const open = useSourceReaderStore(s => s.essayDialogOpen);
+  const setOpen = useSourceReaderStore(s => s.setEssayDialogOpen);
+  const essayQuestion = useSourceReaderStore(s => s.essayQuestion);
+  const setEssayQuestion = useSourceReaderStore(s => s.setEssayQuestion);
+  const selectedText = useSourceReaderStore(s => s.selectedText);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Kreiraj esejsko pitanje</DialogTitle></DialogHeader>
         <div className="space-y-4">
