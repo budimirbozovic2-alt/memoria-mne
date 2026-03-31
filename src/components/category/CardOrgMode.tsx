@@ -240,7 +240,7 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards]);
 
   // Auto-expand on mount if only 1-3 subcategories
-  useMemo(() => {
+  useEffect(() => {
     if (tree.length <= 3) {
       setExpandedSubs(new Set(tree.map(n => n.subcategory)));
     }
