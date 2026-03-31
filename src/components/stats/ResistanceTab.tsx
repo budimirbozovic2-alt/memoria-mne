@@ -59,7 +59,7 @@ export default function ResistanceTab({ cards, categories, reviewLog, weights, c
         );
 
         return {
-          category: cat,
+          category: catNameMap[cat] || cat,
           lapseCount: catLapses.length,
           avgLatency: +avgLatency.toFixed(1),
           cognitiveLoad: Math.min(100, cognitiveLoad),

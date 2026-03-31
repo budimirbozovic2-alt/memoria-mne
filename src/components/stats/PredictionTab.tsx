@@ -64,7 +64,7 @@ export default function PredictionTab({ cards, categories, reviewLog, catNameMap
     .filter(v => v.velocity > 0)
     .sort((a, b) => b.velocity - a.velocity)
     .map(v => ({
-      category: v.category.length > 12 ? v.category.slice(0, 12) + "…" : v.category,
+      category: ((catNameMap[v.category] || v.category) as string).length > 12 ? (catNameMap[v.category] || v.category).slice(0, 12) + "…" : (catNameMap[v.category] || v.category),
       velocity: +v.velocity.toFixed(1),
     }));
 
