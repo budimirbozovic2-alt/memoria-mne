@@ -51,7 +51,7 @@ export function useCardCRUD({
     ) => {
       const card = createCard(question, sections, category, subcategory);
       card.updatedAt = Date.now();
-      if (chapter) card.chapter = chapter;
+      if (chapter) { card.chapterId = chapter; card.chapter = chapter; }
       if (extra?.sourceId) card.sourceId = extra.sourceId;
       if (extra?.textAnchor) card.textAnchor = extra.textAnchor;
       if (extra?.originalSourceSnippet) card.originalSourceSnippet = extra.originalSourceSnippet;
