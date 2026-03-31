@@ -36,7 +36,7 @@ export default function PredictionTab({ cards, categories, reviewLog, catNameMap
         const predictedDate = daysRemaining !== null ? new Date(Date.now() + daysRemaining * 86400000) : null;
 
         return {
-          category: cat, totalSections, masteredSections, remaining,
+          category: catNameMap[cat] || cat, totalSections, masteredSections, remaining,
           percent: totalSections > 0 ? Math.round((masteredSections / totalSections) * 100) : 0,
           dailyVelocity, daysRemaining, predictedDate,
           cardCount: catCards.length,
