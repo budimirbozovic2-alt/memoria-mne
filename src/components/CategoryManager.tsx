@@ -1,17 +1,8 @@
-import { Edit2, Trash2, Check, X, Plus, FolderOpen, ChevronDown, ChevronRight, Tag, Landmark } from "lucide-react";
+import { Edit2, Trash2, Check, X, Plus, FolderOpen, ChevronDown, ChevronRight, Tag } from "lucide-react";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion, AnimatePresence } from "framer-motion";
-import type { BuildingType } from "@/lib/forum-logic";
-import { loadMonumentTypes, saveMonumentType } from "@/lib/forum-logic";
-import { BUILDING_LABELS, MonumentSVG } from "@/components/gamification/monument-buildings";
-
-const ALL_BUILDING_TYPES: BuildingType[] = [
-  "amphitheatrum", "basilica", "tabularium", "rostra",
-  "curia", "macellum", "argentaria", "templum", "arcus", "insula",
-];
 
 interface Props {
   categories: string[];
