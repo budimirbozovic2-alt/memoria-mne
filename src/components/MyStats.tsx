@@ -128,7 +128,7 @@ export default function MyStats({ cards, categories, categoryRecords, subcategor
         <TabsContent value="resistance">
           <Suspense fallback={<TabSkeleton />}>
             <ErrorBoundary label="Otpor">
-              <ResistanceTab cards={cards} categories={categories} reviewLog={reviewLog} weights={weights} />
+              <ResistanceTab cards={cards} categories={categories} reviewLog={reviewLog} weights={weights} catNameMap={catNameMap} />
             </ErrorBoundary>
           </Suspense>
         </TabsContent>
