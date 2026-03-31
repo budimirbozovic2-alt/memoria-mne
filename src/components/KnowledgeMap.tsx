@@ -13,8 +13,6 @@ interface Props {
   cards: Card[];
   categories: string[];
   subcategories: Record<string, string[]>;
-  onUpdateChapters?: (updates: { id: string; chapterId: string | undefined; chapterOrder: number }[]) => void;
-  onReviewSection?: (cardId: string, sectionId: string, grade: number) => void;
   onReorderCategories?: (ordered: string[]) => void;
   onReorderSubcategories?: (category: string, ordered: string[]) => void;
 }
@@ -105,7 +103,7 @@ function persistNav(next: ViewState) {
 }
 
 export default function KnowledgeMap({
-  cards, categories, subcategories, onUpdateChapters, onReviewSection,
+  cards, categories, subcategories,
   onReorderCategories, onReorderSubcategories,
 }: Props) {
   const [view, setView] = useState<ViewState>(() => hydrateView(categories, subcategories));
@@ -136,7 +134,7 @@ export default function KnowledgeMap({
   const transition = { type: "tween" as const, duration: 0.25, ease: "easeInOut" as const };
 
   // ── Step 3: Detail view ──
-  if (view.step === "detail" && onUpdateChapters && onReviewSection) {
+  if (view.step === "detail") {
     return (
       <motion.div
         key="detail"
@@ -153,8 +151,6 @@ export default function KnowledgeMap({
             category={view.category}
             subcategory={view.subcategory}
             onBack={() => navigate({ step: "subcategories", category: view.category })}
-            onUpdateChapters={onUpdateChapters}
-            onReviewSection={onReviewSection}
           />
         </Suspense>
       </motion.div>
@@ -175,9 +171,7 @@ export default function KnowledgeMap({
         onToggleReorder={onReorderSubcategories ? () => setReorderMode(r => !r) : undefined}
         onBack={() => navigate({ step: "categories" })}
         onSelectSubcategory={(sub) => {
-          if (onUpdateChapters && onReviewSection) {
-            navigate({ step: "detail", category: view.category, subcategory: sub });
-          }
+          navigate({ step: "detail", category: view.category, subcategory: sub });
         }}
         onReorderSubcategories={onReorderSubcategories}
         slideVariants={slideVariants}
