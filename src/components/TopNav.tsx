@@ -40,7 +40,6 @@ const TOOLS_PATHS = TOOLS_NAV.map(i => i.path);
 export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Props) {
   const location = useLocation();
   const { stats } = useCardContext();
-  const { enterForum, unlocked: forumUnlocked } = useForumContext();
   const [dark, setDarkState] = useState(() => document.documentElement.classList.contains("dark"));
   
   const [labOpen, setLabOpen] = useState(false);
