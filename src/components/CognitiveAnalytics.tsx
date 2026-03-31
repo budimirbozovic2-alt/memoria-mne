@@ -232,7 +232,7 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
                   <span className="text-[10px] text-muted-foreground ml-2 flex-shrink-0">{spot.occurrences}× detektovano</span>
                 </div>
                 <div className="flex items-center gap-3 text-[10px]">
-                  <span className="text-muted-foreground">{spot.category}</span>
+                  <span className="text-muted-foreground">{catNameMap[spot.category] || spot.category}</span>
                   <span className="text-warning">Sigurnost: {spot.confidence}/5</span>
                   <span className="text-destructive">Ocjena: {spot.actualGrade}/4</span>
                 </div>
