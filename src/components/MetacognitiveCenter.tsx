@@ -80,7 +80,7 @@ export default function MetacognitiveCenter({ cards, categories, categoryRecords
                 <p className="text-xs text-muted-foreground mb-4">
                   Analiza interferencija, slijepih tačaka i slabih kuka — sa preporukama za mnemoničku obradu problematičnih kartica.
                 </p>
-                <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} />
+                <CognitiveAnalytics cards={cards} categories={categories} reviewLog={reviewLog} catNameMap={catNameMap} />
               </div>
             </div>
           </Suspense>
