@@ -47,11 +47,11 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <div className="text-xs p-2 rounded-md bg-background border">
                     <p className="font-medium truncate">{pair.cardA.question}</p>
-                    <p className="text-muted-foreground text-[10px] mt-0.5">{pair.cardA.category}</p>
+                    <p className="text-muted-foreground text-[10px] mt-0.5">{catNameMap[pair.cardA.category] || pair.cardA.category}</p>
                   </div>
                   <div className="text-xs p-2 rounded-md bg-background border">
                     <p className="font-medium truncate">{pair.cardB.question}</p>
-                    <p className="text-muted-foreground text-[10px] mt-0.5">{pair.cardB.category}</p>
+                    <p className="text-muted-foreground text-[10px] mt-0.5">{catNameMap[pair.cardB.category] || pair.cardB.category}</p>
                   </div>
                 </div>
                 {pair.sharedErrors.length > 0 && (
