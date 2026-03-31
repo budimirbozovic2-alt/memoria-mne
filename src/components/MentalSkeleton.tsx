@@ -24,7 +24,7 @@ interface Props {
   subcategory: string;
   category: string;
   onBack: () => void;
-  onUpdateChapters: (updates: { id: string; chapter: string; chapterOrder: number }[]) => void;
+  onUpdateChapters: (updates: { id: string; chapterId: string | undefined; chapterOrder: number }[]) => void;
   onReviewSection: (cardId: string, sectionId: string, grade: number) => void;
 }
 

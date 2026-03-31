@@ -93,7 +93,7 @@ export default function StudyModeFree({
               </div>
             </TextSelectionTooltip>
           ) : (
-            <TextSelectionTooltip cardId={card.id} question={card.question} category={card.categoryId} subcategory={card.subcategory} tags={card.tags} keyParts={card.keyParts} onMarkKeyPart={onAddKeyPart ? (text: string) => onAddKeyPart(card.id, text) : undefined}>
+            <TextSelectionTooltip cardId={card.id} question={card.question} category={card.categoryId} subcategoryId={card.subcategoryId} tags={card.tags} keyParts={card.keyParts} onMarkKeyPart={onAddKeyPart ? (text: string) => onAddKeyPart(card.id, text) : undefined}>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">{card.sections.length} cjelina</span>

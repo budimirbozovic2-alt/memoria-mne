@@ -199,11 +199,11 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
         const zipBlob = await compressToZip(`codex-backup-${dateStr}.json`, blob);
         onProgress(100, "Preuzimanje...");
         downloadFile(zipBlob, `codex-backup-${dateStr}.zip`);
-        toast.success("Kompletni backup uspješno exportovan.");
+        toast({ title: "Kompletni backup uspješno exportovan." });
       } else {
         onProgress(100, "Preuzimanje...");
         downloadFile(blob, `codex-backup-${dateStr}.json`);
-        toast.success("Kompletni backup uspješno exportovan.");
+        toast({ title: "Kompletni backup uspješno exportovan." });
       }
       setLastBackupTime();
     },

@@ -40,22 +40,22 @@ class EventBus {
         };
         
         // Heartbeat mechanism to track tab count
-        this.subscribe(EVENT_TYPES.TAB_HEARTBEAT, (payload) => {
+        this.subscribe<{ sourceTabId: string }>(EVENT_TYPES.TAB_HEARTBEAT, (payload) => {
           if (payload?.sourceTabId !== TAB_ID) {
-            this.activeTabs.set(payload?.sourceTabId, Date.now());
+            this.activeTabs.set(payload.sourceTabId, Date.now());
             this.emit(EVENT_TYPES.TAB_REPLY, { sourceTabId: TAB_ID });
           }
         });
 
-        this.subscribe(EVENT_TYPES.TAB_REPLY, (payload) => {
+        this.subscribe<{ sourceTabId: string }>(EVENT_TYPES.TAB_REPLY, (payload) => {
           if (payload?.sourceTabId !== TAB_ID) {
-            this.activeTabs.set(payload?.sourceTabId, Date.now());
+            this.activeTabs.set(payload.sourceTabId, Date.now());
           }
         });
 
-        this.subscribe(EVENT_TYPES.TAB_LEAVING, (payload) => {
+        this.subscribe<{ sourceTabId: string }>(EVENT_TYPES.TAB_LEAVING, (payload) => {
           if (payload?.sourceTabId !== TAB_ID) {
-            this.activeTabs.delete(payload?.sourceTabId);
+            this.activeTabs.delete(payload.sourceTabId);
           }
         });
 

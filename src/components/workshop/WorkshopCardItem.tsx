@@ -34,12 +34,12 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
   const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
   const catName = catRecord?.name ?? card.categoryId;
   const subName = useMemo(() => {
-    if (!catRecord) return card.subcategoryId || card.subcategory;
-    const sid = card.subcategoryId || card.subcategory;
+    if (!catRecord) return card.subcategoryId || "";
+    const sid = card.subcategoryId;
     if (!sid) return "";
     const node = (catRecord.subcategories || []).find((s: any) => s.id === sid || s.name === sid);
     return node?.name ?? sid;
-  }, [catRecord, card.subcategoryId, card.subcategory]);
+  }, [catRecord, card.subcategoryId]);
   const [editMode, setEditMode] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editQuestion, setEditQuestion] = useState("");
