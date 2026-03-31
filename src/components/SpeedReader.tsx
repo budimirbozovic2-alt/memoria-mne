@@ -680,7 +680,7 @@ export default function SpeedReader() {
             ) : (
               <>
                 <h2 className="text-xl font-medium">{selCard?.question}</h2>
-                <p className="text-xs text-muted-foreground">{uuidToName[selCard?.categoryId ?? ""] ?? selCard?.categoryId}{selCard?.subcategoryId ? ` › ${selCard.subcategoryId}` : ""}</p>
+                <p className="text-xs text-muted-foreground">{uuidToName[selCard?.categoryId ?? ""] ?? selCard?.categoryId}{selCard?.subcategoryId ? ` › ${uuidToName[selCard.subcategoryId] ?? selCard.subcategoryId}` : ""}</p>
               </>
             )}
           </div>

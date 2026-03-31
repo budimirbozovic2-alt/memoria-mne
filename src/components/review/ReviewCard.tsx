@@ -200,7 +200,7 @@ export default function ReviewCard({
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-widest text-muted-foreground">{catName}</span>
               {card.subcategoryId && (
-                <span className="text-xs text-muted-foreground">› {card.subcategoryId}</span>
+                <span className="text-xs text-muted-foreground">› {subName}</span>
               )}
             </div>
             <div className="flex items-center gap-2 mt-1">

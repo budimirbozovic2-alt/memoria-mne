@@ -116,8 +116,8 @@ export default function LearnModal({ card, onGradeSection, onClose }: LearnModal
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-3 h-3 rounded" style={{ backgroundColor: getMasteryColor(level) }} />
-              <span className="text-xs text-muted-foreground">{catName} → {card.subcategoryId}</span>
-              {card.chapterId && <span className="text-xs text-muted-foreground">→ {card.chapterId}</span>}
+              <span className="text-xs text-muted-foreground">{catName} → {subName}</span>
+              {card.chapterId && <span className="text-xs text-muted-foreground">→ {chName}</span>}
             </div>
             <h3 className="text-lg font-medium leading-tight">{card.question}</h3>
           </div>

@@ -91,7 +91,7 @@ export default function GlobalSearch({ cards, open, onClose, onNavigateToCard }:
           id: c.id,
           type: "card",
           title: c.question,
-          subtitle: `${c.categoryId}${c.subcategoryId ? ` › ${c.subcategoryId}` : ""}`,
+          subtitle: `${uuidToName[c.categoryId] ?? c.categoryId}${c.subcategoryId ? ` › ${uuidToName[c.subcategoryId] ?? c.subcategoryId}` : ""}`,
           icon: c.type === "flash" ? "flash" : "essay",
           card: c,
         });
