@@ -1,77 +1,55 @@
 
 
-# Hirurško uklanjanje 3D Foruma — zadržavanje Mape Znanja
+# UUID Display Fix — Prikaz naziva umjesto UUID-ova
 
 ## Rezime
-Brišemo sve Forum/gamification komponente, rutu, kontekst, i tranziciju. Čistimo reference u Dashboard, TopNav, AppSidebar, CategoryManager, App.tsx i useCardImport. Mapa Znanja ostaje netaknuta.
+7 komponenti prikazuje sirove UUID-ove za `subcategoryId` i `chapterId` umjesto čitljivih naziva. Svaka već ima pristup `categoryId` i koristi `useLiveQuery` za `catName` — proširujemo taj lookup da uključi subcategory i chapter nazive.
 
 ---
 
-## Fajlovi za BRISANJE (9 fajlova)
+## Problem
+Korisnik vidi npr. `› a3f8c2d1-...` umjesto `› Obligaciono pravo` u headeru kartice tokom učenja, ponavljanja, i pregleda.
 
-| Fajl | Razlog |
-|------|--------|
-| `src/components/gamification/ForumAtmosphere.tsx` | 3D ambijent gradient |
-| `src/components/gamification/ForumContext.tsx` | Forum unlock/transition kontekst |
-| `src/components/gamification/ForumTransition.tsx` | Fade-to-black tranzicija |
-| `src/components/gamification/MonumentCard.tsx` | Kartica spomenika |
-| `src/components/gamification/MonumentInterior.tsx` | Unutrašnjost spomenika |
-| `src/components/gamification/ArchNode.tsx` | Hijerarhijski čvor |
-| `src/components/gamification/monument-buildings.tsx` | 10 SVG zgrada |
-| `src/components/gamification/monument-svg.tsx` | SVG primitivi |
-| `src/components/gamification/monument-effects.tsx` | Pukotine/bršljan efekti |
-| `src/views/RomanForumPage.tsx` | Forum stranica |
+## Pattern za fix
+Svaka pogođena komponenta već radi `useLiveQuery(() => db.categories.get(card.categoryId))` — iz tog `catRecord` možemo izvući subcategory i chapter nazive:
 
-Napomena: `src/lib/forum-logic.ts` se NE briše u ovom koraku jer ga `CategoryManager` i `useCardImport` koriste za `loadMonumentTypes` / `saveMonumentType` / `invalidateMonumentTypesCache`. Čistimo ga od nepotrebnih eksporta, ali zadržavamo monument-type persistence jer je to user preference podatak (koji tip zgrade je korisnik odabrao za kategoriju).
+```text
+const subName = catRecord?.subcategories
+  ?.find(s => s.id === card.subcategoryId)?.name ?? card.subcategoryId;
+const chName = catRecord?.subcategories
+  ?.flatMap(s => s.chapters)
+  ?.find(ch => (typeof ch === 'string' ? ch : ch.id) === card.chapterId)
+  ?.name ?? card.chapterId;  // za chapter koji je objekat
+```
 
----
+## Fajlovi za izmjenu (7 fajlova, ~3-5 linija svaki)
 
-## Fajlovi za IZMJENU (6 fajlova, ~50 linija)
+| Fajl | Linija | Trenutno | Poslije |
+|------|--------|----------|---------|
+| `SessionHeader.tsx` | L89 | `{card.subcategoryId}` | `{subName}` |
+| `ReviewCard.tsx` | L202 | `{card.subcategoryId}` | `{subName}` |
+| `LearnModal.tsx` | L117 | `{card.subcategoryId}` i L118 `{card.chapterId}` | `{subName}` i `{chName}` |
+| `SpeedReader.tsx` | L597 | `{card.subcategoryId}` | `{subName}` |
+| `CardViewMode.tsx` | L370 | `{card.subcategoryId}` | `{subName}` |
+| `LinkToExistingCardModal.tsx` | L93 | `{card.subcategoryId}` | `{subName}` |
+| `GlobalSearch.tsx` | L83 | `${c.subcategoryId}` | lookup iz catRecords |
 
-### 1. `src/App.tsx`
-- Obriši import `ForumProvider`, `ForumTransition`, `RomanForumPage`
-- Obriši `<ForumProvider>` wrapper i `<ForumTransition />`
-- Obriši `<Route path="/forum" ...>` liniju
+### Detalji po komponenti
 
-### 2. `src/components/TopNav.tsx`
-- Obriši import `useForumContext`
-- Obriši `const { enterForum, unlocked: forumUnlocked } = useForumContext()`
-- Obriši cijelu `_handleBrandClick` / `_handleThemeSeq` / `_seqRef` / `_resetSeq` logiku (easter egg za otključavanje Foruma)
-- Obriši Forum link ikonu (L204-209: `forumUnlocked && <Link to="/forum">`)
-- `toggleDark` više ne poziva `_handleThemeSeq` — samo `setDarkState + setDarkMode`
+**1-4. SessionHeader, ReviewCard, SpeedReader, CardViewMode** — sve koriste `useLiveQuery` za `catRecord`. Dodajemo `subName` derivat i zamjenjujemo u JSX-u.
 
-### 3. `src/components/Dashboard.tsx`
-- Obriši import `useForumContext`, `Link`, `Landmark`
-- Obriši `const { unlocked } = useForumContext()`
-- Obriši cijeli blok L117-131 (`unlocked && <Link to="/forum">...`)
+**5. LearnModal** — već ima `catRecord` i `catName`. Dodajemo `subName` i `chName` derivate, zamjenjujemo L117-118.
 
-### 4. `src/components/AppSidebar.tsx`
-- Ukloni `{ path: "/forum", icon: Landmark, label: "Forum" }` iz `STATIC_NAV`
-- Ukloni `Landmark` iz lucide importa
+**6. LinkToExistingCardModal** — nema `useLiveQuery`. Ovdje dodajemo `catNameMap` prop (isti pattern kao `CardList`) ili koristimo `categoryRecords` iz konteksta.
 
-### 5. `src/components/CategoryManager.tsx`
-- Ukloni import `BuildingType` iz `forum-logic`
-- Ukloni import `loadMonumentTypes`, `saveMonumentType`
-- Ukloni import `BUILDING_LABELS`, `MonumentSVG` iz `monument-buildings`
-- Ukloni `ALL_BUILDING_TYPES` konstantu
-- Ukloni `monumentTypes` state i `handleSetBuildingType`
-- Ukloni cijeli "Building type picker" `<Popover>` blok (L157-187)
-- Ukloni `Landmark` iz lucide importa
+**7. GlobalSearch** — koristi `subtitle` string. Proslijediti `categoryRecords` iz AppContext za lookup.
 
-### 6. `src/hooks/useCardImport.ts`
-- Ukloni L252-253: `invalidateMonumentTypesCache()` poziv nakon importa (čista dead code referenca)
-
----
-
-## Šta se NE dira
-- `src/components/KnowledgeMap.tsx` — glavni navigator, ostaje 100%
-- `src/lib/forum-logic.ts` — zadržavamo za sada (monument-type localStorage persistence), čisti se u zasebnom koraku ako/kad odlučimo
-- `src/test/construction-phases.test.ts` — test za forum-logic, može ostati ili se obrisati; nije kritičan
-- FSRS logika, CSS/styling: netaknuto
-- Nema novih zavisnosti, nema schema promjena
+### Bonus: forum-logic cleanup
+- Obrisati `src/test/construction-phases.test.ts` (testira obrisani Forum)
+- `src/lib/forum-logic.ts` — ostaviti za sada (ne koristi se nigdje osim u testu)
 
 ## Scope
-- 10 fajlova za brisanje, 6 za izmjenu
-- ~50 linija promjena u izmijenjenim fajlovima
-- Netto: značajno smanjenje bundle-a (SVG zgrade, framer-motion animacije, gradient shader)
+- 7 fajlova, ~40 linija promjena ukupno
+- Nema novih zavisnosti
+- FSRS: netaknut
 
