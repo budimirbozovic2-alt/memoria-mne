@@ -418,9 +418,10 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
                   {/* Chapters */}
                   {node.chapters.map(ch => (
                     <DroppableChapterZone
-                      key={ch.chapter}
-                      sub={node.subcategory}
-                      chapter={ch.chapter}
+                      key={ch.chapterId}
+                      subId={node.subcategoryId}
+                      chapId={ch.chapterId}
+                      displayName={ch.chapter}
                       count={ch.cards.length}
                     >
                       <SortableContext items={ch.cards.map(c => c.id)} strategy={verticalListSortingStrategy}>
