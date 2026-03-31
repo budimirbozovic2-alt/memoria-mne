@@ -50,6 +50,7 @@ function HighlightedSentence({ sectionContent, errorText }: { sectionContent: st
 
 interface Props {
   cards: Card[];
+  categoryRecords: CategoryRecord[];
   onClearErrorLog: (cardId: string) => void;
   embedded?: boolean;
 }
