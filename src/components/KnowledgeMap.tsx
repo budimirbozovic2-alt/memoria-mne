@@ -13,7 +13,7 @@ interface Props {
   cards: Card[];
   categories: string[];
   subcategories: Record<string, string[]>;
-  onUpdateChapters?: (updates: { id: string; chapter: string; chapterOrder: number }[]) => void;
+  onUpdateChapters?: (updates: { id: string; chapterId: string | undefined; chapterOrder: number }[]) => void;
   onReviewSection?: (cardId: string, sectionId: string, grade: number) => void;
   onReorderCategories?: (ordered: string[]) => void;
   onReorderSubcategories?: (category: string, ordered: string[]) => void;

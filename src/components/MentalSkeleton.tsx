@@ -24,7 +24,7 @@ interface Props {
   subcategory: string;
   category: string;
   onBack: () => void;
-  onUpdateChapters: (updates: { id: string; chapter: string; chapterOrder: number }[]) => void;
+  onUpdateChapters: (updates: { id: string; chapterId: string | undefined; chapterOrder: number }[]) => void;
   onReviewSection: (cardId: string, sectionId: string, grade: number) => void;
 }
 
@@ -103,8 +103,8 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     handleDeleteChapter,
     handleMoveChapter,
   } = useChapterManagement({
-    category,
-    subcategory,
+    categoryId: category,
+    subcategoryId: subcategory,
     cardsByChapter,
     cardDerivedChapters: chapters,
     onUpdateChapters,
@@ -178,15 +178,15 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
       const movedCard = subCards.find(c => c.id === activeCardId);
       if (!movedCard) return;
 
-      const targetChapterName = targetChapter === UNASSIGNED_CHAPTER ? "" : targetChapter;
-      const updates: { id: string; chapter: string; chapterOrder: number }[] = [];
+      const targetChapterId = targetChapter === UNASSIGNED_CHAPTER ? "" : targetChapter;
+      const updates: { id: string; chapterId: string; chapterOrder: number }[] = [];
 
       const targetCards = [...(cardsByChapter[targetChapter] || [])]
         .filter(c => c.id !== activeCardId)
         .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
       targetCards.push(movedCard);
       targetCards.forEach((c, i) => {
-        updates.push({ id: c.id, chapter: targetChapterName, chapterOrder: i });
+        updates.push({ id: c.id, chapterId: targetChapterId, chapterOrder: i });
       });
 
       const sourceCards = [...(cardsByChapter[sourceChapter] || [])]
@@ -195,7 +195,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
       sourceCards.forEach((c, i) => {
         updates.push({
           id: c.id,
-          chapter: sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter,
+          chapterId: sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter,
           chapterOrder: i,
         });
       });
@@ -220,8 +220,8 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
 
     const reordered = arrayMove(chapterCards, oldIndex, newIndex);
-    const chapterName = sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter;
-    const updates = reordered.map((c, i) => ({ id: c.id, chapter: chapterName, chapterOrder: i }));
+    const chapterId = sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter;
+    const updates = reordered.map((c, i) => ({ id: c.id, chapterId, chapterOrder: i }));
     onUpdateChapters(updates);
   };
 

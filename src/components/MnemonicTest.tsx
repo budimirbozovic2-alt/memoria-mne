@@ -34,7 +34,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
     const tree: Record<string, Set<string>> = {};
     allTestable.forEach(c => {
       if (!tree[c.categoryId]) tree[c.categoryId] = new Set();
-      const sid = c.subcategoryId || c.subcategory;
+      const sid = c.subcategoryId;
       if (sid) tree[c.categoryId].add(sid);
     });
     return tree;
@@ -50,7 +50,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
   const filteredTestable = useMemo(() => {
     let result = allTestable;
     if (filterCategory) result = result.filter(c => c.categoryId === filterCategory);
-    if (filterSubcategory) result = result.filter(c => (c.subcategoryId || c.subcategory) === filterSubcategory);
+    if (filterSubcategory) result = result.filter(c => c.subcategoryId === filterSubcategory);
     if (filterHookType) result = result.filter(c => c.hookType === filterHookType);
     return result;
   }, [allTestable, filterCategory, filterSubcategory, filterHookType]);
@@ -193,7 +193,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
                   Sve
                 </button>
                 {subcategories.map(sub => {
-                  const count = allTestable.filter(c => c.categoryId === filterCategory && c.subcategory === sub).length;
+                  const count = allTestable.filter(c => c.categoryId === filterCategory && c.subcategoryId === sub).length;
                   return (
                     <button
                       key={sub}
@@ -352,7 +352,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
           className="rounded-xl border bg-card p-6 space-y-6"
         >
           <div>
-            <p className="text-xs text-muted-foreground mb-2">{currentCard.categoryId}{currentCard.subcategory ? ` / ${currentCard.subcategory}` : ""}</p>
+            <p className="text-xs text-muted-foreground mb-2">{currentCard.categoryId}{currentCard.subcategoryId ? ` / ${currentCard.subcategoryId}` : ""}</p>
             <h3 className="text-xl font-medium">{currentCard.question}</h3>
           </div>
 
