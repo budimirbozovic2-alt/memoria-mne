@@ -1,13 +1,47 @@
 import { Brain, Wrench, FolderOpen, Search, Sparkles, ArrowUpDown, CheckCircle2 } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { MnemonicCard, MnemonicStatus, loadMajorSystem } from "@/lib/mnemonic-storage";
 import { type CategoryRecord } from "@/lib/db";
+import { List, type RowComponentProps } from "react-window";
 
 import InfoPanel from "@/components/InfoPanel";
 import WorkshopCardItem from "@/components/workshop/WorkshopCardItem";
 import ScrollableRow from "@/components/ScrollableRow";
 import { useDebounce } from "@/hooks/useDebounce";
 import { motion, AnimatePresence } from "framer-motion";
+
+const COLLAPSED_HEIGHT = 72;
+const EXPANDED_BASE = 400;
+const GAP = 8;
+const VIRTUALIZATION_THRESHOLD = 30;
+
+interface VirtualRowData {
+  filteredCards: MnemonicCard[];
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+  onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
+  onDeleteCard: (id: string) => void;
+  majorSystem: Record<number, string>;
+}
+
+function VirtualWorkshopRow(props: RowComponentProps<VirtualRowData>) {
+  const { index, style, filteredCards, expandedId, onToggle, onUpdateCard, onDeleteCard, majorSystem } = props;
+  const card = filteredCards[index];
+  if (!card) return null;
+
+  return (
+    <div style={{ ...style, paddingBottom: GAP }}>
+      <WorkshopCardItem
+        card={card}
+        isExpanded={expandedId === card.id}
+        onToggle={() => onToggle(card.id)}
+        onUpdateCard={onUpdateCard}
+        onDeleteCard={onDeleteCard}
+        majorSystem={majorSystem}
+      />
+    </div>
+  );
+}
 interface Props {
   cards: MnemonicCard[];
   onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
@@ -93,6 +127,32 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
   const handleToggle = useCallback((id: string) => {
     setExpandedId(prev => prev === id ? null : id);
   }, []);
+
+  const listRef = useRef<any>(null);
+
+  const getRowHeight = useCallback((index: number) => {
+    const card = filtered[index];
+    if (!card || expandedId !== card.id) return COLLAPSED_HEIGHT + GAP;
+    return EXPANDED_BASE + GAP;
+  }, [filtered, expandedId]);
+
+  const useVirtualization = filtered.length >= VIRTUALIZATION_THRESHOLD;
+
+  const virtualRowProps = useMemo<VirtualRowData>(() => ({
+    filteredCards: filtered,
+    expandedId,
+    onToggle: handleToggle,
+    onUpdateCard,
+    onDeleteCard,
+    majorSystem,
+  }), [filtered, expandedId, handleToggle, onUpdateCard, onDeleteCard, majorSystem]);
+
+  // Reset list when expanded card changes (row heights change)
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.resetAfterIndex(0);
+    }
+  }, [expandedId]);
 
   const statusCounts = useMemo(() => ({
     all: cards.length,
@@ -268,17 +328,30 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
               ))}
             </div>
           </div>
-          {filtered.map(card => (
-            <WorkshopCardItem
-              key={card.id}
-              card={card}
-              isExpanded={expandedId === card.id}
-              onToggle={() => handleToggle(card.id)}
-              onUpdateCard={onUpdateCard}
-              onDeleteCard={onDeleteCard}
-              majorSystem={majorSystem}
+          {useVirtualization ? (
+            <List
+              defaultHeight={700}
+              rowCount={filtered.length}
+              rowHeight={getRowHeight}
+              overscanCount={8}
+              rowComponent={VirtualWorkshopRow}
+              listRef={listRef}
+              rowProps={virtualRowProps}
+              style={{ height: Math.min(filtered.length * (COLLAPSED_HEIGHT + GAP), 700) }}
             />
-          ))}
+          ) : (
+            filtered.map(card => (
+              <WorkshopCardItem
+                key={card.id}
+                card={card}
+                isExpanded={expandedId === card.id}
+                onToggle={() => handleToggle(card.id)}
+                onUpdateCard={onUpdateCard}
+                onDeleteCard={onDeleteCard}
+                majorSystem={majorSystem}
+              />
+            ))
+          )}
         </div>
       )}
     </div>
