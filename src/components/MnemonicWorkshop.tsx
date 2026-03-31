@@ -1,13 +1,47 @@
 import { Brain, Wrench, FolderOpen, Search, Sparkles, ArrowUpDown, CheckCircle2 } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { MnemonicCard, MnemonicStatus, loadMajorSystem } from "@/lib/mnemonic-storage";
 import { type CategoryRecord } from "@/lib/db";
+import { List, type RowComponentProps } from "react-window";
 
 import InfoPanel from "@/components/InfoPanel";
 import WorkshopCardItem from "@/components/workshop/WorkshopCardItem";
 import ScrollableRow from "@/components/ScrollableRow";
 import { useDebounce } from "@/hooks/useDebounce";
 import { motion, AnimatePresence } from "framer-motion";
+
+const COLLAPSED_HEIGHT = 72;
+const EXPANDED_BASE = 400;
+const GAP = 8;
+const VIRTUALIZATION_THRESHOLD = 30;
+
+interface VirtualRowData {
+  filteredCards: MnemonicCard[];
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+  onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
+  onDeleteCard: (id: string) => void;
+  majorSystem: Record<number, string>;
+}
+
+function VirtualWorkshopRow(props: RowComponentProps<VirtualRowData>) {
+  const { index, style, filteredCards, expandedId, onToggle, onUpdateCard, onDeleteCard, majorSystem } = props;
+  const card = filteredCards[index];
+  if (!card) return null;
+
+  return (
+    <div style={{ ...style, paddingBottom: GAP }}>
+      <WorkshopCardItem
+        card={card}
+        isExpanded={expandedId === card.id}
+        onToggle={() => onToggle(card.id)}
+        onUpdateCard={onUpdateCard}
+        onDeleteCard={onDeleteCard}
+        majorSystem={majorSystem}
+      />
+    </div>
+  );
+}
 interface Props {
   cards: MnemonicCard[];
   onUpdateCard: (id: string, updates: Partial<MnemonicCard>) => void;
