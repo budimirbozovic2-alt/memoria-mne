@@ -14,9 +14,10 @@ interface Props {
   cards: Card[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
+  catNameMap: Record<string, string>;
 }
 
-export default function PredictionTab({ cards, categories, reviewLog }: Props) {
+export default function PredictionTab({ cards, categories, reviewLog, catNameMap }: Props) {
   const velocity = useMemo(() => getLearningVelocity(reviewLog, categories), [reviewLog, categories]);
 
   const predictions = useMemo(() => {
