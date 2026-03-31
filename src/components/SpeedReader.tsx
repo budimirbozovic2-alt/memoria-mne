@@ -154,7 +154,10 @@ export default function SpeedReader() {
 
   const uuidToName = useMemo(() => {
     const m: Record<string, string> = {};
-    for (const r of categoryRecords) m[r.id] = r.name;
+    for (const r of categoryRecords) {
+      m[r.id] = r.name;
+      for (const sub of r.subcategories ?? []) m[sub.id] = sub.name;
+    }
     return m;
   }, [categoryRecords]);
 
