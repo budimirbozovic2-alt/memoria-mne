@@ -248,12 +248,12 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
     }
   }, [tree.length]);
 
-  const findCardContainer = useCallback((cardId: string): { sub: string; chapter: string } | null => {
+  const findCardContainer = useCallback((cardId: string): { subId: string; chapId: string; subDisplay: string; chapDisplay: string } | null => {
     for (const node of tree) {
       for (const ch of node.chapters) {
-        if (ch.cards.some(c => c.id === cardId)) return { sub: node.subcategory, chapter: ch.chapter };
+        if (ch.cards.some(c => c.id === cardId)) return { subId: node.subcategoryId, chapId: ch.chapterId, subDisplay: node.subcategory, chapDisplay: ch.chapter };
       }
-      if (node.unassigned.some(c => c.id === cardId)) return { sub: node.subcategory, chapter: "" };
+      if (node.unassigned.some(c => c.id === cardId)) return { subId: node.subcategoryId, chapId: "", subDisplay: node.subcategory, chapDisplay: "" };
     }
     return null;
   }, [tree]);
