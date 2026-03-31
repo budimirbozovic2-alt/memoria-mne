@@ -70,8 +70,8 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
   const uniqueChapters = useMemo(() => {
     const set = new Set<string>();
     cards.forEach(c => {
-      if (filterSubcategory !== "__all__" && (c.subcategoryId || c.subcategory) !== filterSubcategory) return;
-      if (c.chapterId || c.chapter) set.add((c.chapterId || c.chapter)!);
+      if (filterSubcategory !== "__all__" && c.subcategoryId !== filterSubcategory) return;
+      if (c.chapterId) set.add(c.chapterId);
     });
     return Array.from(set).sort();
   }, [cards, filterSubcategory]);
