@@ -154,7 +154,7 @@ function DroppableChapterZone({ subId, chapId, displayName, count, children }: {
     >
       <div className="flex items-center gap-2 px-1">
         <BookOpen className="h-3.5 w-3.5 text-primary/60" />
-        <span className="text-xs font-semibold text-foreground/80">{chapter}</span>
+        <span className="text-xs font-semibold text-foreground/80">{displayName}</span>
         <Badge variant="secondary" className="text-[9px] h-4 px-1.5 ml-auto">{count}</Badge>
       </div>
       <div className="space-y-1.5">
