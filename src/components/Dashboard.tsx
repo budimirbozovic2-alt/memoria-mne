@@ -28,8 +28,6 @@ export default function Dashboard({ stats, categoryStats, categories, subcategor
     focusRatio, actualRatio, autoSuggestion, storageUsage, plannerData,
     velocityData, weakestCategories, briefText, statusIcons, statusColor, statusMessage,
   } = useDashboardData(stats, categoryStats, categories, cards, reviewLog, srSettings);
-  const { unlocked } = useForumContext();
-
   return (
     <div className="space-y-6 relative">
       {wc.showExamProgress && (
