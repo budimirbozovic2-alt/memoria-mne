@@ -63,15 +63,15 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
   // Build unique subcategories and chapters
   const uniqueSubcategories = useMemo(() => {
     const set = new Set<string>();
-    cards.forEach(c => { if (c.subcategory) set.add(c.subcategory); });
+    cards.forEach(c => { if (c.subcategoryId || c.subcategory) set.add((c.subcategoryId || c.subcategory)!); });
     return Array.from(set).sort();
   }, [cards]);
 
   const uniqueChapters = useMemo(() => {
     const set = new Set<string>();
     cards.forEach(c => {
-      if (filterSubcategory !== "__all__" && c.subcategory !== filterSubcategory) return;
-      if (c.chapter) set.add(c.chapter);
+      if (filterSubcategory !== "__all__" && (c.subcategoryId || c.subcategory) !== filterSubcategory) return;
+      if (c.chapterId || c.chapter) set.add((c.chapterId || c.chapter)!);
     });
     return Array.from(set).sort();
   }, [cards, filterSubcategory]);
