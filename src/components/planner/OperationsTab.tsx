@@ -211,6 +211,7 @@ export default function OperationsTab({
                       onNavigateToDatabase(p.categories[0]);
                     }
                   }}
+                  catNameMap={catNameMap}
                 />
               );
             })}
