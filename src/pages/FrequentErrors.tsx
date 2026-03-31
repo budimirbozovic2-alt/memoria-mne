@@ -305,7 +305,7 @@ export default function FrequentErrors({ cards, categoryRecords, onClearErrorLog
                     {masteredGroups.map(([category, errors]) => (
                       <div key={category} className="rounded-xl border border-success/20 bg-success/5 overflow-hidden mb-3">
                         <div className="px-5 py-2.5 border-b border-success/10 flex items-center justify-between">
-                          <h3 className="font-medium text-sm text-success">{category}</h3>
+                          <h3 className="font-medium text-sm text-success">{catNameMap[category] || category}</h3>
                           <Trophy className="h-4 w-4 text-success/50" />
                         </div>
                         <div className="divide-y divide-success/10">
