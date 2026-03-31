@@ -19,6 +19,12 @@ interface Props {
   onLink: (cardId: string, appendSnippet: boolean) => void;
 }
 
+function SubBadge({ categoryId, subcategoryId }: { categoryId: string; subcategoryId: string }) {
+  const catRecord = useLiveQuery(() => db.categories.get(categoryId), [categoryId]);
+  const name = catRecord?.subcategories?.find(s => s.id === subcategoryId)?.name ?? subcategoryId;
+  return <Badge variant="outline" className="text-[10px] mt-0.5">{name}</Badge>;
+}
+
 export default function LinkToExistingCardModal({
   open, onOpenChange, sourceId, sourceLabel, selectedText, cards, onLink,
 }: Props) {
