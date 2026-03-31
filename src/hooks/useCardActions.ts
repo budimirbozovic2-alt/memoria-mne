@@ -22,9 +22,9 @@ interface UseCardActionsProps {
   onUpdate?: (id: string, updates: {
     question?: string;
     sections?: SectionInput[];
-    category?: string;
-    subcategory?: string;
-    chapter?: string;
+    categoryId?: string;
+    subcategoryId?: string;
+    chapterId?: string;
   }) => void;
 }
 
@@ -194,9 +194,9 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
 
   // ── Resolve final metadata values ─────────────────────
   const resolvedMeta = useMemo(() => ({
-    category: showNewCat && newCategory.trim() ? newCategory.trim() : category,
-    subcategory: showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory,
-    chapter: showNewChapter && newChapter.trim() ? newChapter.trim() : chapter,
+    categoryId: showNewCat && newCategory.trim() ? newCategory.trim() : category,
+    subcategoryId: showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory,
+    chapterId: showNewChapter && newChapter.trim() ? newChapter.trim() : chapter,
   }), [showNewCat, newCategory, category, showNewSub, newSubcategory, subcategory, showNewChapter, newChapter, chapter]);
 
   // ── Submit ────────────────────────────────────────────
@@ -213,7 +213,7 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
     }
 
     setIsSaving(true);
-    const { category: cat, subcategory: sub, chapter: ch } = resolvedMeta;
+    const { categoryId: cat, subcategoryId: sub, chapterId: ch } = resolvedMeta;
 
     try {
       if (cardType === "flash") {
@@ -221,14 +221,14 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
           onUpdate(editCard.id, {
             question,
             sections: [{ title: "Odgovor", content: flashAnswer }],
-            category: cat, subcategory: sub, chapter: ch,
+            categoryId: cat, subcategoryId: sub, chapterId: ch,
           });
         } else {
           onSaveFlash(question, flashAnswer, cat, sub);
         }
       } else {
         if (editCard && onUpdate) {
-          onUpdate(editCard.id, { question, sections, category: cat, subcategory: sub, chapter: ch });
+          onUpdate(editCard.id, { question, sections, categoryId: cat, subcategoryId: sub, chapterId: ch });
         } else {
           onSave(question, sections, cat, sub, ch);
         }

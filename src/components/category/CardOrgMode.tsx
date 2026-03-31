@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   DndContext, pointerWithin, DragOverlay, MeasuringStrategy,
@@ -240,7 +240,7 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards]);
 
   // Auto-expand on mount if only 1-3 subcategories
-  useMemo(() => {
+  useEffect(() => {
     if (tree.length <= 3) {
       setExpandedSubs(new Set(tree.map(n => n.subcategory)));
     }
@@ -265,7 +265,7 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
   }, []);
 
   const assignChapter = useCallback((cardId: string, chapter: string) => {
-    patchCard(cardId, c => ({ ...c, chapter: chapter || undefined, chapterId: chapter || undefined }));
+    patchCard(cardId, c => ({ ...c, chapterId: chapter || undefined }));
   }, [patchCard]);
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -465,7 +465,7 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
                               onAssignChapter={v => assignChapter(card.id, v)}
                               onMoveSub={v => {
                                 const targetSub = v === "(Bez potkategorije)" ? "" : v;
-                                patchCard(card.id, c => ({ ...c, subcategory: targetSub, subcategoryId: targetSub }));
+                                patchCard(card.id, c => ({ ...c, subcategoryId: targetSub }));
                               }}
                             />
                           );
