@@ -94,7 +94,7 @@ export default function MetacognitiveCenter({ cards, categories, categoryRecords
 // DIARY TAB
 // ═══════════════════════════════════════════════════════════
 
-function DiaryTab({ cards, reviewLog }: { cards: Card[]; reviewLog: ReviewLogEntry[] }) {
+function DiaryTab({ cards, reviewLog, catNameMap }: { cards: Card[]; reviewLog: ReviewLogEntry[]; catNameMap: Record<string, string> }) {
   const [diary, setDiary] = useState<DiaryEntry[]>(() => loadDiary());
   const [dailyGoal, setDailyGoal] = useState("");
   const [selfAnalysis, setSelfAnalysis] = useState("");
