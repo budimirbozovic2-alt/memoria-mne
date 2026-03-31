@@ -318,8 +318,8 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
       });
     } else {
       const targetChapterNode = tree
-        .find(n => n.subcategory === overContainer.subDisplay)
-        ?.chapters.find(ch => ch.chapter === overContainer.chapDisplay);
+        .find(n => n.subcategoryId === overContainer.subId)
+        ?.chapters.find(ch => ch.chapterId === overContainer.chapId);
       if (!targetChapterNode) return;
 
       const overIdx = targetChapterNode.cards.findIndex(c => c.id === overId);
