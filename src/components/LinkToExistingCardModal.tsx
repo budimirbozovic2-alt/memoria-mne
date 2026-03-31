@@ -97,7 +97,7 @@ export default function LinkToExistingCardModal({
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{card.question}</p>
                     {card.subcategoryId && (
-                        <SubBadge categoryId={card.categoryId} subcategoryId={card.subcategoryId} />
+                        <SubBadge categoryId={card.categoryId} subcategoryId={card.subcategoryId!} />
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
