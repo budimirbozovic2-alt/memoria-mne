@@ -1,95 +1,64 @@
 
 
-# WebWorker za ZIP Kompresiju/Dekompresiju
+# Pod-faza 2C: Uklanjanje @deprecated polja `subcategory` i `chapter`
 
 ## Rezime
-Prebacujemo JSZip operacije (kompresija i dekompresija) sa main thread-a u Web Worker po istom obrascu kao `docx-worker.ts`. UI ostaje responsivan tokom exporta velikih baza.
+Brišemo `subcategory` i `chapter` sa `Card` interfejsa i svih fajlova. Svuda gdje se koristi `card.subcategory` zamjenjujemo sa `card.subcategoryId`, a `card.chapter` sa `card.chapterId`. Import migracija zadržava backward compatibility za stare JSON fajlove.
 
 ---
 
-## Novi fajl: `src/workers/zip-worker.ts`
+## Promjene po fajlovima (~20 fajlova, ~120 linija)
 
-Worker prima dvije vrste poruka:
-1. **compress**: `{ action: "compress", filename: string, data: ArrayBuffer }` → vraća `{ success: true, blob: ArrayBuffer }`
-2. **decompress**: `{ action: "decompress", data: ArrayBuffer }` → vraća `{ success: true, json: string }`
+### 1. Interfejs — `src/lib/spaced-repetition.ts`
+- Obrisati `subcategory?: string` i `chapter?: string` sa `Card` interfejsa
+- U `createCard` i `createFlashCard`: ukloniti pisanje u `subcategory`, zadržati `subcategoryId`
 
-Worker importuje `jszip` direktno (Vite bundluje za worker kontekst).
+### 2. CRUD — `src/hooks/useCardCRUD.ts`
+- `addCard`: ukloniti `card.chapter = chapter`, zadržati samo `card.chapterId = chapter`
+- `updateCard`: preimenovati `updates.subcategory` → `updates.subcategoryId`, `updates.chapter` → `updates.chapterId`; ukloniti dual-write (`newCard.subcategory = ...`)
+- `splitCard` (L162): `card.subcategory` → `card.subcategoryId`
 
-```ts
-import JSZip from "jszip";
+### 3. Form state — `src/hooks/useCardActions.ts`
+- L109: `editCard?.subcategoryId ?? editCard?.subcategory` → `editCard?.subcategoryId ?? ""`
+- L110: `editCard?.chapterId ?? editCard?.chapter` → `editCard?.chapterId ?? ""`
 
-self.onmessage = async (e) => {
-  const { action, filename, data } = e.data;
-  try {
-    if (action === "compress") {
-      const zip = new JSZip();
-      zip.file(filename, data);
-      const result = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE", compressionOptions: { level: 5 } });
-      self.postMessage({ success: true, result }, [result]); // transfer ownership
-    } else if (action === "decompress") {
-      const zip = await JSZip.loadAsync(data);
-      const jsonFile = Object.keys(zip.files).find(n => n.endsWith(".json") && !n.startsWith("__MACOSX"));
-      if (!jsonFile) throw new Error("ZIP ne sadrži JSON fajl.");
-      const json = await zip.files[jsonFile].async("string");
-      self.postMessage({ success: true, result: json });
-    }
-  } catch (err: any) {
-    self.postMessage({ success: false, error: err?.message || "ZIP operation failed" });
-  }
-};
-```
+### 4. Import migracija — `src/hooks/useCardImport.ts`
+- L56: dodati `subcategoryId: c.subcategoryId || c.subcategory || ""` i `chapterId: c.chapterId || c.chapter || ""`
+- Ukloniti `subcategory: c.subcategory || ""`
 
-Key: koristi `ArrayBuffer` + `Transferable` za zero-copy slanje blob-ova između worker-a i main thread-a.
+### 5. Bootstrap migracija — `src/hooks/useCardBootstrap.ts`
+- L169: `card.subcategory` → `card.subcategoryId` (orphan scan)
+- L170: `card.chapter` → `card.chapterId`
 
----
-
-## Ažuriranje: `src/lib/zip-service.ts`
-
-Obje funkcije (`compressToZip`, `decompressJsonFromZip`) prelaze na worker-first pristup sa fallback-om na main thread (isti obrazac kao `docx-parser.ts`):
-
-```ts
-export async function compressToZip(filename: string, blob: Blob): Promise<Blob> {
-  const arrayBuffer = await blob.arrayBuffer();
-  try {
-    const result = await runInWorker("compress", { filename, data: arrayBuffer });
-    return new Blob([result], { type: "application/zip" });
-  } catch {
-    return fallbackCompress(filename, blob);
-  }
-}
-
-export async function decompressJsonFromZip(file: Blob): Promise<string> {
-  const arrayBuffer = await file.arrayBuffer();
-  try {
-    return await runInWorker("decompress", { data: arrayBuffer });
-  } catch {
-    return fallbackDecompress(file);
-  }
-}
-```
-
-`runInWorker` — helper koji kreira worker, šalje poruku, čeka odgovor, timeout 60s, terminira. Transfer `arrayBuffer` vlasništva radi zero-copy.
-
-Fallback funkcije koriste stari JSZip-na-main-thread pristup.
-
----
-
-## Bez promjena u potrošačima
-
-`useCardExport.ts`, `useCardImport.ts`, `ExportImportDialog.tsx` — svi već koriste `import("@/lib/zip-service")` → automatski dobijaju worker verziju bez ikakvih izmjena.
-
----
-
-## Fajlovi
+### 6. UI komponente — zamjena `card.subcategory` → `card.subcategoryId`, `card.chapter` → `card.chapterId`:
 
 | Fajl | Promjena |
 |------|----------|
-| `src/workers/zip-worker.ts` | **NOVO** — JSZip u worker kontekstu |
-| `src/lib/zip-service.ts` | Worker-first sa fallback |
+| `src/components/CardList.tsx` | L100-101, L105, L159, L261-263: ukloni fallback na `.subcategory`/`.chapter` |
+| `src/components/card-list/CardContextMenu.tsx` | L130, L134, L149, L154: `.subcategory` → `.subcategoryId`, `.chapter` → `.chapterId` |
+| `src/components/category/CardViewMode.tsx` | L73-74, L82-83, L373, L376: ukloni fallback |
+| `src/components/category/CardOrgMode.tsx` | L54, L59, L288-291, L333-336: ukloni dual-write, koristi samo `subcategoryId`/`chapterId` |
+| `src/components/learn/SessionHeader.tsx` | L89: `.subcategory` → `.subcategoryId` |
+| `src/components/learn/StudyModeRecall.tsx` | L96: ukloni fallback |
+| `src/components/GlobalSearch.tsx` | L83: `.subcategory` → `.subcategoryId` |
+| `src/components/LinkToExistingCardModal.tsx` | L91-94: `.subcategory` → `.subcategoryId` |
+| `src/components/mental-skeleton/LearnModal.tsx` | L117-118: `.subcategory` → `.subcategoryId`, `.chapter` → `.chapterId` |
+| `src/components/gamification/MonumentInterior.tsx` | L41: ukloni fallback |
+| `src/hooks/useSourceHierarchy.ts` | L69, L72: ukloni fallback |
+| `src/pages/FrequentErrors.tsx` | L114: `.subcategory` → `.subcategoryId` |
+| `src/lib/mnemonic-storage.ts` | L94: ukloni fallback na `.subcategory` |
+
+### 7. Prikaz imena umjesto UUID-a
+Gdje god se UUID prikazuje korisniku (SessionHeader, CardList, LearnModal, GlobalSearch, FrequentErrors, LinkToExistingCardModal), koristiti `resolveSubcategoryName` / `resolveChapterName` iz `category-service.ts` za lookup. Komponente koje već imaju `catNameMap` ili `categoryRecords` prop koriste ih za lookup.
+
+---
+
+## Guardrails
+- FSRS logika: netaknuta (samo `Card` interfejs, ne `Section` ni algoritam)
+- Import backward compatibility: stari JSON sa `subcategory`/`chapter` stringovima se migrira u `subcategoryId`/`chapterId` pri importu
+- Export: `subcategoryId`/`chapterId` se eksportuju — stari format više nije podržan za pisanje
 
 ## Scope
-- 2 fajla (1 nov, 1 ažuriran), ~80 linija
-- Nema novih zavisnosti (jszip već postoji)
-- Svi potrošači ostaju nepromijenjeni
-- Timeout: 60s (vs 30s za DOCX — ZIP može biti veći)
+- ~20 fajlova, ~120 linija promjena
+- Nema novih zavisnosti, nema schema promjena
 
