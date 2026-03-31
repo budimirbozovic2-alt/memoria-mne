@@ -135,7 +135,7 @@ export default function ReviewSetup({
 
   const dueSubcategories = useMemo(() => {
     if (!selectedCategory) return [];
-    const subs = new Set(dueCards.filter((c) => c.categoryId === selectedCategory && (c.subcategoryId || c.subcategory)).map((c) => (c.subcategoryId || c.subcategory)!));
+    const subs = new Set(dueCards.filter((c) => c.categoryId === selectedCategory && c.subcategoryId).map((c) => c.subcategoryId!));
     return Array.from(subs).sort();
   }, [dueCards, selectedCategory]);
 
