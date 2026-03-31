@@ -1,4 +1,4 @@
-import { Target, Landmark } from "lucide-react";
+import { Target } from "lucide-react";
 import { Card as SRCard, SRSettings } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import ProgressRing from "@/components/ProgressRing";
