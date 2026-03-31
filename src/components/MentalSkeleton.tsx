@@ -220,8 +220,8 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
 
     const reordered = arrayMove(chapterCards, oldIndex, newIndex);
-    const chapterName = sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter;
-    const updates = reordered.map((c, i) => ({ id: c.id, chapter: chapterName, chapterOrder: i }));
+    const chapterId = sourceChapter === UNASSIGNED_CHAPTER ? "" : sourceChapter;
+    const updates = reordered.map((c, i) => ({ id: c.id, chapterId, chapterOrder: i }));
     onUpdateChapters(updates);
   };
 
