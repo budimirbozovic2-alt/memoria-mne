@@ -16,7 +16,7 @@ self.onmessage = async (e: MessageEvent<{ action: string; filename?: string; dat
         compression: "DEFLATE",
         compressionOptions: { level: 5 },
       });
-      self.postMessage({ success: true, result }, [result]);
+      (self as unknown as { postMessage(msg: any, transfer: Transferable[]): void }).postMessage({ success: true, result }, [result]);
     } else if (action === "decompress") {
       const zip = await JSZip.loadAsync(data);
       const jsonFile = Object.keys(zip.files).find(
