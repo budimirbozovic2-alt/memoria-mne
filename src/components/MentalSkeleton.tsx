@@ -67,13 +67,13 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
 
   // Filter cards for this subcategory
   const subCards = useMemo(() =>
-    cards.filter(c => c.categoryId === category && c.subcategory === subcategory),
+    cards.filter(c => c.categoryId === category && (c.subcategoryId || c.subcategory) === subcategory),
     [cards, category, subcategory]
   );
 
   const chapters = useMemo(() => getChapters(subCards), [subCards]);
   const unassignedCards = useMemo(() =>
-    subCards.filter(c => !c.chapter || c.chapter === ""),
+    subCards.filter(c => !(c.chapterId || c.chapter)),
     [subCards]
   );
 
