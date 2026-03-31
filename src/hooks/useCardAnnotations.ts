@@ -167,13 +167,13 @@ export function useCardAnnotations({
   }, [setCardMapState, cardMapRef]);
 
 
-  const bulkUpdateChapter = useCallback((updates: { id: string; chapter: string; chapterOrder: number }[]) => {
+  const bulkUpdateChapter = useCallback((updates: { id: string; chapterId: string | undefined; chapterOrder: number }[]) => {
     const now = Date.now();
     const changed: Card[] = [];
     const nextRef = { ...cardMapRef.current };
     for (const u of updates) {
       if (nextRef[u.id]) {
-        const c = { ...nextRef[u.id], chapter: u.chapter, chapterId: u.chapter, chapterOrder: u.chapterOrder, updatedAt: now };
+        const c = { ...nextRef[u.id], chapter: u.chapterId ?? "", chapterId: u.chapterId ?? "", chapterOrder: u.chapterOrder, updatedAt: now };
         nextRef[u.id] = c;
         changed.push(c);
       }
