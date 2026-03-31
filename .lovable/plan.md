@@ -1,93 +1,52 @@
 
 
-# Read-Only Refaktor Mentalnog Kostura / Mape Znanja
+# Dead Code Cleanup + CardOrgMode TreeNode Fix
 
 ## Rezime
-Pretvaramo cijeli modul Mentalni Kostur u read-only vizuelizaciju. Brišemo svu DnD logiku, chapter management UI, i navigator/auditor mode toggle. Preimenovujemo `DraggableCardTile` u `SkeletonCardTile`. Komponenta postaje lagani, informativni dashboard stanja znanja.
+Nakon svih dosadašnjih refaktora, ostala su 2 fajla koji su potpuno mrtav kod (niko ih ne importuje) i 1 bug u `CardOrgMode.tsx` gdje `TreeNode` koristi `subcategory: string` umjesto UUID-baziranog modela, što kvari sort po `sortOrder` kad se koriste display nazivi kao ključevi.
 
 ---
 
-## Promjene po fajlovima
+## 1. Brisanje mrtvog koda (2 fajla)
 
-### 1. PREIMENOVANJE: `DraggableCardTile.tsx` → `SkeletonCardTile.tsx`
+| Fajl | Razlog |
+|------|--------|
+| `src/lib/forum-logic.ts` | Niko ga ne importuje nakon brisanja Foruma i CategoryManager cleanup-a |
+| `src/hooks/useChapterManagement.ts` | MentalSkeleton ga više ne koristi, niko drugi ga ne importuje |
 
-Kreiramo novi fajl `src/components/mental-skeleton/SkeletonCardTile.tsx`, brišemo stari.
+## 2. CardOrgMode TreeNode bug fix
 
-- Ukloniti: `useSortable`, `CSS` iz `@dnd-kit`, `GripVertical` ikonu, `attributes/listeners/transform/transition/isDragging`
-- Ukloniti: `mode` prop — svi tile-ovi sada uvijek prikazuju mastery boju (auditor stil)
-- Zadržati: `getCardMasteryLevel`, `getMasteryColor`, tooltip sa stabilnošću, error dot indikator
-- Interfejs: `{ card: Card; onClick: () => void }`
+`CardOrgMode.tsx` je **jedina** preostala komponenta sa `@dnd-kit` — i to je ispravno jer služi za organizaciju kartica unutar CategoryView. Međutim, `TreeNode` interfejs koristi:
 
-### 2. `src/components/mental-skeleton/ChapterBox.tsx` (~50 linija manje)
-
-- Ukloniti: `useDroppable` iz `@dnd-kit/core`, `SortableContext`/`rectSortingStrategy` iz `@dnd-kit/sortable`
-- Ukloniti: `isOver` logiku, drop highlight stilove (`ring-2 ring-primary`, `← Pusti ovdje`)
-- Ukloniti: `mode` prop — nema navigator/auditor razlike
-- Ukloniti: `onRename`, `onDelete`, `onMoveUp`, `onMoveDown` prop-ove i njihov UI (Edit3, Trash2, ArrowUp, ArrowDown dugmad)
-- Zamjena import: `DraggableCardTile` → `SkeletonCardTile`
-- Zadržati: Collapsible, progress bar, mastery bar, section stats tooltip
-- Interfejs: `{ chapter: string; cards: Card[]; isOpen: boolean; onToggle: () => void; onCardClick: (card: Card) => void }`
-
-### 3. `src/components/MentalSkeleton.tsx` (~150 linija manje)
-
-- Ukloniti importi: `DndContext`, `PointerSensor`, `useSensor`, `useSensors`, `DragEndEvent`, `DragOverlay`, `DragStartEvent`, `MeasuringStrategy`, `arrayMove`, `createPortal`, `toast`, `DraggableCardTile`, `Plus`, `X`
-- Ukloniti props: `onUpdateChapters`, `onReviewSection` — komponenta postaje read-only
-- Ukloniti: `useChapterManagement` hook i sav chapter CRUD UI (dodaj/preimenuj/obriši glavu)
-- Ukloniti: `mode` state, mode toggle UI, `activeId`, `handleDragStart`, `handleDragEnd`, `findChapterForCard`, `sensors`, `DndContext` wrapper, `DragOverlay` portal
-- Ukloniti: `handleGradeSection` (nema review iz ovog modula)
-- Zadržati: `selectedCard` + `LearnModal` za read-only pregled kartice (klik otvara modal sa detaljima, ali bez ocjenjivanja)
-- Zadržati: mastery legend, chapter collapsible expand/collapse, `AuditorDetailPanel`
-- Props: `{ cards: Card[]; subcategory: string; category: string; onBack: () => void }`
-
-### 4. `src/components/KnowledgeMap.tsx` (~10 linija)
-
-- Ukloniti iz Props: `onUpdateChapters`, `onReviewSection`
-- L139: Ukloniti uslov `&& onUpdateChapters && onReviewSection` — detail view se uvijek renderuje
-- L151-158: `MentalSkeleton` prima samo `cards, category, subcategory, onBack` — bez callback-ova
-
-### 5. `src/views/KnowledgeMapPage.tsx` (~5 linija)
-
-- Ukloniti: `bulkUpdateChapter`, `reviewSection` iz `useCardContext()` destrukturiranja
-- Ukloniti: `onUpdateChapters` i `onReviewSection` prop-ove sa `<KnowledgeMap>`
-
-### 6. `src/components/mental-skeleton/types.ts`
-
-- Ukloniti: `Mode` tip (više nema navigator/auditor)
-- Zadržati: `UNASSIGNED_CHAPTER`
-
-### 7. `src/hooks/useChapterManagement.ts`
-
-- NE BRIŠEMO — koristi se i iz drugih mjesta potencijalno. Ali MentalSkeleton ga više ne importuje.
-
-### 8. Cleanup importa u `LearnModal.tsx` i `AuditorDetailPanel.tsx`
-
-- Provjeriti da li koriste `Mode` tip i ukloniti ako da (LearnModal se otvara uvijek, AuditorDetailPanel isto)
-
----
-
-## Vizuelna promjena
-
-```text
-PRIJE:                              POSLIJE:
-┌─ Navigator / Auditor ─┐          ┌─ Mentalni Kostur ────────┐
-│ [+ Dodaj Glavu]        │          │ Legenda mastery boja     │
-│ DnD: prevuci kartice   │   →      │                          │
-│ Edit/Delete/Move glave │          │ Glava 1 [▓▓▓░░] 72%     │
-│ Mode toggle dugmad     │          │   ■ ■ ■ ■ (read-only)   │
-└────────────────────────┘          │ Nekategorisane [░░] 0%   │
-                                    └──────────────────────────┘
+```ts
+interface TreeNode {
+  subcategory: string;  // ← display name, ne UUID
+  chapters: { chapter: string; cards: Card[] }[];  // ← display name
+}
 ```
 
-Svaka kartica tile prikazuje mastery boju. Klik otvara detail panel. Nema prevlačenja, editovanja, niti dodavanja glava.
+Problem: `buildTree()` na L91 postavlja `subcategory: displayName` (human name), ali onda `handleDragEnd` na L285-289 koristi `dropTarget.subcategory` da postavi `card.subcategoryId` — što znači da se **naziv** upisuje umjesto **UUID-a**.
 
----
+### Fix:
+- `TreeNode` dobija `subcategoryId: string` polje pored `subcategory` (display name)
+- `chapters` dobija `chapterId: string` pored `chapter` (display name)
+- `handleDragEnd` koristi `subcategoryId` i `chapterId` za `patchCard` umjesto display naziva
+- `parseChapterDropId` i `chapterDropId` koriste UUID-ove, ne nazive
+
+## Fajlovi
+
+| Fajl | Promjena | Linije |
+|------|----------|--------|
+| `src/lib/forum-logic.ts` | **BRISANJE** | -328 |
+| `src/hooks/useChapterManagement.ts` | **BRISANJE** | ~-80 |
+| `src/components/category/CardOrgMode.tsx` | Fix TreeNode: UUID tracking u DnD | ~25 |
+
+## Guardrails
+- `CardOrgMode` DnD ostaje — to je legitimni organizacioni alat
+- FSRS: netaknut
+- Nema novih zavisnosti, nema schema promjena
 
 ## Scope
-- 3 fajla značajno smanjeni (MentalSkeleton, ChapterBox, DraggableCardTile→SkeletonCardTile)
-- 2 fajla minor cleanup (KnowledgeMap, KnowledgeMapPage)
-- 1 fajl preimenovan (DraggableCardTile → SkeletonCardTile)
-- 1 fajl types.ts cleanup
-- Netto: ~200 linija manje koda
-- Nema novih zavisnosti
-- FSRS: netaknut
+- 2 fajla obrisana (~400 linija manje)
+- 1 fajl fix (~25 linija promjena)
 
