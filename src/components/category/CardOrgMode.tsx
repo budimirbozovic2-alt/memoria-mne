@@ -94,10 +94,10 @@ function buildTree(cards: Card[], subcategoryNodes: SubcategoryNode[]): TreeNode
     }
   }
 
-  const sortOrderMap = new Map(subcategoryNodes.map(n => [n.name, n.sortOrder]));
+  const sortOrderMap = new Map(subcategoryNodes.map(n => [n.id, n.sortOrder]));
   return result.sort((a, b) => {
-    const aOrder = sortOrderMap.get(a.subcategory) ?? 999;
-    const bOrder = sortOrderMap.get(b.subcategory) ?? 999;
+    const aOrder = sortOrderMap.get(a.subcategoryId) ?? 999;
+    const bOrder = sortOrderMap.get(b.subcategoryId) ?? 999;
     if (aOrder !== bOrder) return aOrder - bOrder;
     return a.subcategory.localeCompare(b.subcategory);
   });
