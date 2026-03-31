@@ -111,7 +111,7 @@ export default function FrequentErrors({ cards, onClearErrorLog, embedded }: Pro
           cardQuestion: card.question,
           cardId: card.id,
           category: card.categoryId,
-          subcategory: card.subcategory,
+          subcategory: card.subcategoryId,
           status: getErrorStatus(entry),
           sectionContent: allContent,
         });

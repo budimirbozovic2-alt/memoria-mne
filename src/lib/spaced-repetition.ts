@@ -68,10 +68,6 @@ export interface Card {
   question: string;
   sections: Section[];
   categoryId: string;        // FK → categories.id
-  /** @deprecated Use subcategoryId instead */
-  subcategory?: string;
-  /** @deprecated Use chapterId instead */
-  chapter?: string;
   subcategoryId?: string;    // FK → SubcategoryNode.id (UUID)
   chapterId?: string;        // FK → ChapterNode.id (UUID)
   chapterOrder?: number;
@@ -299,7 +295,6 @@ export function createCard(question: string, sections: { title: string; content:
     sections: sections.map((s) => createSection(s.title, s.content)),
     categoryId,
     subcategoryId: subcategoryId || "",
-    subcategory: subcategoryId || "", // @deprecated — kept for backward compat
     createdAt: Date.now(),
     readCount: 0,
     type: "essay",
@@ -313,7 +308,6 @@ export function createFlashCard(question: string, answer: string, categoryId: st
     sections: [createSection("Odgovor", answer)],
     categoryId,
     subcategoryId: subcategoryId || "",
-    subcategory: subcategoryId || "", // @deprecated — kept for backward compat
     createdAt: Date.now(),
     readCount: 0,
     type: "flash",

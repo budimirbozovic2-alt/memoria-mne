@@ -166,8 +166,8 @@ export function useCardBootstrap(setters: BootSetters) {
           // Scan cards belonging to this category for orphaned subcategories/chapters
           const catCards = c.filter((card) => card.categoryId === r.id);
           for (const card of catCards) {
-            const sub = card.subcategory || "";
-            const ch = card.chapter || "";
+            const sub = card.subcategoryId || "";
+            const ch = card.chapterId || "";
             if (!sub) continue;
 
             let node = nodes.find((n) => n.name === sub);

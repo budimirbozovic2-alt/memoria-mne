@@ -51,7 +51,7 @@ export function useCardCRUD({
     ) => {
       const card = createCard(question, sections, category, subcategory);
       card.updatedAt = Date.now();
-      if (chapter) { card.chapterId = chapter; card.chapter = chapter; }
+      if (chapter) { card.chapterId = chapter; }
       if (extra?.sourceId) card.sourceId = extra.sourceId;
       if (extra?.textAnchor) card.textAnchor = extra.textAnchor;
       if (extra?.originalSourceSnippet) card.originalSourceSnippet = extra.originalSourceSnippet;
@@ -87,8 +87,8 @@ export function useCardCRUD({
         question?: string;
         sections?: { title: string; content: string }[];
         categoryId?: string;
-        subcategory?: string;
-        chapter?: string;
+        subcategoryId?: string;
+        chapterId?: string;
         sourceId?: string;
         textAnchor?: string;
         originalSourceSnippet?: string;
@@ -101,13 +101,11 @@ export function useCardCRUD({
         const newCard = { ...c };
         if (updates.question) newCard.question = updates.question;
         if (updates.categoryId) newCard.categoryId = updates.categoryId;
-        if (updates.subcategory !== undefined) {
-          newCard.subcategory = updates.subcategory;
-          newCard.subcategoryId = updates.subcategory;
+        if (updates.subcategoryId !== undefined) {
+          newCard.subcategoryId = updates.subcategoryId;
         }
-        if (updates.chapter !== undefined) {
-          newCard.chapter = updates.chapter;
-          newCard.chapterId = updates.chapter;
+        if (updates.chapterId !== undefined) {
+          newCard.chapterId = updates.chapterId;
         }
         if (updates.sourceId !== undefined) newCard.sourceId = updates.sourceId;
         if (updates.textAnchor !== undefined) newCard.textAnchor = updates.textAnchor;
@@ -159,7 +157,7 @@ export function useCardCRUD({
         card.question,
         [{ title: section.title, content: section.content }],
         card.categoryId,
-        card.subcategory,
+        card.subcategoryId,
       ),
       sections: [{ ...section }],
       updatedAt: Date.now(),

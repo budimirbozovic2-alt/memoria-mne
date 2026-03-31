@@ -51,12 +51,12 @@ function buildTree(cards: Card[], subcategoryNodes: SubcategoryNode[]): TreeNode
   }
 
   for (const card of cards) {
-    const sub = card.subcategoryId || card.subcategory || UNCAT_KEY;
+    const sub = card.subcategoryId || UNCAT_KEY;
     if (!nodeMap.has(sub)) {
       nodeMap.set(sub, { chapters: new Map(), unassigned: [] });
     }
     const entry = nodeMap.get(sub)!;
-    const cardChap = card.chapterId || card.chapter;
+    const cardChap = card.chapterId;
     if (cardChap && entry.chapters.has(cardChap)) {
       entry.chapters.get(cardChap)!.push(card);
     } else if (cardChap) {
@@ -285,9 +285,7 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
       const targetSub = dropTarget.subcategory === "(Bez potkategorije)" ? "" : dropTarget.subcategory;
       patchCard(activeCardId, c => ({
         ...c,
-        chapter: dropTarget.chapter,
         chapterId: dropTarget.chapter,
-        subcategory: targetSub,
         subcategoryId: targetSub,
         sortOrder: 9999,
       }));
@@ -330,9 +328,7 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
 
       patchCard(activeCardId, c => ({
         ...c,
-        chapter: overContainer.chapter,
         chapterId: overContainer.chapter,
-        subcategory: targetSub,
         subcategoryId: targetSub,
       }));
 
