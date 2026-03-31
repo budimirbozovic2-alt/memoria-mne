@@ -83,9 +83,10 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
     chapters.forEach(ch => { map[ch] = []; });
     map[UNASSIGNED_CHAPTER] = [];
     subCards.forEach(c => {
-      const ch = c.chapter && c.chapter !== "" ? c.chapter : UNASSIGNED_CHAPTER;
-      if (!map[ch]) map[ch] = [];
-      map[ch].push(c);
+      const ch = (c.chapterId || c.chapter);
+      const chKey = ch && ch !== "" ? ch : UNASSIGNED_CHAPTER;
+      if (!map[chKey]) map[chKey] = [];
+      map[chKey].push(c);
     });
     return map;
   }, [subCards, chapters]);

@@ -365,15 +365,15 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
               {isExpanded && (
                 <div className="border-t px-4 py-3 space-y-3 bg-muted/20">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {card.subcategory && (
+                    {(card.subcategoryId || card.subcategory) && (
                       <Badge variant="secondary" className="text-[10px]">
-                        Potkategorija: {card.subcategory}
+                        Potkategorija: {card.subcategory || card.subcategoryId}
                       </Badge>
                     )}
-                    {card.chapter && (
+                    {(card.chapterId || card.chapter) && (
                       <Badge variant="outline" className="text-[10px] gap-1 border-primary/30">
                         <BookOpen className="h-3 w-3" />
-                        Glava: {card.chapter}
+                        Glava: {card.chapter || card.chapterId}
                       </Badge>
                     )}
                     {card.sourceId && (

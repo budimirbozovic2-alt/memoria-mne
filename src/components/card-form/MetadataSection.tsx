@@ -106,7 +106,7 @@ const MetadataSection = memo(function MetadataSection({
             <SelectTrigger className="bg-background"><SelectValue placeholder="Bez glave" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="__none__">Bez glave</SelectItem>
-              {availableChapters.map((ch) => <SelectItem key={ch} value={ch}>{ch}</SelectItem>)}
+              {availableChapters.map((ch) => <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>)}
             </SelectContent>
           </Select>
           {availableChapters.length === 0 && (

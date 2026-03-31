@@ -75,8 +75,8 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
       default: {
         const { subPos, chapPos } = positionMaps;
         return filtered.sort((a, b) =>
-          (subPos[a.subcategory ?? ""] ?? 999) - (subPos[b.subcategory ?? ""] ?? 999)
-          || (chapPos[a.chapter ?? ""] ?? 999) - (chapPos[b.chapter ?? ""] ?? 999)
+          (subPos[a.subcategoryId ?? a.subcategory ?? ""] ?? 999) - (subPos[b.subcategoryId ?? b.subcategory ?? ""] ?? 999)
+          || (chapPos[a.chapterId ?? a.chapter ?? ""] ?? 999) - (chapPos[b.chapterId ?? b.chapter ?? ""] ?? 999)
           || (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0)
           || a.createdAt - b.createdAt
         );

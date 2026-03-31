@@ -197,7 +197,7 @@ export const MonumentInterior = memo(function MonumentInterior({
               <CardStrengthList
                 cards={
                   expandedNode.children.find(c => c.name === expandedChap)?.cards
-                  ?? catCards.filter(c => (c.subcategory || "Ostalo") === expandedSub && (c.chapter || "Ostalo") === expandedChap)
+                  ?? catCards.filter(c => (c.subcategoryId || c.subcategory || "Ostalo") === expandedSub && (c.chapterId || c.chapter || "Ostalo") === expandedChap)
                 }
               />
             </motion.div>

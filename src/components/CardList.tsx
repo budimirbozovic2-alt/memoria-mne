@@ -258,9 +258,9 @@ export default function CardList({
 
   const filtered = useMemo(() => {
     let result = filterCategory ? cards.filter(c => c.categoryId === filterCategory) : cards;
-    if (filterSubcategory === "__none__") result = result.filter(c => !c.subcategory);
-    else if (filterSubcategory) result = result.filter(c => c.subcategory === filterSubcategory);
-    if (filterChapter) result = result.filter(c => c.chapter === filterChapter);
+    if (filterSubcategory === "__none__") result = result.filter(c => !(c.subcategoryId || c.subcategory));
+    else if (filterSubcategory) result = result.filter(c => (c.subcategoryId || c.subcategory) === filterSubcategory);
+    if (filterChapter) result = result.filter(c => (c.chapterId || c.chapter) === filterChapter);
     if (filterType !== "all") result = result.filter(c => (c.type || "essay") === filterType);
     if (filterTag) result = result.filter(c => (c.tags || []).includes(filterTag));
     if (searchQuery.trim()) {

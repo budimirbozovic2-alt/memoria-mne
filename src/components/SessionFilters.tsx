@@ -202,7 +202,7 @@ export default function SessionFilters({
                   {selectedChapter === ch && (
                     <motion.span layoutId={`${layoutPrefix}-chapter-pill`} className="absolute inset-0 rounded-md bg-primary/10" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
                   )}
-                  <span className="relative z-10">{ch}</span>
+                  <span className="relative z-10">{subNameMap[ch] || ch}</span>
                 </motion.button>
               ))}
             </ScrollableRow>
