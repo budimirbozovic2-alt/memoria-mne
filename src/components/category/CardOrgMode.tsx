@@ -300,12 +300,12 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
     const overContainer = findCardContainer(overId);
     if (!activeContainer || !overContainer) return;
 
-    const sameContainer = activeContainer.sub === overContainer.sub && activeContainer.chapter === overContainer.chapter;
+    const sameContainer = activeContainer.subId === overContainer.subId && activeContainer.chapId === overContainer.chapId;
 
     if (sameContainer) {
       const chapterNode = tree
-        .find(n => n.subcategory === overContainer.sub)
-        ?.chapters.find(ch => ch.chapter === overContainer.chapter);
+        .find(n => n.subcategory === overContainer.subDisplay)
+        ?.chapters.find(ch => ch.chapter === overContainer.chapDisplay);
       if (!chapterNode) return;
 
       const oldIndex = chapterNode.cards.findIndex(c => c.id === activeCardId);
@@ -317,10 +317,9 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
         patchCard(c.id, card => ({ ...card, sortOrder: i }));
       });
     } else {
-      const targetSub = overContainer.sub === "(Bez potkategorije)" ? "" : overContainer.sub;
       const targetChapterNode = tree
-        .find(n => n.subcategory === overContainer.sub)
-        ?.chapters.find(ch => ch.chapter === overContainer.chapter);
+        .find(n => n.subcategory === overContainer.subDisplay)
+        ?.chapters.find(ch => ch.chapter === overContainer.chapDisplay);
       if (!targetChapterNode) return;
 
       const overIdx = targetChapterNode.cards.findIndex(c => c.id === overId);
@@ -329,8 +328,8 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
 
       patchCard(activeCardId, c => ({
         ...c,
-        chapterId: overContainer.chapter,
-        subcategoryId: targetSub,
+        chapterId: overContainer.chapId || undefined,
+        subcategoryId: overContainer.subId,
       }));
 
       newList.forEach((c, i) => {
