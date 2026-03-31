@@ -193,7 +193,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
                   Sve
                 </button>
                 {subcategories.map(sub => {
-                  const count = allTestable.filter(c => c.categoryId === filterCategory && c.subcategory === sub).length;
+                  const count = allTestable.filter(c => c.categoryId === filterCategory && c.subcategoryId === sub).length;
                   return (
                     <button
                       key={sub}
