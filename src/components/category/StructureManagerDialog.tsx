@@ -18,13 +18,13 @@ interface StructureManagerDialogProps {
   categoryName: string;
   subcategoryNodes: SubcategoryNode[];
   onAddSubcategory: (catId: string, name: string) => void;
-  onRenameSubcategory: (catId: string, oldName: string, newName: string) => void;
-  onDeleteSubcategory: (catId: string, name: string) => void;
-  onReorderSubcategories: (catId: string, ordered: string[]) => void;
-  onAddChapter: (catId: string, subName: string, chapterName: string) => void;
-  onRenameChapter: (catId: string, subName: string, oldChapter: string, newChapter: string) => void;
-  onDeleteChapter: (catId: string, subName: string, chapterName: string) => void;
-  onReorderChapters: (catId: string, subName: string, ordered: string[]) => void;
+  onRenameSubcategory: (catId: string, subcategoryId: string, newName: string) => void;
+  onDeleteSubcategory: (catId: string, subcategoryId: string) => void;
+  onReorderSubcategories: (catId: string, orderedIds: string[]) => void;
+  onAddChapter: (catId: string, subcategoryId: string, chapterName: string) => void;
+  onRenameChapter: (catId: string, subcategoryId: string, chapterId: string, newChapter: string) => void;
+  onDeleteChapter: (catId: string, subcategoryId: string, chapterId: string) => void;
+  onReorderChapters: (catId: string, subcategoryId: string, orderedIds: string[]) => void;
 }
 
 export default function StructureManagerDialog({
@@ -33,21 +33,31 @@ export default function StructureManagerDialog({
   onAddChapter, onRenameChapter, onDeleteChapter, onReorderChapters,
 }: StructureManagerDialogProps) {
   const [newSubName, setNewSubName] = useState("");
+  // editingSub now stores the UUID of the subcategory being edited
   const [editingSub, setEditingSub] = useState<string | null>(null);
   const [editSubValue, setEditSubValue] = useState("");
   const [expandedSubs, setExpandedSubs] = useState<Set<string>>(new Set());
   const [newChapterName, setNewChapterName] = useState("");
+  // addingChapterFor stores the UUID of the subcategory
   const [addingChapterFor, setAddingChapterFor] = useState<string | null>(null);
-  const [editingChapter, setEditingChapter] = useState<{ sub: string; ch: string } | null>(null);
+  // editingChapter stores UUIDs
+  const [editingChapter, setEditingChapter] = useState<{ subId: string; chId: string } | null>(null);
   const [editChapterValue, setEditChapterValue] = useState("");
-  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "sub" | "chapter"; sub: string; ch?: string } | null>(null);
+  // deleteConfirm stores UUIDs + display names for the confirmation message
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    type: "sub" | "chapter";
+    subId: string;
+    subName: string;
+    chId?: string;
+    chName?: string;
+  } | null>(null);
 
   const sorted = [...subcategoryNodes].sort((a, b) => a.sortOrder - b.sortOrder);
 
-  const toggleExpanded = useCallback((name: string) => {
+  const toggleExpanded = useCallback((id: string) => {
     setExpandedSubs(prev => {
       const next = new Set(prev);
-      next.has(name) ? next.delete(name) : next.add(name);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   }, []);
@@ -60,27 +70,30 @@ export default function StructureManagerDialog({
     setNewSubName("");
   }, [newSubName, categoryId, onAddSubcategory, sorted]);
 
-  const handleRenameSub = useCallback((oldName: string) => {
+  const handleRenameSub = useCallback((subId: string) => {
     const newName = editSubValue.trim();
-    if (!newName || newName === oldName) { setEditingSub(null); return; }
-    onRenameSubcategory(categoryId, oldName, newName);
+    if (!newName || newName === sorted.find(s => s.id === subId)?.name) {
+      setEditingSub(null);
+      return;
+    }
+    onRenameSubcategory(categoryId, subId, newName);
     setEditingSub(null);
-  }, [editSubValue, categoryId, onRenameSubcategory]);
+  }, [editSubValue, categoryId, onRenameSubcategory, sorted]);
 
-  const confirmDeleteSub = useCallback((subName: string) => {
-    setDeleteConfirm({ type: "sub", sub: subName });
+  const confirmDeleteSub = useCallback((subId: string, subName: string) => {
+    setDeleteConfirm({ type: "sub", subId, subName });
   }, []);
 
-  const confirmDeleteChapter = useCallback((subName: string, chName: string) => {
-    setDeleteConfirm({ type: "chapter", sub: subName, ch: chName });
+  const confirmDeleteChapter = useCallback((subId: string, subName: string, chId: string, chName: string) => {
+    setDeleteConfirm({ type: "chapter", subId, subName, chId, chName });
   }, []);
 
   const executeDelete = useCallback(() => {
     if (!deleteConfirm) return;
     if (deleteConfirm.type === "sub") {
-      onDeleteSubcategory(categoryId, deleteConfirm.sub);
-    } else if (deleteConfirm.ch) {
-      onDeleteChapter(categoryId, deleteConfirm.sub, deleteConfirm.ch);
+      onDeleteSubcategory(categoryId, deleteConfirm.subId);
+    } else if (deleteConfirm.chId) {
+      onDeleteChapter(categoryId, deleteConfirm.subId, deleteConfirm.chId);
     }
     setDeleteConfirm(null);
   }, [deleteConfirm, categoryId, onDeleteSubcategory, onDeleteChapter]);
@@ -91,33 +104,33 @@ export default function StructureManagerDialog({
     const reordered = [...sorted];
     const [item] = reordered.splice(index, 1);
     reordered.splice(newIdx, 0, item);
-    onReorderSubcategories(categoryId, reordered.map(s => s.name));
+    onReorderSubcategories(categoryId, reordered.map(s => s.id));
   }, [sorted, categoryId, onReorderSubcategories]);
 
-  const handleAddChapter = useCallback((subName: string) => {
+  const handleAddChapter = useCallback((subId: string) => {
     const name = newChapterName.trim();
     if (!name) return;
-    const node = sorted.find(s => s.name === subName);
+    const node = sorted.find(s => s.id === subId);
     if (node?.chapters.some(ch => ch.name === name)) return;
-    onAddChapter(categoryId, subName, name);
+    onAddChapter(categoryId, subId, name);
     setNewChapterName("");
     setAddingChapterFor(null);
   }, [newChapterName, categoryId, onAddChapter, sorted]);
 
-  const handleRenameChapter = useCallback((subName: string, oldCh: string) => {
+  const handleRenameChapter = useCallback((subId: string, chId: string) => {
     const newName = editChapterValue.trim();
-    if (!newName || newName === oldCh) { setEditingChapter(null); return; }
-    onRenameChapter(categoryId, subName, oldCh, newName);
+    if (!newName) { setEditingChapter(null); return; }
+    onRenameChapter(categoryId, subId, chId, newName);
     setEditingChapter(null);
   }, [editChapterValue, categoryId, onRenameChapter]);
 
-  const handleMoveChapter = useCallback((subName: string, chapters: ChapterNode[], index: number, dir: -1 | 1) => {
+  const handleMoveChapter = useCallback((subId: string, chapters: ChapterNode[], index: number, dir: -1 | 1) => {
     const newIdx = index + dir;
     if (newIdx < 0 || newIdx >= chapters.length) return;
     const reordered = [...chapters];
     const [item] = reordered.splice(index, 1);
     reordered.splice(newIdx, 0, item);
-    onReorderChapters(categoryId, subName, reordered.map(ch => ch.name));
+    onReorderChapters(categoryId, subId, reordered.map(ch => ch.id));
   }, [categoryId, onReorderChapters]);
 
   return (
@@ -138,8 +151,8 @@ export default function StructureManagerDialog({
               <div>
                 <p className="text-sm font-medium text-foreground">
                   {deleteConfirm.type === "sub"
-                    ? `Obrisati potkategoriju "${deleteConfirm.sub}"?`
-                    : `Obrisati glavu "${deleteConfirm.ch}"?`}
+                    ? `Obrisati potkategoriju "${deleteConfirm.subName}"?`
+                    : `Obrisati glavu "${deleteConfirm.chName}"?`}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Sve povezane kartice će biti premještene u Neraspoređene.
@@ -155,24 +168,24 @@ export default function StructureManagerDialog({
 
         <div className="space-y-2">
           {sorted.map((node, idx) => {
-            const isExpanded = expandedSubs.has(node.name);
+            const isExpanded = expandedSubs.has(node.id);
             const chapters: ChapterNode[] = (node.chapters || []).map((ch: any, ci: number) =>
               typeof ch === "string" ? { id: crypto.randomUUID(), name: ch, sortOrder: ci } : ch
             );
             return (
-              <Collapsible key={node.id || node.name} open={isExpanded} onOpenChange={() => toggleExpanded(node.name)}>
+              <Collapsible key={node.id} open={isExpanded} onOpenChange={() => toggleExpanded(node.id)}>
                 <div className="rounded-lg border bg-card overflow-hidden">
                   {/* Subcategory header */}
                   <div className="flex items-center gap-1.5 px-3 py-2">
                     <CollapsibleTrigger asChild>
                       <button className="flex items-center gap-1.5 flex-1 text-left min-w-0">
                         {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                        {editingSub === node.name ? (
+                        {editingSub === node.id ? (
                           <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()}>
                             <Input value={editSubValue} onChange={e => setEditSubValue(e.target.value)}
                               className="h-6 text-xs flex-1" autoFocus
-                              onKeyDown={e => { if (e.key === "Enter") handleRenameSub(node.name); if (e.key === "Escape") setEditingSub(null); }} />
-                            <button onClick={() => handleRenameSub(node.name)} className="p-0.5 rounded hover:bg-secondary text-green-500"><Check className="h-3 w-3" /></button>
+                              onKeyDown={e => { if (e.key === "Enter") handleRenameSub(node.id); if (e.key === "Escape") setEditingSub(null); }} />
+                            <button onClick={() => handleRenameSub(node.id)} className="p-0.5 rounded hover:bg-secondary text-green-500"><Check className="h-3 w-3" /></button>
                             <button onClick={() => setEditingSub(null)} className="p-0.5 rounded hover:bg-secondary text-muted-foreground"><X className="h-3 w-3" /></button>
                           </div>
                         ) : (
@@ -186,9 +199,9 @@ export default function StructureManagerDialog({
                         className="p-0.5 rounded hover:bg-secondary disabled:opacity-20"><ArrowUp className="h-3 w-3 text-muted-foreground" /></button>
                       <button onClick={() => handleMoveSub(idx, 1)} disabled={idx === sorted.length - 1}
                         className="p-0.5 rounded hover:bg-secondary disabled:opacity-20"><ArrowDown className="h-3 w-3 text-muted-foreground" /></button>
-                      <button onClick={() => { setEditingSub(node.name); setEditSubValue(node.name); }}
+                      <button onClick={() => { setEditingSub(node.id); setEditSubValue(node.name); }}
                         className="p-0.5 rounded hover:bg-secondary"><Edit2 className="h-3 w-3 text-muted-foreground" /></button>
-                      <button onClick={() => confirmDeleteSub(node.name)}
+                      <button onClick={() => confirmDeleteSub(node.id, node.name)}
                         className="p-0.5 rounded hover:bg-destructive/10"><Trash2 className="h-3 w-3 text-destructive" /></button>
                     </div>
                   </div>
@@ -198,25 +211,25 @@ export default function StructureManagerDialog({
                       {chapters.map((ch, chIdx) => (
                         <div key={ch.id} className="flex items-center gap-1.5 group">
                           <BookOpen className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-                          {editingChapter?.sub === node.name && editingChapter?.ch === ch.name ? (
+                          {editingChapter?.subId === node.id && editingChapter?.chId === ch.id ? (
                             <div className="flex items-center gap-1 flex-1">
                               <Input value={editChapterValue} onChange={e => setEditChapterValue(e.target.value)}
                                 className="h-6 text-xs flex-1" autoFocus
-                                onKeyDown={e => { if (e.key === "Enter") handleRenameChapter(node.name, ch.name); if (e.key === "Escape") setEditingChapter(null); }} />
-                              <button onClick={() => handleRenameChapter(node.name, ch.name)} className="p-0.5 rounded hover:bg-secondary text-green-500"><Check className="h-3 w-3" /></button>
+                                onKeyDown={e => { if (e.key === "Enter") handleRenameChapter(node.id, ch.id); if (e.key === "Escape") setEditingChapter(null); }} />
+                              <button onClick={() => handleRenameChapter(node.id, ch.id)} className="p-0.5 rounded hover:bg-secondary text-green-500"><Check className="h-3 w-3" /></button>
                               <button onClick={() => setEditingChapter(null)} className="p-0.5 rounded hover:bg-secondary text-muted-foreground"><X className="h-3 w-3" /></button>
                             </div>
                           ) : (
                             <>
                               <span className="text-xs text-foreground flex-1 truncate">{ch.name}</span>
                               <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleMoveChapter(node.name, chapters, chIdx, -1)} disabled={chIdx === 0}
+                                <button onClick={() => handleMoveChapter(node.id, chapters, chIdx, -1)} disabled={chIdx === 0}
                                   className="p-0.5 rounded hover:bg-secondary disabled:opacity-20"><ArrowUp className="h-2.5 w-2.5 text-muted-foreground" /></button>
-                                <button onClick={() => handleMoveChapter(node.name, chapters, chIdx, 1)} disabled={chIdx === chapters.length - 1}
+                                <button onClick={() => handleMoveChapter(node.id, chapters, chIdx, 1)} disabled={chIdx === chapters.length - 1}
                                   className="p-0.5 rounded hover:bg-secondary disabled:opacity-20"><ArrowDown className="h-2.5 w-2.5 text-muted-foreground" /></button>
-                                <button onClick={() => { setEditingChapter({ sub: node.name, ch: ch.name }); setEditChapterValue(ch.name); }}
+                                <button onClick={() => { setEditingChapter({ subId: node.id, chId: ch.id }); setEditChapterValue(ch.name); }}
                                   className="p-0.5 rounded hover:bg-secondary"><Edit2 className="h-2.5 w-2.5 text-muted-foreground" /></button>
-                                <button onClick={() => confirmDeleteChapter(node.name, ch.name)}
+                                <button onClick={() => confirmDeleteChapter(node.id, node.name, ch.id, ch.name)}
                                   className="p-0.5 rounded hover:bg-destructive/10"><Trash2 className="h-2.5 w-2.5 text-destructive" /></button>
                               </div>
                             </>
@@ -225,16 +238,16 @@ export default function StructureManagerDialog({
                       ))}
 
                       {/* Add chapter */}
-                      {addingChapterFor === node.name ? (
+                      {addingChapterFor === node.id ? (
                         <div className="flex items-center gap-1.5">
                           <Input value={newChapterName} onChange={e => setNewChapterName(e.target.value)}
                             placeholder="Naziv glave..." className="h-6 text-xs flex-1" autoFocus
-                            onKeyDown={e => { if (e.key === "Enter") handleAddChapter(node.name); if (e.key === "Escape") setAddingChapterFor(null); }} />
-                          <Button size="sm" variant="secondary" className="h-6 text-[10px] px-2" onClick={() => handleAddChapter(node.name)}>Dodaj</Button>
+                            onKeyDown={e => { if (e.key === "Enter") handleAddChapter(node.id); if (e.key === "Escape") setAddingChapterFor(null); }} />
+                          <Button size="sm" variant="secondary" className="h-6 text-[10px] px-2" onClick={() => handleAddChapter(node.id)}>Dodaj</Button>
                         </div>
                       ) : (
                         <Button variant="ghost" size="sm" className="text-[10px] gap-1 text-muted-foreground h-6 px-1"
-                          onClick={() => { setAddingChapterFor(node.name); setNewChapterName(""); }}>
+                          onClick={() => { setAddingChapterFor(node.id); setNewChapterName(""); }}>
                           <Plus className="h-3 w-3" /> Dodaj glavu
                         </Button>
                       )}
