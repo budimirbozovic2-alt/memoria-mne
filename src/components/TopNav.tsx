@@ -3,9 +3,6 @@ import { useLocation } from "react-router-dom";
 
 import { NavLink } from "@/components/NavLink";
 import { useCardContext } from "@/contexts/AppContext";
-import { useForumContext } from "@/components/gamification/ForumContext";
-
-
 import { useState, useCallback, useRef, useEffect, useTransition } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
