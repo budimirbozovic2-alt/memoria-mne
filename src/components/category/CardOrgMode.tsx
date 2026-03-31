@@ -452,10 +452,12 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
                       </div>
                       <SortableContext items={node.unassigned.map(c => c.id)} strategy={verticalListSortingStrategy}>
                         {node.unassigned.map((card, idx) => {
-                          const availableChapters = node.chapters.map(ch => typeof ch === "string" ? ch : ch.chapter);
+                          const availableChapters = node.chapters.map(ch => ch.chapter);
+                          const chapterIdMap = new Map(node.chapters.map(ch => [ch.chapter, ch.chapterId]));
                           const otherSubs = tree
                             .filter(n => n.subcategory !== node.subcategory)
                             .map(n => n.subcategory);
+                          const subIdMap = new Map(tree.map(n => [n.subcategory, n.subcategoryId]));
                           return (
                             <UnassignedCardRow
                               key={card.id}
@@ -463,10 +465,13 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
                               index={idx}
                               availableChapters={availableChapters}
                               otherSubs={otherSubs}
-                              onAssignChapter={v => assignChapter(card.id, v)}
+                              onAssignChapter={v => {
+                                const chapUuid = chapterIdMap.get(v) || v;
+                                assignChapter(card.id, chapUuid);
+                              }}
                               onMoveSub={v => {
-                                const targetSub = v === "(Bez potkategorije)" ? "" : v;
-                                patchCard(card.id, c => ({ ...c, subcategoryId: targetSub }));
+                                const subUuid = subIdMap.get(v) || "";
+                                patchCard(card.id, c => ({ ...c, subcategoryId: subUuid }));
                               }}
                             />
                           );
