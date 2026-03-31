@@ -316,7 +316,7 @@ export default function FrequentErrors({ cards, categoryRecords, onClearErrorLog
                                 <HighlightedSentence sectionContent={error.sectionContent} errorText={error.text} />
                                 <p className="text-xs text-muted-foreground mt-1 truncate">
                                   {error.cardQuestion}
-                                  {error.subcategory && <span> · {error.subcategory}</span>}
+                                  {error.subcategory && <span> · {catNameMap[error.subcategory] || error.subcategory}</span>}
                                 </p>
                               </div>
                               <span className="flex items-center gap-0.5 text-[10px] text-success">
