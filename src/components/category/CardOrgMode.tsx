@@ -51,7 +51,7 @@ function buildTree(cards: Card[], subcategoryNodes: SubcategoryNode[]): TreeNode
   }
 
   for (const card of cards) {
-    const sub = card.subcategoryId || card.subcategory || UNCAT_KEY;
+    const sub = card.subcategoryId || UNCAT_KEY;
     if (!nodeMap.has(sub)) {
       nodeMap.set(sub, { chapters: new Map(), unassigned: [] });
     }
