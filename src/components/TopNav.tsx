@@ -51,31 +51,6 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
   const [versionOpen, setVersionOpen] = useState(false);
   const [_sysInfoOpen, _setSysInfoOpen] = useState(false);
   const [_sysPayload, _setSysPayload] = useState("");
-  const _seqRef = useRef<{ phase: number; timer: ReturnType<typeof setTimeout> | null }>({ phase: 0, timer: null });
-
-  const _resetSeq = useCallback(() => {
-    if (_seqRef.current.timer) clearTimeout(_seqRef.current.timer);
-    _seqRef.current = { phase: 0, timer: null };
-  }, []);
-
-  const _handleBrandClick = useCallback(() => {
-    _resetSeq();
-    _seqRef.current.phase = 1;
-    _seqRef.current.timer = setTimeout(_resetSeq, 10000);
-  }, [_resetSeq]);
-
-  const _handleThemeSeq = useCallback((nextDark: boolean) => {
-    const p = _seqRef.current.phase;
-    if (p === 1 && !nextDark) { return; }
-    if (p === 1 && nextDark) { _seqRef.current.phase = 2; return; }
-    if (p === 2 && !nextDark) { _seqRef.current.phase = 3; return; }
-    if (p === 3 && nextDark) {
-      _resetSeq();
-      enterForum();
-      return;
-    }
-    _resetSeq();
-  }, [_resetSeq]);
 
   // Listen for mapping events (custom event from SourceReader)
   useEffect(() => {
