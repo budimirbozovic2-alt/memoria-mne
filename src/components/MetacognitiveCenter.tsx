@@ -27,13 +27,19 @@ const CognitiveAnalytics = lazy(() => import("./CognitiveAnalytics"));
 interface Props {
   cards: Card[];
   categories: string[];
+  categoryRecords: CategoryRecord[];
   reviewLog: ReviewLogEntry[];
   settings?: SRSettings;
   embedded?: boolean;
   onClearErrorLog?: (cardId: string) => void;
 }
 
-export default function MetacognitiveCenter({ cards, categories, reviewLog, settings, embedded, onClearErrorLog }: Props) {
+export default function MetacognitiveCenter({ cards, categories, categoryRecords, reviewLog, settings, embedded, onClearErrorLog }: Props) {
+  const catNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of categoryRecords) map[r.id] = r.name;
+    return map;
+  }, [categoryRecords]);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto space-y-6">
       {!embedded && (
