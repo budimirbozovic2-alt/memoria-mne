@@ -30,8 +30,14 @@ interface Props {
   onShowPlanner?: () => void;
 }
 
-export default function MyStats({ cards, categories, subcategories, categoryStats, reviewLog, srSettings, onShowKnowledgeMap, onShowPlanner }: Props) {
+export default function MyStats({ cards, categories, categoryRecords, subcategories, categoryStats, reviewLog, srSettings, onShowKnowledgeMap, onShowPlanner }: Props) {
   const [activeTab, setActiveTab] = useState<string>("overview");
+
+  const catNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of categoryRecords) map[r.id] = r.name;
+    return map;
+  }, [categoryRecords]);
 
   const {
     weights, focusRatio, ratioHistory, todayTime,
