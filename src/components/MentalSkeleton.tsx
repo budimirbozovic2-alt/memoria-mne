@@ -178,15 +178,15 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack, o
       const movedCard = subCards.find(c => c.id === activeCardId);
       if (!movedCard) return;
 
-      const targetChapterName = targetChapter === UNASSIGNED_CHAPTER ? "" : targetChapter;
-      const updates: { id: string; chapter: string; chapterOrder: number }[] = [];
+      const targetChapterId = targetChapter === UNASSIGNED_CHAPTER ? "" : targetChapter;
+      const updates: { id: string; chapterId: string; chapterOrder: number }[] = [];
 
       const targetCards = [...(cardsByChapter[targetChapter] || [])]
         .filter(c => c.id !== activeCardId)
         .sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0));
       targetCards.push(movedCard);
       targetCards.forEach((c, i) => {
-        updates.push({ id: c.id, chapter: targetChapterName, chapterOrder: i });
+        updates.push({ id: c.id, chapterId: targetChapterId, chapterOrder: i });
       });
 
       const sourceCards = [...(cardsByChapter[sourceChapter] || [])]
