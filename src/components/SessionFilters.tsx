@@ -163,7 +163,7 @@ export default function SessionFilters({
                   {selectedSubcategory === sc && (
                     <motion.span layoutId={`${layoutPrefix}-subcat-pill`} className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
                   )}
-                  <span className="relative z-10">{sc}</span>
+                  <span className="relative z-10">{subNameMap[sc] || sc}</span>
                 </motion.button>
               ))}
             </ScrollableRow>
