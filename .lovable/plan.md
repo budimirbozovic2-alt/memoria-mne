@@ -1,79 +1,95 @@
 
 
-# Dijagnostika: Glave se ne čuvaju + FSRS validacija
+# WebWorker za ZIP Kompresiju/Dekompresiju
 
-## Pronađeni uzrok — StructureManagerDialog šalje NAZIVE umjesto UUID-ova
+## Rezime
+Prebacujemo JSZip operacije (kompresija i dekompresija) sa main thread-a u Web Worker po istom obrascu kao `docx-worker.ts`. UI ostaje responsivan tokom exporta velikih baza.
 
-Ovo je **identičan anti-pattern** kao prethodni category-by-name bug. `StructureManagerDialog.tsx` proslijeđuje **string nazive** u callback funkcije koje očekuju **UUID-ove**.
+---
 
-### Primjer problema (addChapter):
-```text
-StructureManagerDialog L102:
-  onAddChapter(categoryId, subName, name)     ← subName = "Građansko pravo" (NAME)
+## Novi fajl: `src/workers/zip-worker.ts`
 
-useCategoryManagement L224:
-  if (n.id !== subcategoryId) return n;        ← subcategoryId = "Građansko pravo" ≠ UUID
-  → NIKADA ne matchuje → glava se NIKAD ne doda
+Worker prima dvije vrste poruka:
+1. **compress**: `{ action: "compress", filename: string, data: ArrayBuffer }` → vraća `{ success: true, blob: ArrayBuffer }`
+2. **decompress**: `{ action: "decompress", data: ArrayBuffer }` → vraća `{ success: true, json: string }`
+
+Worker importuje `jszip` direktno (Vite bundluje za worker kontekst).
+
+```ts
+import JSZip from "jszip";
+
+self.onmessage = async (e) => {
+  const { action, filename, data } = e.data;
+  try {
+    if (action === "compress") {
+      const zip = new JSZip();
+      zip.file(filename, data);
+      const result = await zip.generateAsync({ type: "arraybuffer", compression: "DEFLATE", compressionOptions: { level: 5 } });
+      self.postMessage({ success: true, result }, [result]); // transfer ownership
+    } else if (action === "decompress") {
+      const zip = await JSZip.loadAsync(data);
+      const jsonFile = Object.keys(zip.files).find(n => n.endsWith(".json") && !n.startsWith("__MACOSX"));
+      if (!jsonFile) throw new Error("ZIP ne sadrži JSON fajl.");
+      const json = await zip.files[jsonFile].async("string");
+      self.postMessage({ success: true, result: json });
+    }
+  } catch (err: any) {
+    self.postMessage({ success: false, error: err?.message || "ZIP operation failed" });
+  }
+};
 ```
 
-### Svih 7 pogođenih poziva u StructureManagerDialog.tsx:
-
-| Linija | Poziv | Šalje | Treba |
-|--------|-------|-------|-------|
-| L66 | `onRenameSubcategory(catId, oldName, newName)` | name, name | subId (UUID), newName |
-| L81 | `onDeleteSubcategory(catId, deleteConfirm.sub)` | name | subId (UUID) |
-| L94 | `onReorderSubcategories(catId, reordered.map(s => s.name))` | name[] | id[] (UUID[]) |
-| L102 | `onAddChapter(catId, subName, name)` | subName | subId (UUID) |
-| L110 | `onRenameChapter(catId, subName, oldCh, newName)` | subName, chName | subId, chId |
-| L120 | `onReorderChapters(catId, subName, reordered.map(ch => ch.name))` | subName, chName[] | subId, chId[] |
-| L83 | `onDeleteChapter(catId, deleteConfirm.sub, deleteConfirm.ch)` | subName, chName | subId, chId |
-
-### Interfejs je također pogrešan:
-Prop tipovi na L21-27 kažu `subName: string` — treba `subcategoryId: string`, `chapterId: string`.
+Key: koristi `ArrayBuffer` + `Transferable` za zero-copy slanje blob-ova između worker-a i main thread-a.
 
 ---
 
-## Plan popravke
+## Ažuriranje: `src/lib/zip-service.ts`
 
-### Fajl 1: `src/components/category/StructureManagerDialog.tsx`
+Obje funkcije (`compressToZip`, `decompressJsonFromZip`) prelaze na worker-first pristup sa fallback-om na main thread (isti obrazac kao `docx-parser.ts`):
 
-**A) Ažuriraj interface** (L14-28):
-- `onRenameSubcategory: (catId, subcategoryId, newName) => void`
-- `onDeleteSubcategory: (catId, subcategoryId) => void`
-- `onReorderSubcategories: (catId, orderedIds: string[]) => void`
-- `onAddChapter: (catId, subcategoryId, chapterName) => void`
-- `onRenameChapter: (catId, subcategoryId, chapterId, newName) => void`
-- `onDeleteChapter: (catId, subcategoryId, chapterId) => void`
-- `onReorderChapters: (catId, subcategoryId, orderedIds: string[]) => void`
+```ts
+export async function compressToZip(filename: string, blob: Blob): Promise<Blob> {
+  const arrayBuffer = await blob.arrayBuffer();
+  try {
+    const result = await runInWorker("compress", { filename, data: arrayBuffer });
+    return new Blob([result], { type: "application/zip" });
+  } catch {
+    return fallbackCompress(filename, blob);
+  }
+}
 
-**B) Ažuriraj lokalni state** — `editingSub`, `addingChapterFor`, `deleteConfirm` trebaju čuvati `node.id` umjesto `node.name` za identifikaciju. Display name se čita iz `node.name`.
+export async function decompressJsonFromZip(file: Blob): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer();
+  try {
+    return await runInWorker("decompress", { data: arrayBuffer });
+  } catch {
+    return fallbackDecompress(file);
+  }
+}
+```
 
-**C) Ažuriraj sve callback pozive** — proslijedi `node.id` / `ch.id` umjesto `.name`:
-- L66: `onRenameSubcategory(categoryId, node.id, newName)`
-- L81: `onDeleteSubcategory(categoryId, node.id)`
-- L94: `onReorderSubcategories(categoryId, reordered.map(s => s.id))`
-- L102: `onAddChapter(categoryId, node.id, name)`
-- L110: `onRenameChapter(categoryId, node.id, ch.id, newName)`
-- L120: `onReorderChapters(categoryId, node.id, reordered.map(ch => ch.id))`
-- L83: `onDeleteChapter(categoryId, subNode.id, chNode.id)`
+`runInWorker` — helper koji kreira worker, šalje poruku, čeka odgovor, timeout 60s, terminira. Transfer `arrayBuffer` vlasništva radi zero-copy.
 
-### Fajl 2: `src/views/CategoryView.tsx` — bez promjena
-Već proslijeđuje `addChapter`, `renameChapter` itd. direktno iz `useCardActions` → `useCategoryManagement`, koji očekuju UUID-ove. Problem je isključivo u StructureManagerDialog.
+Fallback funkcije koriste stari JSZip-na-main-thread pristup.
+
+---
+
+## Bez promjena u potrošačima
+
+`useCardExport.ts`, `useCardImport.ts`, `ExportImportDialog.tsx` — svi već koriste `import("@/lib/zip-service")` → automatski dobijaju worker verziju bez ikakvih izmjena.
 
 ---
 
-## FSRS Validacija
+## Fajlovi
 
-FSRS algoritam ne zahtijeva popravku koda. Problem "prazne konsolidacije" je očekivan jer:
-1. Baza je tek migrirana — karticama nedostaju FSRS scheduling podaci
-2. `spaced-repetition.ts` matematika je netaknuta kroz sve refaktore
-3. Nakon kreiranja nove kartice i ocjenjivanja sa "Teško/Again", FSRS će zakazati ponavljanje — ovo se može testirati ručno nakon primjene fix-a iznad
-
----
+| Fajl | Promjena |
+|------|----------|
+| `src/workers/zip-worker.ts` | **NOVO** — JSZip u worker kontekstu |
+| `src/lib/zip-service.ts` | Worker-first sa fallback |
 
 ## Scope
-- **1 fajl**: `StructureManagerDialog.tsx` (~40 linija promjena)
-- Nema novih zavisnosti
-- Nema schema promjena
-- FSRS: netaknut
+- 2 fajla (1 nov, 1 ažuriran), ~80 linija
+- Nema novih zavisnosti (jszip već postoji)
+- Svi potrošači ostaju nepromijenjeni
+- Timeout: 60s (vs 30s za DOCX — ZIP može biti veći)
 
