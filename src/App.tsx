@@ -68,7 +68,7 @@ const App = () => (
                         <Route path="/categories" element={<ErrorBoundary label="Kategorije"><CategoriesRoutePage /></ErrorBoundary>} />
                         <Route path="/speed-reader" element={<ErrorBoundary label="Speed Reader"><SpeedReaderPage /></ErrorBoundary>} />
                         <Route path="/mind-map" element={<ErrorBoundary label="Mapa uma"><MindMapPage /></ErrorBoundary>} />
-                        <Route path="/forum" element={<ErrorBoundary label="Forum"><RomanForumPage /></ErrorBoundary>} />
+                        
                         <Route path="*" element={<ErrorBoundary label="404"><NotFound /></ErrorBoundary>} />
                       </Routes>
                     </Suspense>
