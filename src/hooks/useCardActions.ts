@@ -22,9 +22,9 @@ interface UseCardActionsProps {
   onUpdate?: (id: string, updates: {
     question?: string;
     sections?: SectionInput[];
-    category?: string;
-    subcategory?: string;
-    chapter?: string;
+    categoryId?: string;
+    subcategoryId?: string;
+    chapterId?: string;
   }) => void;
 }
 
