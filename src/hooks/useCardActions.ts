@@ -194,9 +194,9 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
 
   // ── Resolve final metadata values ─────────────────────
   const resolvedMeta = useMemo(() => ({
-    category: showNewCat && newCategory.trim() ? newCategory.trim() : category,
-    subcategory: showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory,
-    chapter: showNewChapter && newChapter.trim() ? newChapter.trim() : chapter,
+    categoryId: showNewCat && newCategory.trim() ? newCategory.trim() : category,
+    subcategoryId: showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategory,
+    chapterId: showNewChapter && newChapter.trim() ? newChapter.trim() : chapter,
   }), [showNewCat, newCategory, category, showNewSub, newSubcategory, subcategory, showNewChapter, newChapter, chapter]);
 
   // ── Submit ────────────────────────────────────────────
