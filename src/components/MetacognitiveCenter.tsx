@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ReviewLogEntry } from "@/lib/storage";
 import { Card, SRSettings } from "@/lib/spaced-repetition";
+import { type CategoryRecord } from "@/lib/db";
+import { getSubcategoryName } from "@/lib/category-service";
 import {
   loadDiary, addDiaryEntry, DiaryEntry, setLastAnalysisDate,
   getTodayReviewStats,
