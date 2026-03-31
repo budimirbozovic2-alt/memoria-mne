@@ -69,7 +69,7 @@ export default function MetacognitiveCenter({ cards, categories, categoryRecords
           <Suspense fallback={<div className="py-8 text-center text-muted-foreground text-sm">Učitavanje…</div>}>
             <div className="space-y-8 mt-4">
               {/* Frequent Errors section */}
-              <FrequentErrors cards={cards} onClearErrorLog={onClearErrorLog || (() => {})} embedded />
+              <FrequentErrors cards={cards} categoryRecords={categoryRecords} onClearErrorLog={onClearErrorLog || (() => {})} embedded />
 
               {/* Cognitive Analytics — mnemonic recommendations integrated here */}
               <div className="border-t pt-6">
