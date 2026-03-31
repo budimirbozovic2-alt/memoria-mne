@@ -101,13 +101,11 @@ export function useCardCRUD({
         const newCard = { ...c };
         if (updates.question) newCard.question = updates.question;
         if (updates.categoryId) newCard.categoryId = updates.categoryId;
-        if (updates.subcategory !== undefined) {
-          newCard.subcategory = updates.subcategory;
-          newCard.subcategoryId = updates.subcategory;
+        if (updates.subcategoryId !== undefined) {
+          newCard.subcategoryId = updates.subcategoryId;
         }
-        if (updates.chapter !== undefined) {
-          newCard.chapter = updates.chapter;
-          newCard.chapterId = updates.chapter;
+        if (updates.chapterId !== undefined) {
+          newCard.chapterId = updates.chapterId;
         }
         if (updates.sourceId !== undefined) newCard.sourceId = updates.sourceId;
         if (updates.textAnchor !== undefined) newCard.textAnchor = updates.textAnchor;
