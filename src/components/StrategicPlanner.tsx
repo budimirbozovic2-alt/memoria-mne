@@ -86,6 +86,7 @@ export default function StrategicPlanner({ cards, categories, categoryRecords, r
           timeRec={data.timeRec}
           debt={data.debt}
           dueCount={data.dueCount}
+          catNameMap={catNameMap}
           onNavigateToDatabase={onNavigateToDatabase}
         />
       )}
