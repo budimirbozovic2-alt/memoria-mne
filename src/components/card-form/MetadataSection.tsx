@@ -93,7 +93,7 @@ const MetadataSection = memo(function MetadataSection({
           <SelectTrigger className="bg-background"><SelectValue placeholder="Bez podkategorije" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__none__">Bez podkategorije</SelectItem>
-            {availableSubs.map((sc) => <SelectItem key={sc} value={sc}>{sc}</SelectItem>)}
+            {availableSubs.map((sc) => <SelectItem key={sc.id} value={sc.id}>{sc.name}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
