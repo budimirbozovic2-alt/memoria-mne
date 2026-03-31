@@ -21,6 +21,7 @@ const CalibrationTab = lazy(() => import("./stats/CalibrationTab"));
 interface Props {
   cards: Card[];
   categories: string[];
+  categoryRecords: CategoryRecord[];
   subcategories: Record<string, string[]>;
   categoryStats: Record<string, { score: number; total: number; due: number }>;
   reviewLog: ReviewLogEntry[];
