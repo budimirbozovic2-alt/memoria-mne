@@ -295,7 +295,6 @@ export function createCard(question: string, sections: { title: string; content:
     sections: sections.map((s) => createSection(s.title, s.content)),
     categoryId,
     subcategoryId: subcategoryId || "",
-    subcategory: subcategoryId || "", // @deprecated — kept for backward compat
     createdAt: Date.now(),
     readCount: 0,
     type: "essay",
@@ -309,7 +308,6 @@ export function createFlashCard(question: string, answer: string, categoryId: st
     sections: [createSection("Odgovor", answer)],
     categoryId,
     subcategoryId: subcategoryId || "",
-    subcategory: subcategoryId || "", // @deprecated — kept for backward compat
     createdAt: Date.now(),
     readCount: 0,
     type: "flash",

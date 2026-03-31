@@ -328,9 +328,7 @@ export default function CardOrgMode({ cards, categoryId, subcategoryNodes, patch
 
       patchCard(activeCardId, c => ({
         ...c,
-        chapter: overContainer.chapter,
         chapterId: overContainer.chapter,
-        subcategory: targetSub,
         subcategoryId: targetSub,
       }));
 

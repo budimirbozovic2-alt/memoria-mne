@@ -91,7 +91,7 @@ export async function migrateMnemonicsFromLocalStorageToIDB(): Promise<number> {
     const transformedCards: MnemonicCard[] = cards.map((c: any) => ({
       ...c,
       categoryId: c.categoryId || c.category || "",
-      subcategoryId: c.subcategoryId || c.subcategory || crypto.randomUUID(),
+      subcategoryId: c.subcategoryId || crypto.randomUUID(),
       hookType: c.hookType || "ostalo",
       hookMode: c.hookMode || (c.mnemonicVideo ? "video" : "acronym"),
       tags: c.tags || [],

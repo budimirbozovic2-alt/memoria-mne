@@ -59,8 +59,8 @@ export default function SessionFilters({
   const chaptersInSub = useMemo(() => {
     if (!selectedSubcategory) return [];
     return Array.from(new Set(
-      cards.filter(c => c.categoryId === selectedCategory && (c.subcategoryId || c.subcategory) === selectedSubcategory && (c.chapterId || c.chapter))
-        .map(c => (c.chapterId || c.chapter)!)
+      cards.filter(c => c.categoryId === selectedCategory && c.subcategoryId === selectedSubcategory && c.chapterId)
+        .map(c => c.chapterId!)
     )).sort();
   }, [cards, selectedCategory, selectedSubcategory]);
 

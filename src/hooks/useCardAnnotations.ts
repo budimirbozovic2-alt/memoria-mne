@@ -173,7 +173,7 @@ export function useCardAnnotations({
     const nextRef = { ...cardMapRef.current };
     for (const u of updates) {
       if (nextRef[u.id]) {
-        const c = { ...nextRef[u.id], chapter: u.chapterId ?? "", chapterId: u.chapterId ?? "", chapterOrder: u.chapterOrder, updatedAt: now };
+        const c = { ...nextRef[u.id], chapterId: u.chapterId ?? "", chapterOrder: u.chapterOrder, updatedAt: now };
         nextRef[u.id] = c;
         changed.push(c);
       }

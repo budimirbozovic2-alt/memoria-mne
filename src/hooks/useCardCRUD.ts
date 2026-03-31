@@ -87,8 +87,8 @@ export function useCardCRUD({
         question?: string;
         sections?: { title: string; content: string }[];
         categoryId?: string;
-        subcategory?: string;
-        chapter?: string;
+        subcategoryId?: string;
+        chapterId?: string;
         sourceId?: string;
         textAnchor?: string;
         originalSourceSnippet?: string;
