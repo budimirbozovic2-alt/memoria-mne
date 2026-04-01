@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
+import type { CategoryRecord } from "@/lib/db";
 import type { Source } from "@/lib/db";
 import { motion } from "framer-motion";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
