@@ -9,6 +9,7 @@ import { UNASSIGNED_CHAPTER } from "./types";
 
 interface ChapterBoxProps {
   chapter: string;
+  displayName?: string;
   cards: Card[];
   isOpen: boolean;
   onToggle: () => void;
