@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/lib/spaced-repetition";
-import type { Source } from "@/lib/db";
+import type { Source, CategoryRecord } from "@/lib/db";
 import { getCardMasteryLevel } from "@/components/KnowledgeMap";
 import { useSourceHierarchy } from "@/hooks/useSourceHierarchy";
 import SubcategoryCard from "./SubcategoryCard";
