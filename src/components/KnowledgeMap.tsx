@@ -200,6 +200,7 @@ export default function KnowledgeMap({
         cards={cards}
         categories={categories}
         subcategories={subcategories}
+        categoryRecords={categoryRecords}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         reorderMode={reorderMode}
