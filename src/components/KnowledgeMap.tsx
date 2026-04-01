@@ -168,6 +168,7 @@ export default function KnowledgeMap({
         sources={sources}
         category={view.category}
         subcategories={subcategories}
+        categoryRecords={categoryRecords}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         reorderMode={reorderMode}
