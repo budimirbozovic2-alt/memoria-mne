@@ -47,11 +47,11 @@ function CategoryListInner({
       const subCount = subs.filter((s) => catCards.some((c) => c.subcategoryId === s)).length;
       const levels = [0, 0, 0, 0, 0, 0];
       catCards.forEach((c) => levels[getCardMasteryLevel(c)]++);
-      return { name: cat, cardCount: catCards.length, subCount, levels };
+      return { id: cat, displayName: catNameMap[cat] || cat, cardCount: catCards.length, subCount, levels };
     })
-    .filter(Boolean) as { name: string; cardCount: number; subCount: number; levels: number[] }[];
+    .filter(Boolean) as { id: string; displayName: string; cardCount: number; subCount: number; levels: number[] }[];
 
-  const filteredCats = q ? catsWithStats.filter((c) => c.name.toLowerCase().includes(q)) : catsWithStats;
+  const filteredCats = q ? catsWithStats.filter((c) => c.displayName.toLowerCase().includes(q)) : catsWithStats;
 
   const handleMoveCat = useCallback((index: number, direction: -1 | 1) => {
     if (!onReorderCategories) return;
