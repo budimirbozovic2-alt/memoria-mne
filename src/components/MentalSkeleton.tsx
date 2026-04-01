@@ -119,7 +119,7 @@ export default function MentalSkeleton({ cards, subcategory, category, categoryR
         </button>
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-semibold truncate">Mentalni Kostur</h2>
-          <p className="text-xs text-muted-foreground">{category} → {subcategory} • {subCards.length} kartica</p>
+          <p className="text-xs text-muted-foreground">{catDisplayName} → {subDisplayName} • {subCards.length} kartica</p>
         </div>
       </div>
 
