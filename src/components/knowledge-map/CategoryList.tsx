@@ -84,11 +84,11 @@ function CategoryListInner({
       )}
 
       <div className={`grid gap-3 ${reorderMode ? "" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
-        {filteredCats.map(({ name, cardCount, subCount, levels }, i) => {
-          const realIndex = categories.indexOf(name);
+        {filteredCats.map(({ id, displayName, cardCount, subCount, levels }, i) => {
+          const realIndex = categories.indexOf(id);
           return (
             <motion.div
-              key={name}
+              key={id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.25 }}
