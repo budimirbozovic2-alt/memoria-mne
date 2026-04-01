@@ -109,7 +109,7 @@ function SubcategoryListInner({
       if (subCards.length === 0) return null;
       const levels = [0, 0, 0, 0, 0, 0];
       subCards.forEach((c) => levels[getCardMasteryLevel(c)]++);
-      return { name: sub, count: subCards.length, levels };
+      return { name: subNameMap[sub] || sub, count: subCards.length, levels };
     })
     .filter(Boolean) as { name: string; count: number; levels: number[] }[];
 

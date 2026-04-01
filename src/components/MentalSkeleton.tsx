@@ -140,6 +140,7 @@ export default function MentalSkeleton({ cards, subcategory, category, categoryR
           <ChapterBox
             key={chapter}
             chapter={chapter}
+            displayName={chapterNameMap[chapter]}
             cards={cardsByChapter[chapter] || []}
             isOpen={expandedChapters.has(chapter)}
             onToggle={() => toggleChapter(chapter)}
