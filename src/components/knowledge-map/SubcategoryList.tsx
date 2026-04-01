@@ -1,7 +1,7 @@
 import React, { useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/lib/spaced-repetition";
-import type { Source } from "@/lib/db";
+import type { Source, CategoryRecord } from "@/lib/db";
 import { getCardMasteryLevel } from "@/components/KnowledgeMap";
 import { useSourceHierarchy } from "@/hooks/useSourceHierarchy";
 import SubcategoryCard from "./SubcategoryCard";
@@ -12,6 +12,7 @@ interface Props {
   sources: Source[];
   category: string;
   subcategories: Record<string, string[]>;
+  categoryRecords: CategoryRecord[];
   searchQuery: string;
   onSearchChange: (v: string) => void;
   reorderMode: boolean;
@@ -32,10 +33,14 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
 }
 
 function SubcategoryListInner({
-  cards, sources, category, subcategories, searchQuery, onSearchChange,
+  cards, sources, category, subcategories, categoryRecords, searchQuery, onSearchChange,
   reorderMode, onToggleReorder, onBack, onSelectSubcategory,
   onReorderSubcategories, slideVariants, direction, transition,
 }: Props) {
+  const catRecord = categoryRecords.find(r => r.id === category);
+  const catDisplayName = catRecord?.name || category;
+  const subNameMap: Record<string, string> = {};
+  catRecord?.subcategories?.forEach(s => { subNameMap[s.id] = s.name; });
   const catCards = cards.filter((c) => c.categoryId === category);
   const sourceHierarchy = useSourceHierarchy(cards, sources, category);
 
@@ -65,7 +70,7 @@ function SubcategoryListInner({
         className="space-y-6"
       >
         <Header
-          title={category}
+          title={catDisplayName}
           subtitle={`${catCards.length} kartica • ${tree.length} grupa (${modeLabel})`}
           onBack={onBack}
         />
@@ -104,7 +109,7 @@ function SubcategoryListInner({
       if (subCards.length === 0) return null;
       const levels = [0, 0, 0, 0, 0, 0];
       subCards.forEach((c) => levels[getCardMasteryLevel(c)]++);
-      return { name: sub, count: subCards.length, levels };
+      return { name: subNameMap[sub] || sub, count: subCards.length, levels };
     })
     .filter(Boolean) as { name: string; count: number; levels: number[] }[];
 
@@ -129,7 +134,7 @@ function SubcategoryListInner({
       className="space-y-6"
     >
       <Header
-        title={category}
+        title={catDisplayName}
         subtitle={`${catCards.length} kartica u ${subsWithStats.length} potkategorija`}
         onBack={onBack}
         reorderMode={reorderMode}

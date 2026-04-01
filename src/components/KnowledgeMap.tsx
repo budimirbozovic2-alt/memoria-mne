@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
+import type { CategoryRecord } from "@/lib/db";
 import type { Source } from "@/lib/db";
 import { motion } from "framer-motion";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
@@ -13,6 +14,7 @@ interface Props {
   cards: Card[];
   categories: string[];
   subcategories: Record<string, string[]>;
+  categoryRecords: CategoryRecord[];
   onReorderCategories?: (ordered: string[]) => void;
   onReorderSubcategories?: (category: string, ordered: string[]) => void;
 }
@@ -103,7 +105,7 @@ function persistNav(next: ViewState) {
 }
 
 export default function KnowledgeMap({
-  cards, categories, subcategories,
+  cards, categories, subcategories, categoryRecords,
   onReorderCategories, onReorderSubcategories,
 }: Props) {
   const [view, setView] = useState<ViewState>(() => hydrateView(categories, subcategories));
@@ -150,6 +152,7 @@ export default function KnowledgeMap({
             cards={cards}
             category={view.category}
             subcategory={view.subcategory}
+            categoryRecords={categoryRecords}
             onBack={() => navigate({ step: "subcategories", category: view.category })}
           />
         </Suspense>
@@ -165,6 +168,7 @@ export default function KnowledgeMap({
         sources={sources}
         category={view.category}
         subcategories={subcategories}
+        categoryRecords={categoryRecords}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         reorderMode={reorderMode}
@@ -196,6 +200,7 @@ export default function KnowledgeMap({
         cards={cards}
         categories={categories}
         subcategories={subcategories}
+        categoryRecords={categoryRecords}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         reorderMode={reorderMode}

@@ -1,14 +1,16 @@
 import { ChevronRight, BarChart3, ArrowUp, ArrowDown } from "lucide-react";
-import React, { useCallback } from "react";
+import React, { useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import { MASTERY_LEVELS, getMasteryColor, getCardMasteryLevel } from "@/components/KnowledgeMap";
 import { Card } from "@/lib/spaced-repetition";
+import type { CategoryRecord } from "@/lib/db";
 import { Header, SearchBar, EmptyMessage } from "./SharedWidgets";
 
 interface Props {
   cards: Card[];
   categories: string[];
   subcategories: Record<string, string[]>;
+  categoryRecords: CategoryRecord[];
   searchQuery: string;
   onSearchChange: (v: string) => void;
   reorderMode: boolean;
@@ -26,9 +28,15 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
 }
 
 function CategoryListInner({
-  cards, categories, subcategories, searchQuery, onSearchChange,
+  cards, categories, subcategories, categoryRecords, searchQuery, onSearchChange,
   reorderMode, onToggleReorder, onBack, onSelectCategory, onReorderCategories,
 }: Props) {
+  const catNameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    categoryRecords.forEach(r => { m[r.id] = r.name; });
+    return m;
+  }, [categoryRecords]);
+
   const q = searchQuery.toLowerCase();
 
   const catsWithStats = categories
@@ -39,11 +47,11 @@ function CategoryListInner({
       const subCount = subs.filter((s) => catCards.some((c) => c.subcategoryId === s)).length;
       const levels = [0, 0, 0, 0, 0, 0];
       catCards.forEach((c) => levels[getCardMasteryLevel(c)]++);
-      return { name: cat, cardCount: catCards.length, subCount, levels };
+      return { id: cat, displayName: catNameMap[cat] || cat, cardCount: catCards.length, subCount, levels };
     })
-    .filter(Boolean) as { name: string; cardCount: number; subCount: number; levels: number[] }[];
+    .filter(Boolean) as { id: string; displayName: string; cardCount: number; subCount: number; levels: number[] }[];
 
-  const filteredCats = q ? catsWithStats.filter((c) => c.name.toLowerCase().includes(q)) : catsWithStats;
+  const filteredCats = q ? catsWithStats.filter((c) => c.displayName.toLowerCase().includes(q)) : catsWithStats;
 
   const handleMoveCat = useCallback((index: number, direction: -1 | 1) => {
     if (!onReorderCategories) return;
@@ -76,11 +84,11 @@ function CategoryListInner({
       )}
 
       <div className={`grid gap-3 ${reorderMode ? "" : "sm:grid-cols-2 lg:grid-cols-3"}`}>
-        {filteredCats.map(({ name, cardCount, subCount, levels }, i) => {
-          const realIndex = categories.indexOf(name);
+        {filteredCats.map(({ id, displayName, cardCount, subCount, levels }, i) => {
+          const realIndex = categories.indexOf(id);
           return (
             <motion.div
-              key={name}
+              key={id}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05, duration: 0.25 }}
@@ -105,7 +113,7 @@ function CategoryListInner({
                 </div>
               )}
               <button
-                onClick={() => !reorderMode && onSelectCategory(name)}
+                onClick={() => !reorderMode && onSelectCategory(id)}
                 className="flex-1 flex flex-col gap-3 p-5 rounded-xl border bg-card hover:bg-secondary/40 transition-colors text-left"
               >
                 <div className="flex items-center justify-between">
@@ -114,7 +122,7 @@ function CategoryListInner({
                       <BarChart3 className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-base font-medium">{name}</p>
+                      <p className="text-base font-medium">{displayName}</p>
                       <p className="text-xs text-muted-foreground">{cardCount} kartica • {subCount} potkategorija</p>
                     </div>
                   </div>

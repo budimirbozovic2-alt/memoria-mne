@@ -1,6 +1,7 @@
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card } from "@/lib/spaced-repetition";
+import type { CategoryRecord } from "@/lib/db";
 import { getCardMasteryLevel, MASTERY_LEVELS } from "@/components/KnowledgeMap";
 import { AnimatePresence } from "framer-motion";
 import ChapterBox from "./mental-skeleton/ChapterBox";
@@ -12,6 +13,7 @@ interface Props {
   cards: Card[];
   subcategory: string;
   category: string;
+  categoryRecords: CategoryRecord[];
   onBack: () => void;
 }
 
@@ -29,7 +31,13 @@ function getChapters(cards: Card[]): string[] {
   });
 }
 
-export default function MentalSkeleton({ cards, subcategory, category, onBack }: Props) {
+export default function MentalSkeleton({ cards, subcategory, category, categoryRecords, onBack }: Props) {
+  const catRecord = categoryRecords.find(r => r.id === category);
+  const catDisplayName = catRecord?.name || category;
+  const subNode = catRecord?.subcategories?.find(s => s.id === subcategory);
+  const subDisplayName = subNode?.name || subcategory;
+  const chapterNameMap: Record<string, string> = {};
+  subNode?.chapters?.forEach(ch => { chapterNameMap[ch.id] = ch.name; });
   const EXPANDED_KEY = useMemo(() => `codex-nav-expanded-${category}-${subcategory}`, [category, subcategory]);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(() => {
     try {
@@ -111,7 +119,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack }:
         </button>
         <div className="flex-1 min-w-0">
           <h2 className="text-xl font-semibold truncate">Mentalni Kostur</h2>
-          <p className="text-xs text-muted-foreground">{category} → {subcategory} • {subCards.length} kartica</p>
+          <p className="text-xs text-muted-foreground">{catDisplayName} → {subDisplayName} • {subCards.length} kartica</p>
         </div>
       </div>
 
@@ -132,6 +140,7 @@ export default function MentalSkeleton({ cards, subcategory, category, onBack }:
           <ChapterBox
             key={chapter}
             chapter={chapter}
+            displayName={chapterNameMap[chapter]}
             cards={cardsByChapter[chapter] || []}
             isOpen={expandedChapters.has(chapter)}
             onToggle={() => toggleChapter(chapter)}

@@ -9,15 +9,16 @@ import { UNASSIGNED_CHAPTER } from "./types";
 
 interface ChapterBoxProps {
   chapter: string;
+  displayName?: string;
   cards: Card[];
   isOpen: boolean;
   onToggle: () => void;
   onCardClick: (card: Card) => void;
 }
 
-function ChapterBoxInner({ chapter, cards, isOpen, onToggle, onCardClick }: ChapterBoxProps) {
+function ChapterBoxInner({ chapter, displayName: displayNameProp, cards, isOpen, onToggle, onCardClick }: ChapterBoxProps) {
   const isUnassigned = chapter === UNASSIGNED_CHAPTER;
-  const displayName = isUnassigned ? "Nekategorisane" : chapter;
+  const displayName = isUnassigned ? "Nekategorisane" : (displayNameProp || chapter);
   const sortedCards = useMemo(() =>
     [...cards].sort((a, b) => (a.chapterOrder ?? 0) - (b.chapterOrder ?? 0)),
     [cards]
