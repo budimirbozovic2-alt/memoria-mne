@@ -33,10 +33,14 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
 }
 
 function SubcategoryListInner({
-  cards, sources, category, subcategories, searchQuery, onSearchChange,
+  cards, sources, category, subcategories, categoryRecords, searchQuery, onSearchChange,
   reorderMode, onToggleReorder, onBack, onSelectSubcategory,
   onReorderSubcategories, slideVariants, direction, transition,
 }: Props) {
+  const catRecord = categoryRecords.find(r => r.id === category);
+  const catDisplayName = catRecord?.name || category;
+  const subNameMap: Record<string, string> = {};
+  catRecord?.subcategories?.forEach(s => { subNameMap[s.id] = s.name; });
   const catCards = cards.filter((c) => c.categoryId === category);
   const sourceHierarchy = useSourceHierarchy(cards, sources, category);
 
