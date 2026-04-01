@@ -30,8 +30,13 @@ function getChapters(cards: Card[]): string[] {
   });
 }
 
-export default function MentalSkeleton({ cards, subcategory, category, onBack }: Props) {
-  const EXPANDED_KEY = useMemo(() => `codex-nav-expanded-${category}-${subcategory}`, [category, subcategory]);
+export default function MentalSkeleton({ cards, subcategory, category, categoryRecords, onBack }: Props) {
+  const catRecord = categoryRecords.find(r => r.id === category);
+  const catDisplayName = catRecord?.name || category;
+  const subNode = catRecord?.subcategories?.find(s => s.id === subcategory);
+  const subDisplayName = subNode?.name || subcategory;
+  const chapterNameMap: Record<string, string> = {};
+  subNode?.chapters?.forEach(ch => { chapterNameMap[ch.id] = ch.name; });
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem(EXPANDED_KEY);

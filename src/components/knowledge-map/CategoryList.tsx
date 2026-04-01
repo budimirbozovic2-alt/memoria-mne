@@ -113,7 +113,7 @@ function CategoryListInner({
                 </div>
               )}
               <button
-                onClick={() => !reorderMode && onSelectCategory(name)}
+                onClick={() => !reorderMode && onSelectCategory(id)}
                 className="flex-1 flex flex-col gap-3 p-5 rounded-xl border bg-card hover:bg-secondary/40 transition-colors text-left"
               >
                 <div className="flex items-center justify-between">
@@ -122,7 +122,7 @@ function CategoryListInner({
                       <BarChart3 className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-base font-medium">{name}</p>
+                      <p className="text-base font-medium">{displayName}</p>
                       <p className="text-xs text-muted-foreground">{cardCount} kartica • {subCount} potkategorija</p>
                     </div>
                   </div>
