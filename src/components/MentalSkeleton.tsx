@@ -38,6 +38,7 @@ export default function MentalSkeleton({ cards, subcategory, category, categoryR
   const subDisplayName = subNode?.name || subcategory;
   const chapterNameMap: Record<string, string> = {};
   subNode?.chapters?.forEach(ch => { chapterNameMap[ch.id] = ch.name; });
+  const EXPANDED_KEY = useMemo(() => `codex-nav-expanded-${category}-${subcategory}`, [category, subcategory]);
   const [expandedChapters, setExpandedChapters] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem(EXPANDED_KEY);
