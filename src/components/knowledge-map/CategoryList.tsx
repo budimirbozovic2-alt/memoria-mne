@@ -10,6 +10,7 @@ interface Props {
   cards: Card[];
   categories: string[];
   subcategories: Record<string, string[]>;
+  categoryRecords: CategoryRecord[];
   searchQuery: string;
   onSearchChange: (v: string) => void;
   reorderMode: boolean;
