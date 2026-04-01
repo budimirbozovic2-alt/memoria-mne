@@ -12,6 +12,7 @@ interface Props {
   sources: Source[];
   category: string;
   subcategories: Record<string, string[]>;
+  categoryRecords: CategoryRecord[];
   searchQuery: string;
   onSearchChange: (v: string) => void;
   reorderMode: boolean;
