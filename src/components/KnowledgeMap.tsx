@@ -152,6 +152,7 @@ export default function KnowledgeMap({
             cards={cards}
             category={view.category}
             subcategory={view.subcategory}
+            categoryRecords={categoryRecords}
             onBack={() => navigate({ step: "subcategories", category: view.category })}
           />
         </Suspense>
