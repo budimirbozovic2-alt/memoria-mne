@@ -103,7 +103,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
           {editing ? (
             <input
               autoFocus
-              className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground uppercase tracking-wider"
+              className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground uppercase tracking-wider nodrag nowheel nopan"
               defaultValue={nodeData.label}
               onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
               onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
