@@ -3,9 +3,20 @@ import { parseArticles } from "./article-parser";
 
 export type { Source };
 
-/** Confirm a card's review flag (clear needsReview) */
-export async function confirmCardReview(cardId: string): Promise<void> {
-  await db.cards.update(cardId, { needsReview: undefined });
+/** Confirm a card's review flag (clear needsReview) — delegates to listener (SSoT) */
+type ReviewConfirmListener = (cardId: string) => void;
+const _reviewListeners = new Set<ReviewConfirmListener>();
+
+/** Subscribe to card review confirmations. Returns unsubscribe. */
+export function onCardReviewConfirmed(fn: ReviewConfirmListener): () => void {
+  _reviewListeners.add(fn);
+  return () => { _reviewListeners.delete(fn); };
+}
+
+export function confirmCardReview(cardId: string): void {
+  for (const fn of _reviewListeners) {
+    try { fn(cardId); } catch { /* swallow */ }
+  }
 }
 
 // ── In-memory sources cache (H4 fix) ──
