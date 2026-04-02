@@ -26,6 +26,7 @@ interface SearchResult {
   subtitle?: string;
   icon: "essay" | "flash" | "source" | "mindmap";
   card?: Card;
+  categoryId?: string;
   sourceId?: string;
   mindmapId?: string;
 }
@@ -106,8 +107,9 @@ export default function GlobalSearch({ cards, open, onClose, onNavigateToCard }:
           id: s.id,
           type: "source",
           title: s.title,
-          subtitle: `v${s.version} • ${s.date}`,
+          subtitle: uuidToName[s.categoryId] ?? s.categoryId,
           icon: "source",
+          categoryId: s.categoryId,
           sourceId: s.id,
         });
       });
@@ -143,10 +145,9 @@ export default function GlobalSearch({ cards, open, onClose, onNavigateToCard }:
   const handleSelect = useCallback((result: SearchResult) => {
     if (result.type === "card" && result.card) {
       onNavigateToCard(result.card);
-    } else if (result.type === "source") {
-      // Navigate to database sources tab, store sourceId for auto-open
+    } else if (result.type === "source" && result.categoryId) {
       sessionStorage.setItem("sr-open-source-id", result.id);
-      navigate("/database");
+      navigate(`/category/${result.categoryId}`);
     } else if (result.type === "mindmap") {
       sessionStorage.setItem("sr-open-mindmap-id", result.id);
       navigate("/mind-map");
