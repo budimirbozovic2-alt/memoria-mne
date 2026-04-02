@@ -1,75 +1,51 @@
 
 
-# Fix: Mentalne mape — veze, strelice, handle-ovi, opis čvorova
+# Proširenje režima uređivanja izvora — puni rich text editor
 
-## Problemi
+## Rezime
 
-1. **Veze nevidljive nakon kreiranja** — `defaultEdgeOptions` nema `style` sa bojom stroka. Veza se kreira ali je vizuelno nevidljiva dok korisnik ne otvori Edge Settings i promijeni boju/stil.
-2. **Strelica samo u jednom pravcu** — koristi se samo `markerEnd`. Korisnik očekuje strelice na oba kraja (ili bar opciju).
-3. **Specijalni čvorovi (diamond, group) ne primaju veze** — svi handle-ovi su `type="source"`, nema `type="target"`. `ConnectionMode.Loose` dozvoljava source→source konekcije, ali ReactFlow ipak zahtijeva bar jedan target handle na čvoru da bi se mogao koristiti kao destinacija u standardnom toku.
-4. **Unos teksta u opis ne radi** — ReactFlow presreće tastaturne događaje (Delete, Backspace, itd.) prije nego što stignu do `<input>` i `<textarea>` unutar čvorova. Nedostaje `stopPropagation` na svim input elementima.
+Trenutno "Uredi" režim u Source Reader-u omogućava samo strukturno formatiranje (H1/H2/H3/P/liste) kroz kontekstni meni i tooltip selekcije. Nedostaje inline formatiranje (bold, italic, underline), toolbar sa dugmadima, keyboard prečice (Ctrl+B/I/U), i automatsko čuvanje promjena. `SourceEditToolbar` komponenta je već kreirana ali nije integrisana.
 
----
+## Promjene
 
-## Promjene po fajlovima
+### 1. `src/components/source-reader/SourceContent.tsx` — contentEditable + toolbar integracija
 
-### 1. `src/components/mindmap/MindMapNode.tsx`
+- Dodati `editMode` prop
+- Kad je `editMode=true`: postaviti `contentEditable`, prikazati `SourceEditToolbar` iznad sadržaja
+- Dodati `onInput` handler koji emituje promjene
+- Dodati `onKeyDown` za Ctrl+B/I/U prečice i sprječavanje ReactFlow-sličnih presretanja
+- Dodati `onPaste` za smart paste (plain text + image paste kao u RichTextEditor)
+- Ukloniti `dangerouslySetInnerHTML` kad je editMode aktivan (koristiti ref-based innerHTML sync)
 
-**A) Handle-ovi: dodati target handle-ove**
+### 2. `src/hooks/useSourceReaderActions.ts` — handleInlineFormat + debounced save
 
-Trenutno (L73-79): svi handle-ovi su `type="source"`. Dodati 4 dodatna `type="target"` handle-a na suprotnim pozicijama. Ili — jednostavnije — promijeniti 2 od 4 postojeća na `type="target"` (Top i Left = target, Bottom i Right = source). Ovo je intuitivnije: veze idu odozgo-nadolje ili lijevo-desno.
+- Dodati `handleInlineFormat(command, value?)` akciju koja poziva `document.execCommand` na contentRef
+- Dodati debounced save: nakon svake promjene sadržaja, sačekati 1s pa persistovati u IDB (`saveSource`)
+- Dodati `handleEditInput` callback koji se poziva iz SourceContent `onInput`
+- Exportovati nove akcije kroz `actions` objekat
 
+### 3. `src/components/SourceReader.tsx` — proslijediti editMode i nove akcije
+
+- Proslijediti `editMode` prop u `SourceContent`
+- Proslijediti `onFormat` i `onInput` handlere
+
+### 4. `src/components/source-reader/SourceEditToolbar.tsx` — bez promjena
+
+Već kreiran sa svim potrebnim dugmadima (Bold, Italic, Underline, Strikethrough, Red, H1-H3, P, Lists, Undo/Redo).
+
+## Arhitektura toka podataka
+
+```text
+SourceEditToolbar → onFormat(cmd) → handleInlineFormat → document.execCommand
+                                                        ↓
+SourceContent (contentEditable) → onInput → handleEditInput → debounce 1s → saveSource(IDB)
+                                                        ↓
+Ctrl+B/I/U (onKeyDown) ────────────────────→ document.execCommand
 ```
-Top    → target
-Right  → source
-Bottom → source
-Left   → target
-```
-
-Ovo omogućava prirodno spajanje: izvor (bottom/right) → destinacija (top/left) za sve oblike čvorova uključujući diamond i group.
-
-**B) Keyboard events: stopPropagation na svim input/textarea elementima**
-
-Dodati `onKeyDown={(e) => e.stopPropagation()}` na:
-- Label input u standard node (L202-207)
-- Description textarea (L219-226)
-- Label input u diamond node (L149-155)
-- Label input u group node (L104-109)
-- Icon search input u SettingsPanel (L265-270)
-
-Ovo sprječava ReactFlow da presretne Delete/Backspace/Space i druge tastere dok korisnik kuca.
-
-### 2. `src/components/mindmap/MindMapCanvas.tsx`
-
-**A) `defaultEdgeOptions` — dodati `style` sa vidljivom bojom**
-
-Trenutno (L699-703):
-```ts
-defaultEdgeOptions={{
-  type: "smoothstep",
-  animated: isProcedure,
-  markerEnd: { ... },
-}}
-```
-
-Dodati `style: edgeStyle` u `defaultEdgeOptions` tako da nove veze budu odmah vidljive.
-
-**B) `onConnect` — dodati `markerStart` za bidirekcione strelice**
-
-Trenutno (L424-438): samo `markerEnd`. Dodati `markerStart` sa istim stilom, tako da veza ima strelice na oba kraja.
-
-**C) Edge color presets — dodati `markerStart` uz `markerEnd`**
-
-U `EdgeSettingsPanel` (L244-247): kad korisnik bira boju, ažurirati i `markerStart` pored `markerEnd`.
-
-### 3. `src/components/category/MindMapViewer.tsx`
-
-**Handle update**: Viewer koristi iste čvorove — handle promjene u MindMapNode.tsx automatski se primjenjuju.
-
----
 
 ## Scope
-- 2 fajla: `MindMapNode.tsx` (~15 linija), `MindMapCanvas.tsx` (~10 linija)
+- 3 fajla: `SourceContent.tsx` (~30 linija), `useSourceReaderActions.ts` (~40 linija), `SourceReader.tsx` (~5 linija)
+- `SourceEditToolbar.tsx`: 0 promjena (već gotov)
 - Nema novih zavisnosti
 - FSRS: netaknut
 
