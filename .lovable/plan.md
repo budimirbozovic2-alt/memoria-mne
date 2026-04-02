@@ -1,49 +1,72 @@
 
 
-# Fix: Diamond handle-ovi i unos teksta u opis čvora
+# Sljedeće stavke iz deep audita
 
-## Problemi
+## Pregled urađenog
+- ✅ K4: db.ts reload race condition
+- ✅ K2: dupli ready timer
+- ✅ K5: localStorage → IDB za backup timestamp
+- ✅ db.ts razdvojen na 3 modula
+- ✅ MindMapCanvas dekompozicija
+- ✅ Diamond handle + textarea fix
 
-1. **Diamond čvor — veze se ne mogu povući**: Div sa `z-10` (L143) pokriva cijelu površinu čvora uključujući handle-ove. Handle-ovi su ispod ovog sloja i klik/drag na njih ne prolazi.
+## Preostale stavke po prioritetu
 
-2. **Opis čvora — tekst se ne može unijeti**: Textarea ima `onKeyDown stopPropagation`, ali ReactFlow presreće mousedown na čvoru i pokreće drag umjesto fokusiranja textarea. Potrebno je dodati `noDragClassName` ili `nodrag` CSS klasu na interaktivne elemente.
+### 1. event-bus.ts: `setInterval` bez cleanup-a (RIZIK)
 
-## Rješenje
+`src/lib/event-bus.ts` L71 — `setInterval` za heartbeat nikada nema `clearInterval`. Ako se eventBus reinicijalizira (HMR, reimport), timeri se gomilaju. Ovo je memory/CPU leak u developmentu, a potencijalno i u produkciji pri dugotrajnim sesijama.
 
-### `src/components/mindmap/MindMapNode.tsx`
+**Fix**: Dodati `destroy()` metodu na eventBus koja čisti interval. Alternativno, sačuvati intervalId i dodati guard da se ne kreira dupli.
 
-**A) Diamond handle z-index fix (L143)**
+| Fajl | Promjena |
+|------|----------|
+| `src/lib/event-bus.ts` | Sačuvati `setInterval` return u varijablu, dodati `clearInterval` u `destroy()` metodu, dodati guard protiv duplih intervala |
 
-Sadržaj overlay div: promijeniti `z-10` u `z-10 pointer-events-none`, a unutar njega dodati `pointer-events-auto` na interaktivne elemente (tekst, input, dugmad). Ovo omogućava da handle-ovi ispod prime klik/drag.
+---
 
-```
-L143: "absolute inset-0 flex flex-col items-center justify-center text-center px-8 z-10"
-→     "absolute inset-0 flex flex-col items-center justify-center text-center px-8 z-10 pointer-events-none"
-```
+### 2. Notification check — `setInterval` svaki minut čita settings (NEEFIKASNO)
 
-Na span/input/button unutar diamond-a dodati `pointer-events-auto`.
+`src/contexts/AppContext.tsx` L380-396 — svaki minut poziva `loadAppSettings()` koji parsira localStorage. Dovoljno je pročitati `reminderHour` i `reminderMinute` jednom pri mount-u, i jednom kad se settings promijene.
 
-**B) Textarea drag prevention (L218-226)**
+**Fix**: Čitati settings u `useRef` pri mount-u i refreshati samo kad se vrati na tab (visibilitychange).
 
-Dodati `nodrag` klasu na textarea i input elemente u editing režimu. ReactFlow prepoznaje klasu `nodrag` i neće pokrenuti drag za te elemente:
+| Fajl | Promjena |
+|------|----------|
+| `src/contexts/AppContext.tsx` L377-396 | Keširati settings u ref, dodati visibilitychange listener za refresh |
 
-- L219 textarea: dodati `nodrag` u className
-- L202 label input (standard): dodati `nodrag` u className  
-- L104/150 label input (group/diamond): dodati `nodrag` u className
-- Također dodati `nowheel nopan` da spriječi scroll/pan presretanje
+---
 
-**C) Handle-ovi na diamond — z-index (L134)**
+### 3. Veliki fajlovi — CardOrgMode (503), SRSettingsPanel (505), CardViewMode (500)
 
-Handle-ovi se renderuju unutar `{handles}` na L134, ali rotirana pozadina i sadržaj ih prekrivaju. Dodati `z-20` na svaki Handle u `handles` bloku, ili premjestiti handles renderovanje nakon sadržaja u diamond sekciji.
+Tri komponente prelaze 500 linija. Svaka se može razdvojiti na logičke pod-komponente:
 
-| Lokacija | Promjena |
-|----------|----------|
-| L143 | Dodati `pointer-events-none` na content overlay |
-| L144-159 | Dodati `pointer-events-auto` na ikonu, span, input, dugmad |
-| L73-79 | Dodati `z-20` na Handle komponente |
-| L219, L202, L104, L150 | Dodati `nodrag nowheel nopan` klasu na input/textarea |
+- **SRSettingsPanel.tsx** (505 linija) — razdvojiti na tab-ove: `FSRSTab`, `ScheduleTab`, `DisplayTab`
+- **CardOrgMode.tsx** (503 linija) — izdvojiti drag-and-drop logiku u `useCardOrgDnd` hook
+- **CardViewMode.tsx** (500 linija) — izdvojiti filter/sort logiku u `useCardFilters` hook
 
-## Scope
-- 1 fajl: `MindMapNode.tsx`, ~10 linija promjena
-- Nema novih zavisnosti
+Ovo je refaktoring nižeg prioriteta — funkcionalno je sve ispravno.
+
+| Fajl | Promjena |
+|------|----------|
+| `src/components/SRSettingsPanel.tsx` | Razdvojiti na 3 tab komponente |
+| `src/components/category/CardOrgMode.tsx` | Izdvojiti DnD hook |
+| `src/components/category/CardViewMode.tsx` | Izdvojiti filter/sort hook |
+
+---
+
+### 4. `useCardContext()` backward-compat — spread 4 konteksta (PERFORMANCE)
+
+`AppContext.tsx` L153-159 — `useCardContext()` pravi novi merged objekat pri svakom renderu bilo kojeg od 4 konteksta. Komponente koje koriste `useCardContext` se re-renderuju kad se promijeni **bilo šta** — čime se poništava dekompozicija na granularne kontekste.
+
+**Fix**: Pronaći sve pozive `useCardContext()` i zamijeniti ih granularnim hookovima (`useCardData`, `useCategoryData`, `useReviewData`, `useCardActions`). Zatim deprecirati `useCardContext`.
+
+| Fajl | Promjena |
+|------|----------|
+| Svaki potrošač `useCardContext` | Zamijeniti sa granularnim hookom |
+
+---
+
+## Preporuka za implementaciju
+
+Predlažem da krenemo sa stavkama **1 i 2** (event-bus leak i notification optimizacija) jer su najrizičnije i najbrže za popraviti (~30 linija ukupno). Stavke 3 i 4 su veći refaktorinzi koji se mogu uraditi postepeno.
 
