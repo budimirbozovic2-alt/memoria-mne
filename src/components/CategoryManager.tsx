@@ -45,7 +45,7 @@ export default function CategoryManager({
 
   const startEdit = (cat: string) => {
     setEditingCat(cat);
-    setEditValue(cat);
+    setEditValue(nameMap[cat] || cat);
   };
 
   const confirmEdit = () => {
