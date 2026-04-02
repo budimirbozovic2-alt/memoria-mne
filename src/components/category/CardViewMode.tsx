@@ -383,12 +383,15 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
                         </>
                       );
                     })()}
-                    {!card.subcategoryId && card.chapterId && (
-                      <Badge variant="outline" className="text-[10px] gap-1 border-primary/30">
-                        <BookOpen className="h-3 w-3" />
-                        Glava: {card.chapterId}
-                      </Badge>
-                    )}
+                    {!card.subcategoryId && card.chapterId && (() => {
+                      const chName = allCategories.flatMap(c => (c.subcategories || []).flatMap(s => s.chapters || [])).find(ch => typeof ch === 'object' && ch.id === card.chapterId)?.name ?? card.chapterId;
+                      return (
+                        <Badge variant="outline" className="text-[10px] gap-1 border-primary/30">
+                          <BookOpen className="h-3 w-3" />
+                          Glava: {chName}
+                        </Badge>
+                      );
+                    })()}
                     {card.sourceId && (
                       <Badge variant="outline" className="text-[10px] gap-1 border-accent">
                         <Link2 className="h-3 w-3" />
