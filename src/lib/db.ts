@@ -198,15 +198,21 @@ db.on("versionchange", () => {
 });
 
 // Watch for unblocking conditions (tab count dropping to 1)
-setInterval(() => {
-  if (dbErrorState?.type === "timeout" && eventBus.getTabCount() <= 1) {
-    console.log("[MemoriaDB] Only one tab remains, attempting to clear blocked state...");
+let reloadScheduled = false;
+let unblockIntervalId: ReturnType<typeof setInterval> | null = null;
+
+unblockIntervalId = setInterval(() => {
+  if (!dbErrorState) return;
+  if (dbErrorState.type === "timeout" && eventBus.getTabCount() <= 1) {
+    console.log("[MemoriaDB] Only one tab remains, clearing blocked state...");
     dbErrorState = null;
     eventBus.emit(EVENT_TYPES.DB_UNBLOCKED);
-    // Force a reload or retry if we were blocked
-    if (window.location.reload) {
+    if (!reloadScheduled) {
+      reloadScheduled = true;
       setTimeout(() => window.location.reload(), 1000);
     }
+    clearInterval(unblockIntervalId!);
+    unblockIntervalId = null;
   }
 }, 2000);
 
