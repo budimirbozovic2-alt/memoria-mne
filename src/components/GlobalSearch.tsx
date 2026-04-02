@@ -26,6 +26,7 @@ interface SearchResult {
   subtitle?: string;
   icon: "essay" | "flash" | "source" | "mindmap";
   card?: Card;
+  categoryId?: string;
   sourceId?: string;
   mindmapId?: string;
 }
