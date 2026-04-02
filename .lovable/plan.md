@@ -1,50 +1,53 @@
 
 
-# Zamjena useCardContext() granularnim hookovima
+# Dekompozicija CardOrgMode.tsx (503 → ~200 linija)
 
-## Problem
+## Struktura razdvajanja
 
-`useCardContext()` spaja 4 konteksta u novi objekat pri svakom renderu. Svaka komponenta koja ga koristi re-renderuje se kad se promijeni **bilo koji** kontekst — poništavajući dekompoziciju na granularne kontekste.
+| Novi modul | Sadržaj | ~Linije |
+|------------|---------|---------|
+| `src/hooks/useCardOrgDnd.ts` | DnD logika: `handleDragStart`, `handleDragEnd`, `findCardContainer`, `assignChapter`, `activeCard` state | ~90 |
+| `src/components/category/org-mode/OrgSubcategoryPanel.tsx` | Subcategory accordion panel (L369-491) — header + expanded content sa chapters i unassigned | ~130 |
+| `src/components/category/org-mode/OrgCardTiles.tsx` | `SortableCardTile`, `UnassignedCardRow`, `CardDragOverlay`, `DroppableChapterZone` — 4 prezentacione komponente (L107-234) | ~130 |
+| `src/components/category/org-mode/org-mode-utils.ts` | `buildTree`, `TreeNode` tip, `chapterDropId`, `parseChapterDropId` helper funkcije (L24-104) | ~85 |
+| `src/components/category/CardOrgMode.tsx` | Orchestrator — state, DndContext wrapper, legend, map over tree | ~80 |
 
-## Pristup
+## Detalji po modulu
 
-Zamijeniti svaki poziv `useCardContext()` sa kombinacijom granularnih hookova (`useCardData`, `useCategoryData`, `useReviewData`, `useCardActions`), koristeći samo one koji su stvarno potrebni. Na kraju deprecirati `useCardContext`.
+### `org-mode-utils.ts` (L24-104)
+- `TreeNode` interfejs
+- `chapterDropId()` i `parseChapterDropId()` helperi
+- `buildTree()` funkcija
+- Čist utility — nema React zavisnosti
 
-## Mapiranje potrošača (14 fajlova)
+### `OrgCardTiles.tsx` (L107-234)
+- `SortableCardTile` — sortable kartica u chapter-u
+- `DroppableChapterZone` — droppable zona za glavu
+- `CardDragOverlay` — ghost pri drag-u
+- `UnassignedCardRow` — kartica bez glave sa assign kontrolama
+- Sve su prezentacione komponente, bez poslovne logike
 
-| Fajl | Trenutno koristi | Zamjena hookovima |
-|------|-----------------|-------------------|
-| `DashboardPage.tsx` | cards, stats, categoryStats, categories, subcategories, reviewLog, srSettings, ready | `useCardData` + `useCategoryData` + `useReviewData` |
-| `LearnPage.tsx` | cards, categories, categoryRecords, subcategories, markRead, reviewSection, stats, reviewLog, addKeyPart, ready | `useCardData` + `useCategoryData` + `useReviewData` + `useCardActions` |
-| `ReviewPage.tsx` | dueCards, cards, categoryRecords, reviewLog, subcategories, srSettings, reviewSection, logError, ready | `useCardData` + `useCategoryData` + `useReviewData` + `useCardActions` |
-| `StatsPage.tsx` | cards, categories, categoryRecords, subcategories, categoryStats, reviewLog, srSettings, ready | `useCardData` + `useCategoryData` + `useReviewData` |
-| `CreatePage.tsx` | categories, subcategories, categoryRecords, addCard, addFlashCard | `useCategoryData` + `useCardActions` |
-| `EditPage.tsx` | categories, subcategories, categoryRecords, updateCard, splitCard | `useCategoryData` + `useCardActions` |
-| `CategoriesPage.tsx` | categories, subcategories, cardCountByCategory, addCategory, renameCategory, deleteCategory, ready | `useCategoryData` + `useCardData` (ready) + `useCardActions` |
-| `KnowledgeMapPage.tsx` | cards, categories, subcategories, reorderCategories, reorderSubcategories, ready | `useCardData` + `useCategoryData` + `useCardActions` |
-| `PlannerPage.tsx` | cards, categories, categoryRecords, reviewLog, ready | `useCardData` + `useCategoryData` + `useReviewData` |
-| `MetacognitivePage.tsx` | cards, categories, categoryRecords, reviewLog, srSettings, clearErrorLog, ready | `useCardData` + `useCategoryData` + `useReviewData` + `useCardActions` |
-| `FrequentErrorsPage.tsx` | cards, categoryRecords, clearErrorLog, ready | `useCardData` + `useCategoryData` + `useCardActions` |
-| `TopNav.tsx` | stats | `useCardData` |
-| `MainLayout.tsx` (3 komponente) | cards; categories, importCards, addFlashCard | `useCardData` + `useCategoryData` + `useCardActions` |
-| `SRSettingsPanel.tsx` | cards, categories, subcategories, cardCountByCategory, exportData, exportTemplate, importData, addCategory, renameCategory, deleteCategory | `useCardData` + `useCategoryData` + `useCardActions` |
+### `useCardOrgDnd.ts` (L239-341)
+- Prima: `cards`, `subcategoryNodes`, `patchCard`, `tree`
+- Vraća: `activeId`, `activeCard`, `handleDragStart`, `handleDragEnd`, `assignChapter`
+- Sadrži `findCardContainer`, `cardMap` memo, svu reorder logiku
+- Enkapsulira kompletnu DnD interakciju
 
-## Promjene po fajlu
+### `OrgSubcategoryPanel.tsx` (L369-491)
+- Prima: `node: TreeNode`, `isExpanded`, `onToggle`, `tree` (za otherSubs lookup), `assignChapter`, `patchCard`
+- Renderuje header button + expanded sadržaj (chapters + unassigned)
+- Koristi `OrgCardTiles` komponente
 
-Svaki fajl:
-1. Import zamjena: `useCardContext` → odgovarajući granularni hookovi
-2. Destrukturiranje iz zasebnih hookova umjesto jednog poziva
-3. Bez promjene ostatka koda
-
-## AppContext.tsx
-
-- Dodati `@deprecated` JSDoc komentar na `useCardContext`
-- Zadržati funkciju za eventualne propuštene potrošače
-- Ukloniti `useAppContext` (nekorišten osim u samom fajlu)
+### `CardOrgMode.tsx` (orchestrator)
+- `expandedSubs` state + auto-expand effect
+- `buildTree` poziv
+- `useCardOrgDnd` hook
+- `DndContext` wrapper + legend + `tree.map(node => <OrgSubcategoryPanel>)`
+- `DragOverlay` portal
 
 ## Scope
-- 15 fajlova, ~2-5 linija po fajlu
+- 3 nova fajla + 1 novi hook
+- 1 refaktorisan fajl
+- 0 promjena u potrošačima (`CategoryView.tsx`)
 - Nema novih zavisnosti
-- Nema promjene ponašanja — čist refaktoring
-- Performans dobitak: komponente se re-renderuju samo kad se promijeni kontekst koji stvarno koriste
 
