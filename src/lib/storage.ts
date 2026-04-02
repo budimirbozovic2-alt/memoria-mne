@@ -79,12 +79,30 @@ export async function getPomodoroStats(): Promise<PomodoroStatsResult> {
   };
 }
 
-export function loadLearnProgress(): Record<string, LearnCardProgress> {
-  return loadFromStorage(LEARN_PROGRESS_KEY, {});
+export async function loadLearnProgress(): Promise<Record<string, LearnCardProgress>> {
+  try {
+    const { idbLoadSettings } = await import("@/lib/db");
+    const idbData = await idbLoadSettings<Record<string, LearnCardProgress>>(LEARN_PROGRESS_KEY, {});
+    if (Object.keys(idbData).length > 0) return idbData;
+    // Fallback: migrate from localStorage
+    const lsData = loadFromStorage<Record<string, LearnCardProgress>>(LEARN_PROGRESS_KEY, {});
+    if (Object.keys(lsData).length > 0) {
+      await import("@/lib/db").then(m => m.idbSaveSettings(LEARN_PROGRESS_KEY, lsData));
+      localStorage.removeItem(LEARN_PROGRESS_KEY);
+    }
+    return lsData;
+  } catch {
+    return loadFromStorage(LEARN_PROGRESS_KEY, {});
+  }
 }
 
-export function saveLearnProgress(progress: Record<string, LearnCardProgress>) {
-  saveToStorage(LEARN_PROGRESS_KEY, progress);
+export async function saveLearnProgress(progress: Record<string, LearnCardProgress>): Promise<void> {
+  try {
+    const { idbSaveSettings } = await import("@/lib/db");
+    await idbSaveSettings(LEARN_PROGRESS_KEY, progress);
+  } catch {
+    saveToStorage(LEARN_PROGRESS_KEY, progress);
+  }
 }
 
 // Storage usage (estimates localStorage footprint)
@@ -99,10 +117,29 @@ export async function getStorageUsage(): Promise<{ usedBytes: number; maxBytes: 
 }
 
 // Backup reminder
-export function getLastBackupTime(): number {
-  return loadFromStorage(LAST_BACKUP_KEY, 0);
+export async function getLastBackupTime(): Promise<number> {
+  try {
+    const { idbLoadSettings } = await import("@/lib/db");
+    const idbVal = await idbLoadSettings<number>(LAST_BACKUP_KEY, 0);
+    if (idbVal > 0) return idbVal;
+    // Fallback: migrate from localStorage
+    const lsVal = loadFromStorage(LAST_BACKUP_KEY, 0);
+    if (lsVal > 0) {
+      await import("@/lib/db").then(m => m.idbSaveSettings(LAST_BACKUP_KEY, lsVal));
+      localStorage.removeItem(LAST_BACKUP_KEY);
+    }
+    return lsVal;
+  } catch {
+    return loadFromStorage(LAST_BACKUP_KEY, 0);
+  }
 }
 
-export function setLastBackupTime() {
-  saveToStorage(LAST_BACKUP_KEY, Date.now());
+export async function setLastBackupTime(): Promise<void> {
+  const now = Date.now();
+  try {
+    const { idbSaveSettings } = await import("@/lib/db");
+    await idbSaveSettings(LAST_BACKUP_KEY, now);
+  } catch {
+    saveToStorage(LAST_BACKUP_KEY, now);
+  }
 }
