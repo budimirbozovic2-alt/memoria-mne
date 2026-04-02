@@ -26,7 +26,7 @@ const LAB_ROUTES = new Set(["/stats", "/knowledge-map", "/metacognitive", "/mnem
 
 export default function Breadcrumbs() {
   const { pathname } = useLocation();
-  const { categoryRecords } = useCardData();
+  const { categoryRecords } = useCategoryData();
 
   const categoryMatch = pathname.match(/^\/category\/([^/]+)/);
   const categoryId = categoryMatch?.[1];

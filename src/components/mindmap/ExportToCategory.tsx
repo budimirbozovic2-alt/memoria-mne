@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function ExportToCategory({ open, onOpenChange, currentTitle, currentNodes, currentEdges, mode }: Props) {
-  const { categoryRecords } = useCardData();
+  const { categoryRecords } = useCategoryData();
   const [title, setTitle] = useState(currentTitle);
   const [categoryId, setCategoryId] = useState("");
   const [saving, setSaving] = useState(false);
