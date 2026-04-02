@@ -1,5 +1,5 @@
 import { useEffect, useCallback } from "react";
-import { useCardContext, useUIContext } from "@/contexts/AppContext";
+import { useCardData, useCategoryData, useReviewData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import { useSessionContext, QueuedReview, QueuedError, QueuedMarkRead } from "@/contexts/SessionContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import LearnSession from "@/components/LearnSession";
