@@ -1,11 +1,14 @@
 import { X, FileText, Loader2, Scissors } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { Button } from "@/components/ui/button";
 import { useCardActions } from "@/hooks/useCardActions";
 import type { SectionInput, FormWidth } from "@/hooks/useCardActions";
 import type { CategoryRecord } from "@/lib/db";
-import EditorSection from "@/components/card-form/EditorSection";
+import { Skeleton } from "@/components/ui/skeleton";
 import MetadataSection from "@/components/card-form/MetadataSection";
+
+const EditorSection = lazy(() => import("@/components/card-form/EditorSection"));
 
 interface Props {
   categories: string[];
