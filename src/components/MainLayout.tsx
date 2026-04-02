@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef, lazy, Suspense, memo, useCallback } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useLocation } from "react-router-dom";
-import { useUIContext, useCardContext } from "@/contexts/AppContext";
+import { useUIContext, useCardData, useCategoryData, useCardActions } from "@/contexts/AppContext";
 import ZenMode from "@/components/ZenMode";
 import AppSidebar from "@/components/AppSidebar";
 import BlockingModal from "@/components/db/BlockingModal";
@@ -22,7 +22,7 @@ const SOURCE_ROUTES = ["/categories", "/category/"];
 
 /** Isolated component for planner nudge */
 const NudgeWatcher = memo(function NudgeWatcher() {
-  const { cards } = useCardContext();
+  const { cards } = useCardData();
   const { pathname } = useLocation();
   const prevPathRef = useRef(pathname);
   const nudgeShownRef = useRef(false);
@@ -71,7 +71,7 @@ const NudgeWatcher = memo(function NudgeWatcher() {
 const GlobalSearchWrapper = memo(function GlobalSearchWrapper({
   open, onClose,
 }: { open: boolean; onClose: () => void }) {
-  const { cards } = useCardContext();
+  const { cards } = useCardData();
   const { setView, setEditingCard } = useUIContext();
   if (!open) return null;
   return (
@@ -93,7 +93,8 @@ const GlobalSearchWrapper = memo(function GlobalSearchWrapper({
 const DocxImporterWrapper = memo(function DocxImporterWrapper({
   open, onClose,
 }: { open: boolean; onClose: () => void }) {
-  const { categories, importCards, addFlashCard } = useCardContext();
+  const { categories } = useCategoryData();
+  const { importCards, addFlashCard } = useCardActions();
   if (!open) return null;
   return (
     <Suspense fallback={null}>

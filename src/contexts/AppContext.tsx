@@ -150,6 +150,7 @@ export function useCardActions() {
 type CardDataContextValue = CardStateContextValue & CategoryStateContextValue & ReviewStateContextValue;
 type CardContextValue = CardDataContextValue & CardActionsContextValue;
 
+/** @deprecated Use granular hooks: useCardData, useCategoryData, useReviewData, useCardActions */
 export function useCardContext(): CardContextValue {
   const cardState = useCardData();
   const categoryState = useCategoryData();

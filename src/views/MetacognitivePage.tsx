@@ -1,9 +1,12 @@
-import { useCardContext, useUIContext } from "@/contexts/AppContext";
+import { useCardData, useCategoryData, useReviewData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MetacognitiveCenter from "@/components/MetacognitiveCenter";
 
 export default function MetacognitivePage() {
-  const { cards, categories, categoryRecords, reviewLog, srSettings, clearErrorLog, ready } = useCardContext();
+  const { cards, ready } = useCardData();
+  const { categories, categoryRecords } = useCategoryData();
+  const { reviewLog, srSettings } = useReviewData();
+  const { clearErrorLog } = useCardActions();
   const { setView } = useUIContext();
 
   if (!ready) {

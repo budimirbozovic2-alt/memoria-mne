@@ -1,9 +1,11 @@
-import { useCardContext, useUIContext } from "@/contexts/AppContext";
+import { useCardData, useCategoryData, useReviewData, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MyStats from "@/components/MyStats";
 
 export default function StatsPage() {
-  const { cards, categories, categoryRecords, subcategories, categoryStats, reviewLog, srSettings, ready } = useCardContext();
+  const { cards, ready } = useCardData();
+  const { categories, categoryRecords, subcategories, categoryStats } = useCategoryData();
+  const { reviewLog, srSettings } = useReviewData();
   const { setView } = useUIContext();
 
   if (!ready) {

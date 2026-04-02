@@ -1,11 +1,12 @@
-import { useCardContext, useUIContext, type View } from "@/contexts/AppContext";
+import { useCategoryData, useCardActions, useUIContext, type View } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import CardForm from "@/components/CardForm";
 import { useEffect, useRef, useCallback } from "react";
 import type { Card } from "@/lib/spaced-repetition";
 
 export default function EditPage() {
-  const { categories, subcategories, categoryRecords, updateCard, splitCard } = useCardContext();
+  const { categories, subcategories, categoryRecords } = useCategoryData();
+  const { updateCard, splitCard } = useCardActions();
   const { setView, editingCard, setEditingCard } = useUIContext();
   const previousViewRef = useRef<View | null>(null);
 

@@ -1,10 +1,12 @@
-import { useCardContext, useUIContext } from "@/contexts/AppContext";
+import { useCardData, useCategoryData, useReviewData, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import StrategicPlanner from "@/components/StrategicPlanner";
 import { useCallback } from "react";
 
 export default function PlannerPage() {
-  const { cards, categories, categoryRecords, reviewLog, ready } = useCardContext();
+  const { cards, ready } = useCardData();
+  const { categories, categoryRecords } = useCategoryData();
+  const { reviewLog } = useReviewData();
   const { setView } = useUIContext();
 
   const handleNavigateToDatabase = useCallback((category: string) => {
