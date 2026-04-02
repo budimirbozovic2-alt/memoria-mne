@@ -4,8 +4,7 @@ import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { format } from "date-fns";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
 import { useState, useRef, useEffect, useMemo, useCallback, lazy, Suspense, CSSProperties, memo } from "react";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { useCategoryData } from "@/contexts/AppContext";
 import { List, type RowComponentProps } from "react-window";
 import { ScoreBadge, RetentionBadge, SectionBar } from "./card-list/CardBadges";
 import CardContextMenu from "./card-list/CardContextMenu";
@@ -253,8 +252,17 @@ export default function CardList({
   const listRef = useRef<any>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
-  const allCats = useLiveQuery(() => db.categories.toArray(), []);
-  const catNameMap = useMemo(() => Object.fromEntries((allCats ?? []).map(r => [r.id, r.name])), [allCats]);
+  const { categoryRecords: allCats } = useCategoryData();
+  const catNameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const r of allCats) {
+      m[r.id] = r.name;
+      for (const sub of r.subcategories ?? []) m[sub.id] = sub.name;
+      for (const sub of r.subcategories ?? []) for (const ch of sub.chapters ?? []) m["__ch_" + ch.id] = ch.name;
+      for (const sub of r.subcategories ?? []) m["__sub_" + sub.id] = sub.name;
+    }
+    return m;
+  }, [allCats]);
 
   const filtered = useMemo(() => {
     let result = filterCategory ? cards.filter(c => c.categoryId === filterCategory) : cards;

@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import type { Card } from "@/lib/spaced-repetition";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { useCategoryData } from "@/contexts/AppContext";
 
 interface Props {
   open: boolean;
@@ -20,7 +19,8 @@ interface Props {
 }
 
 function SubBadge({ categoryId, subcategoryId }: { categoryId: string; subcategoryId: string }) {
-  const catRecord = useLiveQuery(() => db.categories.get(categoryId), [categoryId]);
+  const { categoryRecords } = useCategoryData();
+  const catRecord = categoryRecords.find(r => r.id === categoryId);
   const name = catRecord?.subcategories?.find(s => s.id === subcategoryId)?.name ?? subcategoryId;
   return <Badge variant="outline" className="text-[10px] mt-0.5">{name}</Badge>;
 }

@@ -1,11 +1,14 @@
 import { X, FileText, Loader2, Scissors } from "lucide-react";
+import { lazy, Suspense } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { Button } from "@/components/ui/button";
 import { useCardActions } from "@/hooks/useCardActions";
 import type { SectionInput, FormWidth } from "@/hooks/useCardActions";
 import type { CategoryRecord } from "@/lib/db";
-import EditorSection from "@/components/card-form/EditorSection";
+import { Skeleton } from "@/components/ui/skeleton";
 import MetadataSection from "@/components/card-form/MetadataSection";
+
+const EditorSection = lazy(() => import("@/components/card-form/EditorSection"));
 
 interface Props {
   categories: string[];
@@ -83,23 +86,25 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
       </div>
 
       {/* ── Editor (question + answer/sections) ──────── */}
-      <EditorSection
-        cardType={a.cardType}
-        isEditing={!!editCard}
-        question={a.question}
-        setQuestion={a.setQuestion}
-        flashAnswer={a.flashAnswer}
-        setFlashAnswer={a.setFlashAnswer}
-        sections={a.sections}
-        cuttingIndex={a.cuttingIndex}
-        setCuttingIndex={a.setCuttingIndex}
-        setCardType={a.setCardType}
-        addSection={a.addSection}
-        removeSection={a.removeSection}
-        updateSection={a.updateSection}
-        handleCut={a.handleCut}
-        validationErrors={a.validationErrors}
-      />
+      <Suspense fallback={<Skeleton className="h-64 w-full rounded-xl" />}>
+        <EditorSection
+          cardType={a.cardType}
+          isEditing={!!editCard}
+          question={a.question}
+          setQuestion={a.setQuestion}
+          flashAnswer={a.flashAnswer}
+          setFlashAnswer={a.setFlashAnswer}
+          sections={a.sections}
+          cuttingIndex={a.cuttingIndex}
+          setCuttingIndex={a.setCuttingIndex}
+          setCardType={a.setCardType}
+          addSection={a.addSection}
+          removeSection={a.removeSection}
+          updateSection={a.updateSection}
+          handleCut={a.handleCut}
+          validationErrors={a.validationErrors}
+        />
+      </Suspense>
 
       {/* ── Metadata (category, subcategory, chapter, gazette) */}
       <MetadataSection

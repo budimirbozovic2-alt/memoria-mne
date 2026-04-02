@@ -8,8 +8,7 @@ import { loadSources, type Source } from "@/lib/sources-storage";
 import { loadMindMaps } from "@/lib/mindmap-storage";
 import { MindMapDoc } from "@/lib/db";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { useCategoryData } from "@/contexts/AppContext";
 interface Props {
   cards: Card[];
   open: boolean;
@@ -45,7 +44,7 @@ function highlightMatch(text: string, query: string): string {
 export default function GlobalSearch({ cards, open, onClose, onNavigateToCard }: Props) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const catRecords = useLiveQuery(() => db.categories.toArray()) ?? [];
+  const { categoryRecords: catRecords } = useCategoryData();
   const uuidToName = useMemo(() => {
     const m: Record<string, string> = {};
     for (const r of catRecords) {

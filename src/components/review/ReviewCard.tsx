@@ -1,8 +1,7 @@
 import { ArrowLeft, Eye, ChevronRight, AlertTriangle, Pause, Scale } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { Card, Section, GRADES, isLeech, formatInterval, previewIntervals, SRSettings } from "@/lib/spaced-repetition";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { useCategoryData } from "@/contexts/AppContext";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,8 @@ export default function ReviewCard({
   progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange, modeBadge,
 }: ReviewCardProps) {
   const { toast } = useToast();
-  const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
+  const { categoryRecords } = useCategoryData();
+  const catRecord = categoryRecords.find(r => r.id === card.categoryId);
   const catName = catRecord?.name ?? card.categoryId;
   const subName = catRecord?.subcategories?.find(s => s.id === card.subcategoryId)?.name ?? card.subcategoryId;
   const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);

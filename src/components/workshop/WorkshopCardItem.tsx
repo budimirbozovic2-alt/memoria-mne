@@ -1,8 +1,7 @@
 import { CheckCircle2, Brain, Film, Type, ChevronDown, ChevronRight, Sparkles, Wrench, Hash, MapPin, Clock, List, MoreHorizontal, Tag, Plus, Pencil, Save, X, Trash2 } from "lucide-react";
 import { useState, useMemo, memo, useCallback, lazy, Suspense } from "react";
 import { MnemonicCard, MnemonicStatus, HookType, HookMode, loadMajorSystem, resolveNumber, extractNumbers, detectEnumerationItems } from "@/lib/mnemonic-storage";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { useCategoryData } from "@/contexts/AppContext";
 
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,7 +30,8 @@ interface Props {
 }
 
 function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDeleteCard, majorSystem }: Props) {
-  const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
+  const { categoryRecords } = useCategoryData();
+  const catRecord = categoryRecords.find(r => r.id === card.categoryId);
   const catName = catRecord?.name ?? card.categoryId;
   const subName = useMemo(() => {
     if (!catRecord) return card.subcategoryId || "";

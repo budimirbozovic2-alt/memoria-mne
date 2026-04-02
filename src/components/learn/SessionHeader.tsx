@@ -4,8 +4,7 @@ import { Card, getCardScore } from "@/lib/spaced-repetition";
 import { LearnMode } from "@/lib/storage";
 import { ViewWidth, viewWidthClasses, viewWidthLabels } from "./types";
 
-import { useLiveQuery } from "dexie-react-hooks";
-import { db } from "@/lib/db";
+import { useCategoryData } from "@/contexts/AppContext";
 import { motion } from "framer-motion";
 import { speak } from "@/lib/tts";
 import ShortcutsHint from "@/components/ShortcutsHint";
@@ -39,7 +38,8 @@ const SessionHeader = React.memo(function SessionHeader({
 }: Props) {
   const score = getCardScore(card);
   const isFlash = card.type === "flash";
-  const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
+  const { categoryRecords } = useCategoryData();
+  const catRecord = categoryRecords.find(r => r.id === card.categoryId);
   const catName = catRecord?.name ?? card.categoryId;
   const subName = catRecord?.subcategories?.find(s => s.id === card.subcategoryId)?.name ?? card.subcategoryId;
 
