@@ -24,7 +24,7 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
   const initialTtsRef = useRef(loadTTSSettings());
   const [exportImportOpen, setExportImportOpen] = useState(false);
   const { cards, cardCountByCategory } = useCardData();
-  const { categories, subcategories } = useCategoryData();
+  const { categories, subcategories, categoryRecords } = useCategoryData();
   const { exportData, exportTemplate, importData, addCategory, renameCategory, deleteCategory } = useCardActions();
   const [app, setApp] = useState<AppSettings>(initialAppRef.current);
   const [tts, setTts] = useState<TTSSettings>(initialTtsRef.current);
