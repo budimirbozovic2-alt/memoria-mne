@@ -365,7 +365,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
           className="rounded-xl border bg-card p-6 space-y-6"
         >
           <div>
-            <p className="text-xs text-muted-foreground mb-2">{currentCard.categoryId}{currentCard.subcategoryId ? ` / ${currentCard.subcategoryId}` : ""}</p>
+            <p className="text-xs text-muted-foreground mb-2">{uuidToName[currentCard.categoryId] || currentCard.categoryId}{currentCard.subcategoryId ? ` / ${uuidToName[currentCard.subcategoryId] || currentCard.subcategoryId}` : ""}</p>
             <h3 className="text-xl font-medium">{currentCard.question}</h3>
           </div>
 
