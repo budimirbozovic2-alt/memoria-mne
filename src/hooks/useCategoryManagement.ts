@@ -1,7 +1,7 @@
 import { useCallback, MutableRefObject } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { db, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
+import { db, idbDeleteCard, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { toast } from "@/hooks/use-toast";
 import { optimisticCategoryUpdate } from "@/lib/category-service";
