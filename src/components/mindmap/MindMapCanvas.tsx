@@ -428,6 +428,7 @@ function MindMapCanvasInner({ doc, onBack }: { doc: MindMapDoc; onBack: () => vo
         type: "smoothstep",
         animated: isProcedure,
         markerEnd: { type: MarkerType.ArrowClosed, color: edgeStroke, width: 20, height: 20 },
+        markerStart: { type: MarkerType.ArrowClosed, color: edgeStroke, width: 20, height: 20 },
         style: edgeStyle,
         label: "",
         labelStyle: { fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 500 },
