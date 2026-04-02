@@ -72,10 +72,10 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
 
   const handles = (
     <>
-      <Handle type="source" position={Position.Top} id="top" className={handleBase} style={{ top: -6 }} />
+      <Handle type="target" position={Position.Top} id="top" className={handleBase} style={{ top: -6 }} />
       <Handle type="source" position={Position.Right} id="right" className={handleBase} style={{ right: -6 }} />
       <Handle type="source" position={Position.Bottom} id="bottom" className={handleBase} style={{ bottom: -6 }} />
-      <Handle type="source" position={Position.Left} id="left" className={handleBase} style={{ left: -6 }} />
+      <Handle type="target" position={Position.Left} id="left" className={handleBase} style={{ left: -6 }} />
     </>
   );
 
@@ -106,7 +106,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
               className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground uppercase tracking-wider"
               defaultValue={nodeData.label}
               onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
-              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             />
           ) : (
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">{nodeData.label}</span>
@@ -152,7 +152,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
               className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground text-center"
               defaultValue={nodeData.label}
               onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
-              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+              onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             />
           ) : (
             <span className="text-xs font-bold text-foreground leading-tight">{nodeData.label}</span>
@@ -204,7 +204,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
             className="bg-transparent border-b-2 border-primary text-sm font-bold w-full outline-none text-foreground"
             defaultValue={nodeData.label}
             onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
-            onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
           />
         ) : (
           <span className="text-sm font-bold text-foreground truncate">{nodeData.label}</span>
@@ -221,6 +221,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
           rows={2}
           defaultValue={nodeData.description || ""}
           placeholder="Opis..."
+          onKeyDown={(e) => e.stopPropagation()}
           onBlur={(e) => updateField("description", e.target.value)}
         />
       )}
@@ -265,6 +266,7 @@ function SettingsPanel({ nodeData, updateField, iconSearch, setIconSearch, filte
           <input
             value={iconSearch}
             onChange={e => setIconSearch(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
             className="bg-transparent text-[11px] w-full outline-none text-foreground placeholder:text-muted-foreground"
             placeholder="Pretraži..."
           />
