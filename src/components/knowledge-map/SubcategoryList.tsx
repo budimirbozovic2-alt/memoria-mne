@@ -42,7 +42,7 @@ function SubcategoryListInner({
   const subNameMap: Record<string, string> = {};
   catRecord?.subcategories?.forEach(s => { subNameMap[s.id] = s.name; });
   const catCards = cards.filter((c) => c.categoryId === category);
-  const sourceHierarchy = useSourceHierarchy(cards, sources, category);
+  const sourceHierarchy = useSourceHierarchy(cards, sources, category, categoryRecords);
 
   const handleMoveSub = useCallback((index: number, dir: -1 | 1) => {
     if (!onReorderSubcategories) return;
@@ -77,9 +77,9 @@ function SubcategoryListInner({
         <SearchBar value={searchQuery} onChange={onSearchChange} placeholder="Pretraži..." />
 
         <div className="grid gap-3 sm:grid-cols-2">
-          {filtered.map(({ name, cardCount, levels }, i) => (
+          {filtered.map(({ id, name, cardCount, levels }, i) => (
             <SubcategoryCard
-              key={name}
+              key={id}
               name={name}
               count={cardCount}
               levels={levels}
@@ -87,8 +87,8 @@ function SubcategoryListInner({
               realIndex={i}
               subsLength={tree.length}
               reorderMode={false}
-              isOstalo={name === "Bez izvora" || name === "Ostalo"}
-              onNavigate={() => onSelectSubcategory(name)}
+              isOstalo={id === "__ostalo__"}
+              onNavigate={() => onSelectSubcategory(id)}
               onMoveUp={() => {}}
               onMoveDown={() => {}}
             />
@@ -109,15 +109,15 @@ function SubcategoryListInner({
       if (subCards.length === 0) return null;
       const levels = [0, 0, 0, 0, 0, 0];
       subCards.forEach((c) => levels[getCardMasteryLevel(c)]++);
-      return { name: subNameMap[sub] || sub, count: subCards.length, levels };
+      return { id: sub, name: subNameMap[sub] || sub, count: subCards.length, levels };
     })
-    .filter(Boolean) as { name: string; count: number; levels: number[] }[];
+    .filter(Boolean) as { id: string; name: string; count: number; levels: number[] }[];
 
   const uncategorized = catCards.filter((c) => !c.subcategoryId || !subs.includes(c.subcategoryId));
   if (uncategorized.length > 0) {
     const levels = [0, 0, 0, 0, 0, 0];
     uncategorized.forEach((c) => levels[getCardMasteryLevel(c)]++);
-    subsWithStats.push({ name: "Ostalo", count: uncategorized.length, levels });
+    subsWithStats.push({ id: "__ostalo__", name: "Ostalo", count: uncategorized.length, levels });
   }
 
   const q = searchQuery.toLowerCase();
@@ -143,12 +143,12 @@ function SubcategoryListInner({
       {!reorderMode && <SearchBar value={searchQuery} onChange={onSearchChange} placeholder="Pretraži potkategorije..." />}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        {filtered.map(({ name, count, levels }, i) => {
-          const realIndex = subs.indexOf(name);
-          const isOstalo = name === "Ostalo";
+        {filtered.map(({ id, name, count, levels }, i) => {
+          const realIndex = subs.indexOf(id);
+          const isOstalo = id === "__ostalo__";
           return (
             <SubcategoryCard
-              key={name}
+              key={id}
               name={name}
               count={count}
               levels={levels}
@@ -157,7 +157,7 @@ function SubcategoryListInner({
               subsLength={subs.length}
               reorderMode={reorderMode}
               isOstalo={isOstalo}
-              onNavigate={() => !reorderMode && onSelectSubcategory(name)}
+              onNavigate={() => !reorderMode && onSelectSubcategory(id)}
               onMoveUp={() => handleMoveSub(realIndex, -1)}
               onMoveDown={() => handleMoveSub(realIndex, 1)}
             />

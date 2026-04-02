@@ -1,19 +1,21 @@
 import { useMemo } from "react";
 import { Card } from "@/lib/spaced-repetition";
-import type { Source } from "@/lib/db";
+import type { Source, CategoryRecord } from "@/lib/db";
 import { getCardMasteryLevel } from "@/components/KnowledgeMap";
 
 export type DepthMode = "A" | "B";
 
 export interface HierarchyNode {
+  id: string;
   name: string;
   cardCount: number;
-  levels: number[]; // mastery level distribution [0..5]
+  levels: number[];
   avgStability: number;
   children: HierarchyLeaf[];
 }
 
 export interface HierarchyLeaf {
+  id: string;
   name: string;
   cards: Card[];
   cardCount: number;
@@ -24,7 +26,6 @@ export interface HierarchyLeaf {
 export interface SourceHierarchyResult {
   mode: DepthMode;
   tree: HierarchyNode[];
-  /** True if at least some cards have sourceId links */
   hasSourceLinks: boolean;
 }
 
@@ -44,14 +45,26 @@ function computeAvgStability(cards: Card[]): number {
   return count > 0 ? total / count : 0;
 }
 
-/**
- * Build a dynamic hierarchy tree for a category.
- * Mode B (subcategory→chapter) is the default since registry is removed.
- */
+function buildNameMaps(records: CategoryRecord[], categoryId: string) {
+  const subNameMap: Record<string, string> = {};
+  const chapNameMap: Record<string, string> = {};
+  const rec = records.find(r => r.id === categoryId);
+  if (rec) {
+    for (const s of rec.subcategories || []) {
+      subNameMap[s.id] = s.name;
+      for (const ch of s.chapters || []) {
+        if (typeof ch === "object") chapNameMap[ch.id] = ch.name;
+      }
+    }
+  }
+  return { subNameMap, chapNameMap };
+}
+
 export function useSourceHierarchy(
   cards: Card[],
   _sources: Source[],
   category: string,
+  categoryRecords: CategoryRecord[],
 ): SourceHierarchyResult {
   return useMemo(() => {
     const catCards = cards.filter(c => c.categoryId === category);
@@ -61,27 +74,29 @@ export function useSourceHierarchy(
       return { mode: "B" as DepthMode, tree: [], hasSourceLinks: false };
     }
 
-    // Default to Mode B: L1 = Subcategory, L2 = Chapter
+    const { subNameMap, chapNameMap } = buildNameMaps(categoryRecords, category);
+
     const tree: HierarchyNode[] = [];
     const bySub = new Map<string, Map<string, Card[]>>();
 
     for (const card of catCards) {
-      const sub = card.subcategoryId || "Ostalo";
-      if (!bySub.has(sub)) bySub.set(sub, new Map());
-      const chapMap = bySub.get(sub)!;
-      const chap = card.chapterId || "Ostalo";
-      if (!chapMap.has(chap)) chapMap.set(chap, []);
-      chapMap.get(chap)!.push(card);
+      const subId = card.subcategoryId || "__ostalo__";
+      if (!bySub.has(subId)) bySub.set(subId, new Map());
+      const chapMap = bySub.get(subId)!;
+      const chapId = card.chapterId || "__ostalo__";
+      if (!chapMap.has(chapId)) chapMap.set(chapId, []);
+      chapMap.get(chapId)!.push(card);
     }
 
-    for (const [subName, chapMap] of bySub) {
+    for (const [subId, chapMap] of bySub) {
       const allCards: Card[] = [];
       const children: HierarchyLeaf[] = [];
 
-      for (const [chapName, chapCards] of chapMap) {
+      for (const [chapId, chapCards] of chapMap) {
         allCards.push(...chapCards);
         children.push({
-          name: chapName,
+          id: chapId,
+          name: chapId === "__ostalo__" ? "Ostalo" : (chapNameMap[chapId] || chapId),
           cards: chapCards,
           cardCount: chapCards.length,
           levels: computeLevels(chapCards),
@@ -90,7 +105,8 @@ export function useSourceHierarchy(
       }
 
       tree.push({
-        name: subName,
+        id: subId,
+        name: subId === "__ostalo__" ? "Ostalo" : (subNameMap[subId] || subId),
         cardCount: allCards.length,
         levels: computeLevels(allCards),
         avgStability: computeAvgStability(allCards),
@@ -100,5 +116,5 @@ export function useSourceHierarchy(
 
     tree.sort((a, b) => b.cardCount - a.cardCount);
     return { mode: "B" as DepthMode, tree, hasSourceLinks: true };
-  }, [cards, _sources, category]);
+  }, [cards, _sources, category, categoryRecords]);
 }
