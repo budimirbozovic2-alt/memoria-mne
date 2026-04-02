@@ -167,7 +167,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
           </div>
         )}
         {showSettings && selected && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-12 w-60 bg-card border rounded-xl shadow-xl p-3 space-y-3 z-30">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-12 w-60 bg-card border rounded-xl shadow-xl p-3 space-y-3 z-30 pointer-events-auto">
             <SettingsPanel nodeData={nodeData} updateField={updateField} iconSearch={iconSearch} setIconSearch={setIconSearch} filteredIcons={filteredIcons} />
           </div>
         )}
