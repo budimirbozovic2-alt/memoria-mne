@@ -262,8 +262,9 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
         
         // Aggressive retry after 30s if still blocked
         setTimeout(() => {
-          if (dbErrorState?.type === "timeout") {
-            console.log("[MemoriaDB] Blocked timeout (30s) reached, retrying open...");
+          if (dbErrorState?.type === "timeout" && !reloadScheduled) {
+            reloadScheduled = true;
+            console.log("[MemoriaDB] Blocked timeout (30s), reloading...");
             window.location.reload();
           }
         }, 30000);
