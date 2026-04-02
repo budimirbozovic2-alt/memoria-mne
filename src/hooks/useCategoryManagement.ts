@@ -1,7 +1,7 @@
 import { useCallback, MutableRefObject } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { db, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
+import { db, idbDeleteCard, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { toast } from "@/hooks/use-toast";
 import { optimisticCategoryUpdate } from "@/lib/category-service";
@@ -86,11 +86,11 @@ export function useCategoryManagement({
           cardMapRef.current = nextRef;
           setCardMapState(() => nextRef);
           bumpMapVersion();
-          (async () => {
-            try { await db.cards.bulkDelete(toDelete); } catch (err) {
-              console.error("[deleteCategory] card purge failed", err);
-            }
-          })();
+          Promise.allSettled(toDelete.map(id => idbDeleteCard(id))).then(results => {
+            results.forEach((r, i) => {
+              if (r.status === "rejected") console.error(`[deleteCategory] card purge failed for ${toDelete[i]}`, r.reason);
+            });
+          });
         }
       } else {
         const changed: Card[] = [];
