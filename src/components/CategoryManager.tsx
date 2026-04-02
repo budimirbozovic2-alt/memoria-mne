@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import type { CategoryRecord } from "@/lib/category-service";
+import type { CategoryRecord } from "@/lib/db-schema";
 
 interface Props {
   categories: string[];

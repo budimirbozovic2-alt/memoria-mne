@@ -3,7 +3,7 @@ import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import CategoryManager from "@/components/CategoryManager";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
-import type { CategoryRecord } from "@/lib/category-service";
+import type { CategoryRecord } from "@/lib/db-schema";
 
 const HealthMonitor = lazy(() => import("@/components/HealthMonitor"));
 
