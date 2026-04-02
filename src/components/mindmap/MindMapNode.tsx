@@ -217,7 +217,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
       )}
       {editing && (
         <textarea
-          className="bg-transparent border border-border rounded-lg text-xs w-full outline-none text-foreground mt-1.5 p-1.5 resize-none focus:ring-1 focus:ring-primary"
+          className="bg-transparent border border-border rounded-lg text-xs w-full outline-none text-foreground mt-1.5 p-1.5 resize-none focus:ring-1 focus:ring-primary nodrag nowheel nopan"
           rows={2}
           defaultValue={nodeData.description || ""}
           placeholder="Opis..."
