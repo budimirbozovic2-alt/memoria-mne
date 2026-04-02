@@ -1,62 +1,46 @@
 
 
-# Tier 2: Centralizacija card mutacija + eliminacija react-query
+# Fix: UUID prikaz u Podešavanjima (CategoryManager)
 
-## 3 stavke
+## Problem
 
-### 1. `confirmCardReview` u sources-storage.ts (SSoT narušavanje)
+`CategoryManager.tsx` prima `categories: string[]` (niz UUID-ova) i prikazuje ih direktno:
+- **L133**: `{cat}` — UUID umjesto naziva predmeta
+- **L40**: Edit prefill koristi UUID
+- **L271**: Delete confirmation prikazuje UUID
 
-**Problem**: `db.cards.update(cardId, { needsReview: undefined })` piše direktno u IDB, zaobilazeći in-memory `cardMap`. Stanje ostaje staro do reload-a.
+## Promjene
 
-**Fix**: Umjesto direktnog DB poziva, emitovati event koji `useCards` sluša, ili primiti callback. Najjednostavnije: koristiti isti `onCardLinksCleared` pattern — dodati novi listener tip `onCardReviewConfirmed` koji `useCards` sluša i ažurira cardMap + persist-queue.
+### 1. `CategoryManager.tsx` — dodati `categoryRecords` prop, lookup nazive
 
-| Fajl | Promjena |
-|------|----------|
-| `sources-storage.ts` | Dodati `_reviewConfirmListeners` set, `onCardReviewConfirmed(fn)` subscribe, `confirmCardReview` poziva listener umjesto direktnog db.cards.update |
-| `useCards.ts` | Subscribe na `onCardReviewConfirmed`, ažurirati cardMap + schedulePersist |
+| Lokacija | Promjena |
+|----------|----------|
+| Props interface | Dodati `categoryRecords: CategoryRecord[]` |
+| L133 | `{cat}` → `{nameMap[cat] \|\| cat}` |
+| L38-41 | `startEdit` — prefill sa display name umjesto UUID |
+| L44 | `confirmEdit` — proslijediti UUID + novi naziv u `onRename` |
+| L271 | Delete dialog — prikazati display name |
 
-### 2. `HealthMonitor.tsx` L122 — `db.cards.update` direktno
+Napraviti `nameMap` sa `useMemo`:
+```ts
+const nameMap = useMemo(() => {
+  const m: Record<string, string> = {};
+  categoryRecords.forEach(r => { m[r.id] = r.name; });
+  return m;
+}, [categoryRecords]);
+```
 
-**Problem**: Orphan cleanup piše `db.cards.update(id, { categoryId, subcategoryId, chapterId })` direktno u IDB. In-memory cardMap ne zna za promjenu.
+### 2. `SystemTab.tsx` — proslijediti `categoryRecords`
 
-**Fix**: Emitovati event bus signal nakon cleanup-a. `useCards` sluša taj event i reloada kartice iz IDB (ili ažurira in-memory).
+- Dodati `categoryRecords` u Props interface
+- Proslijediti ga u `<CategoryManager>`
 
-Alternativa (jednostavnija): Koristiti `eventBus.emit(EVENT_TYPES.CARDS_IMPORTED)` koji već postoji i triggeruje reload u `useCards`.
+### 3. `SRSettingsPanel.tsx` — proslijediti `categoryRecords`
 
-| Fajl | Promjena |
-|------|----------|
-| `HealthMonitor.tsx` | Nakon uspješnog cleanup-a, emitovati `eventBus.emit(EVENT_TYPES.CARDS_IMPORTED)` |
-| `event-bus.ts` | Dodati `HEALTH_CLEANUP` event type ako `CARDS_IMPORTED` ne postoji |
-
-### 3. Eliminacija `@tanstack/react-query` (~40KB)
-
-**Problem**: react-query se koristi samo na 2 mjesta — `MnemonicModule` (useQuery za loadMnemonicCards) i `TextSelectionTooltip` (invalidateQueries). Cijela biblioteka (~40KB) za 2 poziva.
-
-**Fix**: Zamijeniti sa `useState` + `useEffect` + event-bus pattern koji već postoji:
-
-**MnemonicModule.tsx:**
-- `useState<MnemonicCard[]>([])` umjesto `useQuery`
-- `useEffect` sa `loadMnemonicCards().then(setCards)` na mount
-- `eventBus.subscribe(MNEMONICS_UPDATED)` za refresh (već postoji!)
-- `setCards` umjesto `qc.setQueryData`
-- Ukloniti `useQueryClient` import
-
-**TextSelectionTooltip.tsx:**
-- Ukloniti `useQueryClient` i `qc.invalidateQueries`
-- `eventBus.emit(MNEMONICS_UPDATED)` već postoji na L69 — to je dovoljno
-
-**App.tsx:**
-- Ukloniti `QueryClientProvider` wrapper
-- Ukloniti `QueryClient` import
-
-**Cleanup:**
-- Obrisati `src/lib/query-client.ts`
-- Ukloniti `@tanstack/react-query` iz `package.json`
+- Dodati `categoryRecords` iz `useCategoryData()`
+- Proslijediti u `<SystemTab categoryRecords={categoryRecords}>`
 
 ## Scope
-- 6 fajlova: sources-storage, useCards, HealthMonitor, MnemonicModule, TextSelectionTooltip, App.tsx
-- 1 fajl obrisan: query-client.ts
-- 1 dependency uklonjena: @tanstack/react-query
-- ~40KB smanjenje bundle-a
-- Nema promjene ponašanja
+- 3 fajla, ~15 linija promjena
+- Eliminacija UUID prikaza u Settings/Sistem tabu
 
