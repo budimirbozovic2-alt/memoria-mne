@@ -145,21 +145,6 @@ export function useCardActions() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// BACKWARD-COMPAT: useCardContext returns merged data + actions
-// ═══════════════════════════════════════════════════════════
-type CardDataContextValue = CardStateContextValue & CategoryStateContextValue & ReviewStateContextValue;
-type CardContextValue = CardDataContextValue & CardActionsContextValue;
-
-/** @deprecated Use granular hooks: useCardData, useCategoryData, useReviewData, useCardActions */
-export function useCardContext(): CardContextValue {
-  const cardState = useCardData();
-  const categoryState = useCategoryData();
-  const reviewState = useReviewData();
-  const actions = useCardActions();
-  return useMemo(() => ({ ...cardState, ...categoryState, ...reviewState, ...actions }), [cardState, categoryState, reviewState, actions]);
-}
-
-// ═══════════════════════════════════════════════════════════
 // UI CONTEXT — navigation, editing (NO pomodoro)
 // ═══════════════════════════════════════════════════════════
 interface UIContextValue {
