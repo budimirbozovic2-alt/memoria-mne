@@ -1,66 +1,62 @@
 
 
-# Fix: UUID prikaz u Mapi Znanja — potkategorije i glave
+# Tier 2: Centralizacija card mutacija + eliminacija react-query
 
-## Pronađeni problemi
+## 3 stavke
 
-### Problem 1: Source hierarchy mode — UUID prikazan umjesto naziva
-**Fajl**: `src/hooks/useSourceHierarchy.ts` L69, L72
+### 1. `confirmCardReview` u sources-storage.ts (SSoT narušavanje)
 
-```
-const sub = card.subcategoryId || "Ostalo";  // ← UUID
-const chap = card.chapterId || "Ostalo";     // ← UUID
-```
+**Problem**: `db.cards.update(cardId, { needsReview: undefined })` piše direktno u IDB, zaobilazeći in-memory `cardMap`. Stanje ostaje staro do reload-a.
 
-Ovi UUID-ovi postaju `name` polje u `HierarchyNode`/`HierarchyLeaf` i prikazuju se u UI-u.
-
-### Problem 2: Fallback mode — display name proslijeđen umjesto UUID-a
-**Fajl**: `src/components/knowledge-map/SubcategoryList.tsx` L112, L147, L160
-
-```
-return { name: subNameMap[sub] || sub, ... };  // name = display naziv
-...
-const realIndex = subs.indexOf(name);          // ← -1 jer subs ima UUID-ove
-onSelectSubcategory(name)                      // ← šalje display naziv umjesto UUID-a
-```
-
-MentalSkeleton zatim filtrira `c.subcategoryId === subcategory`, ali prima display naziv umjesto UUID-a → **0 kartica se prikaže**.
-
----
-
-## Plan promjena
-
-### 1. `useSourceHierarchy.ts` — dodati `categoryRecords` parametar, lookup nazive
-
-- Dodati `CategoryRecord[]` kao parametar
-- Napraviti `subNameMap` i `chapterNameMap` iz category record-a
-- Zamijeniti `card.subcategoryId` sa lookup-om za `name`, zadržati UUID kao `id`
-- Dodati `id` polje u `HierarchyNode` i `HierarchyLeaf` interfejse
-
-### 2. `SubcategoryList.tsx` — razdvojiti `id` od `name`
-
-**Fallback path:**
-- Zadržati UUID kao `id` u `subsWithStats` objektima
-- Koristiti `subNameMap[sub]` za prikaz
-- Proslijediti `id` (UUID) u `onSelectSubcategory()` umjesto `name`
-- Koristiti `id` za `realIndex` lookup u `subs` nizu
-
-**Source hierarchy path:**
-- Koristiti `node.id` za navigaciju, `node.name` za prikaz
-
-### 3. `SubcategoryList.tsx` Props — proslijediti `categoryRecords`
-- Već ima pristup preko `categoryRecords` prop-a (iz parent-a)
-
-### 4. `useSourceHierarchy` pozivači — proslijediti `categoryRecords`
-- `SubcategoryList.tsx` — jedini potrošač, dodati argument
+**Fix**: Umjesto direktnog DB poziva, emitovati event koji `useCards` sluša, ili primiti callback. Najjednostavnije: koristiti isti `onCardLinksCleared` pattern — dodati novi listener tip `onCardReviewConfirmed` koji `useCards` sluša i ažurira cardMap + persist-queue.
 
 | Fajl | Promjena |
 |------|----------|
-| `src/hooks/useSourceHierarchy.ts` | Dodati `id` polje, lookup nazive iz categoryRecords |
-| `src/components/knowledge-map/SubcategoryList.tsx` | Razdvojiti id/name, proslijediti UUID za navigaciju |
+| `sources-storage.ts` | Dodati `_reviewConfirmListeners` set, `onCardReviewConfirmed(fn)` subscribe, `confirmCardReview` poziva listener umjesto direktnog db.cards.update |
+| `useCards.ts` | Subscribe na `onCardReviewConfirmed`, ažurirati cardMap + schedulePersist |
+
+### 2. `HealthMonitor.tsx` L122 — `db.cards.update` direktno
+
+**Problem**: Orphan cleanup piše `db.cards.update(id, { categoryId, subcategoryId, chapterId })` direktno u IDB. In-memory cardMap ne zna za promjenu.
+
+**Fix**: Emitovati event bus signal nakon cleanup-a. `useCards` sluša taj event i reloada kartice iz IDB (ili ažurira in-memory).
+
+Alternativa (jednostavnija): Koristiti `eventBus.emit(EVENT_TYPES.CARDS_IMPORTED)` koji već postoji i triggeruje reload u `useCards`.
+
+| Fajl | Promjena |
+|------|----------|
+| `HealthMonitor.tsx` | Nakon uspješnog cleanup-a, emitovati `eventBus.emit(EVENT_TYPES.CARDS_IMPORTED)` |
+| `event-bus.ts` | Dodati `HEALTH_CLEANUP` event type ako `CARDS_IMPORTED` ne postoji |
+
+### 3. Eliminacija `@tanstack/react-query` (~40KB)
+
+**Problem**: react-query se koristi samo na 2 mjesta — `MnemonicModule` (useQuery za loadMnemonicCards) i `TextSelectionTooltip` (invalidateQueries). Cijela biblioteka (~40KB) za 2 poziva.
+
+**Fix**: Zamijeniti sa `useState` + `useEffect` + event-bus pattern koji već postoji:
+
+**MnemonicModule.tsx:**
+- `useState<MnemonicCard[]>([])` umjesto `useQuery`
+- `useEffect` sa `loadMnemonicCards().then(setCards)` na mount
+- `eventBus.subscribe(MNEMONICS_UPDATED)` za refresh (već postoji!)
+- `setCards` umjesto `qc.setQueryData`
+- Ukloniti `useQueryClient` import
+
+**TextSelectionTooltip.tsx:**
+- Ukloniti `useQueryClient` i `qc.invalidateQueries`
+- `eventBus.emit(MNEMONICS_UPDATED)` već postoji na L69 — to je dovoljno
+
+**App.tsx:**
+- Ukloniti `QueryClientProvider` wrapper
+- Ukloniti `QueryClient` import
+
+**Cleanup:**
+- Obrisati `src/lib/query-client.ts`
+- Ukloniti `@tanstack/react-query` iz `package.json`
 
 ## Scope
-- 2 fajla, ~25 linija promjena
-- Fiksira UUID prikaz u oba moda Mape Znanja
-- Fiksira navigaciju u fallback modu (kartica se nisu prikazivale)
+- 6 fajlova: sources-storage, useCards, HealthMonitor, MnemonicModule, TextSelectionTooltip, App.tsx
+- 1 fajl obrisan: query-client.ts
+- 1 dependency uklonjena: @tanstack/react-query
+- ~40KB smanjenje bundle-a
+- Nema promjene ponašanja
 
