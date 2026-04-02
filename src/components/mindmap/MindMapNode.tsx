@@ -140,22 +140,22 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
           )}
           style={{ transform: "rotate(45deg)", borderRadius: "14px" }}
         />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 z-10">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 z-10 pointer-events-none">
           {iconEntry && (
-            <div className={cn("p-1.5 rounded-lg mb-1.5", colorOpt.bg)}>
+            <div className={cn("p-1.5 rounded-lg mb-1.5 pointer-events-auto", colorOpt.bg)}>
               <iconEntry.Icon className={cn("h-5 w-5", colorOpt.text)} />
             </div>
           )}
           {editing ? (
             <input
               autoFocus
-              className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground text-center"
+              className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground text-center pointer-events-auto nodrag nowheel nopan"
               defaultValue={nodeData.label}
               onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
               onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             />
           ) : (
-            <span className="text-xs font-bold text-foreground leading-tight">{nodeData.label}</span>
+            <span className="text-xs font-bold text-foreground leading-tight pointer-events-auto">{nodeData.label}</span>
           )}
         </div>
         {selected && (
