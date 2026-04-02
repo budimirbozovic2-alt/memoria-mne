@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { useLocation, Link } from "react-router-dom";
 import { useMemo } from "react";
-import { useCardData } from "@/contexts/AppContext";
+import { useCategoryData } from "@/contexts/AppContext";
 
 const ROUTE_LABELS: Record<string, string> = {
   "/": "Dashboard",
