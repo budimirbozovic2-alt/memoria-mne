@@ -50,18 +50,7 @@ export function useCards() {
     setCardMapState, setCategoryRecordsState, setReviewLogState, setSrSettingsState,
   });
 
-  // ── Force-ready safety net: if bootstrap hangs, unlock UI after 5s ──
-  const [forceReady, setForceReady] = useState(false);
-  useEffect(() => {
-    if (bootstrapReady) return;
-    const timer = setTimeout(() => {
-      console.warn("[useCards] forceReady triggered after 5s");
-      setForceReady(true);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [bootstrapReady]);
-
-  const ready = bootstrapReady || forceReady;
+  const ready = bootstrapReady;
 
   // ── Derived: Card[] for consumers (memoized from map) ──
   const cards = useMemo(() => mapToArray(cardMap), [cardMap]);

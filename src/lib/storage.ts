@@ -117,10 +117,29 @@ export async function getStorageUsage(): Promise<{ usedBytes: number; maxBytes: 
 }
 
 // Backup reminder
-export function getLastBackupTime(): number {
-  return loadFromStorage(LAST_BACKUP_KEY, 0);
+export async function getLastBackupTime(): Promise<number> {
+  try {
+    const { idbLoadSettings } = await import("@/lib/db");
+    const idbVal = await idbLoadSettings<number>(LAST_BACKUP_KEY, 0);
+    if (idbVal > 0) return idbVal;
+    // Fallback: migrate from localStorage
+    const lsVal = loadFromStorage(LAST_BACKUP_KEY, 0);
+    if (lsVal > 0) {
+      await import("@/lib/db").then(m => m.idbSaveSettings(LAST_BACKUP_KEY, lsVal));
+      localStorage.removeItem(LAST_BACKUP_KEY);
+    }
+    return lsVal;
+  } catch {
+    return loadFromStorage(LAST_BACKUP_KEY, 0);
+  }
 }
 
-export function setLastBackupTime() {
-  saveToStorage(LAST_BACKUP_KEY, Date.now());
+export async function setLastBackupTime(): Promise<void> {
+  const now = Date.now();
+  try {
+    const { idbSaveSettings } = await import("@/lib/db");
+    await idbSaveSettings(LAST_BACKUP_KEY, now);
+  } catch {
+    saveToStorage(LAST_BACKUP_KEY, now);
+  }
 }
