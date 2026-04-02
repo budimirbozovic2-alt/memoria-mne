@@ -3,12 +3,14 @@ import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import CategoryManager from "@/components/CategoryManager";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
+import type { CategoryRecord } from "@/lib/db-schema";
 
 const HealthMonitor = lazy(() => import("@/components/HealthMonitor"));
 
 interface Props {
   categories: string[];
   subcategories: Record<string, string[]>;
+  categoryRecords: CategoryRecord[];
   cardCountByCategory: Record<string, number>;
   onAdd: (name: string) => void;
   onRename: (oldName: string, newName: string) => void;
@@ -16,7 +18,7 @@ interface Props {
   onOpenExportImport: () => void;
 }
 
-export default function SystemTab({ categories, subcategories, cardCountByCategory, onAdd, onRename, onDelete, onOpenExportImport }: Props) {
+export default function SystemTab({ categories, subcategories, categoryRecords, cardCountByCategory, onAdd, onRename, onDelete, onOpenExportImport }: Props) {
   return (
     <div className="space-y-5">
       {/* Backup & Restore */}
@@ -38,6 +40,7 @@ export default function SystemTab({ categories, subcategories, cardCountByCatego
         <CategoryManager
           categories={categories}
           subcategories={subcategories}
+          categoryRecords={categoryRecords}
           cardCountByCategory={cardCountByCategory}
           onAdd={onAdd}
           onRename={onRename}

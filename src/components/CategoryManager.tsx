@@ -1,12 +1,14 @@
 import { Edit2, Trash2, Check, X, Plus, FolderOpen, ChevronDown, ChevronRight, Tag } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import type { CategoryRecord } from "@/lib/db-schema";
 
 interface Props {
   categories: string[];
   subcategories: Record<string, string[]>;
+  categoryRecords?: CategoryRecord[];
   cardCountByCategory: Record<string, number>;
   onAdd: (name: string) => void;
   onRename: (oldName: string, newName: string) => void;
@@ -18,11 +20,17 @@ interface Props {
 }
 
 export default function CategoryManager({
-  categories, subcategories, cardCountByCategory,
+  categories, subcategories, categoryRecords,
+  cardCountByCategory,
   onAdd, onRename, onDelete,
   onAddSub, onRenameSub, onDeleteSub,
   onClose,
 }: Props) {
+  const nameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    (categoryRecords ?? []).forEach(r => { m[r.id] = r.name; });
+    return m;
+  }, [categoryRecords]);
   const [editingCat, setEditingCat] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [newCat, setNewCat] = useState("");
@@ -37,7 +45,7 @@ export default function CategoryManager({
 
   const startEdit = (cat: string) => {
     setEditingCat(cat);
-    setEditValue(cat);
+    setEditValue(nameMap[cat] || cat);
   };
 
   const confirmEdit = () => {
@@ -130,7 +138,7 @@ export default function CategoryManager({
                   ) : (
                     <>
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium text-sm">{cat}</span>
+                        <span className="font-medium text-sm">{nameMap[cat] || cat}</span>
                         <span className="text-xs text-muted-foreground ml-2">
                           {count} kartica
                         </span>
@@ -268,7 +276,7 @@ export default function CategoryManager({
           <div className="bg-card border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg">Obriši kategoriju</h3>
             <p className="text-sm text-muted-foreground">
-              Kategorija "{confirmDelete}" sadrži {cardCountByCategory[confirmDelete] ?? 0} kartica. Šta želite?
+              Kategorija "{nameMap[confirmDelete] || confirmDelete}" sadrži {cardCountByCategory[confirmDelete] ?? 0} kartica. Šta želite?
             </p>
             <div className="flex flex-col gap-2">
               <Button
