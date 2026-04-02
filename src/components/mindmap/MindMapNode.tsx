@@ -221,6 +221,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
           rows={2}
           defaultValue={nodeData.description || ""}
           placeholder="Opis..."
+          onKeyDown={(e) => e.stopPropagation()}
           onBlur={(e) => updateField("description", e.target.value)}
         />
       )}
