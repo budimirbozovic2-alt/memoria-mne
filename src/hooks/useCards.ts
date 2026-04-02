@@ -19,7 +19,8 @@ import {
   idbSaveSettings,
   type CategoryRecord,
 } from "@/lib/db";
-import { onCardLinksCleared } from "@/lib/sources-storage";
+import { onCardLinksCleared, onCardReviewConfirmed } from "@/lib/sources-storage";
+import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 
 export function useCards() {
   const [cardMap, setCardMapState] = useState<CardMap>({});
@@ -76,6 +77,36 @@ export function useCards() {
           return next;
         }
         return prev;
+      });
+    });
+  }, []);
+
+  // ── SSoT fix: confirmCardReview delegates to in-memory cardMap ──
+  useEffect(() => {
+    return onCardReviewConfirmed((cardId) => {
+      setCardMapState(prev => {
+        if (!prev[cardId]) return prev;
+        const updated = { ...prev[cardId], needsReview: undefined };
+        const next = { ...prev, [cardId]: updated };
+        cardMapRef.current = next;
+        schedulePersist({ type: "put", card: updated });
+        bumpMapVersion();
+        return next;
+      });
+    });
+  }, []);
+
+  // ── SSoT fix: HealthMonitor orphan cleanup triggers full reload ──
+  useEffect(() => {
+    return eventBus.subscribe(EVENT_TYPES.CARDS_UPDATED, () => {
+      import("@/lib/db-queries").then(({ idbLoadCards }) => {
+        idbLoadCards().then(loaded => {
+          const map: CardMap = {};
+          for (const c of loaded) map[c.id] = c;
+          cardMapRef.current = map;
+          setCardMapState(map);
+          bumpMapVersion();
+        });
       });
     });
   }, []);

@@ -1,6 +1,7 @@
 import { Activity, Database, HardDrive, RefreshCw, FileText, Brain, Clock, BookOpen, MapPin, Layers, AlertTriangle, Trash2, ShieldCheck } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/db";
+import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { getStorageUsage } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,6 +124,7 @@ export default function HealthMonitor() {
       );
       toast.success(`${orphans.count} kartica premješteno u "${categories[0].name}"`);
       setOrphans({ count: 0, cardIds: [] });
+      eventBus.emit(EVENT_TYPES.CARDS_UPDATED);
     } catch (err) {
       console.error("[health] cleanup failed", err);
       toast.error("Greška pri čišćenju");
