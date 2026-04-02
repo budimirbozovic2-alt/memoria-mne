@@ -79,12 +79,30 @@ export async function getPomodoroStats(): Promise<PomodoroStatsResult> {
   };
 }
 
-export function loadLearnProgress(): Record<string, LearnCardProgress> {
-  return loadFromStorage(LEARN_PROGRESS_KEY, {});
+export async function loadLearnProgress(): Promise<Record<string, LearnCardProgress>> {
+  try {
+    const { idbLoadSettings } = await import("@/lib/db");
+    const idbData = await idbLoadSettings<Record<string, LearnCardProgress>>(LEARN_PROGRESS_KEY, {});
+    if (Object.keys(idbData).length > 0) return idbData;
+    // Fallback: migrate from localStorage
+    const lsData = loadFromStorage<Record<string, LearnCardProgress>>(LEARN_PROGRESS_KEY, {});
+    if (Object.keys(lsData).length > 0) {
+      await import("@/lib/db").then(m => m.idbSaveSettings(LEARN_PROGRESS_KEY, lsData));
+      localStorage.removeItem(LEARN_PROGRESS_KEY);
+    }
+    return lsData;
+  } catch {
+    return loadFromStorage(LEARN_PROGRESS_KEY, {});
+  }
 }
 
-export function saveLearnProgress(progress: Record<string, LearnCardProgress>) {
-  saveToStorage(LEARN_PROGRESS_KEY, progress);
+export async function saveLearnProgress(progress: Record<string, LearnCardProgress>): Promise<void> {
+  try {
+    const { idbSaveSettings } = await import("@/lib/db");
+    await idbSaveSettings(LEARN_PROGRESS_KEY, progress);
+  } catch {
+    saveToStorage(LEARN_PROGRESS_KEY, progress);
+  }
 }
 
 // Storage usage (estimates localStorage footprint)
