@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { detectArticles, type DetectedArticle } from "@/lib/auto-split-engine";
 import { createTextAnchor, type Source } from "@/lib/sources-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { useAppContext } from "@/contexts/AppContext";
+import { useCardData, useCardActions } from "@/contexts/AppContext";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Card, SourceModule, createCard } from "@/lib/spaced-repetition";
@@ -41,7 +41,8 @@ interface ArticleRow {
 }
 
 export default function AutoSplitDialog({ open, onClose, source }: Props) {
-  const { bulkAddCards, cards, updateCard } = useAppContext();
+  const { cards } = useCardData();
+  const { bulkAddCards, updateCard } = useCardActions();
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [done, setDone] = useState(false);

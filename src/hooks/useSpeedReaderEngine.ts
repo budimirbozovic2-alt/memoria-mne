@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useAppContext } from "@/contexts/AppContext";
+import { useCardData, useCategoryData } from "@/contexts/AppContext";
 import type { Card } from "@/lib/spaced-repetition";
 import { loadSources, type Source } from "@/lib/sources-storage";
 import { loadTTSSettings, saveTTSSettings, type TTSSettings } from "@/lib/tts";
@@ -9,7 +9,8 @@ import {
 } from "@/components/speed-reader/speed-reader-constants";
 
 export function useSpeedReaderEngine() {
-  const { cards, categories, subcategories, categoryRecords } = useAppContext();
+  const { cards } = useCardData();
+  const { categories, subcategories, categoryRecords } = useCategoryData();
 
   const uuidToName = useMemo(() => {
     const m: Record<string, string> = {};

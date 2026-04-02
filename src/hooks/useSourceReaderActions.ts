@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useMemo, useState } from "react";
-import { useAppContext } from "@/contexts/AppContext";
+import { useCardData, useCardActions } from "@/contexts/AppContext";
 import { createTextAnchor, type Source } from "@/lib/sources-storage";
 import { incrementDailyMapped } from "@/lib/planner-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -14,7 +14,8 @@ import { useSourceReaderStore } from "@/store/useSourceReaderStore";
  * Reads/writes to the Zustand store but depends on `source` prop and AppContext.
  */
 export function useSourceReaderActions(source: Source, onSourceUpdated?: (source: Source) => void) {
-  const { addCard, cards, patchCard } = useAppContext();
+  const { cards } = useCardData();
+  const { addCard, patchCard } = useCardActions();
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Derived data (depends on source + cards from AppContext)
