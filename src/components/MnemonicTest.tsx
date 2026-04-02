@@ -1,7 +1,7 @@
 import { ArrowLeft, Brain, CheckCircle, XCircle, RotateCcw, Zap, Timer, FolderOpen, Clock, List, MoreHorizontal, Filter } from "lucide-react";
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { MnemonicCard, HookType } from "@/lib/mnemonic-storage";
-
+import { useCategoryData } from "@/contexts/AppContext";
 
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
