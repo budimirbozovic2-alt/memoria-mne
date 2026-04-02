@@ -19,7 +19,8 @@ interface Props {
 }
 
 function SubBadge({ categoryId, subcategoryId }: { categoryId: string; subcategoryId: string }) {
-  const catRecord = useLiveQuery(() => db.categories.get(categoryId), [categoryId]);
+  const { categoryRecords } = useCategoryData();
+  const catRecord = categoryRecords.find(r => r.id === categoryId);
   const name = catRecord?.subcategories?.find(s => s.id === subcategoryId)?.name ?? subcategoryId;
   return <Badge variant="outline" className="text-[10px] mt-0.5">{name}</Badge>;
 }

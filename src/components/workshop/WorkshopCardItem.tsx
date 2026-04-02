@@ -30,7 +30,8 @@ interface Props {
 }
 
 function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDeleteCard, majorSystem }: Props) {
-  const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), [card.categoryId]);
+  const { categoryRecords } = useCategoryData();
+  const catRecord = categoryRecords.find(r => r.id === card.categoryId);
   const catName = catRecord?.name ?? card.categoryId;
   const subName = useMemo(() => {
     if (!catRecord) return card.subcategoryId || "";
