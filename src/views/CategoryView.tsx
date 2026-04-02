@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, type Source, type SubcategoryNode } from "@/lib/db";
 import { saveSource, invalidateSourcesCache, deleteSource } from "@/lib/sources-storage";
 import type { Card } from "@/lib/spaced-repetition";
-import { useCardActions, useUIContext } from "@/contexts/AppContext";
+import { useCardData, useCategoryData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -27,22 +27,23 @@ export default function CategoryView() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
 
-  const category = useLiveQuery(
-    async () => {
-      if (!categoryId) return null;
-      const cat = await db.categories.get(categoryId);
-      return cat || null;
-    },
-    [categoryId]
+  // ── Boot-loaded context data (SSoT) ──
+  const { cards: allCards, ready } = useCardData();
+  const { categoryRecords } = useCategoryData();
+
+  const category = useMemo(
+    () => categoryRecords.find(c => c.id === categoryId) ?? null,
+    [categoryRecords, categoryId]
   );
 
-  const allCategories = useLiveQuery(() => db.categories.orderBy("sortOrder").toArray(), []) ?? [];
+  const allCategories = categoryRecords;
 
-  const cards = useLiveQuery(
-    () => categoryId ? db.cards.where("categoryId").equals(categoryId).toArray() : [],
-    [categoryId]
-  ) ?? [];
+  const cards = useMemo(
+    () => categoryId ? allCards.filter(c => c.categoryId === categoryId) : [],
+    [allCards, categoryId]
+  );
 
+  // Sources & mindMaps are not in context — keep useLiveQuery (2 observers instead of 5)
   const sources = useLiveQuery(
     () => categoryId ? db.sources.where("categoryId").equals(categoryId).toArray() : [],
     [categoryId]
@@ -145,7 +146,7 @@ export default function CategoryView() {
     );
   }
 
-  if (category === undefined) {
+  if (!ready) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
