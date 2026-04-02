@@ -71,7 +71,7 @@ const NudgeWatcher = memo(function NudgeWatcher() {
 const GlobalSearchWrapper = memo(function GlobalSearchWrapper({
   open, onClose,
 }: { open: boolean; onClose: () => void }) {
-  const { cards } = useCardContext();
+  const { cards } = useCardData();
   const { setView, setEditingCard } = useUIContext();
   if (!open) return null;
   return (
