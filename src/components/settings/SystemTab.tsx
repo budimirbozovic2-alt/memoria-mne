@@ -3,17 +3,16 @@ import { lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import CategoryManager from "@/components/CategoryManager";
 import { TabSkeleton } from "@/components/ui/page-skeleton";
-import type { CategoryRecord, SubcategoryRecord } from "@/lib/db-schema";
 
 const HealthMonitor = lazy(() => import("@/components/HealthMonitor"));
 
 interface Props {
-  categories: CategoryRecord[];
-  subcategories: SubcategoryRecord[];
+  categories: string[];
+  subcategories: Record<string, string[]>;
   cardCountByCategory: Record<string, number>;
   onAdd: (name: string) => void;
-  onRename: (id: string, name: string) => void;
-  onDelete: (id: string) => void;
+  onRename: (oldName: string, newName: string) => void;
+  onDelete: (name: string) => void;
   onOpenExportImport: () => void;
 }
 
