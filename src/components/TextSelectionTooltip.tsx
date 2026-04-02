@@ -1,10 +1,10 @@
 import { Brain, Star } from "lucide-react";
 import { useState, useEffect, useCallback, useRef, ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { createMnemonicCardFromSelection, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { toast } from "@/hooks/use-toast";
+
 interface Props {
   children: ReactNode;
   cardId: string;
@@ -18,20 +18,15 @@ interface Props {
 
 export default function TextSelectionTooltip({ children, cardId, question, category, subcategoryId, tags, keyParts, onMarkKeyPart }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const qc = useQueryClient();
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
 
   const handleMouseUp = useCallback(() => {
-    // Small delay to let selection finalize
     setTimeout(() => {
       const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !containerRef.current) {
-        return;
-      }
+      if (!sel || sel.isCollapsed || !containerRef.current) return;
       const text = sel.toString().trim();
       if (text.length < 5) return;
 
-      // Check selection is within our container
       const range = sel.getRangeAt(0);
       if (!containerRef.current.contains(range.commonAncestorContainer)) return;
 
@@ -47,7 +42,6 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
   }, []);
 
   const handleMouseDown = useCallback((e: MouseEvent) => {
-    // Don't dismiss if clicking the tooltip itself
     const target = e.target as HTMLElement;
     if (target.closest("[data-mnemo-tooltip]")) return;
     setTooltip(null);
@@ -65,12 +59,11 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
       cardId, question, tooltip.text, category, subcategoryId, tags
     );
     await saveMnemonicCards([...cards, clone]);
-    qc.invalidateQueries({ queryKey: ["mnemonicCards"] });
     eventBus.emit(EVENT_TYPES.MNEMONICS_UPDATED, { cardId: clone.id });
     toast({ title: "Dodano u Mnemo radionicu", description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
     setTooltip(null);
     window.getSelection()?.removeAllRanges();
-  }, [tooltip, cardId, question, category, subcategoryId, tags, qc]);
+  }, [tooltip, cardId, question, category, subcategoryId, tags]);
 
   const handleKeyPart = useCallback(() => {
     if (!tooltip || !onMarkKeyPart) return;

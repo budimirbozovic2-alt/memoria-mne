@@ -2,22 +2,17 @@ import { CheckCircle2, Brain, Wrench, FlaskConical, Sparkles, Hash, HelpCircle, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useCardActions, useCategoryData } from "@/contexts/AppContext";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   MnemonicCard, loadMnemonicCards, saveMnemonicCards,
   addMnemonicTestEntry, getMnemonicStats,
 } from "@/lib/mnemonic-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 
-
 import { motion, AnimatePresence } from "framer-motion";
 import MnemonicWorkshop from "./MnemonicWorkshop";
 import MnemonicTest from "./MnemonicTest";
 import MajorSystemSettings from "./MajorSystemSettings";
 import OnboardingModal, { type OnboardingSlide, hasSeenOnboarding } from "@/components/OnboardingModal";
-
-
-const MNEMONIC_KEY = ["mnemonicCards"] as const;
 
 const MNEMO_ONBOARDING_KEY = "sr-mnemo-onboarding-seen";
 
@@ -55,15 +50,9 @@ const MNEMO_SLIDES: OnboardingSlide[] = [
 ];
 
 export default function MnemonicModule() {
-  const qc = useQueryClient();
   const { patchCard } = useCardActions();
   const { categoryRecords } = useCategoryData();
-  const { data: cards = [] } = useQuery({
-    queryKey: MNEMONIC_KEY,
-    queryFn: loadMnemonicCards,
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
+  const [cards, setCardsState] = useState<MnemonicCard[]>([]);
 
   const [subView, setSubView] = useState<"menu" | "workshop" | "test">("menu");
   const [majorOpen, setMajorOpen] = useState(false);
@@ -71,38 +60,23 @@ export default function MnemonicModule() {
     () => !hasSeenOnboarding(MNEMO_ONBOARDING_KEY)
   );
 
-  // 1) Kreiraj useRef referencu za refresh logiku
-  const refreshRef = useRef<() => void>(() => {
-    console.log("[MnemonicModule] Osvežavam podatke...");
-    qc.invalidateQueries({ queryKey: MNEMONIC_KEY });
-  });
-
-  // 2) Postavi useEffect hook koji će ažurirati referencu
+  // Load on mount + subscribe to event bus for cross-component refresh
   useEffect(() => {
-    refreshRef.current = () => {
-      console.log("[MnemonicModule] Primljen signal za ažuriranje, osvežavam podatke...");
-      qc.invalidateQueries({ queryKey: MNEMONIC_KEY });
-    };
-  }, [qc]);
-
-  // 3) U event listeneru koristi refreshRef.current() umjesto direktnog poziva
-  // 4) Osiguraj pravilno čišćenje event listenera u cleanup funkciji
-  useEffect(() => {
-    const unsubscribe = eventBus.subscribe(EVENT_TYPES.MNEMONICS_UPDATED, () => {
-      refreshRef.current();
+    loadMnemonicCards().then(setCardsState);
+    const unsub = eventBus.subscribe(EVENT_TYPES.MNEMONICS_UPDATED, () => {
+      loadMnemonicCards().then(setCardsState);
     });
-    return unsubscribe;
+    return unsub;
   }, []);
 
   const setCards = useCallback(async (updater: (prev: MnemonicCard[]) => MnemonicCard[]) => {
-    let next: MnemonicCard[] = [];
-    qc.setQueryData<MnemonicCard[]>(MNEMONIC_KEY, (old) => {
-      next = updater(old || []);
+    setCardsState(prev => {
+      const next = updater(prev);
+      saveMnemonicCards(next);
+      eventBus.emit(EVENT_TYPES.MNEMONICS_UPDATED);
       return next;
     });
-    await saveMnemonicCards(next);
-    eventBus.emit(EVENT_TYPES.MNEMONICS_UPDATED);
-  }, [qc]);
+  }, []);
 
   const updateCard = useCallback(async (id: string, updates: Partial<MnemonicCard>) => {
     await setCards(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
@@ -145,7 +119,6 @@ export default function MnemonicModule() {
   if (subView === "test") {
     return <MnemonicTest cards={cards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
   }
-
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">

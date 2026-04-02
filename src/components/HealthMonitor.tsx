@@ -124,6 +124,7 @@ export default function HealthMonitor() {
       );
       toast.success(`${orphans.count} kartica premješteno u "${categories[0].name}"`);
       setOrphans({ count: 0, cardIds: [] });
+      eventBus.emit(EVENT_TYPES.CARDS_UPDATED);
     } catch (err) {
       console.error("[health] cleanup failed", err);
       toast.error("Greška pri čišćenju");

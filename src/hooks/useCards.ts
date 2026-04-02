@@ -99,7 +99,7 @@ export function useCards() {
   // ── SSoT fix: HealthMonitor orphan cleanup triggers full reload ──
   useEffect(() => {
     return eventBus.subscribe(EVENT_TYPES.CARDS_UPDATED, () => {
-      import("@/lib/db").then(({ idbLoadCards }) => {
+      import("@/lib/db-queries").then(({ idbLoadCards }) => {
         idbLoadCards().then(loaded => {
           const map: CardMap = {};
           for (const c of loaded) map[c.id] = c;
