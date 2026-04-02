@@ -138,7 +138,7 @@ export default function CategoryManager({
                   ) : (
                     <>
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium text-sm">{cat}</span>
+                        <span className="font-medium text-sm">{nameMap[cat] || cat}</span>
                         <span className="text-xs text-muted-foreground ml-2">
                           {count} kartica
                         </span>
