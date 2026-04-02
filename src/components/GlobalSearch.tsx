@@ -107,8 +107,9 @@ export default function GlobalSearch({ cards, open, onClose, onNavigateToCard }:
           id: s.id,
           type: "source",
           title: s.title,
-          subtitle: `v${s.version} • ${s.date}`,
+          subtitle: uuidToName[s.categoryId] ?? s.categoryId,
           icon: "source",
+          categoryId: s.categoryId,
           sourceId: s.id,
         });
       });
