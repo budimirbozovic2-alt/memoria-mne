@@ -86,11 +86,11 @@ export function useCategoryManagement({
           cardMapRef.current = nextRef;
           setCardMapState(() => nextRef);
           bumpMapVersion();
-          (async () => {
-            try { await db.cards.bulkDelete(toDelete); } catch (err) {
-              console.error("[deleteCategory] card purge failed", err);
-            }
-          })();
+          Promise.allSettled(toDelete.map(id => idbDeleteCard(id))).then(results => {
+            results.forEach((r, i) => {
+              if (r.status === "rejected") console.error(`[deleteCategory] card purge failed for ${toDelete[i]}`, r.reason);
+            });
+          });
         }
       } else {
         const changed: Card[] = [];

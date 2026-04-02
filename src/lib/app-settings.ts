@@ -91,15 +91,13 @@ export function loadAppSettings(): AppSettings {
 }
 
 export function saveAppSettings(settings: AppSettings): void {
-  try {
-    localStorage.setItem(APP_SETTINGS_KEY, JSON.stringify(settings));
-  } catch {}
-  // IDB backup (fire-and-forget)
-  try {
-    import("./db").then(({ db }) => {
-      db.settings.put({ key: "appSettings", value: settings }).catch((e) => console.warn("[silent]", e));
-    });
-  } catch {}
+  const json = JSON.stringify(settings);
+  // Primary: IDB (canonical source)
+  import("./db").then(({ db }) => {
+    db.settings.put({ key: "appSettings", value: settings }).catch((e) => console.warn("[settings] IDB write failed", e));
+  }).catch(() => {});
+  // Mirror to localStorage for fast sync reads (cache, not source of truth)
+  try { localStorage.setItem(APP_SETTINGS_KEY, json); } catch {}
 }
 
 /** Load from IDB as fallback when localStorage is empty */
