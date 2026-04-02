@@ -50,7 +50,7 @@ export type MindMapNodeData = {
 };
 
 const handleBase =
-  "!w-3 !h-3 !min-w-[12px] !min-h-[12px] !border-2 !border-background !rounded-full !bg-primary opacity-0 group-hover:opacity-100 hover:!opacity-100 hover:!scale-125 transition-all duration-200";
+  "!w-3 !h-3 !min-w-[12px] !min-h-[12px] !border-2 !border-background !rounded-full !bg-primary opacity-0 group-hover:opacity-100 hover:!opacity-100 hover:!scale-125 transition-all duration-200 z-20";
 
 function MindMapNodeComponent({ id, data, selected }: NodeProps) {
   const nodeData = data as unknown as MindMapNodeData;
@@ -103,7 +103,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
           {editing ? (
             <input
               autoFocus
-              className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground uppercase tracking-wider"
+              className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground uppercase tracking-wider nodrag nowheel nopan"
               defaultValue={nodeData.label}
               onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
               onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
@@ -140,26 +140,26 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
           )}
           style={{ transform: "rotate(45deg)", borderRadius: "14px" }}
         />
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 z-10">
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 z-10 pointer-events-none">
           {iconEntry && (
-            <div className={cn("p-1.5 rounded-lg mb-1.5", colorOpt.bg)}>
+            <div className={cn("p-1.5 rounded-lg mb-1.5 pointer-events-auto", colorOpt.bg)}>
               <iconEntry.Icon className={cn("h-5 w-5", colorOpt.text)} />
             </div>
           )}
           {editing ? (
             <input
               autoFocus
-              className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground text-center"
+              className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground text-center pointer-events-auto nodrag nowheel nopan"
               defaultValue={nodeData.label}
               onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
               onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             />
           ) : (
-            <span className="text-xs font-bold text-foreground leading-tight">{nodeData.label}</span>
+            <span className="text-xs font-bold text-foreground leading-tight pointer-events-auto">{nodeData.label}</span>
           )}
         </div>
         {selected && (
-          <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+          <div className="absolute -bottom-9 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 pointer-events-auto">
             <button onClick={() => setShowSettings(!showSettings)} className="text-[9px] text-muted-foreground hover:text-foreground bg-card border rounded-md px-2 py-0.5 shadow-sm transition-colors">⚙</button>
             <button onClick={() => nodeData.onDuplicate?.(id)} className="text-[9px] text-muted-foreground hover:text-foreground bg-card border rounded-md px-2 py-0.5 shadow-sm transition-colors">
               <Copy className="h-3 w-3 inline" />
@@ -167,7 +167,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
           </div>
         )}
         {showSettings && selected && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-12 w-60 bg-card border rounded-xl shadow-xl p-3 space-y-3 z-30">
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-12 w-60 bg-card border rounded-xl shadow-xl p-3 space-y-3 z-30 pointer-events-auto">
             <SettingsPanel nodeData={nodeData} updateField={updateField} iconSearch={iconSearch} setIconSearch={setIconSearch} filteredIcons={filteredIcons} />
           </div>
         )}
@@ -201,7 +201,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
         {editing ? (
           <input
             autoFocus
-            className="bg-transparent border-b-2 border-primary text-sm font-bold w-full outline-none text-foreground"
+            className="bg-transparent border-b-2 border-primary text-sm font-bold w-full outline-none text-foreground nodrag nowheel nopan"
             defaultValue={nodeData.label}
             onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
             onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
@@ -217,7 +217,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
       )}
       {editing && (
         <textarea
-          className="bg-transparent border border-border rounded-lg text-xs w-full outline-none text-foreground mt-1.5 p-1.5 resize-none focus:ring-1 focus:ring-primary"
+          className="bg-transparent border border-border rounded-lg text-xs w-full outline-none text-foreground mt-1.5 p-1.5 resize-none focus:ring-1 focus:ring-primary nodrag nowheel nopan"
           rows={2}
           defaultValue={nodeData.description || ""}
           placeholder="Opis..."
