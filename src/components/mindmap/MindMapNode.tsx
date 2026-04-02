@@ -50,7 +50,7 @@ export type MindMapNodeData = {
 };
 
 const handleBase =
-  "!w-3 !h-3 !min-w-[12px] !min-h-[12px] !border-2 !border-background !rounded-full !bg-primary opacity-0 group-hover:opacity-100 hover:!opacity-100 hover:!scale-125 transition-all duration-200";
+  "!w-3 !h-3 !min-w-[12px] !min-h-[12px] !border-2 !border-background !rounded-full !bg-primary opacity-0 group-hover:opacity-100 hover:!opacity-100 hover:!scale-125 transition-all duration-200 z-20";
 
 function MindMapNodeComponent({ id, data, selected }: NodeProps) {
   const nodeData = data as unknown as MindMapNodeData;
