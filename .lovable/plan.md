@@ -1,72 +1,66 @@
 
 
-# Sljedeće stavke iz deep audita
+# Dekompozicija SRSettingsPanel.tsx (505 → ~120 linija)
 
-## Pregled urađenog
-- ✅ K4: db.ts reload race condition
-- ✅ K2: dupli ready timer
-- ✅ K5: localStorage → IDB za backup timestamp
-- ✅ db.ts razdvojen na 3 modula
-- ✅ MindMapCanvas dekompozicija
-- ✅ Diamond handle + textarea fix
+## Struktura razdvajanja
 
-## Preostale stavke po prioritetu
+| Novi modul | Sadržaj | ~Linije |
+|------------|---------|---------|
+| `src/components/settings/AlgorithmTab.tsx` | Ciljna retencija, FSRS parametri, kognitivni otpor | ~80 |
+| `src/components/settings/PersonalizationTab.tsx` | Tema boja, dashboard widgeti, zvučni efekti | ~85 |
+| `src/components/settings/WorkflowTab.tsx` | Pomodoro, TTS, podsjetnici, backup | ~140 |
+| `src/components/settings/SystemTab.tsx` | Export/Import, CategoryManager, HealthMonitor | ~45 |
+| `src/components/SRSettingsPanel.tsx` | Orchestrator — state, header, Tabs shell, action buttons | ~120 |
 
-### 1. event-bus.ts: `setInterval` bez cleanup-a (RIZIK)
+## Detalji
 
-`src/lib/event-bus.ts` L71 — `setInterval` za heartbeat nikada nema `clearInterval`. Ako se eventBus reinicijalizira (HMR, reimport), timeri se gomilaju. Ovo je memory/CPU leak u developmentu, a potencijalno i u produkciji pri dugotrajnim sesijama.
+### Zajednički props interfejs
 
-**Fix**: Dodati `destroy()` metodu na eventBus koja čisti interval. Alternativno, sačuvati intervalId i dodati guard da se ne kreira dupli.
+Svaki tab prima iste props za state koji koristi:
 
-| Fajl | Promjena |
-|------|----------|
-| `src/lib/event-bus.ts` | Sačuvati `setInterval` return u varijablu, dodati `clearInterval` u `destroy()` metodu, dodati guard protiv duplih intervala |
+```ts
+// AlgorithmTab: local, setLocal, app, setApp
+// PersonalizationTab: app, setApp
+// WorkflowTab: app, setApp, tts, setTts, voices
+// SystemTab: exportImportOpen, setExportImportOpen, cards, categories, subcategories, cardCountByCategory, addCategory, renameCategory, deleteCategory, exportData, exportTemplate, importData
+```
 
----
+### `AlgorithmTab.tsx` (L104-177)
+- Ciljna retencija slider
+- Leech prag i dnevni cilj inputi
+- Težine kognitivnog otpora slideri
+- Props: `local`, `setLocal`, `app`, `setApp`
 
-### 2. Notification check — `setInterval` svaki minut čita settings (NEEFIKASNO)
+### `PersonalizationTab.tsx` (L180-258)
+- Color theme picker grid
+- Dashboard widget toggle lista
+- Zvučni efekti switch
+- Props: `app`, `setApp`
 
-`src/contexts/AppContext.tsx` L380-396 — svaki minut poziva `loadAppSettings()` koji parsira localStorage. Dovoljno je pročitati `reminderHour` i `reminderMinute` jednom pri mount-u, i jednom kad se settings promijene.
+### `WorkflowTab.tsx` (L262-446)
+- Pomodoro tajmer (4 slidera + select)
+- TTS brzina, glas, test dugme
+- Podsjetnik za ponavljanje (notification + time picker)
+- Backup podsjetnik
+- Props: `app`, `setApp`, `tts`, `setTts`, `voices`
 
-**Fix**: Čitati settings u `useRef` pri mount-u i refreshati samo kad se vrati na tab (visibilitychange).
+### `SystemTab.tsx` (L449-480)
+- Backup & Restore dugme
+- CategoryManager
+- HealthMonitor (lazy)
+- Props: kategorije i akcije iz konteksta, `onOpenExportImport`
 
-| Fajl | Promjena |
-|------|----------|
-| `src/contexts/AppContext.tsx` L377-396 | Keširati settings u ref, dodati visibilitychange listener za refresh |
+### `SRSettingsPanel.tsx` (orchestrator)
+- Sav state ostaje ovdje (local, app, tts, voices, exportImportOpen)
+- handleSave, handleReset, hasChanges, isDefault
+- Header + InfoPanel
+- `<Tabs>` shell sa 4 `<TabsTrigger>`
+- 4 `<TabsContent>` sa importovanim tab komponentama
+- Action buttons + ExportImportDialog
 
----
-
-### 3. Veliki fajlovi — CardOrgMode (503), SRSettingsPanel (505), CardViewMode (500)
-
-Tri komponente prelaze 500 linija. Svaka se može razdvojiti na logičke pod-komponente:
-
-- **SRSettingsPanel.tsx** (505 linija) — razdvojiti na tab-ove: `FSRSTab`, `ScheduleTab`, `DisplayTab`
-- **CardOrgMode.tsx** (503 linija) — izdvojiti drag-and-drop logiku u `useCardOrgDnd` hook
-- **CardViewMode.tsx** (500 linija) — izdvojiti filter/sort logiku u `useCardFilters` hook
-
-Ovo je refaktoring nižeg prioriteta — funkcionalno je sve ispravno.
-
-| Fajl | Promjena |
-|------|----------|
-| `src/components/SRSettingsPanel.tsx` | Razdvojiti na 3 tab komponente |
-| `src/components/category/CardOrgMode.tsx` | Izdvojiti DnD hook |
-| `src/components/category/CardViewMode.tsx` | Izdvojiti filter/sort hook |
-
----
-
-### 4. `useCardContext()` backward-compat — spread 4 konteksta (PERFORMANCE)
-
-`AppContext.tsx` L153-159 — `useCardContext()` pravi novi merged objekat pri svakom renderu bilo kojeg od 4 konteksta. Komponente koje koriste `useCardContext` se re-renderuju kad se promijeni **bilo šta** — čime se poništava dekompozicija na granularne kontekste.
-
-**Fix**: Pronaći sve pozive `useCardContext()` i zamijeniti ih granularnim hookovima (`useCardData`, `useCategoryData`, `useReviewData`, `useCardActions`). Zatim deprecirati `useCardContext`.
-
-| Fajl | Promjena |
-|------|----------|
-| Svaki potrošač `useCardContext` | Zamijeniti sa granularnim hookom |
-
----
-
-## Preporuka za implementaciju
-
-Predlažem da krenemo sa stavkama **1 i 2** (event-bus leak i notification optimizacija) jer su najrizičnije i najbrže za popraviti (~30 linija ukupno). Stavke 3 i 4 su veći refaktorinzi koji se mogu uraditi postepeno.
+## Scope
+- 4 nova fajla u `src/components/settings/`
+- 1 refaktorisan fajl (`SRSettingsPanel.tsx`)
+- 0 promjena u potrošačima (`SettingsPage.tsx`)
+- Nema novih zavisnosti
 
