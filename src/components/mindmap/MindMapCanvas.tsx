@@ -244,6 +244,7 @@ function EdgeSettingsPanel({ edge, onUpdate, onDelete, onClose }: {
               onClick={() => onUpdate(edge.id, {
                 style: { ...currentStyle, stroke: c.css, strokeWidth: 2.5 },
                 markerEnd: { type: MarkerType.ArrowClosed, color: c.css, width: 20, height: 20 },
+                markerStart: { type: MarkerType.ArrowClosed, color: c.css, width: 20, height: 20 },
               })}
               className={cn(
                 "w-5 h-5 rounded-full border-2 border-background transition-all hover:scale-110",

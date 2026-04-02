@@ -266,6 +266,7 @@ function SettingsPanel({ nodeData, updateField, iconSearch, setIconSearch, filte
           <input
             value={iconSearch}
             onChange={e => setIconSearch(e.target.value)}
+            onKeyDown={(e) => e.stopPropagation()}
             className="bg-transparent text-[11px] w-full outline-none text-foreground placeholder:text-muted-foreground"
             placeholder="Pretraži..."
           />
