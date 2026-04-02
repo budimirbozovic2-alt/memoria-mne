@@ -1,59 +1,75 @@
 
 
-# Sljedeća faza: Čišćenje storage.ts mrtvih ostataka + mnemonic-storage localStorage helpers
+# Fix: Mentalne mape — veze, strelice, handle-ovi, opis čvorova
 
-## Rezime
+## Problemi
 
-Nakon svih dosadašnjih refaktora (SpeedReader dekompozicija, useCards kontekst razdvajanje, cognitive-analytics modularizacija), preostaje **mrtav kod i duplicirani localStorage helperi** u dva storage fajla.
-
----
-
-## Problem
-
-### 1. `src/lib/storage.ts` — mrtav kod
-- `loadReviewLog()` (L51-53): **potpuno nekorištena** — nijedan fajl je ne importuje. Bootstrap koristi `idbLoadReviewLog()` iz `db.ts`.
-- `REVIEW_LOG_KEY` konstanta (L46): nekorištena nakon brisanja `loadReviewLog`.
-- `loadFromStorage`/`saveToStorage` generički helperi (L31-42): koriste se samo za `LearnProgress` i `lastBackup`. Ovi su legitimni (LearnProgress je sessionStorage-nivo podatak, ne zaslužuje IDB overhead), ali helper funkcije su duplikat istih u `mnemonic-storage.ts`.
-
-### 2. `src/lib/mnemonic-storage.ts` — mrtvi localStorage helperi
-- `loadFromStorage`/`saveToStorage` (L55-66): definirane ali **nigdje korištene** u aktivnom kodu. Bile su za pre-migraciju pristup; sve aktivne funkcije sada koriste `db.*` (IDB).
-- `MNEMONIC_CARDS_KEY`, `MAJOR_SYSTEM_KEY`, `MNEMONIC_TEST_LOG_KEY` (L37-39): koriste se samo u `migrateMnemonicsFromLocalStorageToIDB()` — migracija se izvršava jednom i postavlja flag. Ovi ključevi su legitimni (migration code), ali helperi su mrtvi.
+1. **Veze nevidljive nakon kreiranja** — `defaultEdgeOptions` nema `style` sa bojom stroka. Veza se kreira ali je vizuelno nevidljiva dok korisnik ne otvori Edge Settings i promijeni boju/stil.
+2. **Strelica samo u jednom pravcu** — koristi se samo `markerEnd`. Korisnik očekuje strelice na oba kraja (ili bar opciju).
+3. **Specijalni čvorovi (diamond, group) ne primaju veze** — svi handle-ovi su `type="source"`, nema `type="target"`. `ConnectionMode.Loose` dozvoljava source→source konekcije, ali ReactFlow ipak zahtijeva bar jedan target handle na čvoru da bi se mogao koristiti kao destinacija u standardnom toku.
+4. **Unos teksta u opis ne radi** — ReactFlow presreće tastaturne događaje (Delete, Backspace, itd.) prije nego što stignu do `<input>` i `<textarea>` unutar čvorova. Nedostaje `stopPropagation` na svim input elementima.
 
 ---
 
 ## Promjene po fajlovima
 
-### 1. `src/lib/storage.ts` (~15 linija manje)
+### 1. `src/components/mindmap/MindMapNode.tsx`
 
-**Obrisati:**
-- `loadReviewLog()` funkciju (L51-53)
-- `REVIEW_LOG_KEY` konstantu (L46)
+**A) Handle-ovi: dodati target handle-ove**
 
-**Zadržati:**
-- `loadFromStorage`/`saveToStorage` helperi — koriste ih `loadLearnProgress`, `saveLearnProgress`, `getLastBackupTime`, `setLastBackupTime`
-- `ReviewLogEntry` tip — 29+ fajlova ga importuje
-- Sve ostale aktivne funkcije
+Trenutno (L73-79): svi handle-ovi su `type="source"`. Dodati 4 dodatna `type="target"` handle-a na suprotnim pozicijama. Ili — jednostavnije — promijeniti 2 od 4 postojeća na `type="target"` (Top i Left = target, Bottom i Right = source). Ovo je intuitivnije: veze idu odozgo-nadolje ili lijevo-desno.
 
-### 2. `src/lib/mnemonic-storage.ts` (~15 linija manje)
+```
+Top    → target
+Right  → source
+Bottom → source
+Left   → target
+```
 
-**Obrisati:**
-- `loadFromStorage` helper (L55-62) — nekorišten u aktivnom kodu
-- `saveToStorage` helper (L64-66) — nekorišten u aktivnom kodu
+Ovo omogućava prirodno spajanje: izvor (bottom/right) → destinacija (top/left) za sve oblike čvorova uključujući diamond i group.
 
-**Zadržati:**
-- Migracijska funkcija (`migrateMnemonicsFromLocalStorageToIDB`) — koristi direktne `localStorage.getItem` pozive, ne helpere
-- `MNEMONIC_CARDS_KEY`, `MAJOR_SYSTEM_KEY`, `MNEMONIC_TEST_LOG_KEY` — koriste se u migraciji
-- Sve IDB-bazirane funkcije
+**B) Keyboard events: stopPropagation na svim input/textarea elementima**
 
-### 3. Provjera: `src/hooks/useCardImport.ts`
+Dodati `onKeyDown={(e) => e.stopPropagation()}` na:
+- Label input u standard node (L202-207)
+- Description textarea (L219-226)
+- Label input u diamond node (L149-155)
+- Label input u group node (L104-109)
+- Icon search input u SettingsPanel (L265-270)
 
-Verifikovati da ne importuje `loadReviewLog` — prema grep rezultatima, ne importuje.
+Ovo sprječava ReactFlow da presretne Delete/Backspace/Space i druge tastere dok korisnik kuca.
+
+### 2. `src/components/mindmap/MindMapCanvas.tsx`
+
+**A) `defaultEdgeOptions` — dodati `style` sa vidljivom bojom**
+
+Trenutno (L699-703):
+```ts
+defaultEdgeOptions={{
+  type: "smoothstep",
+  animated: isProcedure,
+  markerEnd: { ... },
+}}
+```
+
+Dodati `style: edgeStyle` u `defaultEdgeOptions` tako da nove veze budu odmah vidljive.
+
+**B) `onConnect` — dodati `markerStart` za bidirekcione strelice**
+
+Trenutno (L424-438): samo `markerEnd`. Dodati `markerStart` sa istim stilom, tako da veza ima strelice na oba kraja.
+
+**C) Edge color presets — dodati `markerStart` uz `markerEnd`**
+
+U `EdgeSettingsPanel` (L244-247): kad korisnik bira boju, ažurirati i `markerStart` pored `markerEnd`.
+
+### 3. `src/components/category/MindMapViewer.tsx`
+
+**Handle update**: Viewer koristi iste čvorove — handle promjene u MindMapNode.tsx automatski se primjenjuju.
 
 ---
 
 ## Scope
-- 2 fajla, ~30 linija obrisano
-- Čisto brisanje mrtvog koda — nema promjene ponašanja
+- 2 fajla: `MindMapNode.tsx` (~15 linija), `MindMapCanvas.tsx` (~10 linija)
 - Nema novih zavisnosti
 - FSRS: netaknut
 
