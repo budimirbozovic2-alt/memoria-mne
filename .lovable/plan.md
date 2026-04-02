@@ -1,63 +1,58 @@
 
 
-# Fix: db.ts reload race condition (K4)
+# Sljedeće stavke iz deep audita
 
-## Problem
+## 1. Uklanjanje duplog ready timera (K2)
 
-Dva nezavisna mehanizma mogu triggerovati `window.location.reload()` istovremeno:
+**Problem**: Dva nezavisna timera forsiraju "ready" stanje:
+- `useCardBootstrap.ts` L46: **8s panic timer** — setuje `ready=true` i uklanja splash
+- `useCards.ts` L54-64: **5s forceReady timer** — setuje zasebni `forceReady` state
 
-1. **`setInterval` (L201-211)** — svake 2s provjerava `dbErrorState?.type === "timeout"` i ako je samo 1 tab, poziva `reload()` nakon 1s delay-a
-2. **`setTimeout` 30s (L258-263)** — jednokratni timer koji također poziva `reload()` ako je `dbErrorState` još timeout
+5s timer okida prvi, ali bootstrap već ima robusniji 8s timer sa splash cleanup-om. `forceReady` u useCards je suvišan — dodaje kompleksnost bez koristi.
 
-Nijedan ne čisti drugi, pa oba mogu aktivirati reload. Interval se nikad ne čisti — radi zauvijek čak i kad nema greške.
-
-## Rješenje
-
-**A) Interval dobija ID i čisti se čim obavi posao ili kad greške nema:**
-- Sačuvati `setInterval` povratnu vrijednost u varijablu
-- Unutar intervala: nakon što emituje `DB_UNBLOCKED` i pozove reload, odmah `clearInterval`
-- Dodati guard: ako `dbErrorState` je `null`, skip (ne radi ništa)
-
-**B) 30s timeout dobija guard flag:**
-- Dodati modul-level `let reloadScheduled = false`
-- Oba mjesta (interval L208 i timeout L261) provjeravaju `if (reloadScheduled) return` prije reload-a
-- Prvo koje prođe setuje `reloadScheduled = true`
-
-### Promjene u `src/lib/db.ts`
-
+**Rješenje**: Obrisati `forceReady` state i useEffect iz `useCards.ts` (L53-64). Koristiti samo `bootstrapReady` direktno:
 ```ts
-// L200: Dodati guard varijablu
-let reloadScheduled = false;
-let unblockIntervalId: ReturnType<typeof setInterval> | null = null;
-
-// L201-211: Interval sa cleanup-om
-unblockIntervalId = setInterval(() => {
-  if (!dbErrorState) return; // nema greške, skip
-  if (dbErrorState.type === "timeout" && eventBus.getTabCount() <= 1) {
-    console.log("[MemoriaDB] Only one tab remains, clearing blocked state...");
-    dbErrorState = null;
-    eventBus.emit(EVENT_TYPES.DB_UNBLOCKED);
-    if (!reloadScheduled) {
-      reloadScheduled = true;
-      setTimeout(() => window.location.reload(), 1000);
-    }
-    clearInterval(unblockIntervalId!);
-    unblockIntervalId = null;
-  }
-}, 2000);
-
-// L258-263: 30s timeout sa istim guardom
-setTimeout(() => {
-  if (dbErrorState?.type === "timeout" && !reloadScheduled) {
-    reloadScheduled = true;
-    console.log("[MemoriaDB] Blocked timeout (30s), reloading...");
-    window.location.reload();
-  }
-}, 30000);
+const ready = bootstrapReady;
 ```
 
+| Fajl | Promjena |
+|------|----------|
+| `src/hooks/useCards.ts` L53-64 | Obrisati forceReady state, useEffect i || operator |
+
+---
+
+## 2. Migracija LearnProgress iz localStorage u IDB (K3)
+
+**Problem**: `loadLearnProgress()` i `saveLearnProgress()` u `storage.ts` još koriste `localStorage`, dok je sve ostalo migrirano na IndexedDB. Ovo je nekonzistentno i podložno gubitku podataka (localStorage se čisti nezavisno od IDB).
+
+**Rješenje**: Dodati `learnProgress` tabelu u IDB i ažurirati funkcije.
+
+| Fajl | Promjena |
+|------|----------|
+| `src/lib/db.ts` | Dodati `learnProgress` store u Dexie šemu (key: `cardId`) |
+| `src/lib/storage.ts` | Promijeniti `loadLearnProgress` i `saveLearnProgress` da koriste IDB sa localStorage fallback-om za migraciju |
+| `src/components/LearnSession.tsx` | Ažurirati na async load (useEffect + useState) |
+
+---
+
+## 3. Migracija LastBackupTime iz localStorage u IDB (K3b)
+
+**Problem**: `getLastBackupTime()` i `setLastBackupTime()` takođe koriste localStorage.
+
+**Rješenje**: Koristiti postojeći `idbSaveSettings`/`idbLoadSettings` mehanizam u db.ts — isti pristup kao za `srSettings`.
+
+| Fajl | Promjena |
+|------|----------|
+| `src/lib/storage.ts` | Promijeniti `getLastBackupTime` → async, čita iz IDB settings sa localStorage fallback |
+| `src/lib/storage.ts` | Promijeniti `setLastBackupTime` → async, piše u IDB |
+| `src/hooks/useDashboardData.ts` | Ažurirati pozive na async verziju |
+| `src/hooks/useCardExport.ts` | Ažurirati poziv na async verziju |
+
+---
+
 ## Scope
-- 1 fajl: `src/lib/db.ts`, ~15 linija
-- Nema novih zavisnosti
-- Nema promjene ponašanja u normalnom toku — samo eliminacija duplog reload-a
+- 5 fajlova, ~40 linija promjena
+- Nema novih vanjskih zavisnosti
+- FSRS: netaknut
+- Potpuno backward-kompatibilno (localStorage se čita kao fallback tokom migracije)
 
