@@ -188,7 +188,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
                   onClick={() => { setFilterCategory(filterCategory === cat ? null : cat); setFilterSubcategory(null); }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filterCategory === cat ? "bg-primary text-primary-foreground" : "border text-muted-foreground hover:bg-secondary"}`}
                 >
-                  {cat} ({count})
+                  {uuidToName[cat] || cat} ({count})
                 </button>
               );
             })}
