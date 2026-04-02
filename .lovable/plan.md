@@ -1,20 +1,43 @@
 
 
-# Fix: Dugmad minimize/maximize/close uvijek vidljiva
+# Fix: GlobalSearch navigacija za izvore
 
 ## Problem
-
-U `TitleBar.tsx` (L44), kontrole prozora su umotane u `{api && (...)}` — prikazuju se samo kad postoji `window.electronAPI`. U web preview-u (i van Electron-a) dugmad su potpuno nevidljiva.
+Klik na izvor u GlobalSearch navigira na nepostojeću rutu `/database` → 404. SessionStorage ključ `sr-open-source-id` se postavlja ali nigdje ne čita.
 
 ## Rješenje
 
-Ukloniti `{api && (...)}` uslov — uvijek renderovati dugmad. U web preview-u, klikovi na `api?.windowMinimize()` su no-op (safe chaining), tako da nema grešaka. Kad se pokrene u Electron-u, dugmad funkcionišu normalno.
+Izvor ima `categoryId` — navigiramo na `/category/${categoryId}` i postavljamo sessionStorage flag. `CategoryView` čita flag pri mount-u i automatski otvara SourceReader.
 
-| Fajl | Promjena |
-|------|----------|
-| `src/components/TitleBar.tsx` L44, L68 | Ukloniti `{api && (` wrapper i zatvarajući `)}` — dugmad se uvijek renderuju |
+### 1. `src/components/GlobalSearch.tsx`
+
+**SearchResult interface** — dodati `categoryId?: string` polje.
+
+**Kreiranje rezultata** (L104-112) — dodati `categoryId: s.categoryId` uz subtitle koji prikazuje ime kategorije:
+```ts
+subtitle: uuidToName[s.categoryId] ?? s.categoryId,
+```
+
+**handleSelect** (L146-149) — zamijeniti:
+```ts
+sessionStorage.setItem("sr-open-source-id", result.id);
+navigate(`/category/${result.categoryId}`);
+```
+
+### 2. `src/views/CategoryView.tsx`
+
+**useEffect pri mount-u** (~nakon L74) — pročitati `sr-open-source-id` iz sessionStorage. Ako postoji i source sa tim ID-om je učitan, otvoriti ga u reader-u:
+```ts
+useEffect(() => {
+  const openId = sessionStorage.getItem("sr-open-source-id");
+  if (!openId || sources.length === 0) return;
+  sessionStorage.removeItem("sr-open-source-id");
+  const found = sources.find(s => s.id === openId);
+  if (found) setReaderSource(found);
+}, [sources]);
+```
 
 ## Scope
-- 1 fajl, 2 linije promjena
+- 2 fajla, ~15 linija
 - Nema novih zavisnosti
 
