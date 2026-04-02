@@ -3,8 +3,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import KnowledgeMap from "@/components/KnowledgeMap";
 
 export default function KnowledgeMapPage() {
-  const { cards, categories, subcategories, reorderCategories, reorderSubcategories, ready } = useCardContext();
-  const { categoryRecords } = useCategoryData();
+  const { cards, ready } = useCardData();
+  const { categories, subcategories, categoryRecords } = useCategoryData();
+  const { reorderCategories, reorderSubcategories } = useCardActions();
   const { setView } = useUIContext();
 
   if (!ready) {

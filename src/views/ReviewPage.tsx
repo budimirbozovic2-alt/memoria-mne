@@ -8,7 +8,10 @@ import ReviewSession from "@/components/ReviewSession";
 import EmptyState from "@/components/EmptyState";
 
 export default function ReviewPage() {
-  const { dueCards, cards, categoryRecords, reviewLog, subcategories, srSettings, reviewSection, logError, ready } = useCardContext();
+  const { cards, dueCards, ready } = useCardData();
+  const { categoryRecords, subcategories } = useCategoryData();
+  const { reviewLog, srSettings } = useReviewData();
+  const { reviewSection, logError } = useCardActions();
   const { setView } = useUIContext();
   const session = useSessionContext();
   const [searchParams] = useSearchParams();

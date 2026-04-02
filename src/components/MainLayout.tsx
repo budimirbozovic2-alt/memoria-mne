@@ -93,7 +93,8 @@ const GlobalSearchWrapper = memo(function GlobalSearchWrapper({
 const DocxImporterWrapper = memo(function DocxImporterWrapper({
   open, onClose,
 }: { open: boolean; onClose: () => void }) {
-  const { categories, importCards, addFlashCard } = useCardContext();
+  const { categories } = useCategoryData();
+  const { importCards, addFlashCard } = useCardActions();
   if (!open) return null;
   return (
     <Suspense fallback={null}>

@@ -9,7 +9,9 @@ import { AnimatePresence } from "framer-motion";
 const DashboardOnboarding = lazy(() => import("@/components/DashboardOnboarding"));
 
 export default function DashboardPage() {
-  const { cards, stats, categoryStats, categories, subcategories, reviewLog, srSettings, ready } = useCardContext();
+  const { cards, stats, ready } = useCardData();
+  const { categories, subcategories, categoryStats } = useCategoryData();
+  const { reviewLog, srSettings } = useReviewData();
   const { setView } = useUIContext();
   const [showOnboarding, setShowOnboarding] = useState(false);
 

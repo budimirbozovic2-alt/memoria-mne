@@ -6,7 +6,10 @@ import LearnSession from "@/components/LearnSession";
 import { Card } from "@/lib/spaced-repetition";
 
 export default function LearnPage() {
-  const { cards, categories, categoryRecords, subcategories, markRead, reviewSection, stats, reviewLog, addKeyPart, ready } = useCardContext();
+  const { cards, stats, ready } = useCardData();
+  const { categories, categoryRecords, subcategories } = useCategoryData();
+  const { reviewLog } = useReviewData();
+  const { markRead, reviewSection, addKeyPart } = useCardActions();
   const { setView, setEditingCard } = useUIContext();
   const session = useSessionContext();
 

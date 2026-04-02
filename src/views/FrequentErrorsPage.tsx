@@ -3,7 +3,9 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import FrequentErrors from "@/pages/FrequentErrors";
 
 export default function FrequentErrorsPage() {
-  const { cards, categoryRecords, clearErrorLog, ready } = useCardContext();
+  const { cards, ready } = useCardData();
+  const { categoryRecords } = useCategoryData();
+  const { clearErrorLog } = useCardActions();
   const { setView } = useUIContext();
 
   if (!ready) {

@@ -3,7 +3,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import CardForm from "@/components/CardForm";
 
 export default function CreatePage() {
-  const { categories, subcategories, categoryRecords, addCard, addFlashCard } = useCardContext();
+  const { categories, subcategories, categoryRecords } = useCategoryData();
+  const { addCard, addFlashCard } = useCardActions();
   const { setView, setEditingCard } = useUIContext();
 
   return (
