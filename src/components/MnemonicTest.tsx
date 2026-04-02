@@ -20,7 +20,20 @@ const HOOK_TYPE_CONFIG: Record<HookType, { label: string; icon: typeof Clock }> 
 };
 
 export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
+  const { categoryRecords } = useCategoryData();
   const [phase, setPhase] = useState<"selector" | "reminder" | "test" | "finished">("selector");
+
+  // UUID → display name lookup
+  const uuidToName = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of categoryRecords) {
+      map[r.id] = r.name;
+      for (const s of (r.subcategories || [])) {
+        map[s.id] = s.name;
+      }
+    }
+    return map;
+  }, [categoryRecords]);
 
   // Drill selector filters
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
