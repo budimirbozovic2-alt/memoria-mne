@@ -73,6 +73,15 @@ export default function CategoryView() {
   const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Auto-open source from GlobalSearch navigation
+  useEffect(() => {
+    const openId = sessionStorage.getItem("sr-open-source-id");
+    if (!openId || sources.length === 0) return;
+    sessionStorage.removeItem("sr-open-source-id");
+    const found = sources.find(s => s.id === openId);
+    if (found) setReaderSource(found);
+  }, [sources]);
+
   const handleSourceUpdated = useCallback(() => {
     invalidateSourcesCache();
   }, []);
