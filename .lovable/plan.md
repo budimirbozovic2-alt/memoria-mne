@@ -1,86 +1,62 @@
 
 
-# Analiza Single Source of Truth (SSoT)
+# UUID prikaz umjesto naslova — Audit
 
-## Ocjena: **8/10** — Dobar, sa 3 preostala narušavanja
+## Pronađena narušavanja
 
-Aplikacija je prošla značajan refaktoring i većina podataka ima čist SSoT. Evo pregleda po segmentima:
+Pronašao sam **5 fajlova** gdje se UUID prikazuje korisniku umjesto čitljivog naziva:
 
----
+### 1. `MnemonicTest.tsx` — 3 mjesta (KRITIČNO)
 
-## ✅ Segmenti sa čistim SSoT
+- **L178**: Dugme za filter kategorije prikazuje `{cat}` — sirovi UUID
+- **L203**: Dugme za filter potkategorije prikazuje `{sub}` — sirovi UUID  
+- **L355**: Breadcrumb prikazuje `{currentCard.categoryId} / {currentCard.subcategoryId}` — sirovi UUID-ovi
 
-### Kartice (Cards)
-- **Kanonski izvor**: `cardMap` u `useCards.ts` (in-memory)
-- **Perzistencija**: isključivo kroz `idbPutCard` / `idbBulkPutCards` / `idbDeleteCard` u `db-queries.ts`
-- **Ref-Delta pattern**: `cardMapRef` se mutira sinhrono prije IDB upisa — nema race condition-a
-- **Status**: ✅ Čist SSoT
+**Fix**: Dodati `useCategoryData()` hook, napraviti `uuidToName` mapu, koristiti za lookup na sva 3 mjesta.
 
-### Kategorije (Categories)
-- **Kanonski izvor**: `categoryRecords` u `useCards.ts`
-- **Derivati**: `categories` (UUID lista) i `subcategories` (mapa) su `useMemo` derivati
-- **Mutacije**: centralizirane kroz `useCategoryManagement`
-- **Status**: ✅ Čist SSoT
+### 2. `CardContextMenu.tsx` — 3 mjesta (SREDNJE)
 
-### SR Settings
-- **Kanonski izvor**: `srSettings` state u `useCards.ts`, perzistiran u IDB settings tabeli
-- **Status**: ✅ Čist SSoT
+- **L107**: Kategorija dugme prikazuje `{cat}` — `categories` prop sadrži UUID-ove
+- **L118**: Naslov podmjenija prikazuje `{selectedCat}` — UUID
+- **L133**: Potkategorija dugme prikazuje `{sub}` — UUID
+- **L153**: Glava dugme prikazuje `{ch}` — UUID
 
-### Sources
-- **Kanonski izvor**: `sources-storage.ts` sa cache + IDB
-- **Status**: ✅ Čist SSoT (sa listener pattern za card link cleanup)
+**Fix**: Dodati `categoryRecords` prop, napraviti name lookup za sve nivoe.
 
-### Mind Maps
-- **Kanonski izvor**: IDB direktno, čitanje kroz `useLiveQuery` ili `mindmap-storage.ts`
-- **Status**: ✅ Čist SSoT
+### 3. `CardViewMode.tsx` — 1 mjesto (NISKO)
 
----
+- **L389**: Fallback `Glava: {card.chapterId}` kada nema subcategoryId — prikazuje UUID
 
-## ⚠️ Narušavanja SSoT (3 problema)
+**Fix**: Koristiti `allCategories` (već dostupan) za chapter name lookup u tom fallback bloku.
 
-### Problem 1: `LearnModal.tsx` — nezavisni `useLiveQuery` za kategorije
-**Fajl**: `src/components/mental-skeleton/LearnModal.tsx` L28
-```
-const catRecord = useLiveQuery(() => db.categories.get(card.categoryId), ...)
-```
-Čita kategorije direktno iz IDB umjesto da koristi `categoryRecords` iz konteksta. Ovo je isti tip problema koji smo već riješili u 6 drugih komponenti.
+### 4. `TextSelectionTooltip.tsx` — prima `category` kao string
 
-**Fix**: Proslijediti `categoryRecords` kao prop ili koristiti `useCategoryData()`.
+- Prop `category` prima UUID iz `card.categoryId` (L82, L96, L158 u CardList/StudyModeFree/StudyModeRecall)
+- Koristi se interno za kreiranje mnemonic kartice, **ne prikazuje se korisniku** — ali metadata se čuva sa UUID-om
 
-### Problem 2: `AppSettings` — dual storage (localStorage + IDB)
-**Fajl**: `src/lib/app-settings.ts`
-```
-saveAppSettings → piše u localStorage + IDB
-loadAppSettingsAsync → čita localStorage, fallback na IDB
-```
-Dva izvora istine za iste podatke. Ako se IDB ažurira ali localStorage ne (quota, privatni mode), nastaje divergencija.
+**Status**: Ne prikazuje UUID korisniku — ali čuva sirove UUID-ove u mnemonic karticama. Nema vizualnog problema, ali treba razmotriti.
 
-**Status**: Svjesna odluka za performanse (sync čitanje). Nizak rizik jer je IDB fallback, ali tehnički narušava SSoT.
+## Fajlovi koji ISPRAVNO rade lookup
 
-### Problem 3: `useCategoryManagement.ts` — direktan `db.cards.bulkDelete` mimo persist-queue
-**Fajl**: `src/hooks/useCategoryManagement.ts` L90
-```
-await db.cards.bulkDelete(toDelete)
-```
-Zaobilazi centralizovani `idbDeleteCard` iz `db-queries.ts`. Stanje se ažurira u memoriji, ali IDB operacija ne prolazi kroz isti kanal kao ostale card mutacije.
+- `CardList.tsx` — koristi `catNameMap` sa `__sub_` i `__ch_` prefiksima ✅
+- `SessionHeader.tsx` — koristi `useCategoryData()` + lookup ✅
+- `ReviewCard.tsx` — koristi `useCategoryData()` + lookup ✅
+- `WorkshopCardItem.tsx` — koristi `useCategoryData()` + lookup ✅
+- `GlobalSearch.tsx` — koristi `uuidToName` mapu ✅
+- `SpeedReader.tsx` — koristi `engine.uuidToName` ✅
+- `CognitiveAnalytics.tsx` — koristi `catNameMap` prop ✅
 
-**Status**: Funkcionalno ispravno (state se ažurira), ali narušava princip jednog ulaza za card operacije.
+## Plan promjena
 
----
+| Fajl | Promjena | ~Linije |
+|------|----------|---------|
+| `MnemonicTest.tsx` | Dodati `useCategoryData()`, napraviti uuidToName, zamijeniti 3 prikaza | ~15 |
+| `CardContextMenu.tsx` | Dodati `categoryRecords` prop, name lookup za kategorije/potkategorije/glave | ~20 |
+| `CardList.tsx` | Proslijediti `categoryRecords` u `CardContextMenu` | ~2 |
+| `CardViewMode.tsx` | Fix fallback chapter display L386-391 | ~5 |
 
-## Rezime
-
-| Segment | SSoT status | Napomena |
-|---------|-------------|----------|
-| Cards (state) | ✅ | cardMap + Ref-Delta |
-| Categories | ✅ | categoryRecords jedini izvor |
-| SR Settings | ✅ | IDB settings |
-| Sources | ✅ | cache + IDB |
-| Mind Maps | ✅ | IDB direct |
-| Review Log | ✅ | state + IDB |
-| LearnModal kategorije | ⚠️ | useLiveQuery mimo konteksta |
-| AppSettings | ⚠️ | dual localStorage/IDB |
-| Category delete → cards | ⚠️ | direktan db.cards poziv |
-
-Sva tri problema su nisko-rizična i ne uzrokuju bugove u praksi, ali ih vrijedi popraviti za arhitektonsku čistoću.
+## Scope
+- 4 fajla, ~40 linija promjena
+- Eliminacija svih UUID prikaza u UI-u
+- Nema promjene ponašanja
 
