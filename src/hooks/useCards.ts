@@ -81,6 +81,35 @@ export function useCards() {
     });
   }, []);
 
+  // ── SSoT fix: confirmCardReview delegates to in-memory cardMap ──
+  useEffect(() => {
+    return onCardReviewConfirmed((cardId) => {
+      setCardMapState(prev => {
+        if (!prev[cardId]) return prev;
+        const next = { ...prev, [cardId]: { ...prev[cardId], needsReview: undefined } };
+        cardMapRef.current = next;
+        schedulePersist(next);
+        bumpMapVersion();
+        return next;
+      });
+    });
+  }, []);
+
+  // ── SSoT fix: HealthMonitor orphan cleanup triggers full reload ──
+  useEffect(() => {
+    return eventBus.subscribe(EVENT_TYPES.CARDS_UPDATED, () => {
+      import("@/lib/db").then(({ idbLoadCards }) => {
+        idbLoadCards().then(loaded => {
+          const map: CardMap = {};
+          for (const c of loaded) map[c.id] = c;
+          cardMapRef.current = map;
+          setCardMapState(map);
+          bumpMapVersion();
+        });
+      });
+    });
+  }, []);
+
   const setReviewLog = useCallback((updater: (prev: ReviewLogEntry[]) => ReviewLogEntry[]) => {
     setReviewLogState((prev) => updater(prev));
   }, []);
