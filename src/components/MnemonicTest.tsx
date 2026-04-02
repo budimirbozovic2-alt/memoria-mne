@@ -213,7 +213,7 @@ export default function MnemonicTest({ cards, onRecordResult, onBack }: Props) {
                       onClick={() => setFilterSubcategory(filterSubcategory === sub ? null : sub)}
                       className={`px-2 py-1 rounded text-[11px] font-medium transition-colors ${filterSubcategory === sub ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary"}`}
                     >
-                      {sub} ({count})
+                      {uuidToName[sub] || sub} ({count})
                     </button>
                   );
                 })}
