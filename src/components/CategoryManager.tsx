@@ -1,12 +1,14 @@
 import { Edit2, Trash2, Check, X, Plus, FolderOpen, ChevronDown, ChevronRight, Tag } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import type { CategoryRecord } from "@/lib/category-service";
 
 interface Props {
   categories: string[];
   subcategories: Record<string, string[]>;
+  categoryRecords?: CategoryRecord[];
   cardCountByCategory: Record<string, number>;
   onAdd: (name: string) => void;
   onRename: (oldName: string, newName: string) => void;
