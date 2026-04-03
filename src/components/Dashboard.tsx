@@ -25,12 +25,13 @@ interface Props {
   onExport?: () => void;
 }
 
-export default function Dashboard({ stats, categoryStats, categories, subcategories, cards, reviewLog, srSettings, onExport }: Props) {
+export default function Dashboard({ stats, categoryStats, categories, categoryRecords, subcategories, cards, reviewLog, srSettings, onExport }: Props) {
   const {
     wc, todayReviews, dailyGoal, goalProgress, pendingFirstReview, streak,
     focusRatio, actualRatio, autoSuggestion, storageUsage, plannerData,
     velocityData, weakestCategories, briefText, statusIcons, statusColor, statusMessage,
-  } = useDashboardData(stats, categoryStats, categories, cards, reviewLog, srSettings);
+    studyFlowData,
+  } = useDashboardData(stats, categoryStats, categories, categoryRecords, cards, reviewLog, srSettings);
   return (
     <div className="space-y-6 relative">
       {wc.showExamProgress && (
