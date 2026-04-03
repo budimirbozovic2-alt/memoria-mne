@@ -16,7 +16,7 @@ interface Props {
   onAutoFormat?: () => void;
 }
 
-export const SourceToolbar = memo(function SourceToolbar({ source, onBack, onAutoSplit }: Props) {
+export const SourceToolbar = memo(function SourceToolbar({ source, onBack, onAutoSplit, onAutoFormat }: Props) {
   const viewMode = useSourceReaderStore(s => s.viewMode);
   const setViewMode = useSourceReaderStore(s => s.setViewMode);
   const editMode = useSourceReaderStore(s => s.editMode);
