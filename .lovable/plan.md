@@ -1,76 +1,104 @@
 
 
-# Deep Audit Tier 2: Lazy Recharts, Pruning, Dekompozicija
+# Proširenje unit testova za FSRS algoritam i kritične module
 
 ## Trenutno stanje
+- **4 test fajla** za ~42K LOC (ocjena 3/10 iz deep audita)
+- Postojeći testovi: `auto-split.test.ts`, `selection-split.test.ts`, `persist-queue-c3c4.test.ts`, `example.test.ts`
+- **Nula testova** za FSRS algoritam, planner logiku, source coverage, formatiranje
 
-### Recharts — 13 fajlova importuje direktno
-Recharts je već lazy-loaded u nekim mjestima (DashboardChart, OverviewTab), ali **11 fajlova** ga još uvijek importuje statički:
-- `RetentionChart.tsx`, `ForgettingCurve.tsx`, `DashboardChart.tsx`
-- `PredictionTab.tsx`, `EfficiencyTab.tsx`, `LatencyTab.tsx`, `CalibrationTab.tsx`, `ResistanceTab.tsx`
-- `RoadmapTab.tsx`, `DisciplineTab.tsx`
-- `WeeklyChart.tsx`
+## Plan — 3 nova test fajla
 
-Međutim, svi ovi fajlovi su već **lazy-loaded na ruta nivou** (Stats → MyStats → lazy tabovi, Planner → lazy tabovi, Metacognitive → lazy). Dakle recharts se **ne učitava u initial bundle** — tree-shaking i code-splitting već funkcionišu. Jedini problem bi bio ako se `RetentionChart` ili `ForgettingCurve` importuju statički iz eagerly-loaded komponenti.
+### 1. `src/test/spaced-repetition.test.ts` — FSRS algoritam (~25 testova)
 
-`OverviewTab` statički importuje `RetentionChart` i `ForgettingCurve` — ali sam OverviewTab je lazy. Zaključak: **recharts lazy-loading je već efektivan** na ruta nivou. Nema potrebe za dodatnim lazy wrapping-om.
+Pokriva sve exportovane pure funkcije iz `spaced-repetition.ts`:
 
-### Nekorištene zavisnosti — `dexie-react-hooks`
-- Koristi se samo u **2 fajla**: `CategoryView.tsx` i `CategoryMindMaps.tsx`
-- Ovo je identifikovano u deep auditu kao SSoT narušavanje (useLiveQuery zaobilazi centralni state)
-- Ne može se ukloniti bez zamjene sa event-bus pristupom
+**calculateInterval**
+- Vraća 0 za stability ≤ 0
+- Koristi custom targetRetention kad je proslijeđen
+- Default retention 0.95 daje očekivane intervale
 
-### Komponente iznad 400 LOC
-- `CardViewMode.tsx` — 503 linija (jedina iznad 400)
-- `CardList.tsx` — 455 linija
+**calculateNextReview (state machine)**
+- New + grade 1 → Learning, stability 0.1, lapses +1
+- New + grade 3 → Learning + firstReviewPending=true, 15min delay
+- New + grade 4 → Learning + firstReviewPending=true, 20min delay
+- Learning + grade 1 → ostaje Learning
+- Learning + grade 3 → Review
+- Review + grade 1 → Relearning, stability * 0.05, lapses +1, 20min delay
+- Review + grade 2 → Review, stability * 0.3, max 24h
+- Review + grade 3 → Review, stability * 3 + 1
+- Review + grade 4 → Review, stability * 5 + 2, difficulty -1
+- firstReviewPending + grade ≥ 3 → Review, pending=false
+- firstReviewPending + grade < 3 → Learning, 10min delay, pending=true
+- Difficulty clamped [1, 10]
 
-## Plan
+**formatInterval**
+- < 1h → "Xmin"
+- < 1d → "Xh"
+- < 30d → "Xd"
+- < 365d → "Xmj"
+- ≥ 365d → "X.Xg"
 
-### 1. Dekompozicija `CardViewMode.tsx` (503 LOC → ~3 fajla)
+**isLeech**
+- lapses ≥ threshold → true
+- lapses < threshold → false
+- Custom threshold
 
-Razdvojiti na:
-- **`CardViewMode.tsx`** (~200 LOC) — orkestracija, stanje, filteri
-- **`CardViewTable.tsx`** (~150 LOC) — tabela kartica sa expand/collapse
-- **`CardViewDialogs.tsx`** (~150 LOC) — Add Card, Bulk Import, Move/Link dijalozi
+**getRetrievability**
+- New section → 0
+- stability ≤ 0 → 0
+- Just reviewed → ~100
+- Elapsed time reduces value
 
-### 2. Dekompozicija `CardList.tsx` (455 LOC → ~3 fajla)
+**getCardScore, getSectionScore**
+- New → 0
+- High stability + low difficulty → high score
+- Bounded 0-100
 
-Razdvojiti na:
-- **`CardList.tsx`** (~200 LOC) — virtualizacija, filtriranje, sortiranje
-- **`CardRow.tsx`** (~150 LOC) — memo-ized row renderer (trenutno inline)
-- **`useCardListFilters.ts`** (~80 LOC) — filter/sort logika (useMemo izvlačenje)
+**getDueCards, getDueSections**
+- Filtrira samo non-New sa nextReview ≤ now
+- Sortira po nextReview
 
-### 3. Eliminacija `useLiveQuery` iz `CategoryMindMaps.tsx`
+**getStats**
+- Pravilno broji due, total, learnedSections, leechCount
 
-Trenutno koristi `useLiveQuery` za mind map listu. Zamijeniti sa:
-- Direktan `db.mindMaps.where()` poziv u useEffect
-- Event bus listener za `MINDMAPS_UPDATED`
-- Lokalni state umjesto reactive query
+### 2. `src/test/planner-logic.test.ts` — Planner pure funkcije (~12 testova)
 
-(CategoryView `useLiveQuery` je kompleksniji — ostaviti za zasebnu iteraciju)
+Pokriva pure funkcije iz `planner-storage.ts` (bez IDB zavisnosti):
 
-### 4. Pruning `dexie-react-hooks`
+- `calcVelocity` — prosjek po danu za zadnjih N dana
+- `calcEstimatedFinish` — velocity 0 → null, remaining 0 → today
+- `getPlannerStatus` — green/yellow/red/no-goal granice
+- `calcRebalancedQuota` — no goal → null, korektna distribucija
+- `calcDisciplineStatus` — diligent/neutral/lazy pragovi
+- `calcDailyTimeRecommendation` — konverzija sekcija u minute/sate
+- `calcLearningReviewRatio` — 4 faze (0-20, 20-50, 50-80, 80+)
+- `getProjectionText` — velocity 0 poruka, remaining 0 poruka
 
-**Ne može se ukloniti** dok CategoryView koristi useLiveQuery. Ali nakon eliminacije iz CategoryMindMaps, ostaje samo 1 potrošač — priprema za buduće uklanjanje.
+### 3. `src/test/source-coverage.test.ts` — Coverage matching (~8 testova)
+
+- `stripHtmlText` — uklanja tagove, dekodira entitete
+- `normalizeMatchText` — lowercase + trim + collapse whitespace
+- `collectSourceCoverageModules` — filtrira po sourceId, sourceModules vs fallback
+- Snippet matching — snippet < 10 chars se odbacuje
+
+## Tehnički detalji
+
+- Svi testovi koriste **pure funkcije** — nema DB/DOM zavisnosti
+- `spaced-repetition.test.ts` mora mockati `localStorage` za `getCachedRetention` (ili proslijeđivati explicit targetRetention)
+- `planner-logic.test.ts` testira samo exportovane pure funkcije, ne IDB operacije
+- Helper za kreiranje test sekcija i kartica na vrhu svakog fajla
 
 ## Fajlovi
 
-| Fajl | Promjena |
-|------|----------|
-| `CardViewMode.tsx` | Smanjiti na ~200 LOC, ekstraktovati tabelu i dijaloge |
-| `CardViewTable.tsx` | **NOVI** — tabela kartica |
-| `CardViewDialogs.tsx` | **NOVI** — dijalozi za add/bulk/move |
-| `CardList.tsx` | Smanjiti na ~200 LOC, ekstraktovati row i filtere |
-| `CardRow.tsx` | **NOVI** — memo row renderer |
-| `useCardListFilters.ts` | **NOVI** — filter/sort hook |
-| `CategoryMindMaps.tsx` | Zamijeniti useLiveQuery sa event-bus |
-
-## Šta se NE radi (i zašto)
-- **Lazy recharts**: Već efektivno lazy-loaded kroz ruta code-splitting
-- **Uklanjanje `dexie-react-hooks`**: Ostaje 1 potrošač (CategoryView) — premalo za breaking change
+| Fajl | Tip | ~Testova |
+|------|-----|----------|
+| `src/test/spaced-repetition.test.ts` | **NOVI** | ~25 |
+| `src/test/planner-logic.test.ts` | **NOVI** | ~12 |
+| `src/test/source-coverage.test.ts` | **NOVI** | ~8 |
 
 ## Scope
-- 4 postojeća fajla modificirana, 3 nova kreirana
-- ~0 LOC neto (redistribucija, ne novi kod)
-- Nema promjene ponašanja
+- 3 nova fajla, ~45 testova ukupno
+- Pokriva 3 najkritičnija modula
+- Podiže test coverage sa 3/10 na ~5-6/10
 
