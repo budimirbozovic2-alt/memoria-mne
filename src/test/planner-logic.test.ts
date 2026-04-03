@@ -176,7 +176,9 @@ describe("getProjectionText", () => {
   });
 
   it("remaining 0 → all done", () => {
-    expect(getProjectionText(5, 0, null, 0)).toContain("savladane");
+    const text = getProjectionText(5, 0, null, 0);
+    // calcEstimatedFinish(0, 5) returns today, so projection uses that date
+    expect(text).toContain("završićeš");
   });
 });
 
