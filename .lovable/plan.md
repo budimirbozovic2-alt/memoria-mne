@@ -1,46 +1,67 @@
 
 
-# Fix: UUID prikaz u Podešavanjima (CategoryManager)
+# Fix: Window kontrole, Diamond handle-ovi, i unos opisa u čvorovima
 
-## Problem
+## Analiza 3 problema
 
-`CategoryManager.tsx` prima `categories: string[]` (niz UUID-ova) i prikazuje ih direktno:
-- **L133**: `{cat}` — UUID umjesto naziva predmeta
-- **L40**: Edit prefill koristi UUID
-- **L271**: Delete confirmation prikazuje UUID
+### 1. Dugmad Minimize/Maximize/Close — NE BUG, očekivano ponašanje
 
-## Promjene
+Ova dugmad koriste `window.electronAPI` koje postoji **samo u Electron desktop aplikaciji**. U web preview-u (`lovable.app`), `electronAPI` je `undefined` i dugmad su namjerno no-op. Ovo je dokumentovano i po dizajnu — funkcionišu samo kad se aplikacija pokrene kao Electron desktop app.
 
-### 1. `CategoryManager.tsx` — dodati `categoryRecords` prop, lookup nazive
+**Akcija**: Nema promjene koda. Ovo je ograničenje web okruženja.
 
-| Lokacija | Promjena |
-|----------|----------|
-| Props interface | Dodati `categoryRecords: CategoryRecord[]` |
-| L133 | `{cat}` → `{nameMap[cat] \|\| cat}` |
-| L38-41 | `startEdit` — prefill sa display name umjesto UUID |
-| L44 | `confirmEdit` — proslijediti UUID + novi naziv u `onRename` |
-| L271 | Delete dialog — prikazati display name |
+---
 
-Napraviti `nameMap` sa `useMemo`:
+### 2. Diamond čvorovi — handle-ovi blokirani rotiranim pozadinskim divom
+
+**Problem**: Rotirani pozadinski div (L135-142) nema `pointer-events-none`, pa presreće klikove na handle-ove koji su ispod njega. Handle-ovi na Top i Left su djelimično ili potpuno blokirani.
+
+**Fix**: Dodati `pointer-events-none` na rotirani pozadinski div.
+
+| Fajl | Promjena |
+|------|----------|
+| `MindMapNode.tsx` L135-142 | Dodati `pointer-events-none` klasu na rotirani div |
+
+---
+
+### 3. Opis čvora se zatvara kad se klikne — `editing` state race condition
+
+**Problem**: Kad se double-click aktivira `editing=true`:
+1. Label `<input autoFocus>` dobije fokus
+2. Description `<textarea>` se prikaže ispod
+3. Korisnik klikne textarea → label input gubi fokus → `onBlur` poziva `setEditing(false)` → textarea nestaje
+
+**Fix**: Razdvojiti na dva stanja: `editingLabel` i `editingDesc`. Label onBlur ne zatvara description, i obrnuto. Alternativno (jednostavnije): koristiti `setTimeout` + `relatedTarget` check u onBlur da ne zatvori editing ako fokus ostaje unutar čvora.
+
+Najčistiji pristup: umjesto jednog `editing` boolean-a, koristiti ref na wrapper div i provjeriti da li `relatedTarget` ostaje unutar njega:
+
 ```ts
-const nameMap = useMemo(() => {
-  const m: Record<string, string> = {};
-  categoryRecords.forEach(r => { m[r.id] = r.name; });
-  return m;
-}, [categoryRecords]);
+const nodeRef = useRef<HTMLDivElement>(null);
+
+// U onBlur label inputa:
+onBlur={(e) => {
+  // Ako fokus ostaje unutar čvora, ne zatvori editing
+  if (nodeRef.current?.contains(e.relatedTarget as Node)) {
+    updateField("label", e.target.value);
+    return;
+  }
+  updateField("label", e.target.value);
+  setEditing(false);
+}}
 ```
 
-### 2. `SystemTab.tsx` — proslijediti `categoryRecords`
+Isti pattern za textarea onBlur — ne zatvori editing ako fokus ide na label input.
 
-- Dodati `categoryRecords` u Props interface
-- Proslijediti ga u `<CategoryManager>`
+Dodatno: dodati description textarea i za **diamond** čvorove (trenutno nemaju).
 
-### 3. `SRSettingsPanel.tsx` — proslijediti `categoryRecords`
+| Fajl | Promjena |
+|------|----------|
+| `MindMapNode.tsx` L55-248 | Dodati `nodeRef`, ažurirati onBlur logiku za label i textarea, dodati description za diamond |
 
-- Dodati `categoryRecords` iz `useCategoryData()`
-- Proslijediti u `<SystemTab categoryRecords={categoryRecords}>`
+---
 
 ## Scope
-- 3 fajla, ~15 linija promjena
-- Eliminacija UUID prikaza u Settings/Sistem tabu
+- 1 fajl: `MindMapNode.tsx`
+- ~20 linija promjena
+- Fiksira 2 od 3 prijavljena problema (treći je po dizajnu)
 
