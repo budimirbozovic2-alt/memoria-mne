@@ -63,7 +63,7 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
   // ─── DOCX file handling ───────────────────────────────
   const handleDocxFile = useCallback(async (file: File) => {
     if (!file.name.endsWith(".docx")) {
-      toast({ title: "Pogrešan format", description: "Podržani su samo .docx fajlovi." });
+      toast.error("Pogrešan format", { description: "Podržani su samo .docx fajlovi." });
       return;
     }
     setDocxParsing(true);
