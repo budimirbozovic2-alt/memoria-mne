@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { Clock, RefreshCw, Shield, Flame, Zap, Lightbulb, AlertTriangle, Settings2, BookOpen, Brain } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
