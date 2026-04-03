@@ -76,6 +76,9 @@ export interface DisciplineTrendPoint {
   diligentPct: number;
 }
 
+/** Re-export stability type for planner usage */
+export type { CategoryStabilityInfo } from "@/lib/analytics/stability";
+
 /** Recharts tooltip payload item */
 export interface RechartsPayloadItem {
   name: string;
