@@ -37,126 +37,173 @@ function createBrownBuffer(ctx: AudioContext): AudioBuffer {
   return buf;
 }
 
-// ── Rain: filtered white noise + random drip impulses ──
+// ── Rain: stereo cascading LP filters + soft droplet bursts ──
 function createRainBuffer(ctx: AudioContext): AudioBuffer {
-  const len = ctx.sampleRate * 3;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  // Band-passed noise for steady rain
-  let b0 = 0, b1 = 0;
-  for (let i = 0; i < len; i++) {
-    const w = Math.random() * 2 - 1;
-    // Simple low-pass for body
-    b0 = 0.95 * b0 + 0.05 * w;
-    b1 = 0.9 * b1 + 0.1 * b0;
-    let sample = b1 * 2.5;
-    // Random drip patter
-    if (Math.random() < 0.003) {
-      sample += (Math.random() * 2 - 1) * 0.6;
+  const sr = ctx.sampleRate;
+  const len = sr * 5;
+  const buf = ctx.createBuffer(2, len, sr);
+  const L = buf.getChannelData(0);
+  const R = buf.getChannelData(1);
+
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ch === 0 ? L : R;
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      b0 = 0.97 * b0 + 0.03 * w;
+      b1 = 0.95 * b1 + 0.05 * b0;
+      b2 = 0.93 * b2 + 0.07 * b1;
+      d[i] = b2 * 3.0;
+
+      if (Math.random() < 0.002) {
+        const dLen = Math.floor(sr * (0.008 + Math.random() * 0.015));
+        let dLp = 0;
+        for (let j = 0; j < dLen && (i + j) < len; j++) {
+          const env = 1 - j / dLen;
+          const n = Math.random() * 2 - 1;
+          dLp = 0.7 * dLp + 0.3 * n;
+          d[i + j] += dLp * env * env * 0.35;
+        }
+      }
     }
-    d[i] = sample;
   }
   return buf;
 }
 
-// ── Forest: very low-freq rumble + bird-like chirps ──
+// ── Forest: breathing wind + FM bird chirps + leaf rustle ──
 function createForestBuffer(ctx: AudioContext): AudioBuffer {
-  const len = ctx.sampleRate * 4;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const sr = ctx.sampleRate;
+  const len = sr * 6;
+  const buf = ctx.createBuffer(1, len, sr);
   const d = buf.getChannelData(0);
-  let lp = 0;
+  let lp1 = 0, lp2 = 0, lp3 = 0;
+
   for (let i = 0; i < len; i++) {
-    const t = i / ctx.sampleRate;
-    // Wind: very low-passed noise
+    const t = i / sr;
     const w = Math.random() * 2 - 1;
-    lp = 0.98 * lp + 0.02 * w;
-    let sample = lp * 1.8;
-    // Occasional bird chirp (sine burst)
-    if (Math.random() < 0.0004) {
-      const chirpLen = Math.floor(ctx.sampleRate * (0.03 + Math.random() * 0.06));
-      const freq = 2000 + Math.random() * 3000;
-      for (let j = 0; j < chirpLen && (i + j) < len; j++) {
-        const env = 1 - j / chirpLen;
-        d[i + j] += Math.sin(2 * Math.PI * freq * j / ctx.sampleRate) * env * 0.15;
+    lp1 = 0.985 * lp1 + 0.015 * w;
+    lp2 = 0.98 * lp2 + 0.02 * lp1;
+    lp3 = 0.975 * lp3 + 0.025 * lp2;
+    const breath = 0.7 + 0.3 * Math.sin(2 * Math.PI * 0.12 * t);
+    d[i] = lp3 * 2.2 * breath;
+
+    if (Math.random() < 0.0003) {
+      const cLen = Math.floor(sr * (0.05 + Math.random() * 0.1));
+      const baseFreq = 2500 + Math.random() * 2500;
+      const modDepth = 300 + Math.random() * 500;
+      const modRate = 8 + Math.random() * 12;
+      for (let j = 0; j < cLen && (i + j) < len; j++) {
+        const env = Math.sin(Math.PI * j / cLen);
+        const freq = baseFreq + modDepth * Math.sin(2 * Math.PI * modRate * j / sr);
+        d[i + j] += Math.sin(2 * Math.PI * freq * j / sr) * env * 0.08;
       }
     }
-    d[i] += sample;
-  }
-  return buf;
-}
 
-// ── Lo-fi hum: warm low-frequency drone + vinyl crackle ──
-function createLofiBuffer(ctx: AudioContext): AudioBuffer {
-  const len = ctx.sampleRate * 3;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) {
-    const t = i / ctx.sampleRate;
-    // Warm drone (layered low sines)
-    let sample = Math.sin(2 * Math.PI * 60 * t) * 0.12
-               + Math.sin(2 * Math.PI * 90 * t) * 0.08
-               + Math.sin(2 * Math.PI * 120 * t + 0.3) * 0.05;
-    // Vinyl crackle
-    if (Math.random() < 0.008) {
-      sample += (Math.random() * 2 - 1) * 0.25;
-    }
-    // Subtle filtered noise bed
-    sample += (Math.random() * 2 - 1) * 0.03;
-    d[i] = sample;
-  }
-  return buf;
-}
-
-// ── Café: murmur of voices + clinking + espresso machine hiss ──
-function createCafeBuffer(ctx: AudioContext): AudioBuffer {
-  const len = ctx.sampleRate * 4;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  let lp1 = 0, lp2 = 0;
-  for (let i = 0; i < len; i++) {
-    const w = Math.random() * 2 - 1;
-    // Murmur: heavily low-passed noise (voices)
-    lp1 = 0.97 * lp1 + 0.03 * w;
-    lp2 = 0.95 * lp2 + 0.05 * lp1;
-    let sample = lp2 * 2.0;
-    // Occasional clink (high-freq ping)
     if (Math.random() < 0.001) {
-      const freq = 3000 + Math.random() * 2000;
-      const pLen = Math.floor(ctx.sampleRate * 0.02);
-      for (let j = 0; j < pLen && (i + j) < len; j++) {
-        d[i + j] += Math.sin(2 * Math.PI * freq * j / ctx.sampleRate) * (1 - j / pLen) * 0.08;
+      const rLen = Math.floor(sr * (0.01 + Math.random() * 0.02));
+      for (let j = 0; j < rLen && (i + j) < len; j++) {
+        const env = 1 - j / rLen;
+        const hp = Math.random() * 2 - 1 - (Math.random() * 2 - 1) * 0.5;
+        d[i + j] += hp * env * 0.06;
       }
     }
-    // Espresso machine hiss (burst of filtered noise)
-    if (Math.random() < 0.0002) {
-      const hLen = Math.floor(ctx.sampleRate * (0.3 + Math.random() * 0.5));
-      for (let j = 0; j < hLen && (i + j) < len; j++) {
-        const env = Math.sin(Math.PI * j / hLen);
-        d[i + j] += (Math.random() * 2 - 1) * env * 0.06;
+  }
+  return buf;
+}
+
+// ── Lo-fi hum: filtered brown noise + wow/flutter + vinyl crackle + warm pad ──
+function createLofiBuffer(ctx: AudioContext): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const len = sr * 4;
+  const buf = ctx.createBuffer(1, len, sr);
+  const d = buf.getChannelData(0);
+  let bn = 0;
+
+  for (let i = 0; i < len; i++) {
+    const t = i / sr;
+    const w = Math.random() * 2 - 1;
+    bn = (bn + 0.02 * w) / 1.02;
+    let sample = bn * 2.0;
+
+    const flutter = 1 + 0.015 * Math.sin(2 * Math.PI * 0.4 * t) + 0.008 * Math.sin(2 * Math.PI * 1.3 * t);
+    sample *= flutter;
+
+    sample += Math.sin(2 * Math.PI * 110 * t + Math.sin(2 * Math.PI * 0.15 * t) * 0.5) * 0.04;
+    sample += Math.sin(2 * Math.PI * 110.8 * t) * 0.03;
+    sample += Math.sin(2 * Math.PI * 165 * t + 0.7) * 0.02;
+
+    if (Math.random() < 0.006) {
+      const cLen = Math.floor(sr * 0.003);
+      for (let j = 0; j < cLen && (i + j) < len; j++) {
+        d[i + j] += (Math.random() * 2 - 1) * Math.exp(-j / (cLen * 0.2)) * 0.15;
       }
     }
+
     d[i] += sample;
   }
   return buf;
 }
 
-// ── Space drone: deep sub-bass + harmonic overtones + cosmic shimmer ──
-function createSpaceBuffer(ctx: AudioContext): AudioBuffer {
-  const len = ctx.sampleRate * 5;
-  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+// ── Café: dual murmur layers + amplitude modulation + glass clinks ──
+function createCafeBuffer(ctx: AudioContext): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const len = sr * 5;
+  const buf = ctx.createBuffer(1, len, sr);
   const d = buf.getChannelData(0);
+  let m1 = 0, m2 = 0, m3 = 0, m4 = 0;
+
   for (let i = 0; i < len; i++) {
-    const t = i / ctx.sampleRate;
-    // Deep sub-bass drone with slow modulation
-    const mod = Math.sin(2 * Math.PI * 0.07 * t);
-    let sample = Math.sin(2 * Math.PI * 40 * t) * (0.10 + 0.03 * mod)
-               + Math.sin(2 * Math.PI * 60 * t + 0.5) * 0.06
-               + Math.sin(2 * Math.PI * 80 * t + 1.2) * 0.04;
-    // Harmonic shimmer (slow-beating high partials)
-    sample += Math.sin(2 * Math.PI * 200 * t + Math.sin(2 * Math.PI * 0.3 * t) * 2) * 0.015;
-    sample += Math.sin(2 * Math.PI * 320 * t + Math.sin(2 * Math.PI * 0.2 * t) * 3) * 0.01;
-    // Cosmic dust (very sparse filtered noise)
-    sample += (Math.random() * 2 - 1) * 0.015;
+    const t = i / sr;
+    const w1 = Math.random() * 2 - 1;
+    const w2 = Math.random() * 2 - 1;
+
+    m1 = 0.97 * m1 + 0.03 * w1;
+    m2 = 0.94 * m2 + 0.06 * m1;
+    m3 = 0.96 * m3 + 0.04 * w2;
+    m4 = 0.92 * m4 + 0.08 * m3;
+
+    const mod1 = 0.6 + 0.4 * Math.sin(2 * Math.PI * 0.08 * t);
+    const mod2 = 0.6 + 0.4 * Math.sin(2 * Math.PI * 0.13 * t + 1.5);
+    let sample = m2 * 1.5 * mod1 + m4 * 1.0 * mod2;
+
+    if (Math.random() < 0.0008) {
+      const freq0 = 3500 + Math.random() * 1500;
+      const pLen = Math.floor(sr * 0.04);
+      for (let j = 0; j < pLen && (i + j) < len; j++) {
+        const env = Math.exp(-j / (pLen * 0.15));
+        const freq = freq0 * (1 - 0.15 * j / pLen);
+        d[i + j] += Math.sin(2 * Math.PI * freq * j / sr) * env * 0.05;
+      }
+    }
+
+    d[i] += sample;
+  }
+  return buf;
+}
+
+// ── Space drone: audible fundamentals + FM shimmer + filtered noise tail ──
+function createSpaceBuffer(ctx: AudioContext): AudioBuffer {
+  const sr = ctx.sampleRate;
+  const len = sr * 6;
+  const buf = ctx.createBuffer(1, len, sr);
+  const d = buf.getChannelData(0);
+  let noiseLp = 0;
+
+  for (let i = 0; i < len; i++) {
+    const t = i / sr;
+    const pulse = 0.7 + 0.3 * Math.sin(2 * Math.PI * 0.06 * t);
+
+    let sample = Math.sin(2 * Math.PI * 85 * t) * 0.10 * pulse
+               + Math.sin(2 * Math.PI * 127 * t + 0.8) * 0.06 * pulse
+               + Math.sin(2 * Math.PI * 150 * t + 1.5) * 0.04;
+
+    sample += Math.sin(2 * Math.PI * 240 * t + Math.sin(2 * Math.PI * 0.25 * t) * 4) * 0.02;
+    sample += Math.sin(2 * Math.PI * 360 * t + Math.sin(2 * Math.PI * 0.18 * t) * 5) * 0.015;
+
+    const n = Math.random() * 2 - 1;
+    noiseLp = 0.997 * noiseLp + 0.003 * n;
+    sample += noiseLp * 0.4;
+
     d[i] = sample;
   }
   return buf;
