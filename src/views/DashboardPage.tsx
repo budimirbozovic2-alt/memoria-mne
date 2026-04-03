@@ -47,6 +47,7 @@ export default function DashboardPage() {
             stats={stats}
             categoryStats={categoryStats}
             categories={categories}
+            categoryRecords={categoryRecords}
             subcategories={subcategories}
             cards={cards}
             reviewLog={reviewLog}

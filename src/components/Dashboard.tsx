@@ -85,6 +85,10 @@ export default function Dashboard({ stats, categoryStats, categories, categoryRe
             </motion.div>
           )}
 
+          {studyFlowData && (
+            <StudyFlowWidget data={studyFlowData} />
+          )}
+
           {wc.showBriefing && (
             <DailyBriefing
               briefText={briefText}

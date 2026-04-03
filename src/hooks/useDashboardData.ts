@@ -269,5 +269,6 @@ export function useDashboardData(
     wc, todayReviews, dailyGoal, goalProgress, pendingFirstReview, streak,
     focusRatio, actualRatio, autoSuggestion, storageUsage, plannerData,
     velocityData, weakestCategories, briefText, statusIcons, statusColor, statusMessage,
+    studyFlowData,
   };
 }
