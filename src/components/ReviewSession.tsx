@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Card, SRSettings, getDueSections, SectionState, getRetrievability, isLeech } from "@/lib/spaced-repetition";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
+import { idbLoadSettings, idbSaveSettings } from "@/lib/db";
 import { ReviewMode, DueItem, ViewWidth, ReviewSessionProps } from "./review/review-constants";
 import ReviewSetup from "./review/ReviewSetup";
 import ReviewCard from "./review/ReviewCard";
