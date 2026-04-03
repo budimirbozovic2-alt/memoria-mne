@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Card, SRSettings, getDueSections, SectionState, getRetrievability, isLeech } from "@/lib/spaced-repetition";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
+import { idbLoadSettings, idbSaveSettings } from "@/lib/db";
 import { ReviewMode, DueItem, ViewWidth, ReviewSessionProps } from "./review/review-constants";
 import ReviewSetup from "./review/ReviewSetup";
 import ReviewCard from "./review/ReviewCard";
@@ -24,28 +25,35 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
   const [savedSession, setSavedSession] = useState<SavedSessionState | null>(null);
   const reviewStartRef = useRef(Date.now());
 
-  // Check for saved session on mount
+  // Check for saved session on mount (IDB with localStorage migration)
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SESSION_KEY);
-      if (raw) {
-        const parsed: unknown = JSON.parse(raw);
-        if (
-          typeof parsed === "object" && parsed !== null &&
-          "timestamp" in parsed && typeof (parsed as Record<string, unknown>).timestamp === "number" &&
-          Number.isFinite((parsed as Record<string, unknown>).timestamp) &&
-          Date.now() - ((parsed as SavedSessionState).timestamp) < 2 * 60 * 60 * 1000
-        ) {
-          setSavedSession(parsed as SavedSessionState);
-        } else {
-          localStorage.removeItem(SESSION_KEY);
-        }
+    (async () => {
+      let state = await idbLoadSettings<SavedSessionState | null>(SESSION_KEY, null);
+      // Migrate from localStorage if IDB empty
+      if (!state) {
+        try {
+          const raw = localStorage.getItem(SESSION_KEY);
+          if (raw) {
+            state = JSON.parse(raw) as SavedSessionState;
+            await idbSaveSettings(SESSION_KEY, state);
+            localStorage.removeItem(SESSION_KEY);
+          }
+        } catch (_) {}
       }
-    } catch (_) {}
+      if (
+        state && typeof state === "object" &&
+        typeof state.timestamp === "number" && Number.isFinite(state.timestamp) &&
+        Date.now() - state.timestamp < 2 * 60 * 60 * 1000
+      ) {
+        setSavedSession(state);
+      } else if (state) {
+        await idbSaveSettings(SESSION_KEY, null);
+      }
+    })();
   }, []);
 
   const clearSavedSession = useCallback(() => {
-    try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+    idbSaveSettings(SESSION_KEY, null).catch(() => {});
   }, []);
 
   // Log activity when session finishes
@@ -59,8 +67,8 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
   // Save session state for pause/resume
   const saveSessionState = useCallback(() => {
     if (mode === null || finished) return;
-    const state = { mode, randomIndex, timestamp: Date.now() };
-    try { localStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch (_) {}
+    const state: SavedSessionState = { mode, randomIndex, timestamp: Date.now() };
+    idbSaveSettings(SESSION_KEY, state).catch(() => {});
   }, [mode, randomIndex, finished]);
 
   const handlePauseSession = useCallback(() => {
