@@ -2,6 +2,26 @@ const { BrowserWindow, Menu, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+// ── Resolve preload path for both dev and packaged builds ──
+function resolvePreloadPath(isDev, baseDir) {
+  // Dev mode: preload.cjs is in project root
+  if (isDev) {
+    return path.join(baseDir, 'preload.cjs');
+  }
+  // Packaged: try process.resourcesPath first (extraFiles destination)
+  const candidates = [
+    path.join(process.resourcesPath, 'preload.cjs'),
+    path.join(baseDir, 'preload.cjs'),
+    path.join(baseDir, '..', 'preload.cjs'),
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  // Fallback — log warning, return first candidate
+  console.error('[CODEX] preload.cjs not found in any candidate path:', candidates);
+  return candidates[0];
+}
+
 // ── Resolve paths correctly for both dev and packaged builds ──
 function getDistPath(isDev, baseDir, ...segments) {
   if (isDev) return path.join(baseDir, ...segments);
