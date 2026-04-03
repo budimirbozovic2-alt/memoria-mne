@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { startBrownNoise, stopBrownNoise, setBrownNoiseVolume, isBrownNoisePlaying } from "@/lib/brown-noise";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { startAmbient, stopAmbient, setAmbientVolume, isAmbientPlaying, AMBIENT_TRACKS, type AmbientTrack } from "@/lib/ambient-audio";
 import { addPomodoroEntry, getPomodoroStats } from "@/lib/storage";
 import { loadAppSettings } from "@/lib/app-settings";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export default function ZenMode({ active, onToggle }: Props) {
   const [cycleCount, setCycleCount] = useState(0);
   const [noiseOn, setNoiseOn] = useState(false);
   const [noiseVolume, setNoiseVolume] = useState(0.3);
+  const [ambientTrack, setAmbientTrack] = useState<AmbientTrack>("brown");
   const [pomodoroStats, setPomodoroStats] = useState<Awaited<ReturnType<typeof getPomodoroStats>>>({ today: 0, todayMinutes: 0, week: 0, weekMinutes: 0, total: 0 });
 
   // Load pomodoro stats on mount
@@ -42,7 +44,7 @@ export default function ZenMode({ active, onToggle }: Props) {
     } else {
       if (document.fullscreenElement) document.exitFullscreen?.().catch((e) => console.warn("[fullscreen]", e));
       setTimerRunning(false);
-      if (isBrownNoisePlaying()) { stopBrownNoise(); setNoiseOn(false); }
+      if (isAmbientPlaying()) { stopAmbient(); setNoiseOn(false); }
     }
   }, [active]);
 
@@ -98,13 +100,21 @@ export default function ZenMode({ active, onToggle }: Props) {
   }, [seconds, phase, playChime, cycleCount, pom, FOCUS_DURATION, BREAK_DURATION, LONG_BREAK_DURATION]);
 
   const toggleNoise = useCallback(() => {
-    if (noiseOn) { stopBrownNoise(); setNoiseOn(false); }
-    else { startBrownNoise(noiseVolume); setNoiseOn(true); }
+    if (noiseOn) { stopAmbient(); setNoiseOn(false); }
+    else { startAmbient(ambientTrack, noiseVolume); setNoiseOn(true); }
+  }, [noiseOn, noiseVolume, ambientTrack]);
+
+  const handleTrackChange = useCallback((val: AmbientTrack) => {
+    setAmbientTrack(val);
+    if (noiseOn) {
+      stopAmbient();
+      startAmbient(val, noiseVolume);
+    }
   }, [noiseOn, noiseVolume]);
 
   const handleVolumeChange = useCallback((val: number[]) => {
     setNoiseVolume(val[0]);
-    setBrownNoiseVolume(val[0]);
+    setAmbientVolume(val[0]);
   }, []);
 
   const resetTimer = useCallback(() => {
@@ -253,7 +263,7 @@ export default function ZenMode({ active, onToggle }: Props) {
           </div>
         </div>
 
-        {/* Brown Noise */}
+        {/* Ambient Sound */}
         <div className="border-t border-border/50 mx-3" />
         <div className="px-4 py-2.5 space-y-2">
           <div className="flex items-center justify-between">
@@ -268,6 +278,16 @@ export default function ZenMode({ active, onToggle }: Props) {
               {noiseOn ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
             </button>
           </div>
+          <Select value={ambientTrack} onValueChange={handleTrackChange}>
+            <SelectTrigger className="h-7 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {AMBIENT_TRACKS.map(t => (
+                <SelectItem key={t.id} value={t.id} className="text-xs">{t.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {noiseOn && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
               <Slider value={[noiseVolume]} min={0.05} max={1} step={0.05} onValueChange={handleVolumeChange} className="py-1" />
