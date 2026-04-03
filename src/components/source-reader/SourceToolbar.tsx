@@ -13,6 +13,7 @@ interface Props {
   source: Source;
   onBack: () => void;
   onAutoSplit: () => void;
+  onAutoFormat?: () => void;
 }
 
 export const SourceToolbar = memo(function SourceToolbar({ source, onBack, onAutoSplit }: Props) {
