@@ -57,6 +57,13 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
   const [editing, setEditing] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
+  const nodeRef = useRef<HTMLDivElement>(null);
+
+  const handleBlur = useCallback((e: React.FocusEvent, field: string, value: string) => {
+    updateField(field, value);
+    if (nodeRef.current?.contains(e.relatedTarget as Node)) return;
+    setEditing(false);
+  }, []);
 
   const colorOpt = COLOR_OPTIONS.find(c => c.value === (nodeData.color || "default")) || COLOR_OPTIONS[0];
   const shape = (nodeData.shape || "rectangle") as NodeShape;
