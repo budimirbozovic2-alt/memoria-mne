@@ -200,6 +200,7 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
 
   return (
     <div
+      ref={nodeRef}
       className={cn(
         "group relative min-w-[160px] max-w-[250px] border-2 transition-all duration-200 px-4 py-3",
         colorOpt.bg, colorOpt.border, shapeClass,
