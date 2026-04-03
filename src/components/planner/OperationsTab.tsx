@@ -126,6 +126,40 @@ export default function OperationsTab({
         </div>
       </motion.div>
 
+      {/* ─── Retention Risk ─── */}
+      {retentionRisk.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.17 }}
+          className="rounded-xl bg-card border p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Brain className="h-4 w-4 text-primary" />
+            <h3 className="text-sm font-medium">Rizik zaboravljanja do ispita</h3>
+          </div>
+          <p className="text-xs text-muted-foreground">Predmeti sortirani po ugroženosti — projekcija retrievability-ja do dana ispita</p>
+          <div className="space-y-2">
+            {retentionRisk.map(item => {
+              const name = categoryRecords.find(r => r.id === item.category)?.name ?? item.category;
+              const pct = Math.round(item.avgRetrievability * 100);
+              const color = pct < 70 ? "text-destructive" : pct < 85 ? "text-warning" : "text-success";
+              const barColor = pct < 70 ? "bg-destructive" : pct < 85 ? "bg-warning" : "bg-success";
+              return (
+                <div key={item.category} className="flex items-center gap-3">
+                  <span className="text-xs truncate w-40 flex-shrink-0">{name}</span>
+                  <div className="flex-1 h-2 rounded-full bg-secondary overflow-hidden">
+                    <div className={cn("h-full rounded-full transition-all", barColor)} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className={cn("text-xs font-medium tabular-nums w-10 text-right", color)}>{pct}%</span>
+                  {item.criticalSections > 0 && (
+                    <span className="text-[10px] text-destructive flex items-center gap-0.5">
+                      <AlertTriangle className="h-3 w-3" />{item.criticalSections}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
+
       {/* ─── Reality Check ─── */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
         className="rounded-xl bg-card border p-5 space-y-5">
