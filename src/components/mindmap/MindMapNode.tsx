@@ -158,11 +158,24 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
               autoFocus
               className="bg-transparent border-b border-primary text-xs font-bold w-full outline-none text-foreground text-center pointer-events-auto nodrag nowheel nopan"
               defaultValue={nodeData.label}
-              onBlur={(e) => { updateField("label", e.target.value); setEditing(false); }}
+              onBlur={(e) => handleBlur(e, "label", e.target.value)}
               onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             />
           ) : (
             <span className="text-xs font-bold text-foreground leading-tight pointer-events-auto">{nodeData.label}</span>
+          )}
+          {editing && (
+            <textarea
+              className="bg-transparent border border-border rounded-lg text-[10px] w-full outline-none text-foreground mt-1 p-1 resize-none focus:ring-1 focus:ring-primary pointer-events-auto nodrag nowheel nopan"
+              rows={2}
+              defaultValue={nodeData.description || ""}
+              placeholder="Opis..."
+              onKeyDown={(e) => e.stopPropagation()}
+              onBlur={(e) => handleBlur(e, "description", e.target.value)}
+            />
+          )}
+          {nodeData.description && !editing && (
+            <p className="text-[9px] text-muted-foreground mt-0.5 line-clamp-2 leading-tight pointer-events-auto">{nodeData.description}</p>
           )}
         </div>
         {selected && (
