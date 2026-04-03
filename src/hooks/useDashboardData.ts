@@ -7,8 +7,11 @@ import {
   loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus,
   getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt,
   recordDayDiscipline, loadDisciplineLog,
-  getDailyMappedCount, autoRedistributeIfNeeded
+  getDailyMappedCount, autoRedistributeIfNeeded,
+  generateStudyPlan, calcLearningReviewRatio,
 } from "@/lib/planner-storage";
+import { CategoryRecord } from "@/lib/db";
+import { StudyFlowData } from "@/components/dashboard/StudyFlowWidget";
 import { calcEnergyRecommendation } from "@/lib/cognitive-analytics";
 import { loadAppSettings } from "@/lib/app-settings";
 import { useDeferredCompute } from "@/hooks/useDeferredCompute";
@@ -83,6 +86,7 @@ export function useDashboardData(
   stats: DashboardStats,
   categoryStats: Record<string, { score: number; total: number; due: number }>,
   categories: string[],
+  categoryRecords: CategoryRecord[],
   cards: SRCard[],
   reviewLog: ReviewLogEntry[],
   srSettings: SRSettings,
@@ -186,10 +190,38 @@ export function useDashboardData(
   const weakestCategories = useMemo(() => {
     return categories
       .filter(cat => categoryStats[cat]?.total > 0)
-      .map(cat => ({ name: cat, score: categoryStats[cat].score, total: categoryStats[cat].total }))
+      .map(cat => ({
+        name: categoryRecords.find(r => r.id === cat)?.name || cat,
+        score: categoryStats[cat].score,
+        total: categoryStats[cat].total,
+      }))
       .sort((a, b) => a.score - b.score)
       .slice(0, 3);
-  }, [categories, categoryStats]);
+  }, [categories, categoryStats, categoryRecords]);
+
+  const studyFlowData = useDeferredCompute<StudyFlowData | null>(() => {
+    const config = loadPlanner();
+    if (!config.finalGoalDate || categoryRecords.length === 0) return null;
+    const plans = generateStudyPlan(config, categoryRecords, cards);
+    if (plans.length === 0) return null;
+    const today = startOfDay(new Date()).getTime();
+    const active = plans.find(p => startOfDay(p.startDate).getTime() <= today && today < startOfDay(p.endDate).getTime());
+    const focus = active || plans[0];
+    const overallPct = stats.totalSections > 0 ? Math.round((stats.learnedSections / stats.totalSections) * 100) : 0;
+    const ratio = calcLearningReviewRatio(overallPct);
+    const dailyMapped = getDailyMappedCount();
+    const suggestion = getSmartSuggestion(null, cards, config.finalGoalDate, calcVelocity(reviewLog, 7), config.bufferPercent ?? 15);
+    const dailyQuota = suggestion?.suggestedToday ?? 0;
+    return {
+      focusSubject: focus.categoryName,
+      dailyMapped,
+      dailyQuota,
+      learnPct: ratio.learnPct,
+      reviewPct: ratio.reviewPct,
+      ratioLabel: ratio.label,
+      overallPct,
+    };
+  }, [stats, categoryRecords, cards, reviewLog]);
 
   const briefText = useMemo(() => {
     const parts: string[] = [];
@@ -237,5 +269,6 @@ export function useDashboardData(
     wc, todayReviews, dailyGoal, goalProgress, pendingFirstReview, streak,
     focusRatio, actualRatio, autoSuggestion, storageUsage, plannerData,
     velocityData, weakestCategories, briefText, statusIcons, statusColor, statusMessage,
+    studyFlowData,
   };
 }

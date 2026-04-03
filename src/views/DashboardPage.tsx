@@ -10,7 +10,7 @@ const DashboardOnboarding = lazy(() => import("@/components/DashboardOnboarding"
 
 export default function DashboardPage() {
   const { cards, stats, ready } = useCardData();
-  const { categories, subcategories, categoryStats } = useCategoryData();
+  const { categories, categoryRecords, subcategories, categoryStats } = useCategoryData();
   const { reviewLog, srSettings } = useReviewData();
   const { setView } = useUIContext();
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -47,6 +47,7 @@ export default function DashboardPage() {
             stats={stats}
             categoryStats={categoryStats}
             categories={categories}
+            categoryRecords={categoryRecords}
             subcategories={subcategories}
             cards={cards}
             reviewLog={reviewLog}
