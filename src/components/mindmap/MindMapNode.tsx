@@ -59,12 +59,6 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
   const [iconSearch, setIconSearch] = useState("");
   const nodeRef = useRef<HTMLDivElement>(null);
 
-  const handleBlur = useCallback((e: React.FocusEvent, field: string, value: string) => {
-    updateField(field, value);
-    if (nodeRef.current?.contains(e.relatedTarget as Node)) return;
-    setEditing(false);
-  }, []);
-
   const colorOpt = COLOR_OPTIONS.find(c => c.value === (nodeData.color || "default")) || COLOR_OPTIONS[0];
   const shape = (nodeData.shape || "rectangle") as NodeShape;
   const iconEntry = ICON_REGISTRY.find(i => i.value === (nodeData.icon || "file-text"));
@@ -72,6 +66,12 @@ function MindMapNodeComponent({ id, data, selected }: NodeProps) {
   const updateField = useCallback((field: string, value: string) => {
     nodeData.onUpdate?.(id, { [field]: value });
   }, [id, nodeData.onUpdate]);
+
+  const handleBlur = useCallback((e: React.FocusEvent, field: string, value: string) => {
+    updateField(field, value);
+    if (nodeRef.current?.contains(e.relatedTarget as Node)) return;
+    setEditing(false);
+  }, [updateField]);
 
   const filteredIcons = iconSearch
     ? ICON_REGISTRY.filter(i => i.label.toLowerCase().includes(iconSearch.toLowerCase()) || i.value.includes(iconSearch.toLowerCase()))
