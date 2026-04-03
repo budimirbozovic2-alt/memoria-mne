@@ -9,7 +9,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AnimatePresence } from "framer-motion";
 import { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { type PlannerConfig, loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
 import { Moon, Sun, Search, Focus, HelpCircle } from "lucide-react";
 import { setDarkMode } from "@/lib/app-settings";
