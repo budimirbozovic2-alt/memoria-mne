@@ -5,7 +5,7 @@ import { useCategoryData } from "@/contexts/AppContext";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { addCalibrationEntry, addLatencyEntry } from "@/lib/metacognitive-storage";
 import ShortcutsHint from "@/components/ShortcutsHint";
 import { ViewWidth, viewWidthClasses, viewWidthLabels, REVIEW_SHORTCUTS } from "./review-constants";
@@ -32,7 +32,7 @@ export default function ReviewCard({
   card, section, showAnswer, setShowAnswer, onGrade, onLogError, onBack, onPause,
   progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange, modeBadge,
 }: ReviewCardProps) {
-  const { toast } = useToast();
+  
   const { categoryRecords } = useCategoryData();
   const catRecord = categoryRecords.find(r => r.id === card.categoryId);
   const catName = catRecord?.name ?? card.categoryId;
@@ -102,7 +102,7 @@ export default function ReviewCard({
         const selection = window.getSelection()?.toString().trim();
         if (!selection || selection.length < 2) return;
         onLogError(card.id, selection, section.id);
-        toast({ title: "Greška zabilježena", description: `"${selection.length > 40 ? selection.slice(0, 40) + "…" : selection}"` });
+        toast("Greška zabilježena", { description: `"${selection.length > 40 ? selection.slice(0, 40) + "…" : selection}"` });
       }
     };
     window.addEventListener("keydown", handler);

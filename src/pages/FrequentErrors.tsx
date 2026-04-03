@@ -7,7 +7,7 @@ import { getSubcategoryName } from "@/lib/category-service";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 interface AggregatedError {
   text: string;
   count: number;
@@ -93,7 +93,7 @@ function ProgressBar({ count, successes, streak }: { count: number; successes: n
 }
 
 export default function FrequentErrors({ cards, categoryRecords, onClearErrorLog, embedded }: Props) {
-  const { toast } = useToast();
+  
   const [showMastered, setShowMastered] = useState(false);
 
   const catNameMap = useMemo(() => {
@@ -162,7 +162,7 @@ export default function FrequentErrors({ cards, categoryRecords, onClearErrorLog
 
   const handleClear = (cardId: string, cardQuestion: string) => {
     onClearErrorLog(cardId);
-    toast({ title: "Greške obrisane", description: `Obrisane greške za: "${cardQuestion.length > 30 ? cardQuestion.slice(0, 30) + "…" : cardQuestion}"` });
+    toast("Greške obrisane", { description: `Obrisane greške za: "${cardQuestion.length > 30 ? cardQuestion.slice(0, 30) + "…" : cardQuestion}"` });
   };
 
   // Get unique cards with errors for the clear buttons

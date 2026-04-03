@@ -345,8 +345,9 @@ export function loadDisciplineLog(): DisciplineEntry[] {
 
 export function saveDisciplineLog(log: DisciplineEntry[]) {
   _disciplineCache = log;
-  db.disciplineLog.clear().then(() => {
-    if (log.length > 0) db.disciplineLog.bulkAdd(log).catch((e) => console.warn("[silent]", e));
+  db.transaction("rw", db.disciplineLog, async () => {
+    await db.disciplineLog.clear();
+    if (log.length > 0) await db.disciplineLog.bulkAdd(log);
   }).catch((e) => console.warn("[silent]", e));
 }
 

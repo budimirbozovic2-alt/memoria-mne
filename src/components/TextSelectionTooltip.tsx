@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef, ReactNode } from "react";
 
 import { createMnemonicCardFromSelection, loadMnemonicCards, saveMnemonicCards } from "@/lib/mnemonic-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface Props {
   children: ReactNode;
@@ -60,7 +60,7 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
     );
     await saveMnemonicCards([...cards, clone]);
     eventBus.emit(EVENT_TYPES.MNEMONICS_UPDATED, { cardId: clone.id });
-    toast({ title: "Dodano u Mnemo radionicu", description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
+    toast("Dodano u Mnemo radionicu", { description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
     setTooltip(null);
     window.getSelection()?.removeAllRanges();
   }, [tooltip, cardId, question, category, subcategoryId, tags]);
@@ -69,8 +69,7 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
     if (!tooltip || !onMarkKeyPart) return;
     const isAlreadyMarked = (keyParts || []).some(p => p === tooltip.text.trim());
     onMarkKeyPart(tooltip.text);
-    toast({
-      title: isAlreadyMarked ? "Uklonjena oznaka" : "Označeno kao ključni dio",
+    toast(isAlreadyMarked ? "Uklonjena oznaka" : "Označeno kao ključni dio", {
       description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"`,
     });
     setTooltip(null);

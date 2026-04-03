@@ -6,7 +6,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { createSection } from "@/lib/spaced-repetition";
 import { analyzeCoverage } from "@/lib/coverage-analysis";
 import { splitSelection } from "@/lib/selection-split-engine";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { useSourceReaderStore } from "@/store/useSourceReaderStore";
 
 /**
@@ -91,7 +91,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     addCard(essayQuestion.trim(), [{ title: "Odgovor", content: sanitizeHtml(selectedText) }], source.categoryId, undefined, undefined, {
       sourceId: source.id, textAnchor: anchor, originalSourceSnippet: selectedText,
     });
-    toast({ title: "Esejsko pitanje kreirano", description: `Povezano sa izvorom "${source.title}"` });
+    toast.success("Esejsko pitanje kreirano", { description: `Povezano sa izvorom "${source.title}"` });
     setEssayDialogOpen(false);
     incrementDailyMapped(1);
   }, [source, addCard]);
@@ -119,7 +119,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     setSplitDone(true);
     incrementDailyMapped(modules.length);
     window.dispatchEvent(new CustomEvent("codex-mapping-created"));
-    toast({ title: `Generisano 1 esej sa ${modules.length} modula`, description: `${splitResult.rangeLabel} iz "${source.title}"` });
+    toast.success(`Generisano 1 esej sa ${modules.length} modula`, { description: `${splitResult.rangeLabel} iz "${source.title}"` });
   }, [source, addCard]);
 
   // ─── Link to existing ───
@@ -152,7 +152,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     });
     setLinkModalOpen(false);
     setLinkSelectedText("");
-    toast({ title: "Esej uspješno povezan!", description: `Povezano sa izvorom "${source.title}"` });
+    toast.success("Esej uspješno povezan!", { description: `Povezano sa izvorom "${source.title}"` });
   }, [patchCard, source.id, source.title]);
 
   // ─── Exam mapping ───
@@ -183,7 +183,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       });
       setExamQuestions(prev => prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: modules.length } : q));
       incrementDailyMapped(modules.length);
-      toast({ title: `Esej kreiran: ${modules.length} modula`, description: `${result.rangeLabel} → "${question.text.slice(0, 50)}..."` });
+      toast.success(`Esej kreiran: ${modules.length} modula`, { description: `${result.rangeLabel} → "${question.text.slice(0, 50)}..."` });
     } else {
       const anchor = createTextAnchor(text);
       addCard(question.text, [{ title: "Odgovor", content: sanitizeHtml(text) }], category, undefined, undefined, {
@@ -191,7 +191,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       });
       setExamQuestions(prev => prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: 1 } : q));
       incrementDailyMapped(1);
-      toast({ title: "Esej kreiran", description: `"${question.text.slice(0, 60)}..."` });
+      toast.success("Esej kreiran", { description: `"${question.text.slice(0, 60)}..."` });
     }
   }, [source, addCard]);
 

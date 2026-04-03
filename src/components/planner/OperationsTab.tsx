@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { Clock, RefreshCw, Shield, Flame, Zap, Lightbulb, AlertTriangle, Settings2, BookOpen, Brain } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ export default function OperationsTab({
   const handleRebalance = () => {
     const result = calcRebalancedQuota(remaining, config.finalGoalDate, config.bufferPercent);
     if (!result) return;
-    save({ ...config });
+    toast.success(`Nova preporučena kvota: ${result.newDailyQuota} sekcija/dan (${result.daysLeft} dana preostalo)`);
   };
 
   return (

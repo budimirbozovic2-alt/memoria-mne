@@ -1,7 +1,7 @@
 import { ReactNode, useState, useEffect, useRef, lazy, Suspense, memo, useCallback } from "react";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useLocation } from "react-router-dom";
-import { useUIContext, useCardData, useCategoryData, useCardActions } from "@/contexts/AppContext";
+import { useUIContext, useCardData, useCategoryData, useCardActions, useReviewData } from "@/contexts/AppContext";
 import ZenMode from "@/components/ZenMode";
 import AppSidebar from "@/components/AppSidebar";
 import BlockingModal from "@/components/db/BlockingModal";
@@ -9,7 +9,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AnimatePresence } from "framer-motion";
 import { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { type PlannerConfig, loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
 import { Moon, Sun, Search, Focus, HelpCircle } from "lucide-react";
 import { setDarkMode } from "@/lib/app-settings";
@@ -23,6 +23,7 @@ const SOURCE_ROUTES = ["/categories", "/category/"];
 /** Isolated component for planner nudge */
 const NudgeWatcher = memo(function NudgeWatcher() {
   const { cards } = useCardData();
+  const { reviewLog } = useReviewData();
   const { pathname } = useLocation();
   const prevPathRef = useRef(pathname);
   const nudgeShownRef = useRef(false);
@@ -47,22 +48,21 @@ const NudgeWatcher = memo(function NudgeWatcher() {
     try {
       const planner = getPlannerCached();
       if (!planner.finalGoalDate || planner.phases.length === 0) return;
-      const velocity = calcVelocity([], 7);
+      const velocity = calcVelocity(reviewLog, 7);
       const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
       if (!suggestion || suggestion.suggestedToday <= 0) return;
       const dailyDone = getDailyMappedCount();
       const remaining = suggestion.suggestedToday - dailyDone;
       if (remaining > 0 && dailyDone < suggestion.suggestedToday) {
         nudgeShownRef.current = true;
-        toast({
-          title: "📌 Ostani fokusiran",
+        toast("📌 Ostani fokusiran", {
           description: `Preostalo ti je još ${remaining} od ${suggestion.suggestedToday} planiranih sekcija za danas.`,
           duration: 5000,
         });
         setTimeout(() => { nudgeShownRef.current = false; }, 30 * 60 * 1000);
       }
     } catch {}
-  }, [pathname, cards]);
+  }, [pathname, cards, reviewLog]);
 
   return null;
 });

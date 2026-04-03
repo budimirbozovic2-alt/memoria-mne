@@ -43,20 +43,41 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
     [allCategories, categoryId]
   );
 
-  const uniqueSubcategories = useMemo(() => {
-    const set = new Set<string>();
-    cards.forEach(c => { if (c.subcategoryId) set.add(c.subcategoryId); });
-    return Array.from(set).sort();
+  // UUID→name lookup from category records
+  const nameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    const catRec = allCategories.find(c => c.id === categoryId);
+    if (catRec) {
+      for (const sub of catRec.subcategories ?? []) {
+        m[sub.id] = sub.name;
+        for (const ch of sub.chapters ?? []) m[ch.id] = ch.name;
+      }
+    }
+    return m;
+  }, [allCategories, categoryId]);
+
+  const subcategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    cards.forEach(c => { if (c.subcategoryId) counts[c.subcategoryId] = (counts[c.subcategoryId] || 0) + 1; });
+    return counts;
   }, [cards]);
 
-  const uniqueChapters = useMemo(() => {
-    const set = new Set<string>();
+  const uniqueSubcategories = useMemo(() => {
+    return Object.keys(subcategoryCounts).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
+  }, [subcategoryCounts, nameMap]);
+
+  const chapterCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
     cards.forEach(c => {
       if (filterSubcategory !== "__all__" && c.subcategoryId !== filterSubcategory) return;
-      if (c.chapterId) set.add(c.chapterId);
+      if (c.chapterId) counts[c.chapterId] = (counts[c.chapterId] || 0) + 1;
     });
-    return Array.from(set).sort();
+    return counts;
   }, [cards, filterSubcategory]);
+
+  const uniqueChapters = useMemo(() => {
+    return Object.keys(chapterCounts).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
+  }, [chapterCounts, nameMap]);
 
   const filteredCards = useMemo(() => {
     return cards.filter(c => {
@@ -137,7 +158,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
             <SelectContent>
               <SelectItem value="__all__">Sve potkategorije</SelectItem>
               {uniqueSubcategories.map(sub => (
-                <SelectItem key={sub} value={sub} className="text-xs">{sub}</SelectItem>
+                <SelectItem key={sub} value={sub} className="text-xs">{nameMap[sub] ?? sub} ({subcategoryCounts[sub]})</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -151,7 +172,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
             <SelectContent>
               <SelectItem value="__all__">Sve glave</SelectItem>
               {uniqueChapters.map(ch => (
-                <SelectItem key={ch} value={ch} className="text-xs">{ch}</SelectItem>
+                <SelectItem key={ch} value={ch} className="text-xs">{nameMap[ch] ?? ch} ({chapterCounts[ch]})</SelectItem>
               ))}
             </SelectContent>
           </Select>

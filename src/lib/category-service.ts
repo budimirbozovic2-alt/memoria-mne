@@ -3,7 +3,7 @@
 // UI komponente NIKADA ne pišu direktno u IDB — sve ide kroz ovaj sloj.
 
 import { idbLoadCategories, idbSaveCategories, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 // ─── Optimistic update with rollback ───────────────────
 export async function optimisticCategoryUpdate(
@@ -23,7 +23,7 @@ export async function optimisticCategoryUpdate(
   } catch (e) {
     console.error(`[${label}] IDB persist failed, rolling back`, e);
     if (rollbackSnapshot) setCategoryRecords(rollbackSnapshot);
-    toast({ title: "Greška", description: "Promjena nije sačuvana.", variant: "destructive" });
+    toast.error("Greška", { description: "Promjena nije sačuvana." });
   }
 }
 

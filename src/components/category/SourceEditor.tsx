@@ -16,7 +16,7 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { injectHeadingIds } from "@/lib/sources-storage";
 import { parseArticles, compareVersions, getChangedArticleIds, matchAnchorToArticle } from "@/lib/article-parser";
 import { parseDocxInWorker } from "@/lib/docx-parser";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 import SourceDiffPreview from "@/components/source-reader/SourceDiffPreview";
@@ -63,7 +63,7 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
   // ─── DOCX file handling ───────────────────────────────
   const handleDocxFile = useCallback(async (file: File) => {
     if (!file.name.endsWith(".docx")) {
-      toast({ title: "Pogrešan format", description: "Podržani su samo .docx fajlovi." });
+      toast.error("Pogrešan format", { description: "Podržani su samo .docx fajlovi." });
       return;
     }
     setDocxParsing(true);
@@ -73,9 +73,9 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
       const html = await parseDocxInWorker(arrayBuffer);
       setNewText(html);
       setDirty(true);
-      toast({ title: "DOCX učitan", description: `${file.name} uspješno parsiran.` });
+      toast.success("DOCX učitan", { description: `${file.name} uspješno parsiran.` });
     } catch (err: any) {
-      toast({ title: "Greška pri parsiranju", description: err?.message || "Neuspješno čitanje DOCX fajla." });
+      toast.error("Greška pri parsiranju", { description: err?.message || "Neuspješno čitanje DOCX fajla." });
     } finally {
       setDocxParsing(false);
     }
@@ -169,7 +169,7 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
     onSourceUpdated(updated);
     setDirty(false);
     setNewText("");
-    toast({ title: "Izvor sačuvan", description: updated.title });
+    toast.success("Izvor sačuvan", { description: updated.title });
     onClose();
   }, [source, title, slMarkings, dateStr, isExclusive, newText, onSourceUpdated, onClose]);
 
@@ -187,8 +187,7 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
     setDirty(false);
     setNewText("");
     setDiffPending(null);
-    toast({
-      title: "Izvor ažuriran",
+    toast.success("Izvor ažuriran", {
       description: affectedCardIds.length > 0
         ? `${affectedCardIds.length} kartica označeno za provjeru.`
         : updatedSource.title,
