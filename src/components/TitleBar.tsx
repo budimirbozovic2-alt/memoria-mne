@@ -1,13 +1,14 @@
 import { Minus, Square, X, Copy } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
+
 /**
  * Custom Electron title bar — replaces the system window frame.
- * Only renders in Electron (window.electronAPI exists).
- * Follows the app's dark/light theme via CSS variables.
+ * Only renders window controls when Electron API is available.
  */
 export default function TitleBar() {
   const api = window.electronAPI;
   const [maximized, setMaximized] = useState(false);
+  const canControl = !!api;
 
   useEffect(() => {
     if (!api) return;
@@ -40,25 +41,31 @@ export default function TitleBar() {
       {/* Spacer — draggable */}
       <div className="flex-1" />
 
-      {/* Window controls — only in Electron */}
+      {/* Window controls */}
       <div className="flex items-center h-full" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
         <button
           onClick={handleMinimize}
-          className="h-full w-11 inline-flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+          disabled={!canControl}
+          className="h-full w-11 inline-flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           title="Minimiziraj"
         >
           <Minus className="h-3.5 w-3.5" />
         </button>
         <button
           onClick={handleMaximize}
-          className="h-full w-11 inline-flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+          disabled={!canControl}
+          className="h-full w-11 inline-flex items-center justify-center text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           title={maximized ? "Vrati" : "Maksimiziraj"}
         >
           {maximized ? <Copy className="h-3 w-3" /> : <Square className="h-3 w-3" />}
         </button>
         <button
           onClick={handleClose}
-          className="h-full w-11 inline-flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
+          disabled={!canControl}
+          className="h-full w-11 inline-flex items-center justify-center text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
           title="Zatvori"
         >
           <X className="h-3.5 w-3.5" />

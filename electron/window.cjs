@@ -104,7 +104,7 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(baseDir, 'preload.cjs'),
+      preload: resolvePreloadPath(isDev, baseDir),
       sandbox: false,
     },
   });
