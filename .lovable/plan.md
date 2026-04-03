@@ -1,67 +1,48 @@
 
+# Fix: desktop window kontrole + stabilan unos opisa u svim čvorovima
 
-# Fix: Window kontrole, Diamond handle-ovi, i unos opisa u čvorovima
+## Šta sam utvrdio
+- Diamond handle fix je već prisutan u `MindMapNode.tsx`, tako da je preostali problem sa unosom opisa odvojen od toga.
+- Najvjerovatniji uzrok nefunkcionalnih Minimize/Maximize/Close dugmadi u desktop buildu je preload putanja: `BrowserWindow` trenutno koristi `path.join(baseDir, "preload.cjs")`, dok `package.json` pakuje `preload.cjs` kroz `extraFiles`, tj. van `app.asar`. To može dovesti do toga da `window.electronAPI` bude `undefined` baš u desktop paketu, pa TitleBar dugmad postanu tihi no-op.
+- Problem sa unosom opisa zaista nije samo diamond-specifičan: trenutni `relatedTarget` + `onBlur` pristup je krhak u ReactFlow/Electron okruženju i zatvara edit mod čim fokus ode sa label inputa, čak i kad korisnik klikne u textarea unutar istog čvora.
 
-## Analiza 3 problema
+## Plan implementacije
+1. `electron/window.cjs`
+   - Uvesti `resolvePreloadPath()` helper.
+   - U dev modu koristiti lokalni `preload.cjs`.
+   - U packaged desktop buildu prvo tražiti `process.resourcesPath/preload.cjs`, pa tek onda fallback putanje.
+   - Ako preload nije nađen, zapisati jasan log radi lakšeg debug-a.
 
-### 1. Dugmad Minimize/Maximize/Close — NE BUG, očekivano ponašanje
+2. `src/components/TitleBar.tsx`
+   - Zadržati postojeći izgled.
+   - Dodati eksplicitni `WebkitAppRegion: "no-drag"` i na same button elemente, ne samo na wrapper.
+   - Uvesti `canControlWindow` guard da komponenta jasno radi samo kad je Electron API stvarno dostupan, umjesto tihog no-op ponašanja.
 
-Ova dugmad koriste `window.electronAPI` koje postoji **samo u Electron desktop aplikaciji**. U web preview-u (`lovable.app`), `electronAPI` je `undefined` i dugmad su namjerno no-op. Ovo je dokumentovano i po dizajnu — funkcionišu samo kad se aplikacija pokrene kao Electron desktop app.
+3. `src/components/mindmap/MindMapNode.tsx`
+   - Zamijeniti blur-driven edit logiku node-level edit sesijom.
+   - Prebaciti label i description na lokalni draft state (`value`, ne `defaultValue`).
+   - Edit mod zatvarati tek na klik/fokus van čvora ili eksplicitnu potvrdu, ne na svaki blur pojedinačnog polja.
+   - Dodati `onPointerDown`/`onMouseDown` + `stopPropagation` na input/textarea kako ReactFlow ne bi presretao interakciju.
+   - Primijeniti isti model na rectangle, rounded i diamond čvorove; group branch dobija `ref={nodeRef}` radi konzistentnog focus/outside-click ponašanja.
 
-**Akcija**: Nema promjene koda. Ovo je ograničenje web okruženja.
+## Tehnički detalji
+- Ovo rješava desktop problem na pravom mjestu: vraća `window.electronAPI` u packaged Electron okruženju, pa prorade i ostale native funkcije vezane za preload.
+- Za unos teksta, fokus više neće zavisiti od `relatedTarget`, koji se u Electron/ReactFlow kombinaciji pokazao nepouzdanim.
+- Commit izmjena će biti stabilniji jer će se `label` i `description` snimati iz jedne edit sesije umjesto kroz međusobno konfliktne `onBlur` evente.
 
----
-
-### 2. Diamond čvorovi — handle-ovi blokirani rotiranim pozadinskim divom
-
-**Problem**: Rotirani pozadinski div (L135-142) nema `pointer-events-none`, pa presreće klikove na handle-ove koji su ispod njega. Handle-ovi na Top i Left su djelimično ili potpuno blokirani.
-
-**Fix**: Dodati `pointer-events-none` na rotirani pozadinski div.
-
-| Fajl | Promjena |
-|------|----------|
-| `MindMapNode.tsx` L135-142 | Dodati `pointer-events-none` klasu na rotirani div |
-
----
-
-### 3. Opis čvora se zatvara kad se klikne — `editing` state race condition
-
-**Problem**: Kad se double-click aktivira `editing=true`:
-1. Label `<input autoFocus>` dobije fokus
-2. Description `<textarea>` se prikaže ispod
-3. Korisnik klikne textarea → label input gubi fokus → `onBlur` poziva `setEditing(false)` → textarea nestaje
-
-**Fix**: Razdvojiti na dva stanja: `editingLabel` i `editingDesc`. Label onBlur ne zatvara description, i obrnuto. Alternativno (jednostavnije): koristiti `setTimeout` + `relatedTarget` check u onBlur da ne zatvori editing ako fokus ostaje unutar čvora.
-
-Najčistiji pristup: umjesto jednog `editing` boolean-a, koristiti ref na wrapper div i provjeriti da li `relatedTarget` ostaje unutar njega:
-
-```ts
-const nodeRef = useRef<HTMLDivElement>(null);
-
-// U onBlur label inputa:
-onBlur={(e) => {
-  // Ako fokus ostaje unutar čvora, ne zatvori editing
-  if (nodeRef.current?.contains(e.relatedTarget as Node)) {
-    updateField("label", e.target.value);
-    return;
-  }
-  updateField("label", e.target.value);
-  setEditing(false);
-}}
-```
-
-Isti pattern za textarea onBlur — ne zatvori editing ako fokus ide na label input.
-
-Dodatno: dodati description textarea i za **diamond** čvorove (trenutno nemaju).
-
-| Fajl | Promjena |
-|------|----------|
-| `MindMapNode.tsx` L55-248 | Dodati `nodeRef`, ažurirati onBlur logiku za label i textarea, dodati description za diamond |
-
----
+## QA
+- U Electron desktop aplikaciji provjeriti: minimize, maximize/restore i close.
+- Usput otvoriti jedan native file dialog da potvrdimo da je preload zaista učitan.
+- U mapi uma testirati rectangle, rounded i diamond:
+  - dupli klik
+  - klik u opis
+  - normalan unos teksta
+  - prebacivanje fokusa između naslova i opisa
+  - klik van čvora i provjera da je sadržaj sačuvan
 
 ## Scope
-- 1 fajl: `MindMapNode.tsx`
-- ~20 linija promjena
-- Fiksira 2 od 3 prijavljena problema (treći je po dizajnu)
-
+- 3 fajla:
+  - `electron/window.cjs`
+  - `src/components/TitleBar.tsx`
+  - `src/components/mindmap/MindMapNode.tsx`
+- Nema promjene šire arhitekture, samo ciljane ispravke za 2 potvrđena problema.
