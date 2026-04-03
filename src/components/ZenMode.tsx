@@ -44,7 +44,7 @@ export default function ZenMode({ active, onToggle }: Props) {
     } else {
       if (document.fullscreenElement) document.exitFullscreen?.().catch((e) => console.warn("[fullscreen]", e));
       setTimerRunning(false);
-      if (isBrownNoisePlaying()) { stopBrownNoise(); setNoiseOn(false); }
+      if (isAmbientPlaying()) { stopAmbient(); setNoiseOn(false); }
     }
   }, [active]);
 
