@@ -1,50 +1,72 @@
 
-# Ambient trackovi umjesto generičkog šuma u ZenMode-u
 
-## Pristup
-Statički `.mp3` fajlovi (~3-4MB svaki) u `public/audio/`, lazy-loadani tek kad korisnik odabere track. Postojeći API (`start/stop/setVolume/isPlaying`) ostaje isti — samo se unutrašnja implementacija proširuje.
+# Fix: Udvostručavanje kategorija nakon importa backupa
 
-## Trackovi (4 komada, generisani via imagegen ili unaprijed pripremljeni)
-1. **Brown Noise** — zadržati postojeći proceduralni generator (0 KB, instant)
-2. **Kiša** — `rain-ambient.mp3`
-3. **Šuma** — `forest-ambient.mp3`  
-4. **Lo-fi hum** — `lofi-ambient.mp3`
+## Root Cause analiza
 
-## Promjene
+**Problem je na liniji 116 u `useCardImport.ts`:**
 
-### Fajl 1: `src/lib/brown-noise.ts` → `src/lib/ambient-audio.ts` (rename + proširenje)
-- Dodati `type AmbientTrack = "brown" | "rain" | "forest" | "lofi"`
-- Za `"brown"`: zadržati postojeći proceduralni generator (nema download-a)
-- Za ostale: `fetch(`/audio/${track}.mp3`)` → `decodeAudioData` → `AudioBufferSourceNode` sa `loop=true`
-- Keširati decoded buffer u `Map<string, AudioBuffer>` — drugi put instant
-- API: `startAmbient(track, volume)`, `stopAmbient()`, `setAmbientVolume(v)`, `isAmbientPlaying()`
-- Export stare funkcije kao aliase za backward compatibility
+```typescript
+// Za non-overwrite strategije (keep, skip, newer):
+await dbCat.categories.bulkPut(catRecords);
+```
 
-### Fajl 2: `src/components/ZenMode.tsx` (~15 linija promjena)
-- Import novi API umjesto starog
-- Dodati `Select` dropdown iznad volume slider-a sa 4 opcije (Brown šum, Kiša, Šuma, Lo-fi)
-- State: `ambientTrack: AmbientTrack` (default "brown")
-- Prilikom promjene track-a: stop → start novi
-- Loading indikator dok se track fetch-uje (mali spinner pored naziva)
+`bulkPut` koristi primarni ključ (`id`) za upsert. Ovo bi trebalo raditi ispravno **ako su UUID-ovi isti**. Ali problem nastaje kada:
 
-### Fajl 3: Audio fajlovi
-- `public/audio/rain-ambient.mp3` — generisati
-- `public/audio/forest-ambient.mp3` — generisati
-- `public/audio/lofi-ambient.mp3` — generisati
+1. Korisnik exportuje backup (kategorije dobiju UUID-ove iz baze)
+2. Korisnik importuje backup u **istu bazu** sa strategijom "keep" ili "skip" ili "newer"
+3. `bulkPut` zaista ažurira kategorije po ID-u — **ali kartice se importuju kao "skip" (preskočene)**
+4. **Pravi problem**: Dijalog za import (linija 436) nudi "Potvrdi import" sa strategijom `"skip"` kad nema duplikata, ali kad JE conflict detektovan, nudi tri opcije. Međutim — **conflict detekcija na linijama 219-222 provjerava samo `id` match**. Ako su kategorije identične (isti UUID), `duplicateCategoryCount > 0` i ide na conflict ekran, ali ako korisnik odabere "Dodaj samo nove (Merge)" sa strategijom `"keep"` — `bulkPut` zapravo UPSERTUJE sve kategorije iz fajla, što je korektno.
 
-## Pitanje
-Audio fajlove trebam generisati. Mogu koristiti ElevenLabs Music API ako imaš API key podešen, ili mogu napraviti proceduralne generatore (poput postojećeg brown noise-a) za kišu/šumu/lo-fi — nema eksternih fajlova, 0 KB, instant. 
+**Pravi uzrok udvostručavanja**: Postoji scenario gdje backup fajl sadrži kategorije sa **istim imenima ali RAZLIČITIM UUID-ovima** — npr. ako je baza bila resetovana/recreirana između exporta i importa. U tom slučaju `bulkPut` dodaje nove redove jer su ID-ovi različiti, što rezultira duplikatima po imenu.
 
-**Preporuka:** Proceduralni generatori za sva 4 zvuka — nema MP3 fajlova, nema latencije, nema bandwith-a. Svaki zvuk je ~20 linija koda.
+## Fix
+
+### Fajl: `src/hooks/useCardImport.ts` (~15 linija izmjena)
+
+Za non-overwrite strategije, prije `bulkPut` dodati **deduplikaciju po imenu**:
+
+```
+1. Učitati postojeće kategorije iz IDB
+2. Za svaku importovanu kategoriju:
+   - Ako postoji kategorija sa istim ID-om → bulkPut će update-ovati (OK)
+   - Ako postoji kategorija sa istim IMENOM ali različitim ID-om → remapirati
+     kartice i izvore iz backup fajla da koriste postojeći ID, preskočiti
+     insert te kategorije
+   - Ako ne postoji ni po ID ni po imenu → dodati kao novu
+3. Ažurirati remapped IDs u importedCards prije nego se zapišu
+```
+
+### Fajl: `src/components/ExportImportDialog.tsx` (~3 linije)
+
+Poboljšati conflict detekciju da prikaže i **name-based duplikate** (ne samo ID-based):
+
+```
+duplicateCategoryCount treba uključiti i kategorije sa istim imenom
+ali različitim UUID-om, jer su to de facto duplikati.
+```
+
+## Detalji implementacije
+
+**Korak 1**: U `useCardImport.ts`, linija 109-117 (isRecordFormat + non-overwrite grana):
+- Dodati `existingByName` mapu: `Map<string, string>` (name → existing ID)
+- Filtrirati catRecords: za svaki record čije ime već postoji pod drugim ID-om, kreirati remap entry
+- Primijeniti remap na `importedCards` (zamjena `categoryId`) PRIJE merge logike na linijama 81-98
+- Filtrirati catRecords da se ne insertuju duplikati po imenu
+
+**Korak 2**: U `ExportImportDialog.tsx`, linija 219-222:
+- Dodati name-based provjeru: učitati `existingCatNames` i uporediti sa imenima iz backup fajla
+- Uračunati name-based duplikate u `duplicateCategoryCount`
 
 ## Fajlovi
 
-| Fajl | Tip | Promjena |
-|------|-----|----------|
-| `src/lib/brown-noise.ts` | RENAME → `ambient-audio.ts` | Proširiti sa 4 tipa zvuka |
-| `src/components/ZenMode.tsx` | EDIT | Track picker UI |
+| Fajl | Promjena |
+|------|----------|
+| `src/hooks/useCardImport.ts` | Name-based deduplikacija kategorija + ID remap |
+| `src/components/ExportImportDialog.tsx` | Name-based conflict detekcija |
 
 ## Scope
-- 1 rename+proširenje, 1 edit, ~80 linija neto
-- Nema novih zavisnosti, nema eksternih fajlova
-- Backward compatible (stare funkcije exportovane kao aliasi)
+- 2 fajla, ~25 linija neto
+- Fix je backward-compatible
+- Rješava i edge case kad ista baza bude resetovana pa ponovo importovana
+
