@@ -56,20 +56,28 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
     return m;
   }, [allCategories, categoryId]);
 
-  const uniqueSubcategories = useMemo(() => {
-    const set = new Set<string>();
-    cards.forEach(c => { if (c.subcategoryId) set.add(c.subcategoryId); });
-    return Array.from(set).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
-  }, [cards, nameMap]);
+  const subcategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    cards.forEach(c => { if (c.subcategoryId) counts[c.subcategoryId] = (counts[c.subcategoryId] || 0) + 1; });
+    return counts;
+  }, [cards]);
 
-  const uniqueChapters = useMemo(() => {
-    const set = new Set<string>();
+  const uniqueSubcategories = useMemo(() => {
+    return Object.keys(subcategoryCounts).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
+  }, [subcategoryCounts, nameMap]);
+
+  const chapterCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
     cards.forEach(c => {
       if (filterSubcategory !== "__all__" && c.subcategoryId !== filterSubcategory) return;
-      if (c.chapterId) set.add(c.chapterId);
+      if (c.chapterId) counts[c.chapterId] = (counts[c.chapterId] || 0) + 1;
     });
-    return Array.from(set).sort();
+    return counts;
   }, [cards, filterSubcategory]);
+
+  const uniqueChapters = useMemo(() => {
+    return Object.keys(chapterCounts).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
+  }, [chapterCounts, nameMap]);
 
   const filteredCards = useMemo(() => {
     return cards.filter(c => {
