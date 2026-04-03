@@ -23,9 +23,9 @@ describe("calcVelocity", () => {
   it("counts unique section first-reviews per day", () => {
     const now = Date.now();
     const log: ReviewLogEntry[] = [
-      { cardId: "c1", sectionId: "s1", grade: 3, timestamp: now - 86400000 },
-      { cardId: "c1", sectionId: "s2", grade: 3, timestamp: now - 86400000 },
-      { cardId: "c1", sectionId: "s1", grade: 4, timestamp: now }, // duplicate section
+      { cardId: "c1", sectionId: "s1", grade: 3, timestamp: now - 86400000, category: "cat-1" },
+      { cardId: "c1", sectionId: "s2", grade: 3, timestamp: now - 86400000, category: "cat-1" },
+      { cardId: "c1", sectionId: "s1", grade: 4, timestamp: now, category: "cat-1" }, // duplicate section
     ];
     const v = calcVelocity(log, 7);
     expect(v).toBeCloseTo(2 / 7, 1);
