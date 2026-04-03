@@ -191,7 +191,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
 
           <NudgeWatcher />
 
-          <main className={`flex-1 px-4 md:px-8 py-6 w-full ${
+          <main id="main-content" className={`flex-1 px-4 md:px-8 py-6 w-full ${
             isFullWidth ? "max-w-none" : "max-w-6xl mx-auto"
           }`}>
             {children}
