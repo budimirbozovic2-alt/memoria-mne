@@ -36,7 +36,6 @@ const App = () => (
     <TooltipProvider>
       <div className="flex flex-col h-screen" data-app-mounted>
         <TitleBar />
-        <Toaster />
         <Sonner />
         <HashRouter>
           <AppProvider>
