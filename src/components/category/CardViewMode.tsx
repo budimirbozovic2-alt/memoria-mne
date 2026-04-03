@@ -150,7 +150,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
             <SelectContent>
               <SelectItem value="__all__">Sve potkategorije</SelectItem>
               {uniqueSubcategories.map(sub => (
-                <SelectItem key={sub} value={sub} className="text-xs">{sub}</SelectItem>
+                <SelectItem key={sub} value={sub} className="text-xs">{nameMap[sub] ?? sub}</SelectItem>
               ))}
             </SelectContent>
           </Select>
