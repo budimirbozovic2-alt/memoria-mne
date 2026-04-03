@@ -1,47 +1,52 @@
 
-# Autoformat članova u Source Reader-u
 
-## Šta radi
-Dugme "Formatiraj članove" u toolbaru koje automatski:
-1. Pronalazi sve instance "Član X" (case-insensitive, npr. "Član 1", "član 521")
-2. **Bolduje** red sa "Član X"
-3. **Bolduje** red/paragraf PRIJE "Član X" (naziv člana)
-4. Dodaje vizuelni razmak (margin-top) prije svakog člana za jasno razdvajanje
+# Fix: Zamjena loših ambijentalnih trackova boljim proceduralnim zvukovima
 
-## Implementacija
+## Problem
+Trackovi rain, forest, lofi, cafe i space zvuče loše — previše statičan šum, sintetički klikovi, nečujan sub-bass. Piano je OK i ostaje nepromijenjen.
 
-### Fajl 1: `src/lib/article-autoformat.ts` (NOVI, ~30 linija)
-Utility funkcija `autoFormatArticles(html: string): string`:
-- Parsira HTML u DOM (DOMParser)
-- Iterira kroz block elemente (p, div, h1-h3)
-- Regex: `/^\s*[Čč]lan\s+\d+\.?/i`
-- Za svaki match: wrap sadržaj u `<strong>`, dodaj `margin-top: 1.5em`
-- Za prethodni sibling element: wrap sadržaj u `<strong>`
-- Vrati modificirani HTML string
+## Rješenje — potpuno prepisati 5 generatora
 
-### Fajl 2: `src/hooks/useSourceReaderActions.ts` (~15 linija)
-Nova akcija `handleAutoFormatArticles`:
-- Importuje `autoFormatArticles`
-- Primijeni na `source.htmlContent`
-- Sačuvaj ažurirani izvor (isti pattern kao `persistContent`)
-- Toast: "Formatirano X članova"
+### Fajl: `src/lib/ambient-audio.ts`
 
-### Fajl 3: `src/components/source-reader/SourceToolbar.tsx` (~5 linija)
-Novo dugme pored "Auto-Split":
-- Ikona: `Type` (lucide)
-- Label: "Formatiranje"
-- Poziva `onAutoFormat` prop
+**Rain** — trenutno: jedan low-pass + random klikovi. Novo:
+- Stereo buffer (2 kanala) za prostorni efekat
+- Tri kaskadna low-pass filtera za gušći, mekši zvuk kiše
+- Umjesto oštrih klikova, koristiti kratke filtered-noise burst-ove za kapljice sa envelope fadeout
+- Duži buffer (5s) za prirodniji loop
 
-### Fajl 4: `src/components/SourceReader.tsx` (~2 linije)
-Proslijediti `onAutoFormat` prop iz actions u SourceToolbar
+**Forest** — trenutno: rumble + sinusni chirp. Novo:
+- Mekši wind: višestruki LP filteri sa sporom modulacijom amplitude (breathing effect)
+- Chirps: FM sinteza umjesto čistog sinusa — frekvencija klizi gore-dolje (realniji ptičji zvuk)
+- Dodatni sloj: tihi "rustle" (high-passed noise bursts) za lišće
+- Duži buffer (6s)
 
-## Fajlovi
-| Fajl | Promjena |
-|------|----------|
-| `src/lib/article-autoformat.ts` | NOVI — regex + DOM formatiranje |
-| `src/hooks/useSourceReaderActions.ts` | Nova akcija handleAutoFormatArticles |
-| `src/components/source-reader/SourceToolbar.tsx` | Dugme "Formatiranje" |
-| `src/components/SourceReader.tsx` | Wire prop |
+**Lofi** — trenutno: goli sinusi na 60/90/120 Hz = čujna frekvencija. Novo:
+- Zamijeniti čiste sinuse sa filtered brown noise (topao, neodređen hum)
+- Dodati wow/flutter efekt (spora sinusoidna modulacija pitch-a) za vinyl karakter
+- Crackle: umjesto random impulsa, koristiti kratke eksponencijalno-decaying klikove
+- Tihi pad od layeranih filtriranih sinusa sa detune za warmth
+
+**Cafe** — trenutno: LP noise + ping. Novo:
+- Dva nezavisna murmur sloja (različiti LP koeficijenti) za dubinu
+- Sporija amplitudna modulacija na murmuru (simulira razgovor koji raste i pada)
+- Clink: koristiti eksponencijalno-decaying sinus sa laganim frequency sweep za realističniju čašu
+- Manji volume ratio između murmura i efekata
+
+**Space** — trenutno: sub-bass sinusi (nečujni na većini zvučnika). Novo:
+- Podići fundamentale na 80-150 Hz range (čujno na laptop zvučnicima)
+- Dodati reverb-like sloj: dugački filtered noise tail
+- Koristiti FM sinteza za shimmer umjesto čistih sinusa
+- Spora amplitude modulation za "pulsiranje" svemirskog drona
+
+### Što se NE mijenja
+- Brown noise — radi dobro
+- Piano — korisnik kaže da zvuči OK
+- API (`startAmbient`, `stopAmbient`, itd.) — potpuno isti
+- ZenMode UI — nema promjena
 
 ## Scope
-- 1 novi fajl, 3 modifikovana, ~50 linija neto
+- 1 fajl, ~200 linija zamijenjeno (5 funkcija)
+- Nema novih zavisnosti
+- Backward-compatible — isti tipovi, isti API
+
