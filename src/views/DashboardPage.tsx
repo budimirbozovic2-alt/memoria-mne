@@ -20,11 +20,13 @@ export default function DashboardPage() {
     return lastUsed || (cards.some(c => c.sourceId) ? "Izvor" : null);
   }, [cards]);
 
+  const t = useT();
+
   if (!ready) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <p className="text-sm text-muted-foreground">Učitavanje kontrolne table...</p>
+        <p className="text-sm text-muted-foreground">{t("common.loadingDashboard")}</p>
       </div>
     );
   }
