@@ -43,11 +43,24 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
     [allCategories, categoryId]
   );
 
+  // UUID→name lookup from category records
+  const nameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    const catRec = allCategories.find(c => c.id === categoryId);
+    if (catRec) {
+      for (const sub of catRec.subcategories ?? []) {
+        m[sub.id] = sub.name;
+        for (const ch of sub.chapters ?? []) m[ch.id] = ch.name;
+      }
+    }
+    return m;
+  }, [allCategories, categoryId]);
+
   const uniqueSubcategories = useMemo(() => {
     const set = new Set<string>();
     cards.forEach(c => { if (c.subcategoryId) set.add(c.subcategoryId); });
-    return Array.from(set).sort();
-  }, [cards]);
+    return Array.from(set).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
+  }, [cards, nameMap]);
 
   const uniqueChapters = useMemo(() => {
     const set = new Set<string>();
