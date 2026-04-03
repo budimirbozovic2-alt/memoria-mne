@@ -1,63 +1,61 @@
+# Dashboard dorада — UUID fix + StudyFlow widget
 
+## 1. Bug: UUID umjesto imena u najslabijim kategorijama
 
-# Sidebar progress indikatori i empty state standardizacija
+**Problem:** `useDashboardData.ts` L186-192 koristi `categories` (niz UUID-ova) kao `name` u `weakestCategories`.
 
-## 1. Sidebar progress indikatori
+**Fix:** Proslijediti `categoryRecords` u `useDashboardData`, koristiti `categoryRecords.find(r => r.id === cat)?.name` za display name.
 
-### Trenutno stanje
-Sidebar prikazuje kategorije samo sa imenom i ikonom. `categoryStats` je već dostupan u kontekstu sa `score` (0-100), `total` i `due` po kategoriji.
+### Fajlovi:
+- `useDashboardData.ts` — dodati `categoryRecords` parametar, fix `weakestCategories` useMemo
+- `Dashboard.tsx` — proslijediti `categoryRecords` prop u hook
+- `DashboardPage.tsx` — proslijediti `categoryRecords` u Dashboard
 
-### Promjena: `AppSidebar.tsx`
-- Importovati `useCategoryData` → `categoryStats` (već importovan)
-- Za svaku kategoriju, ispod naziva dodati mini progress bar (2px visine) koji prikazuje `score` procenat
-- Boja: zelena za score > 70, žuta za 40-70, crvena za < 40
-- U collapsed modu: umjesto bara, prikazati color-coded dot pored ikone
-- Dodati `due` badge na kategorije koje imaju dospjele kartice (isti pattern kao Konsolidacija)
+## 2. Novi widget: StudyFlow (tok učenja iz planera)
 
-### Vizuelni izgled (expanded)
+Widget koji prikazuje danas preporučeni tok učenja na osnovu generisanog plana iz Strateškog planera.
+
+### Šta prikazuje:
+- **Trenutni predmet u fokusu** — koji predmet je po rasporedu danas (na osnovu `generateStudyPlan` timeline-a)
+- **Dnevna kvota** — koliko sekcija treba danas obraditi (iz `SmartSuggestion`)
+- **Omjer učenje/ponavljanje** — dinamički iz `calcLearningReviewRatio` (90/10 → 10/90)
+- **Progres danas** — koliko je urađeno vs cilj
+- CTA dugme "Nastavi učenje" koje vodi na `/learn`
+
+### Izgled:
 ```text
-┌──────────────────────┐
-│ ⚖ Krivično pravo     │
-│ ██████░░░░ 62%       │
-│ ⚖ Građansko pravo  3 │
-│ █████████░ 89%       │
-└──────────────────────┘
+┌─────────────────────────────────────┐
+│ 📋 Plan za danas                    │
+│                                     │
+│ Fokus: Krivično materijalno pravo   │
+│ ████████░░ 16/25 sekcija            │
+│                                     │
+│ Omjer: 70% učenje · 30% ponavljanje │
+│ Faza: Učenje + konsolidacija        │
+│                                     │
+│ [Nastavi učenje →]                  │
+└─────────────────────────────────────┘
 ```
 
-## 2. Empty state standardizacija
-
-### Trenutno stanje
-`EmptyState.tsx` podržava samo `type: "dashboard" | "review"`. Ostale stranice (CardList, Sources, MindMap) koriste ad-hoc inline empty state-ove bez konzistentnog dizajna.
-
-### Promjena: `EmptyState.tsx`
-- Proširiti `type` na: `"dashboard" | "review" | "cards" | "sources" | "generic"`
-- Svaki tip dobija odgovarajuću ikonu, naslov, opis i opcioni CTA
-- Generički tip prima `icon`, `title`, `description` kao props za fleksibilnost
-- Zadržati postojeće `dashboard` i `review` varijante nepromijenjene
-
-### Novi props interfejs
-```typescript
-interface Props {
-  type: "dashboard" | "review" | "cards" | "sources" | "generic";
-  onAction?: () => void;
-  actionLabel?: string;
-  diagnostics?: { ... };
-  // Za generic tip:
-  icon?: LucideIcon;
-  title?: string;
-  description?: string;
-}
-```
-
-## Fajlovi
-
+### Fajlovi:
 | Fajl | Promjena |
 |------|----------|
-| `src/components/AppSidebar.tsx` | Dodati mini progress bar + due badge po kategoriji |
-| `src/components/EmptyState.tsx` | Proširiti sa novim tipovima, generički mode |
+| `src/components/dashboard/StudyFlowWidget.tsx` | **NOVI** — widget komponenta |
+| `src/hooks/useDashboardData.ts` | Dodati `categoryRecords` param, fix UUID, izračunati studyFlow podatke iz `generateStudyPlan` + `calcLearningReviewRatio` |
+| `src/components/Dashboard.tsx` | Proslijediti categoryRecords, renderovati StudyFlowWidget u lijevu kolonu |
+| `src/views/DashboardPage.tsx` | Proslijediti `categoryRecords` prop |
+
+### Logika u `useDashboardData`:
+- Poziva `generateStudyPlan(config, categoryRecords, cards)` kroz `useDeferredCompute`
+- Pronalazi koji predmet je "aktivan danas" (gdje `startDate <= today <= endDate`)
+- Računa `calcLearningReviewRatio(overallPct)` za omjer
+- Koristi postojeći `dailyMapped` i `dailyQuota` za progres
+
+### Uslovi:
+- Widget se prikazuje samo ako je planer konfigurisan (`finalGoalDate` postoji)
+- Ako nema plana, ne prikazuje se (graceful degradation)
 
 ## Scope
-- 2 fajla, ~60 linija neto
-- Nema novih zavisnosti
-- Sidebar progress koristi postojeći `categoryStats` iz konteksta
-
+- 1 novi fajl, 3 modifikovana
+- ~80 linija neto
+- Koristi isključivo postojeće funkcije iz `planner-storage.ts`
