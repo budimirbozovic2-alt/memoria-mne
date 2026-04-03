@@ -127,7 +127,7 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
       } else {
         onProgress(100, "Preuzimanje...");
         downloadFile(blob, `codex-template-${dateStr}.json`);
-        toast({ title: "Template uspješno exportovan." });
+        toast.success("Template uspješno exportovan.");
       }
     },
     [cards],
