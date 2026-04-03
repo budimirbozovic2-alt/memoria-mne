@@ -60,7 +60,7 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
     );
     await saveMnemonicCards([...cards, clone]);
     eventBus.emit(EVENT_TYPES.MNEMONICS_UPDATED, { cardId: clone.id });
-    toast({ title: "Dodano u Mnemo radionicu", description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
+    toast("Dodano u Mnemo radionicu", { description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"` });
     setTooltip(null);
     window.getSelection()?.removeAllRanges();
   }, [tooltip, cardId, question, category, subcategoryId, tags]);
