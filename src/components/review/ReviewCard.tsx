@@ -32,7 +32,7 @@ export default function ReviewCard({
   card, section, showAnswer, setShowAnswer, onGrade, onLogError, onBack, onPause,
   progress, total, sectionIndex, totalSectionsInCard, srSettings, viewWidth, onViewWidthChange, modeBadge,
 }: ReviewCardProps) {
-  const { toast } = useToast();
+  
   const { categoryRecords } = useCategoryData();
   const catRecord = categoryRecords.find(r => r.id === card.categoryId);
   const catName = catRecord?.name ?? card.categoryId;
