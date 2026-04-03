@@ -11,10 +11,8 @@ async function downloadFile(blob: Blob, filename: string): Promise<void> {
   // Use native Electron save dialog if available
   if (window.electronAPI?.showSaveDialog) {
     if (sizeMB > IPC_SIZE_LIMIT_MB) {
-      toast({ 
-        title: "Upozorenje o veličini", 
-        description: `ZIP fajl je prevelik (${sizeMB.toFixed(1)}MB) za direktan transfer. Optimizacija streaminga je u razvoju.`, 
-        variant: "destructive" 
+      toast.error("Upozorenje o veličini", { 
+        description: `ZIP fajl je prevelik (${sizeMB.toFixed(1)}MB) za direktan transfer. Optimizacija streaminga je u razvoju.`
       });
       // Ovdje u budućnosti implementirati Node.js fs.createWriteStream na strani Main procesa 
       return;
