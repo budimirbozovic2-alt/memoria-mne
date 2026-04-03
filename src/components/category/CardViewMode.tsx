@@ -164,7 +164,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
             <SelectContent>
               <SelectItem value="__all__">Sve glave</SelectItem>
               {uniqueChapters.map(ch => (
-                <SelectItem key={ch} value={ch} className="text-xs">{ch}</SelectItem>
+                <SelectItem key={ch} value={ch} className="text-xs">{nameMap[ch] ?? ch}</SelectItem>
               ))}
             </SelectContent>
           </Select>

@@ -63,7 +63,7 @@ const NudgeWatcher = memo(function NudgeWatcher() {
         setTimeout(() => { nudgeShownRef.current = false; }, 30 * 60 * 1000);
       }
     } catch {}
-  }, [pathname, cards]);
+  }, [pathname, cards, reviewLog]);
 
   return null;
 });

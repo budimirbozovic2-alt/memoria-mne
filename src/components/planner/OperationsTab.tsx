@@ -43,7 +43,7 @@ export default function OperationsTab({
   const handleRebalance = () => {
     const result = calcRebalancedQuota(remaining, config.finalGoalDate, config.bufferPercent);
     if (!result) return;
-    save({ ...config });
+    save({ ...config, dailyNewTarget: result.newQuota });
   };
 
   return (
