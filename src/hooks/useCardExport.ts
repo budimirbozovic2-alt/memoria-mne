@@ -123,7 +123,7 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
         const zipBlob = await compressToZip(`codex-template-${dateStr}.json`, blob);
         onProgress(100, "Preuzimanje...");
         downloadFile(zipBlob, `codex-template-${dateStr}.zip`);
-        toast({ title: "Template uspješno exportovan." });
+        toast.success("Template uspješno exportovan.");
       } else {
         onProgress(100, "Preuzimanje...");
         downloadFile(blob, `codex-template-${dateStr}.json`);
