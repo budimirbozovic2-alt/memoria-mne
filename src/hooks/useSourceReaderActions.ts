@@ -183,7 +183,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       });
       setExamQuestions(prev => prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: modules.length } : q));
       incrementDailyMapped(modules.length);
-      toast({ title: `Esej kreiran: ${modules.length} modula`, description: `${result.rangeLabel} → "${question.text.slice(0, 50)}..."` });
+      toast.success(`Esej kreiran: ${modules.length} modula`, { description: `${result.rangeLabel} → "${question.text.slice(0, 50)}..."` });
     } else {
       const anchor = createTextAnchor(text);
       addCard(question.text, [{ title: "Odgovor", content: sanitizeHtml(text) }], category, undefined, undefined, {
