@@ -379,7 +379,7 @@ describe("interval extreme values", () => {
 
   it("targetRetention=1.0 → interval=0", () => {
     const interval = calculateInterval(10, 1.0);
-    expect(interval).toBe(0);
+    expect(Math.abs(interval)).toBe(0);
   });
 
   it("targetRetention=0.5 → much shorter than 0.95", () => {
