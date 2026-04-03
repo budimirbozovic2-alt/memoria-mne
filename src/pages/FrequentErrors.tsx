@@ -162,7 +162,7 @@ export default function FrequentErrors({ cards, categoryRecords, onClearErrorLog
 
   const handleClear = (cardId: string, cardQuestion: string) => {
     onClearErrorLog(cardId);
-    toast({ title: "Greške obrisane", description: `Obrisane greške za: "${cardQuestion.length > 30 ? cardQuestion.slice(0, 30) + "…" : cardQuestion}"` });
+    toast("Greške obrisane", { description: `Obrisane greške za: "${cardQuestion.length > 30 ? cardQuestion.slice(0, 30) + "…" : cardQuestion}"` });
   };
 
   // Get unique cards with errors for the clear buttons

@@ -191,7 +191,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       });
       setExamQuestions(prev => prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: 1 } : q));
       incrementDailyMapped(1);
-      toast({ title: "Esej kreiran", description: `"${question.text.slice(0, 60)}..."` });
+      toast.success("Esej kreiran", { description: `"${question.text.slice(0, 60)}..."` });
     }
   }, [source, addCard]);
 

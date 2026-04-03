@@ -122,7 +122,7 @@ export function useCategoryManagement({
           invalidateSourcesCache();
         } catch (err) {
           console.error("[deleteCategory] cascade failed", err);
-          toast({ title: "Greška pri brisanju kategorije", description: "Pokušajte ponovo.", variant: "destructive" });
+          toast.error("Greška pri brisanju kategorije", { description: "Pokušajte ponovo." });
         }
       })();
     },

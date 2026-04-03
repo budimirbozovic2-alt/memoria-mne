@@ -201,7 +201,7 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
       } else {
         onProgress(100, "Preuzimanje...");
         downloadFile(blob, `codex-backup-${dateStr}.json`);
-        toast({ title: "Kompletni backup uspješno exportovan." });
+        toast.success("Kompletni backup uspješno exportovan.");
       }
       setLastBackupTime();
     },

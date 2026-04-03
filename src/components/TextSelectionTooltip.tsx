@@ -69,8 +69,7 @@ export default function TextSelectionTooltip({ children, cardId, question, categ
     if (!tooltip || !onMarkKeyPart) return;
     const isAlreadyMarked = (keyParts || []).some(p => p === tooltip.text.trim());
     onMarkKeyPart(tooltip.text);
-    toast({
-      title: isAlreadyMarked ? "Uklonjena oznaka" : "Označeno kao ključni dio",
+    toast(isAlreadyMarked ? "Uklonjena oznaka" : "Označeno kao ključni dio", {
       description: `"${tooltip.text.slice(0, 40)}${tooltip.text.length > 40 ? "…" : ""}"`,
     });
     setTooltip(null);

@@ -260,10 +260,7 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
     setImporting(false);
     setDone(true);
 
-    toast({
-      title: `Generisano ${count} eseja`,
-      description: `Iz izvora "${source.title}"`,
-    });
+    toast.success(`Generisano ${count} eseja`, { description: `Iz izvora "${source.title}"` });
   }, [rows, source, bulkAddCards, updateCard]);
 
   return (

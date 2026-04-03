@@ -102,7 +102,7 @@ export default function ReviewCard({
         const selection = window.getSelection()?.toString().trim();
         if (!selection || selection.length < 2) return;
         onLogError(card.id, selection, section.id);
-        toast({ title: "Greška zabilježena", description: `"${selection.length > 40 ? selection.slice(0, 40) + "…" : selection}"` });
+        toast("Greška zabilježena", { description: `"${selection.length > 40 ? selection.slice(0, 40) + "…" : selection}"` });
       }
     };
     window.addEventListener("keydown", handler);

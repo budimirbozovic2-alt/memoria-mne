@@ -187,8 +187,7 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
     setDirty(false);
     setNewText("");
     setDiffPending(null);
-    toast({
-      title: "Izvor ažuriran",
+    toast.success("Izvor ažuriran", {
       description: affectedCardIds.length > 0
         ? `${affectedCardIds.length} kartica označeno za provjeru.`
         : updatedSource.title,

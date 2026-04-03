@@ -23,7 +23,7 @@ export async function optimisticCategoryUpdate(
   } catch (e) {
     console.error(`[${label}] IDB persist failed, rolling back`, e);
     if (rollbackSnapshot) setCategoryRecords(rollbackSnapshot);
-    toast({ title: "Greška", description: "Promjena nije sačuvana.", variant: "destructive" });
+    toast.error("Greška", { description: "Promjena nije sačuvana." });
   }
 }
 
