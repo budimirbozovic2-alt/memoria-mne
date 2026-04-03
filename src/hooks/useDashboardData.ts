@@ -6,7 +6,7 @@ import { loadSlippageLog } from "@/lib/metacognitive-storage";
 import {
   loadPlanner, calcVelocity, calcEstimatedFinish, getPlannerStatus,
   getSmartSuggestion, calcDailyTimeRecommendation, getCognitiveDebt,
-  recordDayDiscipline, loadDisciplineLog, calcPhaseProgress,
+  recordDayDiscipline, loadDisciplineLog,
   getDailyMappedCount, autoRedistributeIfNeeded
 } from "@/lib/planner-storage";
 import { calcEnergyRecommendation } from "@/lib/cognitive-analytics";
