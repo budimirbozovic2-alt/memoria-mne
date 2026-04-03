@@ -23,6 +23,7 @@ const SOURCE_ROUTES = ["/categories", "/category/"];
 /** Isolated component for planner nudge */
 const NudgeWatcher = memo(function NudgeWatcher() {
   const { cards } = useCardData();
+  const { reviewLog } = useReviewData();
   const { pathname } = useLocation();
   const prevPathRef = useRef(pathname);
   const nudgeShownRef = useRef(false);
