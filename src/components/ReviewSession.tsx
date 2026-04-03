@@ -53,7 +53,7 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
   }, []);
 
   const clearSavedSession = useCallback(() => {
-    try { localStorage.removeItem(SESSION_KEY); } catch (_) {}
+    idbSaveSettings(SESSION_KEY, null).catch(() => {});
   }, []);
 
   // Log activity when session finishes
