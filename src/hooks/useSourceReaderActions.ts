@@ -152,7 +152,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     });
     setLinkModalOpen(false);
     setLinkSelectedText("");
-    toast({ title: "Esej uspješno povezan!", description: `Povezano sa izvorom "${source.title}"` });
+    toast.success("Esej uspješno povezan!", { description: `Povezano sa izvorom "${source.title}"` });
   }, [patchCard, source.id, source.title]);
 
   // ─── Exam mapping ───
