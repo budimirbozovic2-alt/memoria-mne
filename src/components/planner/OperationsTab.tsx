@@ -1,13 +1,14 @@
-import { Clock, RefreshCw, Shield, Flame, Zap, Lightbulb, AlertTriangle, Settings2, BookOpen } from "lucide-react";
+import { Clock, RefreshCw, Shield, Flame, Zap, Lightbulb, AlertTriangle, Settings2, BookOpen, Brain } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { PlannerConfig, calcRebalancedQuota } from "@/lib/planner-storage";
+import { CategoryRecord } from "@/lib/db";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import SubjectCard from "./SubjectCard";
 import { STATUS_CONFIG, PHASE_COLORS } from "./planner-constants";
-import type { SubjectPlan, SmartSuggestionItem, TimeRecommendation, CognitiveDebtItem, LearningReviewRatio } from "@/types/planner";
+import type { SubjectPlan, SmartSuggestionItem, TimeRecommendation, CognitiveDebtItem, LearningReviewRatio, CategoryStabilityInfo } from "@/types/planner";
 
 interface Props {
   config: PlannerConfig;
@@ -23,6 +24,8 @@ interface Props {
   dueCount: number;
   learningRatio: LearningReviewRatio;
   overallPct: number;
+  retentionRisk: CategoryStabilityInfo[];
+  categoryRecords: CategoryRecord[];
   onNavigateToDatabase?: (category: string) => void;
   onOpenWizard: () => void;
 }
@@ -31,6 +34,7 @@ export default function OperationsTab({
   config, save, subjectPlans,
   velocity, remaining, estimatedFinish, plannerStatus,
   smartSuggestion, timeRec, debt, dueCount, learningRatio, overallPct,
+  retentionRisk, categoryRecords,
   onNavigateToDatabase, onOpenWizard,
 }: Props) {
   const statusCfg = STATUS_CONFIG[plannerStatus.status as keyof typeof STATUS_CONFIG];
