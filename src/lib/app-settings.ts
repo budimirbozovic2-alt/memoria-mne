@@ -60,6 +60,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     showWeakCategories: true,
     showStatusIcons: true,
     showProgressRing: true,
+    showHeatmap: true,
   },
   pomodoro: {
     workMinutes: 25,

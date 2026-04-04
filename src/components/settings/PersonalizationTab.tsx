@@ -53,6 +53,7 @@ export default function PersonalizationTab({ app, setApp }: Props) {
           { key: "showIdealFocus" as const, label: "Idealni fokus" },
           { key: "showVelocity" as const, label: "Brzina učenja" },
           { key: "showWeakCategories" as const, label: "Najslabije kategorije" },
+          { key: "showHeatmap" as const, label: "Streak heatmapa" },
           { key: "showStatusIcons" as const, label: "Status ikone" },
         ]).map(({ key, label }) => (
           <div key={key} className="flex items-center justify-between py-1">
