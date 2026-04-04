@@ -35,6 +35,16 @@ export default function DiarySection({ cards, reviewLog, catNameMap }: Props) {
 
   const cardMap = useMemo(() => new Map(cards.map(c => [c.id, c])), [cards]);
 
+  const plannerGoal = useMemo(() => {
+    const config = loadPlanner();
+    if (!config.finalGoalDate) return null;
+    const velocity = calcVelocity(reviewLog, 7);
+    const suggestion = getSmartSuggestion(null, cards, config.finalGoalDate, velocity, config.bufferPercent ?? 20);
+    const now = Date.now();
+    const dueCount = cards.reduce((sum, c) => sum + c.sections.filter(s => s.state !== SectionState.New && s.nextReview <= now).length, 0);
+    return suggestion ? { suggestedNew: suggestion.suggestedToday, due: dueCount } : null;
+  }, [cards, reviewLog]);
+
   const handleSave = () => {
     const entry = addDiaryEntry({ date: today, dailyGoal: dailyGoal || todayEntry?.dailyGoal || "", selfAnalysis });
     setLastAnalysisDate(today);
