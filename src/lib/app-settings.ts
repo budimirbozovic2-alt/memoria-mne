@@ -20,6 +20,7 @@ export interface DashboardWidgetConfig {
   showWeakCategories: boolean;
   showStatusIcons: boolean;
   showProgressRing: boolean;
+  showHeatmap: boolean;
 }
 
 export interface PomodoroConfig {
