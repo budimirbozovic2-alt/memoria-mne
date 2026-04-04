@@ -1,30 +1,30 @@
 
 
-# Poveži dnevni cilj sa planerom
+# Dodaj progres po predmetima za danas u dnevnik
 
-## Šta se mijenja
+## Šta se dodaje
 
-U sekciji "Dnevna samoanaliza" u DiarySection, iznad postojećeg text inputa za cilj dana, dodaje se automatski izračunat preporučeni cilj iz planera — broj novih cjelina + dospjelih ponavljanja. Tekstualni input ostaje za kvalitativni cilj.
+Ispod sedmičnog grafikona (WeeklyChart), a iznad lapsusa/uspjeha, dodaje se kompaktan blok "Danas po predmetima" koji prikazuje za svaki predmet koliko je cjelina odrađeno danas — izvučeno iz `reviewLog` za danas.
 
 ## Tehnički detalji
 
 ### Fajl: `src/components/metacognitive/DiarySection.tsx`
 
-1. **Import** `loadPlanner`, `getSmartSuggestion`, `calcVelocity` iz `@/lib/planner-storage`
-2. **Dodati `useMemo` blokove** za:
-   - `dueCount` — prebrojati `card.sections` sa `nextReview <= now`
-   - `velocity` — `calcVelocity(reviewLog, 7)`
-   - `config` — `loadPlanner()` (sinhrono, iz localStorage)
-   - `smartSuggestion` — `getSmartSuggestion(null, cards, config.finalGoalDate, velocity, config.bufferPercent)`
-3. **UI** — unutar "Dnevna samoanaliza" bloka (L176), ispred labele "Dnevni cilj" (L178), dodati:
-   - Ako `smartSuggestion` postoji i planer je konfigurisan (`config.finalGoalDate`):
-     ```
-     Preporučeni cilj danas: X novih + Y dospjelih
-     ```
-   - Kompaktna linija sa `Target` ikonom, `text-xs text-primary`, sa pozadinom `bg-primary/5 rounded-lg p-2`
-   - Ako planer nije konfigurisan, ne prikazuje se ništa
+1. **Import** `BookOpen` već postoji (koristiće se za ikonu sekcije)
+
+2. **Novi `useMemo`** — grupiše današnje review log entryje po kategoriji:
+   - Filtrira `reviewLog` za `timestamp >= startOfDay(today)`
+   - Grupiše po `category` → broji unique sekcije (cardId + sectionIndex)
+   - Rezultat: `{ categoryId, name (iz catNameMap), count }[]` sortiran po count desc
+   - Prikazuje se samo ako ima barem 1 entry
+
+3. **UI blok** — ubacuje se na L120 (nakon WeeklyChart Suspense, prije lapsusa):
+   - `rounded-xl border bg-card p-5` kartica
+   - Naslov: `BookOpen` ikona + "Danas po predmetima"
+   - Lista predmeta: ime + badge sa brojem odrađenih cjelina
+   - Kompaktan layout — svaki red ima ime lijevo, broj desno
 
 ### Scope
-- 1 fajl, ~20 linija dodato
-- Nema novih props — DiarySection već prima `cards` i `reviewLog`, čita planer direktno iz storage-a
+- 1 fajl, ~30 linija dodato
+- Nema novih zavisnosti ili props-a — koristi postojeći `reviewLog`, `catNameMap`, `startOfDay`
 
