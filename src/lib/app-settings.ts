@@ -20,6 +20,7 @@ export interface DashboardWidgetConfig {
   showWeakCategories: boolean;
   showStatusIcons: boolean;
   showProgressRing: boolean;
+  showHeatmap: boolean;
 }
 
 export interface PomodoroConfig {
@@ -59,6 +60,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     showWeakCategories: true,
     showStatusIcons: true,
     showProgressRing: true,
+    showHeatmap: true,
   },
   pomodoro: {
     workMinutes: 25,

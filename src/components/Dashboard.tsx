@@ -122,7 +122,7 @@ export default function Dashboard({ stats, categoryStats, categories, categoryRe
             />
           )}
 
-          <ActivityHeatmap reviewLog={reviewLog} />
+          {wc.showHeatmap && <ActivityHeatmap reviewLog={reviewLog} />}
         </div>
       </div>
 
