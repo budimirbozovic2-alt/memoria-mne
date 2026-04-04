@@ -755,3 +755,21 @@ nav button, nav a {
 .skip-to-content:focus {
   left: 0;
 }
+
+/* ─── Number input spinners ───────────────────── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  opacity: 1;
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.dark input[type="number"]::-webkit-inner-spin-button,
+.dark input[type="number"]::-webkit-outer-spin-button {
+  filter: none;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
