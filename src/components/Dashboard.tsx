@@ -121,7 +121,8 @@ export default function Dashboard({ stats, categoryStats, categories, categoryRe
               showWeakCategories={wc.showWeakCategories}
             />
           )}
-        </div>
+
+          <ActivityHeatmap reviewLog={reviewLog} />
       </div>
 
       {wc.showStatusIcons && (
