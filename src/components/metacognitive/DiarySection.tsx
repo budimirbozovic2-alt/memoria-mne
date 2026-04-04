@@ -1,9 +1,11 @@
-import { BookOpen, Clock, Brain, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { BookOpen, Clock, Brain, AlertTriangle, CheckCircle, XCircle, Target } from "lucide-react";
 import { useState, useMemo, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { ReviewLogEntry } from "@/lib/storage";
+import { loadPlanner, getSmartSuggestion, calcVelocity } from "@/lib/planner-storage";
+import { SectionState } from "@/lib/spaced-repetition";
 import { Card } from "@/lib/spaced-repetition";
 import {
   loadDiary, addDiaryEntry, DiaryEntry, setLastAnalysisDate,
