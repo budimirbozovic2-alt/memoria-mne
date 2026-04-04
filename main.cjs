@@ -1,4 +1,4 @@
-const { app, session, ipcMain, protocol, net, dialog } = require('electron');
+const { app, session, ipcMain, protocol, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -146,7 +146,7 @@ app.whenReady().then(() => {
         responseHeaders: {
           ...details.responseHeaders,
           'Content-Security-Policy': [
-            "default-src 'self' app:; script-src 'self' 'unsafe-inline' app:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: app:; font-src 'self' data: app:; connect-src 'self' app:;"
+            "default-src 'self' app:; script-src 'self' 'unsafe-inline' app:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: app:; font-src 'self' data: app:; connect-src 'self' blob: app:; media-src 'self' blob: app:;"
           ],
         },
       });

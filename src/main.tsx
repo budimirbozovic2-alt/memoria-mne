@@ -141,6 +141,7 @@ setTimeout(() => {
           cards,
           categories: categories,
           subcategories,
+          reviewLog,
           sources, mindMaps,
           diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog,
           localStorageData,
