@@ -133,7 +133,22 @@ export default function DiarySection({ cards, reviewLog, catNameMap }: Props) {
         <WeeklyChart data={recentDays} />
       </Suspense>
 
-      {todayStats.lapses.length > 0 && (
+      {subjectProgress.length > 0 && (
+        <div className="rounded-xl border bg-card p-5 space-y-3">
+          <h3 className="text-sm font-medium flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" /> Danas po predmetima
+          </h3>
+          <div className="space-y-2">
+            {subjectProgress.map(s => (
+              <div key={s.catId} className="flex items-center justify-between py-1">
+                <span className="text-sm truncate mr-2">{s.name}</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">{s.count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
         <div className="rounded-xl border bg-card p-5 space-y-3">
           <h3 className="text-sm font-medium flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-destructive" /> Današnji lapsusi
