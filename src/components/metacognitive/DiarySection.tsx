@@ -149,6 +149,7 @@ export default function DiarySection({ cards, reviewLog, catNameMap }: Props) {
         </div>
       )}
 
+      {todayStats.lapses.length > 0 && (
         <div className="rounded-xl border bg-card p-5 space-y-3">
           <h3 className="text-sm font-medium flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-destructive" /> Današnji lapsusi
