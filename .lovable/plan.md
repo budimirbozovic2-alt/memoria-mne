@@ -1,102 +1,142 @@
 
 
-# Analiza: Race conditions i arhitektonske neusklađenosti
+# Analiza Electron builda — pronađeni problemi
 
-## Pronađeni problemi
+## 1. `extraFiles` — `preload.cjs` destinacija je pogrešna (KRITIČAN)
 
-### 1. Race condition u `optimisticCategoryUpdate` (KRITIČAN)
+**Fajl**: `package.json` L35-39
 
-**Fajl**: `src/lib/category-service.ts` L9-28
-
-Problem: Funkcija poziva `updater(prev)` na React stanju (optimistički), zatim **asinhrono** učitava `idbLoadCategories()` i ponovo poziva `updater(current)`. Između ta dva poziva, ako se desi druga category operacija (npr. brzi double-click na "dodaj podkategoriju"), `current` iz IDB-a može biti zastarjelo jer prvi `idbSaveCategories` još nije završen.
-
-```text
-T1: addSubcategory("A") → setCategoryRecords(+A) → idbLoad → updater(stale) → idbSave(+A)
-T2: addSubcategory("B") → setCategoryRecords(+B) → idbLoad → updater(stale) → idbSave(+B, ali BEZ A!)
+```json
+"extraFiles": [
+  { "from": "preload.cjs", "to": "preload.cjs" }
+]
 ```
 
-Rezultat: Druga operacija pregazi prvu u IDB-u. React stanje pokazuje obje promjene, ali IDB ima samo drugu — nakon reloada, prva promjena nestaje.
+`extraFiles` sa `"to": "preload.cjs"` kopira fajl u **root direktorij aplikacije** (pored executable-a), ali `resolvePreloadPath` u `window.cjs` L12-13 traži `path.join(process.resourcesPath, 'preload.cjs')` kao prvi kandidat. `process.resourcesPath` pokazuje na `resources/` folder, ne na root. Dakle, prvi kandidat neće naći fajl — pada na drugi kandidat `path.join(baseDir, 'preload.cjs')`.
 
-**Fix**: Umjesto `idbLoadCategories()` + `updater(current)`, koristiti `setCategoryRecords` stanje kao izvor istine i perzistirati direktno to stanje, ili uvesti mutex/serializaciju za IDB operacije.
+Problem: `baseDir` je `__dirname` iz `main.cjs`, koji je unutar `app.asar` (jer je `asar: true`). Znači i drugi kandidat pada jer `preload.cjs` nije u asar-u. Treći kandidat (`path.join(baseDir, '..', 'preload.cjs')`) bi trebao raditi jer izlazi iz asar-a u `resources/` — ali `extraFiles` ne kopira u `resources/`, nego u root aplikacije.
 
----
+**Rezultat**: `preload.cjs` se **ne može naći** u pakovanom buildu → `contextBridge` se ne učitava → `window.electronAPI` je `undefined` → backup, window kontrole, i IPC ne rade.
 
-### 2. `deleteCategory` zaobilazi `optimisticCategoryUpdate` (NEUSKLAĐENOST)
+**Fix**: Koristiti `extraResources` umjesto `extraFiles`, ili promijeniti `"to"` putanju:
 
-**Fajl**: `src/hooks/useCategoryManagement.ts` L67-130
+```json
+"extraResources": [
+  { "from": "preload.cjs", "to": "preload.cjs" }
+]
+```
 
-Sve ostale category operacije (add, rename, reorder) koriste `optimisticCategoryUpdate` sa rollback mehanizmom. Ali `deleteCategory` direktno poziva `setCategoryRecords` + ručni `db.categories.delete()` u fire-and-forget async bloku — bez rollbacka ako IDB operacija padne.
-
-**Fix**: Refaktorisati `deleteCategory` da koristi isti `optimisticCategoryUpdate` pattern, ili dodati rollback logiku.
-
----
-
-### 3. Import remap: kartice mutirane NAKON perzistencije (RACE CONDITION)
-
-**Fajl**: `src/hooks/useCardImport.ts` L99-143
-
-Redoslijed operacija:
-1. L99: `schedulePersist({ type: "bulk", cards: merged })` — kartice idu u persist queue
-2. L132-136: `importedCards.forEach(card => { card.categoryId = remapped })` — **mutira iste objekte** koji su već u persist queue-u
-
-Problem: `schedulePersist` sa debounce od 16ms može flush-ovati kartice prije ili nakon remapa. Ako flush-uje prije remapa, kartice se snimaju sa starim `categoryId`.
-
-**Fix**: Remap kategorija mora se desiti PRIJE `schedulePersist` poziva.
+`extraResources` kopira u `resources/` folder, što je tačno `process.resourcesPath`.
 
 ---
 
-### 4. TTS i SpeedReader koriste localStorage umjesto IDB (NEUSKLAĐENOST)
+## 2. `net` import nekorišten (MINOR)
 
-**Fajlovi**: `src/lib/tts.ts`, `src/hooks/useSpeedReaderEngine.ts`
+**Fajl**: `main.cjs` L1
 
-Ostatak aplikacije je migriran na IDB za podešavanja, ali TTS settings i speed reader TTS mode (`sr-tts-mode`) još uvijek koriste čist localStorage. Ovo znači da se ovi podaci NE uključuju u backup/restore flow (jer se ne čitaju iz IDB tabela, niti su u `localStorageData` export listi).
+```js
+const { app, session, ipcMain, protocol, net, dialog } = require('electron');
+```
 
----
-
-### 5. `isAutoBackupOverdue` čita iz pogrešnog ključa (NEUSKLAĐENOST)
-
-**Fajl**: `src/lib/app-settings.ts` L165-170
-
-Čita `localStorage.getItem("sr-last-backup")`, ali `setLastBackupTime` u `storage.ts` zapisuje u IDB pod ključem `"sr-last-backup"`. Funkcija `isAutoBackupOverdue` nikad ne čita iz IDB-a, pa ako je localStorage prazan (očišćen ili novi tab), backup podsjetnik neće raditi čak i kad je backup zaista overdue.
+`net` se nigdje ne koristi. Nije greška, ali je nepotreban import.
 
 ---
 
-### 6. Module-level `_mapVersion` cache nije otporan na HMR (MINOR)
+## 3. `before-quit` handler — rekurzivni `app.quit()` (POTENCIJALAN)
 
-**Fajl**: `src/lib/persist-queue.ts` L17-30
+**Fajl**: `main.cjs` L169-177
 
-`_mapVersion`, `_cachedVersion` i `_cachedArray` su module-level varijable. Prilikom HMR-a (development), modul se ponovo evaluira, resetujući ove varijable na početne vrijednosti, dok React stanje (`cardMap`) ostaje isto. To može uzrokovati stale `mapToArray` rezultate u developmentu (ne u produkciji).
+```js
+app.on('before-quit', async (e) => {
+  if (isQuitting) return;
+  isQuitting = true;
+  e.preventDefault();
+  await backup.performBeforeQuitBackup();
+  app.quit();  // ← ovo ponovo triggeruje 'before-quit'
+});
+```
+
+Drugi poziv `app.quit()` ponovo emituje `before-quit`, ali `isQuitting` je `true` pa se preskače. Ovo radi korektno, ali zavisi od toga da `isQuitting` nije resetovan. Pošto je module-level varijabla bez reset logike, radi ispravno. **Nema buga**, ali je fragilan pattern.
 
 ---
 
-## Sažetak po prioritetu
+## 4. `splash.html` — referenca na `logo-icon.png` relativna (MINOR)
 
-| # | Problem | Ozbiljnost | Fix kompleksnost |
-|---|---------|------------|-------------------|
-| 1 | `optimisticCategoryUpdate` race | KRITIČAN | Srednja — dodati serializaciju |
-| 3 | Import remap nakon persist | KRITIČAN | Niska — premjestiti remap prije persist |
-| 2 | `deleteCategory` bez rollbacka | SREDNJI | Niska — ujednačiti pattern |
-| 5 | `isAutoBackupOverdue` čita pogrešan izvor | SREDNJI | Niska — dodati IDB fallback |
-| 4 | TTS/SpeedReader na localStorage | NIZAK | Niska — migrirati na IDB |
-| 6 | HMR cache reset | NIZAK | Zanemarljivo — samo dev |
+**Fajl**: `public/splash.html` L86
 
-## Predloženi plan fixa
+```html
+<img src="./logo-icon.png" ...>
+```
 
-### Fajl 1: `src/lib/category-service.ts`
-- Dodati promise-based mutex (`_pendingSave`) koji serializuje IDB operacije
-- Umjesto `idbLoadCategories()` → `updater(current)`, koristiti stanje iz `setCategoryRecords` callback-a direktno za persist
+Splash se učitava kroz `loadFile()`. U pakovanom buildu, `getPublicPath` vraća `path.join(baseDir, 'dist', 'splash.html')`, pa `./logo-icon.png` traži `dist/logo-icon.png`. Ako `logo-icon.png` nije u `dist/` nakon builda, slika neće biti vidljiva. Treba provjeriti da li je `logo-icon.png` u `public/` (Vite ga kopira u `dist/`) — ako jeste, onda je OK.
 
-### Fajl 2: `src/hooks/useCardImport.ts`
-- Premjestiti category ID remap blok (L117-144) ISPRED `schedulePersist` poziva (L99)
+---
 
-### Fajl 3: `src/hooks/useCategoryManagement.ts`
-- Refaktorisati `deleteCategory` da koristi rollback pattern konzistentan sa ostatkom
+## 5. CSP blokira `blob:` URL-ove za audio (SREDNJI)
 
-### Fajl 4: `src/lib/app-settings.ts`
-- `isAutoBackupOverdue`: dodati async IDB fallback za `getLastBackupTime()`
+**Fajl**: `main.cjs` L148-149
 
-## Scope
-- 4 fajla, ~50 linija neto promjena
-- Kritični fixevi (1 i 3) su backward-compatible
-- Nema novih zavisnosti
+```
+connect-src 'self' app:;
+```
+
+Ambijentalni zvukovi koriste `AudioContext` sa `createBufferSource` (koji ne zahtijeva `connect-src`), ali ako bilo koji dio koda koristi `fetch()` za blob URL-ove ili external resurse, CSP će ih blokirati. Trenutno izgleda OK jer se zvuk generiše proceduralno, ali ako se doda streaming audio, trebaće `blob:` u `connect-src`.
+
+Također, `media-src` nije definisan — ako se ikad doda `<audio>` ili `<video>` element, biće blokiran.
+
+**Fix**: Dodati `blob:` u `connect-src` i `media-src 'self' blob: app:;` preventivno.
+
+---
+
+## 6. `window-is-maximized` — dvostruki `handle` crash pri recovery (ISPRAVLJENO)
+
+U `window.cjs` L125, `ipcMain.handle('window-is-maximized', ...)` se poziva svaki put kad se kreira novi prozor (npr. crash recovery). Electron baca grešku ako se `handle` pozove dva puta za isti kanal. Ovo JE pokriveno `try { ipcMain.removeHandler(...) } catch (_) {}` na L192 i L241. **Nema buga** — već je fixano.
+
+---
+
+## 7. `reviewLog` nedostaje u backup output (POTENCIJALAN)
+
+**Fajl**: `src/main.tsx` L139-147
+
+Backup data uključuje `cards, categories, sources, mindMaps, diary, calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog` — ali `reviewLog` se čita na L93 a **ne uključuje** u output objekat na L139-147.
+
+```js
+const data = {
+  version: 5, type: "full",
+  cards, categories: categories, subcategories,
+  sources, mindMaps, diary, calibrationLog, latencyLog,
+  slippageLog, activityLog, disciplineLog, pomodoroLog,
+  localStorageData,
+};
+```
+
+**`reviewLog` NEDOSTAJE!** Ovo znači da Electron auto-backup ne čuva istoriju ponavljanja — kritičan gubitak podataka.
+
+---
+
+## Sažetak
+
+| # | Problem | Ozbiljnost | Fix |
+|---|---------|------------|-----|
+| 1 | `preload.cjs` putanja — `extraFiles` vs `extraResources` | KRITIČAN | `extraResources` u package.json |
+| 7 | `reviewLog` nedostaje u Electron backup | KRITIČAN | Dodati u data objekat |
+| 5 | CSP ne dozvoljava `blob:` i `media-src` | SREDNJI | Proširiti CSP string |
+| 2 | Nekorišten `net` import | NIZAK | Ukloniti |
+| 4 | `logo-icon.png` u splash | NIZAK | Provjeriti da je u public/ |
+
+## Predloženi fix
+
+### Fajl 1: `package.json`
+- Zamijeniti `extraFiles` sa `extraResources` za `preload.cjs`
+
+### Fajl 2: `src/main.tsx`
+- Dodati `reviewLog` u backup data objekat (L139)
+
+### Fajl 3: `main.cjs`
+- Ukloniti `net` iz importa
+- Dodati `blob:` u `connect-src` i `media-src 'self' blob: app:;` u CSP
+
+### Scope
+- 3 fajla, ~5 linija neto promjena
+- Backward-compatible
 
