@@ -73,6 +73,20 @@ export default function DiarySection({ cards, reviewLog, catNameMap }: Props) {
     return days;
   }, [reviewLog]);
 
+  const subjectProgress = useMemo(() => {
+    const dayStart = startOfDay(new Date()).getTime();
+    const todayEntries = reviewLog.filter(e => e.timestamp >= dayStart);
+    const grouped = new Map<string, Set<string>>();
+    for (const e of todayEntries) {
+      const key = e.category;
+      if (!grouped.has(key)) grouped.set(key, new Set());
+      grouped.get(key)!.add(`${e.cardId}:${e.sectionIndex ?? 0}`);
+    }
+    return Array.from(grouped.entries())
+      .map(([catId, sections]) => ({ catId, name: catNameMap[catId] || catId, count: sections.size }))
+      .sort((a, b) => b.count - a.count);
+  }, [reviewLog, catNameMap]);
+
   return (
     <div className="space-y-6 mt-4">
       <div className="grid grid-cols-3 gap-4">
