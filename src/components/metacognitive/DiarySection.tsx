@@ -186,6 +186,14 @@ export default function DiarySection({ cards, reviewLog, catNameMap }: Props) {
           </div>
         )}
         <div className="space-y-3">
+          {plannerGoal && (
+            <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/10 p-2">
+              <Target className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="text-xs text-primary">
+                Preporučeni cilj danas: <strong>{plannerGoal.suggestedNew} novih</strong> + <strong>{plannerGoal.due} dospjelih</strong>
+              </span>
+            </div>
+          )}
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Dnevni cilj</label>
             <Input
