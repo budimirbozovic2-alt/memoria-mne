@@ -32,7 +32,7 @@
       "electron/**/*.cjs",
       "package.json"
     ],
-    "extraFiles": [
+    "extraResources": [
       {
         "from": "preload.cjs",
         "to": "preload.cjs"
