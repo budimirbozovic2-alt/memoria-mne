@@ -173,7 +173,12 @@ export function useCardImport({
           }
         }
 
-        // Subcategories: for v7+ records already embedded; for legacy, apply from separate field
+        // ── Persist cards AFTER remap is complete ──
+        if (merged.length > 0) schedulePersist({ type: "bulk", cards: merged });
+        cardMapRef.current = nextMap;
+        setCardMapState(() => nextMap);
+        bumpMapVersion();
+
         if (data.subcategories && typeof data.subcategories === "object" && !Array.isArray(data.categories?.[0] && typeof data.categories[0] === 'object')) {
           // Legacy subcategories — update categoryRecords nodes
           const { idbLoadCategories, idbSaveCategories } = await import("@/lib/db");
