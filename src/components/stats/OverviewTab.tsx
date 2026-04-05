@@ -3,7 +3,7 @@ import { LayoutGrid, TrendingUp, Brain, Layers, Clock, ChevronRight } from "luci
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ChartTooltip } from "@/components/ui/chart-tooltip";
 import { motion } from "framer-motion";
-import { MASTERY_LEVELS } from "@/components/KnowledgeMap";
+import { MASTERY_LEVELS } from "@/lib/mastery";
 import { Card } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import ActivityHeatmap from "../ActivityHeatmap";

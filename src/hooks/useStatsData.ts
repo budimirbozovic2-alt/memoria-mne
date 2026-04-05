@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, getSectionScore, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { getTimeDistribution } from "@/lib/metacognitive-storage";
-import { getCardMasteryLevel } from "@/components/KnowledgeMap";
+import { getCardMasteryLevel } from "@/lib/mastery";
 import { format, subDays, startOfDay, eachDayOfInterval } from "date-fns";
 import { useDeferredCompute } from "@/hooks/useDeferredCompute";
 

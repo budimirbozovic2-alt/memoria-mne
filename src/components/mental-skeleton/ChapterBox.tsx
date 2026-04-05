@@ -1,7 +1,7 @@
 import { ChevronDown, BookOpen } from "lucide-react";
 import React, { useMemo } from "react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
-import { getCardMasteryLevel, getMasteryColor } from "@/components/KnowledgeMap";
+import { getCardMasteryLevel, getMasteryColor } from "@/lib/mastery";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import SkeletonCardTile from "./SkeletonCardTile";

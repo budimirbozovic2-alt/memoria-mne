@@ -1,6 +1,6 @@
 import { X, AlertTriangle, CheckCircle } from "lucide-react";
 import { Card, SectionState } from "@/lib/spaced-repetition";
-import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
+import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/lib/mastery";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { motion } from "framer-motion";
 
