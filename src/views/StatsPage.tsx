@@ -27,7 +27,6 @@ export default function StatsPage() {
         categoryStats={categoryStats}
         reviewLog={reviewLog}
         srSettings={srSettings}
-        onShowKnowledgeMap={() => setView("knowledge-map")}
         onShowPlanner={() => setView("planner")}
       />
     </ErrorBoundary>
