@@ -5,6 +5,7 @@ import { db, type Source, type SubcategoryNode } from "@/lib/db";
 import { saveSource, invalidateSourcesCache, deleteSource } from "@/lib/sources-storage";
 import type { Card } from "@/lib/spaced-repetition";
 import { useCardData, useCategoryData, useCardActions, useUIContext } from "@/contexts/AppContext";
+import { lazy, Suspense } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
