@@ -126,53 +126,14 @@ interface OverviewTabProps {
   ratioHistory: any[] | null;
   todayTime: any | null;
   focusRatio: { progress: number; targetReviewPct: number };
-  onShowKnowledgeMap?: () => void;
 }
 
 export default function OverviewTab({
   cards, categories, reviewLog, activityData, masteryData, categoryChartData,
-  levelCounts, ratioHistory, todayTime, focusRatio, onShowKnowledgeMap,
+  levelCounts, ratioHistory, todayTime, focusRatio,
 }: OverviewTabProps) {
   const hasData = cards.length > 0;
   const total = cards.length;
-
-  return (
-    <div className="space-y-6 mt-4">
-      {onShowKnowledgeMap && total > 0 && (
-        <motion.button
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={onShowKnowledgeMap}
-          className="w-full glass-card rounded-xl p-5 hover:border-primary/40 transition-colors group text-left space-y-3"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <LayoutGrid className="h-4 w-4 text-primary" />
-              <h3 className="text-lg font-medium">Mapa Znanja</h3>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-          </div>
-          <div className="flex h-4 rounded-full overflow-hidden bg-secondary">
-            {levelCounts.map((count, lvl) => {
-              if (count === 0) return null;
-              return (
-                <div key={lvl} style={{ width: `${(count / total) * 100}%`, backgroundColor: MASTERY_LEVELS[lvl].color }} className="transition-all" />
-              );
-            })}
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {levelCounts.map((count, lvl) => {
-              if (count === 0) return null;
-              return (
-                <div key={lvl} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: MASTERY_LEVELS[lvl].color }} />
-                  {MASTERY_LEVELS[lvl].label}: <span className="font-medium text-foreground">{Math.round(count / total * 100)}%</span>
-                </div>
-              );
-            })}
-          </div>
-        </motion.button>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <ErrorBoundary compact label="Heatmap aktivnosti">
