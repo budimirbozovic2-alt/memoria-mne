@@ -34,7 +34,7 @@ export default function CategoryView() {
 
   // ── Boot-loaded context data (SSoT) ──
   const { cards: allCards, ready } = useCardData();
-  const { categoryRecords } = useCategoryData();
+  const { categoryRecords, subcategories } = useCategoryData();
 
   const category = useMemo(
     () => categoryRecords.find(c => c.id === categoryId) ?? null,
