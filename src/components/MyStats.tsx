@@ -103,7 +103,7 @@ export default function MyStats({ cards, categories, categoryRecords, subcategor
                 ratioHistory={ratioHistory}
                 todayTime={todayTime}
                 focusRatio={focusRatio}
-                onShowKnowledgeMap={onShowKnowledgeMap}
+                
               />
             </ErrorBoundary>
           </Suspense>
