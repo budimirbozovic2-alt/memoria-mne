@@ -1,30 +1,63 @@
 
 
-# Dodaj progres po predmetima za danas u dnevnik
+# Premještanje Mape Znanja u pojedinačne predmete
 
-## Šta se dodaje
+## Šta se mijenja
 
-Ispod sedmičnog grafikona (WeeklyChart), a iznad lapsusa/uspjeha, dodaje se kompaktan blok "Danas po predmetima" koji prikazuje za svaki predmet koliko je cjelina odrađeno danas — izvučeno iz `reviewLog` za danas.
+Umjesto jedne unificirane stranice `/knowledge-map` koja prikazuje sve predmete pa drill-down, Mapa Znanja postaje **novi tab unutar svakog predmeta** (CategoryView). Korisnik klikom na predmet u sidebaru odmah vidi tab "Mapa znanja" sa potkategorijama i mentalnim kosturom samo za taj predmet.
 
-## Tehnički detalji
+## Plan
 
-### Fajl: `src/components/metacognitive/DiarySection.tsx`
+### 1. Dodati "Mapa znanja" tab u CategoryView
 
-1. **Import** `BookOpen` već postoji (koristiće se za ikonu sekcije)
+**Fajl**: `src/views/CategoryView.tsx`
+- Dodati novi `TabsTrigger` za "Mapa znanja" (sa `Map` ikonom) pored postojećih tabova (Kartice, Izvori, Mentalne mape)
+- U `TabsContent` renderovati `SubcategoryList` (iz `knowledge-map/`) direktno — preskačući CategoryList korak jer je predmet već odabran
+- SubcategoryList već prima `category`, `cards`, `sources`, `subcategories`, `categoryRecords` — sve dostupno u CategoryView
+- Drill-down u MentalSkeleton (detalj po potkategoriji) ostaje isti — unutar taba
 
-2. **Novi `useMemo`** — grupiše današnje review log entryje po kategoriji:
-   - Filtrira `reviewLog` za `timestamp >= startOfDay(today)`
-   - Grupiše po `category` → broji unique sekcije (cardId + sectionIndex)
-   - Rezultat: `{ categoryId, name (iz catNameMap), count }[]` sortiran po count desc
-   - Prikazuje se samo ako ima barem 1 entry
+### 2. Ukloniti standalone Knowledge Map stranicu i rutu
 
-3. **UI blok** — ubacuje se na L120 (nakon WeeklyChart Suspense, prije lapsusa):
-   - `rounded-xl border bg-card p-5` kartica
-   - Naslov: `BookOpen` ikona + "Danas po predmetima"
-   - Lista predmeta: ime + badge sa brojem odrađenih cjelina
-   - Kompaktan layout — svaki red ima ime lijevo, broj desno
+**Fajlovi**:
+- `src/App.tsx` — ukloniti `/knowledge-map` rutu i lazy import `KnowledgeMapPage`
+- `src/views/KnowledgeMapPage.tsx` — obrisati fajl
+- `src/components/KnowledgeMap.tsx` — zadržati samo exportovane helpere (`MASTERY_LEVELS`, `getCardMasteryLevel`, `getMasteryColor`) ali ukloniti default export (orchestrator komponentu) i `CategoryList` import
+- `src/components/knowledge-map/CategoryList.tsx` — obrisati fajl (više nije potreban)
 
-### Scope
-- 1 fajl, ~30 linija dodato
-- Nema novih zavisnosti ili props-a — koristi postojeći `reviewLog`, `catNameMap`, `startOfDay`
+### 3. Očistiti reference na `/knowledge-map`
+
+- `src/components/Breadcrumbs.tsx` — ukloniti `/knowledge-map` iz mapa
+- `src/components/AppSidebar.tsx` — ne sadrži link (nema u TOOLS_NAV), ali provjeriti
+- `src/contexts/AppContext.tsx` — ukloniti `"knowledge-map"` iz `View` tipa i `VIEW_TO_PATH`
+- `src/components/stats/OverviewTab.tsx` — ukloniti `onShowKnowledgeMap` dugme (navigacija na ukinutu rutu)
+- `src/components/MyStats.tsx` — ukloniti `onShowKnowledgeMap` prop
+- `src/views/StatsPage.tsx` — ukloniti `onShowKnowledgeMap` callback
+
+### 4. Izvući mastery helpere u zaseban modul
+
+Trenutno `getCardMasteryLevel`, `getMasteryColor`, `MASTERY_LEVELS` žive u `KnowledgeMap.tsx` i importuju se iz 8+ fajlova. Pošto brišemo orchestrator:
+- Kreirati `src/lib/mastery.ts` sa tim 3 exporta
+- Ažurirati sve importere (MentalSkeleton, ChapterBox, SkeletonCardTile, AuditorDetailPanel, SubcategoryList, SubcategoryCard, OverviewTab)
+
+## Fajlovi
+
+| Fajl | Promjena |
+|------|----------|
+| `src/lib/mastery.ts` | **NOV** — mastery helperi |
+| `src/views/CategoryView.tsx` | Dodati "Mapa znanja" tab |
+| `src/views/KnowledgeMapPage.tsx` | **OBRISATI** |
+| `src/components/KnowledgeMap.tsx` | **OBRISATI** (helperi premješteni) |
+| `src/components/knowledge-map/CategoryList.tsx` | **OBRISATI** |
+| `src/App.tsx` | Ukloniti rutu |
+| `src/contexts/AppContext.tsx` | Ukloniti view tip |
+| `src/components/Breadcrumbs.tsx` | Ukloniti entry |
+| `src/views/StatsPage.tsx` | Ukloniti callback |
+| `src/components/MyStats.tsx` | Ukloniti prop |
+| `src/components/stats/OverviewTab.tsx` | Ukloniti dugme |
+| 7 fajlova u mental-skeleton/ i knowledge-map/ | Ažurirati import putanju |
+
+## Scope
+- ~13 fajlova, neto ~40 linija dodato, ~300 uklonjeno
+- Backward-compatible — ista funkcionalnost, samo drugačija navigacija
+- Nema novih zavisnosti
 
