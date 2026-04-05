@@ -70,6 +70,8 @@ export default function CategoryView() {
 
   const [orgMode, setOrgMode] = useState(false);
   const [structureOpen, setStructureOpen] = useState(false);
+  const [kmSubcategory, setKmSubcategory] = useState<string | null>(null);
+  const [kmSearch, setKmSearch] = useState("");
 
   // Sources: separate state for reader (full-screen) and editor (dialog)
   const [readerSource, setReaderSource] = useState<Source | null>(null);
