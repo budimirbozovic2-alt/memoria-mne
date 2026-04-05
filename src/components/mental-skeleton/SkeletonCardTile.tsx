@@ -1,6 +1,6 @@
 import React from "react";
 import { Card } from "@/lib/spaced-repetition";
-import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/components/KnowledgeMap";
+import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/lib/mastery";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface SkeletonCardTileProps {

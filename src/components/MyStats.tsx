@@ -26,11 +26,11 @@ interface Props {
   categoryStats: Record<string, { score: number; total: number; due: number }>;
   reviewLog: ReviewLogEntry[];
   srSettings: SRSettings;
-  onShowKnowledgeMap?: () => void;
+  
   onShowPlanner?: () => void;
 }
 
-export default function MyStats({ cards, categories, categoryRecords, subcategories, categoryStats, reviewLog, srSettings, onShowKnowledgeMap, onShowPlanner }: Props) {
+export default function MyStats({ cards, categories, categoryRecords, subcategories, categoryStats, reviewLog, srSettings, onShowPlanner }: Props) {
   const [activeTab, setActiveTab] = useState<string>("overview");
 
   const catNameMap = useMemo(() => {
@@ -103,7 +103,7 @@ export default function MyStats({ cards, categories, categoryRecords, subcategor
                 ratioHistory={ratioHistory}
                 todayTime={todayTime}
                 focusRatio={focusRatio}
-                onShowKnowledgeMap={onShowKnowledgeMap}
+                
               />
             </ErrorBoundary>
           </Suspense>

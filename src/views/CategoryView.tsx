@@ -5,13 +5,14 @@ import { db, type Source, type SubcategoryNode } from "@/lib/db";
 import { saveSource, invalidateSourcesCache, deleteSource } from "@/lib/sources-storage";
 import type { Card } from "@/lib/spaced-repetition";
 import { useCardData, useCategoryData, useCardActions, useUIContext } from "@/contexts/AppContext";
+import { lazy, Suspense } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { BookOpen, FileText, Plus, Upload, Loader2, Eye, Pencil, GitBranch, Settings, Trash2 } from "lucide-react";
+import { BookOpen, FileText, Plus, Upload, Loader2, Eye, Pencil, GitBranch, Settings, Trash2, Map } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { parseArticles } from "@/lib/article-parser";
@@ -22,6 +23,10 @@ import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import CategoryMindMaps from "@/components/category/CategoryMindMaps";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
+import SubcategoryList from "@/components/knowledge-map/SubcategoryList";
+import { TabSkeleton } from "@/components/ui/page-skeleton";
+
+const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
 
 export default function CategoryView() {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -29,7 +34,7 @@ export default function CategoryView() {
 
   // ── Boot-loaded context data (SSoT) ──
   const { cards: allCards, ready } = useCardData();
-  const { categoryRecords } = useCategoryData();
+  const { categoryRecords, subcategories } = useCategoryData();
 
   const category = useMemo(
     () => categoryRecords.find(c => c.id === categoryId) ?? null,
@@ -65,6 +70,8 @@ export default function CategoryView() {
 
   const [orgMode, setOrgMode] = useState(false);
   const [structureOpen, setStructureOpen] = useState(false);
+  const [kmSubcategory, setKmSubcategory] = useState<string | null>(null);
+  const [kmSearch, setKmSearch] = useState("");
 
   // Sources: separate state for reader (full-screen) and editor (dialog)
   const [readerSource, setReaderSource] = useState<Source | null>(null);
@@ -194,6 +201,10 @@ export default function CategoryView() {
             Mentalne mape
             <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{mindMapCount}</Badge>
           </TabsTrigger>
+          <TabsTrigger value="knowledge" className="gap-2">
+            <Map className="h-4 w-4" />
+            Mapa znanja
+          </TabsTrigger>
         </TabsList>
 
         {/* ═══ KARTICE TAB ═══ */}
@@ -291,6 +302,38 @@ export default function CategoryView() {
         {/* ═══ MENTALNE MAPE TAB ═══ */}
         <TabsContent value="mindmaps">
           <CategoryMindMaps categoryId={categoryId!} />
+        </TabsContent>
+
+        {/* ═══ MAPA ZNANJA TAB ═══ */}
+        <TabsContent value="knowledge">
+          {kmSubcategory ? (
+            <Suspense fallback={<TabSkeleton />}>
+              <MentalSkeleton
+                cards={cards}
+                category={categoryId!}
+                subcategory={kmSubcategory}
+                categoryRecords={categoryRecords}
+                onBack={() => setKmSubcategory(null)}
+              />
+            </Suspense>
+          ) : (
+            <SubcategoryList
+              cards={cards}
+              sources={sources}
+              category={categoryId!}
+              subcategories={subcategories}
+              categoryRecords={categoryRecords}
+              searchQuery={kmSearch}
+              onSearchChange={setKmSearch}
+              reorderMode={false}
+              onBack={() => {}}
+              onSelectSubcategory={(sub) => setKmSubcategory(sub)}
+              onReorderSubcategories={reorderSubcategories}
+              slideVariants={{ enter: () => ({ opacity: 0 }), center: { opacity: 1 } }}
+              direction={1}
+              transition={{ duration: 0.2 }}
+            />
+          )}
         </TabsContent>
       </Tabs>
 

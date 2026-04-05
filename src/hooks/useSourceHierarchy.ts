@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import type { Source, CategoryRecord } from "@/lib/db";
-import { getCardMasteryLevel } from "@/components/KnowledgeMap";
+import { getCardMasteryLevel } from "@/lib/mastery";
 
 export type DepthMode = "A" | "B";
 
