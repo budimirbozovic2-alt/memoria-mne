@@ -23,6 +23,10 @@ import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import CategoryMindMaps from "@/components/category/CategoryMindMaps";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
+import SubcategoryList from "@/components/knowledge-map/SubcategoryList";
+import { TabSkeleton } from "@/components/ui/page-skeleton";
+
+const MentalSkeleton = lazy(() => import("@/components/MentalSkeleton"));
 
 export default function CategoryView() {
   const { categoryId } = useParams<{ categoryId: string }>();
