@@ -170,15 +170,14 @@ export default function CategoryView() {
     );
   }
 
-  return (
-    const masteryDist = useMemo(() => {
-      if (cards.length === 0) return null;
-      const counts = [0, 0, 0, 0, 0, 0];
-      cards.forEach(c => { counts[getCardMasteryLevel(c)]++; });
-      return counts;
-    }, [cards]);
+  const masteryDist = useMemo(() => {
+    if (cards.length === 0) return null;
+    const counts = [0, 0, 0, 0, 0, 0];
+    cards.forEach(c => { counts[getCardMasteryLevel(c)]++; });
+    return counts;
+  }, [cards]);
 
-    return (
+  return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
