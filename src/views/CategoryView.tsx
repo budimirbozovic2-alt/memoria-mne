@@ -143,6 +143,13 @@ export default function CategoryView() {
     );
   }, [category?.subcategories]);
 
+  const masteryDist = useMemo(() => {
+    if (cards.length === 0) return null;
+    const counts = [0, 0, 0, 0, 0, 0];
+    cards.forEach(c => { counts[getCardMasteryLevel(c)]++; });
+    return counts;
+  }, [cards]);
+
   // Full-screen reader mode
   if (readerSource) {
     return (
@@ -170,12 +177,6 @@ export default function CategoryView() {
     );
   }
 
-  const masteryDist = useMemo(() => {
-    if (cards.length === 0) return null;
-    const counts = [0, 0, 0, 0, 0, 0];
-    cards.forEach(c => { counts[getCardMasteryLevel(c)]++; });
-    return counts;
-  }, [cards]);
 
   return (
     <div className="space-y-6">
