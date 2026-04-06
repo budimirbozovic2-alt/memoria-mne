@@ -229,7 +229,7 @@ export default function CategoryView() {
               })}
             </div>
           </TooltipProvider>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5 opacity-0 animate-fade-in" style={{ animationDelay: '600ms', animationFillMode: 'forwards' }}>
             {masteryDist.map((count, i) =>
               count > 0 ? (
                 <span key={i} className="flex items-center gap-1 text-[10px] text-muted-foreground">
