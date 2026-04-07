@@ -244,25 +244,25 @@ export default function CategoryView() {
 
       {/* Tabs */}
       <Tabs defaultValue="cards" className="w-full">
-        <TabsList className="w-full justify-start">
-          <TabsTrigger value="cards" className="gap-2">
+        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
+          <TabsTrigger value="cards" className="gap-1.5">
             <BookOpen className="h-4 w-4" />
-            Kartice
-            <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{cards.length}</Badge>
+            <span className="hidden sm:inline">Kartice</span>
+            <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{cards.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="sources" className="gap-2">
+          <TabsTrigger value="sources" className="gap-1.5">
             <FileText className="h-4 w-4" />
-            Izvori
-            <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{sources.length}</Badge>
+            <span className="hidden sm:inline">Izvori</span>
+            <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{sources.length}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="mindmaps" className="gap-2">
+          <TabsTrigger value="mindmaps" className="gap-1.5">
             <GitBranch className="h-4 w-4" />
-            Mentalne mape
-            <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{mindMapCount}</Badge>
+            <span className="hidden sm:inline">Mentalne mape</span>
+            <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{mindMapCount}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="knowledge" className="gap-2">
+          <TabsTrigger value="knowledge" className="gap-1.5">
             <Map className="h-4 w-4" />
-            Mapa znanja
+            <span className="hidden sm:inline">Mapa znanja</span>
           </TabsTrigger>
         </TabsList>
 
@@ -373,6 +373,7 @@ export default function CategoryView() {
                 subcategory={kmSubcategory}
                 categoryRecords={categoryRecords}
                 onBack={() => setKmSubcategory(null)}
+                embedded
               />
             </Suspense>
           ) : (
@@ -387,6 +388,7 @@ export default function CategoryView() {
               reorderMode={false}
               onBack={() => {}}
               onSelectSubcategory={(sub) => setKmSubcategory(sub)}
+              embedded
               onReorderSubcategories={reorderSubcategories}
               slideVariants={{ enter: () => ({ opacity: 0 }), center: { opacity: 1 } }}
               direction={1}
