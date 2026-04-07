@@ -23,6 +23,7 @@ interface Props {
   slideVariants: any;
   direction: number;
   transition: any;
+  embedded?: boolean;
 }
 
 function moveItem<T>(arr: T[], from: number, to: number): T[] {
@@ -35,7 +36,7 @@ function moveItem<T>(arr: T[], from: number, to: number): T[] {
 function SubcategoryListInner({
   cards, sources, category, subcategories, categoryRecords, searchQuery, onSearchChange,
   reorderMode, onToggleReorder, onBack, onSelectSubcategory,
-  onReorderSubcategories, slideVariants, direction, transition,
+  onReorderSubcategories, slideVariants, direction, transition, embedded,
 }: Props) {
   const catRecord = categoryRecords.find(r => r.id === category);
   const catDisplayName = catRecord?.name || category;
@@ -69,11 +70,13 @@ function SubcategoryListInner({
         transition={transition}
         className="space-y-6"
       >
-        <Header
-          title={catDisplayName}
-          subtitle={`${catCards.length} kartica • ${tree.length} grupa (${modeLabel})`}
-          onBack={onBack}
-        />
+        {!embedded && (
+          <Header
+            title={catDisplayName}
+            subtitle={`${catCards.length} kartica • ${tree.length} grupa (${modeLabel})`}
+            onBack={onBack}
+          />
+        )}
         <SearchBar value={searchQuery} onChange={onSearchChange} placeholder="Pretraži..." />
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -133,13 +136,15 @@ function SubcategoryListInner({
       transition={transition}
       className="space-y-6"
     >
-      <Header
-        title={catDisplayName}
-        subtitle={`${catCards.length} kartica u ${subsWithStats.length} potkategorija`}
-        onBack={onBack}
-        reorderMode={reorderMode}
-        onToggleReorder={onToggleReorder}
-      />
+      {!embedded && (
+        <Header
+          title={catDisplayName}
+          subtitle={`${catCards.length} kartica u ${subsWithStats.length} potkategorija`}
+          onBack={onBack}
+          reorderMode={reorderMode}
+          onToggleReorder={onToggleReorder}
+        />
+      )}
       {!reorderMode && <SearchBar value={searchQuery} onChange={onSearchChange} placeholder="Pretraži potkategorije..." />}
 
       <div className="grid gap-3 sm:grid-cols-2">

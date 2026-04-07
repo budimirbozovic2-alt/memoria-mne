@@ -15,6 +15,7 @@ interface Props {
   category: string;
   categoryRecords: CategoryRecord[];
   onBack: () => void;
+  embedded?: boolean;
 }
 
 function getChapters(cards: Card[]): string[] {
@@ -31,7 +32,7 @@ function getChapters(cards: Card[]): string[] {
   });
 }
 
-export default function MentalSkeleton({ cards, subcategory, category, categoryRecords, onBack }: Props) {
+export default function MentalSkeleton({ cards, subcategory, category, categoryRecords, onBack, embedded }: Props) {
   const catRecord = categoryRecords.find(r => r.id === category);
   const catDisplayName = catRecord?.name || category;
   const subNode = catRecord?.subcategories?.find(s => s.id === subcategory);
@@ -118,8 +119,9 @@ export default function MentalSkeleton({ cards, subcategory, category, categoryR
           <ArrowLeft className="h-5 w-5" />
         </button>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-semibold truncate">Mentalni Kostur</h2>
-          <p className="text-xs text-muted-foreground">{catDisplayName} → {subDisplayName} • {subCards.length} kartica</p>
+          <h2 className="text-xl font-semibold truncate">{embedded ? subDisplayName : "Mentalni Kostur"}</h2>
+          {!embedded && <p className="text-xs text-muted-foreground">{catDisplayName} → {subDisplayName} • {subCards.length} kartica</p>}
+          {embedded && <p className="text-xs text-muted-foreground">{subCards.length} kartica</p>}
         </div>
       </div>
 
