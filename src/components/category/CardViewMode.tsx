@@ -93,16 +93,17 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
       if (filterTag !== "__all__" && !(c.tags?.includes(filterTag))) return false;
       return true;
     });
-  }, [cards, filterSubcategory, filterChapter, filterType, filterTag]);
+  }, [cards, filterSubcategory, filterChapter, filterType, filterTag, masteryFilter]);
 
-  const hasActiveFilters = filterSubcategory !== "__all__" || filterChapter !== "__all__" || filterType !== "all" || filterTag !== "__all__";
+  const hasActiveFilters = filterSubcategory !== "__all__" || filterChapter !== "__all__" || filterType !== "all" || filterTag !== "__all__" || (masteryFilter !== null && masteryFilter !== undefined);
 
   const resetFilters = useCallback(() => {
     setFilterSubcategory("__all__");
     setFilterChapter("__all__");
     setFilterType("all");
     setFilterTag("__all__");
-  }, []);
+    onClearMasteryFilter?.();
+  }, [onClearMasteryFilter]);
 
   const toggle = useCallback((id: string) => {
     setExpandedId(prev => prev === id ? null : id);
