@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { Filter, X, Plus, Upload, CheckSquare, Trash2 } from "lucide-react";
+import { getCardMasteryLevel, MASTERY_LEVELS } from "@/lib/mastery";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,9 +22,11 @@ interface Props {
   addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => Card;
   onDelete?: (id: string) => void;
   onEdit?: (card: Card) => void;
+  masteryFilter?: number | null;
+  onClearMasteryFilter?: () => void;
 }
 
-export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit }: Props) {
+export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, masteryFilter, onClearMasteryFilter }: Props) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -81,6 +84,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
 
   const filteredCards = useMemo(() => {
     return cards.filter(c => {
+      if (masteryFilter !== null && masteryFilter !== undefined && getCardMasteryLevel(c) !== masteryFilter) return false;
       if (filterSubcategory !== "__all__" && (c.subcategoryId || "") !== filterSubcategory) return false;
       if (filterChapter !== "__all__" && (c.chapterId || "") !== filterChapter) return false;
       if (filterType === "essay" && c.type !== "essay") return false;
@@ -89,16 +93,17 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
       if (filterTag !== "__all__" && !(c.tags?.includes(filterTag))) return false;
       return true;
     });
-  }, [cards, filterSubcategory, filterChapter, filterType, filterTag]);
+  }, [cards, filterSubcategory, filterChapter, filterType, filterTag, masteryFilter]);
 
-  const hasActiveFilters = filterSubcategory !== "__all__" || filterChapter !== "__all__" || filterType !== "all" || filterTag !== "__all__";
+  const hasActiveFilters = filterSubcategory !== "__all__" || filterChapter !== "__all__" || filterType !== "all" || filterTag !== "__all__" || (masteryFilter !== null && masteryFilter !== undefined);
 
   const resetFilters = useCallback(() => {
     setFilterSubcategory("__all__");
     setFilterChapter("__all__");
     setFilterType("all");
     setFilterTag("__all__");
-  }, []);
+    onClearMasteryFilter?.();
+  }, [onClearMasteryFilter]);
 
   const toggle = useCallback((id: string) => {
     setExpandedId(prev => prev === id ? null : id);
@@ -204,6 +209,17 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
             ))}
           </SelectContent>
         </Select>
+
+        {masteryFilter !== null && masteryFilter !== undefined && (
+          <button
+            onClick={onClearMasteryFilter}
+            className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-[10px] font-medium hover:bg-secondary transition-colors"
+          >
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MASTERY_LEVELS[masteryFilter].color }} />
+            {MASTERY_LEVELS[masteryFilter].label}
+            <X className="h-3 w-3" />
+          </button>
+        )}
 
         <div className="flex items-center gap-2 ml-auto">
           <span className="text-[10px] text-muted-foreground">{filteredCards.length}/{cards.length}</span>
