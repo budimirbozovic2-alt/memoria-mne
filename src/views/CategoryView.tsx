@@ -197,19 +197,20 @@ export default function CategoryView() {
       {masteryDist && (
         <div className="space-y-1.5">
           <TooltipProvider delayDuration={200}>
-            <div className="h-2 rounded-full overflow-hidden flex bg-secondary">
+            <div className="h-2 rounded-full overflow-hidden flex bg-secondary group/mastery">
               {masteryDist.map((count, i) => {
                 const pct = (count / cards.length) * 100;
                 return count > 0 ? (
                   <Tooltip key={i}>
                     <TooltipTrigger asChild>
                       <div
-                        className="h-full cursor-default transition-[width] duration-700 ease-out"
+                        className="h-full cursor-default transition-[width,filter,transform] duration-700 ease-out hover:h-3 hover:-translate-y-[2px] hover:brightness-110 hover:drop-shadow-[0_0_6px_var(--segment-color)]"
                         style={{
                           width: `${pct}%`,
                           backgroundColor: MASTERY_LEVELS[i].color,
                           animationDelay: `${i * 80}ms`,
-                        }}
+                          '--segment-color': MASTERY_LEVELS[i].color,
+                        } as React.CSSProperties}
                         ref={(el) => {
                           if (el && !el.dataset.animated) {
                             el.style.width = '0%';
