@@ -1,32 +1,22 @@
 
 
-# Premjesti "Mapa znanja" iz tabova u header pored "Struktura"
+# Popravka "Mapa znanja" dugmeta u headeru predmeta
 
-## Šta se mijenja
+## Problem
 
-"Mapa znanja" tab se uklanja iz TabsList (gdje je pored Kartica, Izvora i Mentalnih mapa) i postaje dugme u headeru, pored postojećeg dugmeta "Struktura". Sadržaj mape znanja se prikazuje umjesto tabova kad je aktivan — slično full-screen režimu.
+Dugme "Mapa znanja" toggleuje `showKnowledge` stanje, ali sadržaj mape se renderuje **ispod** Tabs sekcije (na dnu stranice), pa korisnik ne vidi promjenu i misli da dugme ne radi. Sadržaj treba da **zamijeni** tabove kad je aktivan, umjesto da se dodaje ispod.
 
-## Fajl: `src/views/CategoryView.tsx`
+## Rješenje
 
-### 1. Dodati state za knowledge view
-- Dodati `showKnowledge` boolean state (default `false`)
+### Fajl: `src/views/CategoryView.tsx`
 
-### 2. Header — dodati dugme pored "Struktura" (L192-195)
-- Novo dugme sa `Map` ikonom i tekstom "Mapa znanja", isti stil kao "Struktura" (`variant="outline" size="sm"`)
-- `onClick` toggleuje `showKnowledge`
+1. **Premjestiti knowledge map sadržaj iznad/umjesto Tabs bloka**
+   - Kad je `showKnowledge === true`, prikazati SubcategoryList/MentalSkeleton **umjesto** Tabs komponente
+   - Kad je `showKnowledge === false`, prikazati standardne Tabs (Kartice, Izvori, Mentalne mape)
+   - Koristiti uslovni rendering: `{showKnowledge ? <KnowledgeContent /> : <Tabs>...</Tabs>}`
 
-### 3. Ukloniti "Mapa znanja" iz TabsList (L267-270)
-- Obrisati `TabsTrigger value="knowledge"`
-
-### 4. Ukloniti `TabsContent value="knowledge"` (L372-404)
-- Premjestiti sadržaj u conditional renderovanje ispod mastery bara, iznad Tabs bloka
-- Kad je `showKnowledge === true`, prikazati SubcategoryList/MentalSkeleton umjesto Tabs sekcije
-- Dodati kompaktan header sa back dugmetom za povratak na tabove
-
-### 5. Cleanup
-- Ukloniti `Map` iz importa ako se premjesti na dugme (ostaje u importu)
-- Resetovati `showKnowledge` na `false` kad se klikne back
+2. **Ukloniti stari overlay blok** (L375-409) koji renderuje knowledge map ispod tabova
 
 ## Scope
-- 1 fajl, ~15 linija promijenjeno
+- 1 fajl, ~10 linija promijenjeno — premještanje bloka iz dna u conditional umjesto Tabs
 
