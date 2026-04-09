@@ -32,6 +32,12 @@ const MindMapPage = lazy(() => import("@/views/MindMapPage"));
 
 const CategoryView = lazy(() => import("@/views/CategoryView"));
 
+/** key={categoryId} forces full remount when navigating between categories — resets all local state */
+function CategoryViewWrapper() {
+  const { categoryId } = require("react-router-dom").useParams();
+  return <ErrorBoundary label="Kategorija"><CategoryView key={categoryId} /></ErrorBoundary>;
+}
+
 const App = () => (
     <TooltipProvider>
       <div className="flex flex-col h-screen" data-app-mounted>
@@ -45,7 +51,7 @@ const App = () => (
                     <Suspense fallback={<PageSkeleton />}>
                       <Routes>
                         <Route path="/" element={<ErrorBoundary label="Početna"><DashboardPage /></ErrorBoundary>} />
-                        <Route path="/category/:categoryId" element={<ErrorBoundary label="Kategorija"><CategoryView /></ErrorBoundary>} />
+                        <Route path="/category/:categoryId" element={<CategoryViewWrapper />} />
                         <Route path="/review" element={<ErrorBoundary label="Ponavljanje"><ReviewPage /></ErrorBoundary>} />
                         <Route path="/learn" element={<ErrorBoundary label="Učenje"><LearnPage /></ErrorBoundary>} />
                         <Route path="/create" element={<ErrorBoundary label="Kreiranje"><CreatePage /></ErrorBoundary>} />
