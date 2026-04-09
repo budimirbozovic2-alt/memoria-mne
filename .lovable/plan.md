@@ -1,57 +1,81 @@
 
 
-# Popravka UUID → Naziv prikaza u cijelom sistemu
+# Deep Audit — Pronađene greške i problemi
 
-## Pronađeni problemi
+## Kritični problemi
 
-Pregledano je 15+ fajlova. Pronađena su **3 mjesta** gdje se UUID prikazuje umjesto naziva:
+### 1. State ne resetuje pri promjeni kategorije (CategoryView)
+**Fajl:** `src/views/CategoryView.tsx`
 
-### 1. `SessionFilters.tsx` — Glave prikazuju UUID (L205)
-- `subNameMap` sadrži samo potkategorije, ali se koristi i za glave: `{subNameMap[ch] || ch}` — pošto glave nisu u mapi, prikazuje se UUID
-- **Fix**: Proširiti `subNameMap` da uključi i glave (dodati chapter lookup iz `categoryRecords`)
+Kad korisnik klikne na drugi predmet u sidebaru, React re-renderuje istu `CategoryView` komponentu sa novim `categoryId` parametrom, ali `useState` inicijalizacije se **ne resetuju**. Rezultat:
+- `showKnowledge` ostaje `true` ako je bio uključen u prethodnom predmetu
+- `kmSubcategory` zadržava UUID prethodne potkategorije — prikazuje MentalSkeleton sa pogrešnim podacima
+- `masteryFilter` ostaje aktivan sa nivoom iz prethodnog predmeta
+- `orgMode`, `activeTab`, `editorSource`, `readerSource` — sve "curi" između predmeta
 
-### 2. `MnemonicWorkshop.tsx` — Potkategorije prikazuju UUID (L289)
-- `idToName` sadrži samo kategorije (`categoryRecords.map(r => [r.id, r.name])`), ali potkategorije se prikazuju kao `{sub}` — sirovi UUID
-- **Fix**: Proširiti `idToName` da uključi potkategorije, i koristiti `idToName[sub] ?? sub` na L289
+**Fix:** Dodati `useEffect` koji resetuje sva lokalna stanja kad se `categoryId` promijeni, ili koristiti `key={categoryId}` na `<CategoryView>` u Route-u.
 
-### 3. `MnemonicWorkshop.tsx` — Sort po kategoriji koristi UUID za potkategoriju (L109)
-- `(a.subcategoryId || "").localeCompare(b.subcategoryId || "")` — sortira po UUID-u umjesto po imenu
-- **Fix**: Koristiti `idToName[a.subcategoryId] ?? ""` za sort
+### 2. Sidebar link "Mentalne mape" vodi na globalnu stranicu — redundantan
+**Fajl:** `src/components/AppSidebar.tsx` (L26)
 
-## Fajlovi koji su OK (potvrđeno)
-- `GlobalSearch.tsx` — uključuje subcategories u mapu ✓
-- `SpeedReader`/`SpeedReaderSelector` — uključuje subcategories ✓
-- `MnemonicTest.tsx` — uključuje subcategories ✓
-- `FrequentErrors.tsx` — uključuje subcategories ✓
-- `CardRow.tsx` — koristi `__sub_`/`__ch_` prefikse, pokriva sve ✓
-- `CardViewTable.tsx` — inline lookup iz `allCategories` ✓
-- `WorkshopCardItem.tsx` — inline lookup ✓
+Plan za premještanje Mape Znanja u predmete je implementiran, ali **globalna ruta `/mind-map`** i njen sidebar link još uvijek postoje. Ovo stvara konfuziju — korisnik ima i globalne mentalne mape (MindMapPage) i per-predmet mentalne mape (CategoryMindMaps tab). Sidebar prikazuje "Mentalne mape" pod "Alati" što vodi na potpuno drugačiji view.
 
-## Promjene
+**Napomena:** Ovo možda nije greška ako su to namjerno dva različita modula — ali treba razjasniti.
 
-### Fajl 1: `src/components/SessionFilters.tsx`
-- Proširiti `subNameMap` (L50-56) da uključi i glave:
-  ```
-  for (const ch of n.chapters || [])
-    if (typeof ch === 'object' && ch.id) m[ch.id] = ch.name;
-  ```
+### 3. `scoreColor` u sidebaru se računa ali ne prikazuje (mrtav kod)
+**Fajl:** `src/components/AppSidebar.tsx` (L86-88)
 
-### Fajl 2: `src/components/MnemonicWorkshop.tsx`
-- Proširiti `idToName` (L73) da uključi potkategorije:
-  ```
-  const idToName = useMemo(() => {
-    const m: Record<string, string> = {};
-    for (const r of categoryRecords) {
-      m[r.id] = r.name;
-      for (const sub of r.subcategories ?? []) m[sub.id] = sub.name;
-    }
-    return m;
-  }, [categoryRecords]);
-  ```
-- Na L109, sortirati po imenu: `(idToName[a.subcategoryId ?? ""] ?? "").localeCompare(...)`
-- Na L289, koristiti `idToName[sub] ?? sub` umjesto `{sub}`
+Varijabla `color` se računa putem `scoreColor(score)` ali se koristi samo za mali dot kad je sidebar collapsed (L101-104). Kad je sidebar expanded, nema vizuelnog indikatora score-a — `color` se ne koristi. Prethodno je uklonjen progress bar, pa je sad `scoreColor` funkcija i `color` varijabla djelomično mrtav kod.
 
-## Scope
-- 2 fajla, ~10 linija promijenjeno
-- Nema novih zavisnosti
+## Srednji problemi
+
+### 4. `showKnowledge` ne resetuje `kmSubcategory` pri toggle-u
+**Fajl:** `src/views/CategoryView.tsx` (L193)
+
+Kad korisnik klikne "Mapa znanja" dugme da ga isključi (`showKnowledge` → false), `kmSubcategory` ostaje setovan. Kad ponovo uključi mapu, odmah vidi MentalSkeleton umjesto liste potkategorija.
+
+**Fix:** Toggle treba resetovati: `setShowKnowledge(v => { if (v) setKmSubcategory(null); return !v; })`
+
+### 5. `onBack={() => {}}` — nefunkcionalan back u SubcategoryList
+**Fajl:** `src/views/CategoryView.tsx` (L278)
+
+`SubcategoryList` prima `onBack={() => {}}` — no-op. Iako je `embedded` prop prisutan pa se Header ne renderuje, ovo je code smell — prop bi trebao biti opcionalan ili uklonjen u embedded modu.
+
+### 6. Chapters sort po UUID u SessionFilters
+**Fajl:** `src/components/SessionFilters.tsx` (L67)
+
+`.sort()` na chaptersInSub koristi default string sort — sortira po UUID-u umjesto po imenu ili `sortOrder`. Kad korisnik vidi listu glava, redoslijed je nepredvidiv.
+
+**Fix:** Sortirati po `subNameMap[ch]` ili po `sortOrder` iz `CategoryRecord`.
+
+## Manji problemi
+
+### 7. `as any` castovi u CategoryView (L145-146)
+Subcategory mapping koristi `as any[]` i `as any` — gubitak type safety. Trebalo bi koristiti `SubcategoryNode` tip direktno.
+
+### 8. CSS custom property `--segment-color` se postavlja ali nigdje ne koristi
+**Fajl:** `src/views/CategoryView.tsx` (L220)
+`'--segment-color': MASTERY_LEVELS[i].color` — ova CSS varijabla se ne referencira nigdje u CSS-u. Mrtav kod.
+
+### 9. `ref` callback na mastery segmentima ne čisti `dataset.animated`
+**Fajl:** `src/views/CategoryView.tsx` (L222-229)
+Kad se komponenta re-renderuje (npr. nova kartica dodana), `dataset.animated` flag sprječava ponovnu animaciju. To je namjerno, ali ako se `cards` dramatično promijene (import), animacija se neće ponovo pokrenuti.
+
+## Predloženi plan popravki
+
+### Fajl 1: `src/views/CategoryView.tsx`
+- Dodati `key={categoryId}` na Route ili `useEffect` reset za sva lokalna stanja
+- Resetovati `kmSubcategory` kad se `showKnowledge` toggleuje na false
+- Ukloniti `--segment-color` CSS property
+- Zamijeniti `as any` sa tipiziranim mapiranjem
+
+### Fajl 2: `src/components/SessionFilters.tsx`
+- Sortirati `chaptersInSub` po imenu (iz `subNameMap`)
+
+### Fajl 3: `src/components/AppSidebar.tsx`
+- Ukloniti nekorištenu `scoreColor` logiku ili je iskoristiti u expanded stanju
+
+### Scope
+- 3 fajla, ~20 linija neto promjena
+- Najkritičnija popravka: state reset pri promjeni kategorije
 
