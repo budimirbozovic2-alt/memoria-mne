@@ -143,7 +143,7 @@ export default function CategoryView() {
   const subcategoryNodes: SubcategoryNode[] = useMemo(() => {
     if (!category?.subcategories) return [];
     return (category.subcategories as SubcategoryNode[]).map((s) =>
-      typeof s === "string" ? { name: s, chapters: [], sortOrder: 0 } as SubcategoryNode : s
+      typeof s === "string" ? { id: s, name: s, chapters: [], sortOrder: 0 } as SubcategoryNode : s
     );
   }, [category?.subcategories]);
 
