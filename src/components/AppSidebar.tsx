@@ -32,6 +32,12 @@ function scoreColor(score: number): string {
   return "hsl(var(--destructive))";
 }
 
+function scoreBg(score: number): string {
+  if (score > 70) return "hsl(var(--success) / 0.15)";
+  if (score > 40) return "hsl(var(--warning) / 0.15)";
+  return "hsl(var(--destructive) / 0.15)";
+}
+
 export default function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
@@ -108,11 +114,16 @@ export default function AppSidebar() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1">
                               <span className="truncate text-[13px]">{cat.name}</span>
-                              {due > 0 && (
-                                <Badge variant="destructive" className="ml-auto text-[9px] h-4 min-w-[16px] px-1 shrink-0">
-                                  {due}
-                                </Badge>
-                              )}
+                              <span className="ml-auto flex items-center gap-1 shrink-0">
+                                <span className="text-[9px] font-medium px-1 py-0.5 rounded" style={{ color: color, backgroundColor: scoreBg(score) }}>
+                                  {score}%
+                                </span>
+                                {due > 0 && (
+                                  <Badge variant="destructive" className="text-[9px] h-4 min-w-[16px] px-1">
+                                    {due}
+                                  </Badge>
+                                )}
+                              </span>
                             </div>
                           </div>
                         )}

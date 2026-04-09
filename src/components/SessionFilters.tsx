@@ -64,7 +64,7 @@ export default function SessionFilters({
     return Array.from(new Set(
       cards.filter(c => c.categoryId === selectedCategory && c.subcategoryId === selectedSubcategory && c.chapterId)
         .map(c => c.chapterId!)
-    )).sort();
+    )).sort((a, b) => (subNameMap[a] || a).localeCompare(subNameMap[b] || b));
   }, [cards, selectedCategory, selectedSubcategory]);
 
   if (categories.length < 1) return null;
