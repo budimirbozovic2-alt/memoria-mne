@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AppProvider } from "@/contexts/AppContext";
 import { SessionProvider } from "@/contexts/SessionContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -34,7 +34,7 @@ const CategoryView = lazy(() => import("@/views/CategoryView"));
 
 /** key={categoryId} forces full remount when navigating between categories — resets all local state */
 function CategoryViewWrapper() {
-  const { categoryId } = require("react-router-dom").useParams();
+  const { categoryId } = useParams();
   return <ErrorBoundary label="Kategorija"><CategoryView key={categoryId} /></ErrorBoundary>;
 }
 
