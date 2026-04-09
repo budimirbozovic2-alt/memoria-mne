@@ -186,9 +186,6 @@ export default function CategoryView() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        {category.color && (
-          <span className="h-4 w-4 rounded-full shrink-0" style={{ backgroundColor: category.color }} />
-        )}
         <h1 className="imperial-title text-foreground flex-1">{category.name}</h1>
         <Button variant={showKnowledge ? "default" : "outline"} size="sm" className="gap-1.5 h-8 text-xs" onClick={() => { setShowKnowledge(v => !v); setKmSubcategory(null); }}>
           <Map className="h-3.5 w-3.5" />
