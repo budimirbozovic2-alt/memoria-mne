@@ -90,7 +90,7 @@ export class ErrorBoundary extends Component<Props, State> {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `memoria-emergency-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `codex-emergency-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
