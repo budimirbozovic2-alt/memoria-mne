@@ -1,26 +1,48 @@
 
 
-# Fix: Phantom subcategories with UUID names
+# Audit: Import/Export — bugovi i optimizacije
 
-## Root Cause
-In `src/hooks/useCardBootstrap.ts`, the orphan-detection loop (lines 169-184) checks if a card's `subcategoryId` matches any node's **name** instead of its **id**. Since cards store UUIDs, the match always fails, causing a phantom `SubcategoryNode` to be created with the UUID string as its display name. Same bug for chapters.
+## Pronađeni problemi
 
-## Fix (1 file, 4 line changes)
+### Bug 1: Pogrešan uslov za legacy subcategories (useCardImport.ts, L182)
+```
+!Array.isArray(data.categories?.[0] && typeof data.categories[0] === 'object')
+```
+Izraz `data.categories?.[0] && typeof data.categories[0] === 'object'` vraća `true/false`, pa `Array.isArray(true)` je uvijek `false`, a `!false` je uvijek `true`. To znači da se legacy subcategories blok **uvijek izvršava**, čak i kad su kategorije u novom record formatu — potencijalno prepisujući već ispravne subcategories nodove.
 
-**File: `src/hooks/useCardBootstrap.ts`**
+**Fix:** Zamijeniti sa `!(Array.isArray(data.categories) && data.categories.length > 0 && typeof data.categories[0] === 'object' && 'id' in data.categories[0])`
 
-1. **Line 173**: Change `nodes.find((n) => n.name === sub)` to `nodes.find((n) => n.id === sub)`
-2. **Line 180**: Change `node.chapters.some(c => c.name === ch)` to `node.chapters.some(c => c.id === ch)`
+### Bug 2: Dvostruko čitanje i dekompresija fajla
+Korisnik odabere fajl → `ExportImportDialog` ga čita, dekompresuje ZIP, parsira JSON za validaciju → zatim `useCardImport` ponovo čita isti fajl, ponovo dekompresuje ZIP, ponovo parsira JSON. Za velike backup-e (10MB+) ovo znači dupli rad i dupla memorija.
 
-## Cleanup: Remove existing phantoms
+**Fix:** Proslijediti već parsirani JSON (ili JSON string) iz validacije u import funkciju umjesto ponovnog čitanja File objekta.
 
-After the fix, existing phantom entries are already persisted in IDB. Add a one-time cleanup pass right after the orphan scan loop (before `needsPersist` check) that removes any `SubcategoryNode` where:
-- `name` looks like a UUID (regex: `/^[0-9a-f]{8}-/`)
-- it has zero cards assigned to it (no card has `subcategoryId === node.id`)
+### Bug 3: Tri IDB tabele se ne eksportuju niti importuju
+Tabele dodane u v10 šemi — `mnemonics`, `majorSystem`, `mnemonicTestLog` — nemaju export/import podršku. Korisnikov Mnemo rad (kartice, major system mapiranja, test logovi) se gubi pri backup/restore ciklusu.
 
-Same for chapters within each node.
+**Fix:** Dodati ove tri tabele u `exportData` (useCardExport) i `importData` (useCardImport), koristeći isti pattern kao ostale tabele.
 
-## Risk
-- Very low — only changes the comparison field from `name` to `id`
-- Cleanup only removes nodes with UUID-shaped names and zero cards
+### Optimizacija: Dvostruka sanitizacija
+`ExportImportDialog` sanitizuje kartice tokom validacije (L124-130), ali taj rezultat se baca. Zatim `useCardImport` ponovo sanitizuje. Za 5000+ kartica ovo je nepotreban overhead.
+
+**Fix:** Ukloniti sanitizaciju iz validacije (samo provjeriti strukturu), ostaviti je samo u importu.
+
+## Plan implementacije
+
+### Fajl 1: `src/hooks/useCardImport.ts`
+- **L182:** Ispraviti pogrešan uslov za legacy subcategories
+- Dodati import za `mnemonics`, `majorSystem`, `mnemonicTestLog` tabele (isti pattern kao diary/disciplineLog)
+- Promijeniti `importData` potpis da prima opcioni `parsedJson?: unknown` parametar — ako postoji, preskočiti čitanje fajla
+
+### Fajl 2: `src/hooks/useCardExport.ts`
+- U `exportData`: dodati čitanje `mnemonics`, `majorSystem`, `mnemonicTestLog` iz IDB i uključiti u export objekat
+
+### Fajl 3: `src/components/ExportImportDialog.tsx`
+- Ukloniti sanitizaciju iz validacije (L124-130) — ostaviti samo strukturnu provjeru
+- Čuvati parsirani JSON u validation state i proslijediti ga u `onImport` umjesto File objekta
+- Ažurirati `onImport` prop tip da prima `parsedData` pored `file`
+
+## Scope
+- 3 fajla, ~40 linija izmjena
+- Rizik nizak — ispravlja se latentni bug i dodaje podrška za već postojeće tabele
 
