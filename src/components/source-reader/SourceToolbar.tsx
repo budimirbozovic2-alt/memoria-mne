@@ -3,7 +3,7 @@ import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { Source } from "@/lib/sources-storage";
+import type { Source, SourceKind } from "@/lib/db-schema";
 import { SourceHeader } from "./SourceHeader";
 import { useSourceReaderStore, type ReaderWidth } from "@/store/useSourceReaderStore";
 
@@ -17,6 +17,7 @@ interface Props {
 }
 
 export const SourceToolbar = memo(function SourceToolbar({ source, onBack, onAutoSplit, onAutoFormat }: Props) {
+  const sourceKind: SourceKind = source.sourceKind ?? "propis";
   const viewMode = useSourceReaderStore(s => s.viewMode);
   const setViewMode = useSourceReaderStore(s => s.setViewMode);
   const editMode = useSourceReaderStore(s => s.editMode);
@@ -40,7 +41,7 @@ export const SourceToolbar = memo(function SourceToolbar({ source, onBack, onAut
 
       <SourceHeader source={source} />
 
-      {!editMode && (
+      {!editMode && sourceKind === "propis" && (
         <Button variant="outline" size="sm" onClick={onAutoSplit} className="gap-1.5" title="Generiši eseje iz članova">
           <Wand2 className="h-3.5 w-3.5" />
           Auto-Split
