@@ -1,4 +1,4 @@
-import { RotateCcw, Database } from "lucide-react";
+import { RotateCcw, Database, FolderOpen } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings } from "@/lib/app-settings";
@@ -11,6 +11,7 @@ import { useCardData, useCategoryData, useCardActions } from "@/contexts/AppCont
 import AlgorithmTab from "@/components/settings/AlgorithmTab";
 import PersonalizationTab from "@/components/settings/PersonalizationTab";
 import WorkflowTab from "@/components/settings/WorkflowTab";
+import SubjectsTab from "@/components/settings/SubjectsTab";
 import SystemTab from "@/components/settings/SystemTab";
 
 interface Props {
@@ -77,10 +78,14 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
       </div>
 
       <Tabs defaultValue="algorithm" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="algorithm">Algoritam</TabsTrigger>
           <TabsTrigger value="personalization">Personalizacija</TabsTrigger>
           <TabsTrigger value="workflow">Tok rada</TabsTrigger>
+          <TabsTrigger value="subjects" className="gap-1.5">
+            <FolderOpen className="h-3.5 w-3.5" />
+            Predmeti
+          </TabsTrigger>
           <TabsTrigger value="system" className="gap-1.5">
             <Database className="h-3.5 w-3.5" />
             Sistem
@@ -99,8 +104,8 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
           <WorkflowTab app={app} setApp={setApp} tts={tts} setTts={setTts} voices={voices} />
         </TabsContent>
 
-        <TabsContent value="system" className="mt-0">
-          <SystemTab
+        <TabsContent value="subjects" className="mt-0">
+          <SubjectsTab
             categories={categories}
             subcategories={subcategories}
             categoryRecords={categoryRecords}
@@ -108,8 +113,11 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
             onAdd={addCategory}
             onRename={renameCategory}
             onDelete={deleteCategory}
-            onOpenExportImport={() => setExportImportOpen(true)}
           />
+        </TabsContent>
+
+        <TabsContent value="system" className="mt-0">
+          <SystemTab onOpenExportImport={() => setExportImportOpen(true)} />
         </TabsContent>
       </Tabs>
 
