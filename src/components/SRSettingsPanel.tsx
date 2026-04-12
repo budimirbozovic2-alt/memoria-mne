@@ -78,19 +78,21 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
       </div>
 
       <Tabs defaultValue="algorithm" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-6">
-          <TabsTrigger value="algorithm">Algoritam</TabsTrigger>
-          <TabsTrigger value="personalization">Personalizacija</TabsTrigger>
-          <TabsTrigger value="workflow">Tok rada</TabsTrigger>
-          <TabsTrigger value="subjects" className="gap-1.5">
-            <FolderOpen className="h-3.5 w-3.5" />
-            Predmeti
-          </TabsTrigger>
-          <TabsTrigger value="system" className="gap-1.5">
-            <Database className="h-3.5 w-3.5" />
-            Sistem
-          </TabsTrigger>
-        </TabsList>
+        <div className="sticky top-0 z-10 bg-background pb-4 -mx-1 px-1">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="algorithm">Algoritam</TabsTrigger>
+            <TabsTrigger value="personalization">Personalizacija</TabsTrigger>
+            <TabsTrigger value="workflow">Tok rada</TabsTrigger>
+            <TabsTrigger value="subjects" className="gap-1.5">
+              <FolderOpen className="h-3.5 w-3.5" />
+              Predmeti
+            </TabsTrigger>
+            <TabsTrigger value="system" className="gap-1.5">
+              <Database className="h-3.5 w-3.5" />
+              Sistem
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="algorithm" className="mt-0">
           <AlgorithmTab local={local} setLocal={setLocal} app={app} setApp={setApp} />
