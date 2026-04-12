@@ -89,9 +89,9 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
           <p><strong className="text-foreground">TTS</strong> — podesi brzinu i glas za čitanje naglas.</p>
         </InfoPanel>
       </div>
-
+      <div ref={stickyRef} className="h-0" />
       <Tabs defaultValue="algorithm" className="w-full">
-        <div className="sticky top-0 z-10 bg-background pb-4 -mx-1 px-1">
+        <div className={`sticky top-0 z-10 bg-background pb-4 -mx-1 px-1 transition-shadow duration-200 ${scrolled ? "shadow-md" : ""}`}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="algorithm">Algoritam</TabsTrigger>
             <TabsTrigger value="personalization">Personalizacija</TabsTrigger>
