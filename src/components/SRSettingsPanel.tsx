@@ -87,6 +87,11 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
           <p><strong className="text-foreground">Dashboard</strong> — prilagodi koje widgete vidiš na pregledu.</p>
           <p><strong className="text-foreground">Zvučni efekti</strong> — tonovi pri ocjenjivanju i završetku sesije.</p>
           <p><strong className="text-foreground">TTS</strong> — podesi brzinu i glas za čitanje naglas.</p>
+          <p className="pt-1 border-t border-border mt-1"><strong className="text-foreground">Prečice:</strong></p>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between"><span>Workflow sidebar</span><kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground border">M</kbd></div>
+            <div className="flex items-center justify-between"><span>Zatvori modal</span><kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground border">ESC</kbd></div>
+          </div>
         </InfoPanel>
       </div>
       <div ref={stickyRef} className="h-0" />
