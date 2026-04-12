@@ -1,10 +1,11 @@
 import { GripVertical } from "lucide-react";
 import { Card } from "@/lib/spaced-repetition";
-import { useState, useRef, useEffect, useMemo, useCallback, CSSProperties } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useCategoryData } from "@/contexts/AppContext";
 import { List, type RowComponentProps } from "react-window";
 import CardRow, { type CardRowProps } from "./card-list/CardRow";
 import { useCardListFilters } from "@/hooks/useCardListFilters";
+import { useCardListDnd } from "@/hooks/useCardListDnd";
 
 interface Props {
   cards: Card[];
@@ -101,8 +102,6 @@ export default function CardList({
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const listRef = useRef<any>(null);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const { categoryRecords: allCats } = useCategoryData();
 
   const catNameMap = useMemo(() => {
@@ -117,6 +116,8 @@ export default function CardList({
   }, [allCats]);
 
   const filtered = useCardListFilters(cards, { filterCategory, filterSubcategory, filterChapter, filterType, filterTag, searchQuery });
+
+  const dnd = useCardListDnd({ filtered, onReorder });
 
   useEffect(() => {
     if (!scrollToCardId) return;
@@ -133,50 +134,6 @@ export default function CardList({
     const sectionCount = card.type === "flash" ? 1 : card.sections.length;
     return EXPANDED_ROW_BASE + sectionCount * SECTION_HEIGHT + GAP;
   }, [filtered, expandedId]);
-
-  const handleDragStart = useCallback((index: number) => { setDragIndex(index); }, []);
-
-  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  }, []);
-
-  const handleDrop = useCallback((index: number) => {
-    if (dragIndex === null || dragIndex === index) {
-      setDragIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
-    const reordered = [...filtered];
-    const [moved] = reordered.splice(dragIndex, 1);
-    reordered.splice(index, 0, moved);
-    onReorder?.(reordered.map(c => c.id));
-    setDragIndex(null);
-    setDragOverIndex(null);
-  }, [dragIndex, filtered, onReorder]);
-
-  const handleDragEnd = useCallback(() => {
-    setDragIndex(null);
-    setDragOverIndex(null);
-  }, []);
-
-  const scrollRafRef = useRef<number | null>(null);
-  const handleContainerDragOver = useCallback((e: React.DragEvent) => {
-    if (dragIndex === null) return;
-    e.preventDefault();
-    const EDGE_ZONE = 80;
-    const SCROLL_SPEED = 12;
-    const y = e.clientY;
-    const vh = window.innerHeight;
-    if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
-    if (y < EDGE_ZONE) {
-      const intensity = 1 - y / EDGE_ZONE;
-      scrollRafRef.current = requestAnimationFrame(() => { window.scrollBy(0, -SCROLL_SPEED * intensity); });
-    } else if (y > vh - EDGE_ZONE) {
-      const intensity = 1 - (vh - y) / EDGE_ZONE;
-      scrollRafRef.current = requestAnimationFrame(() => { window.scrollBy(0, SCROLL_SPEED * intensity); });
-    }
-  }, [dragIndex]);
 
   const useVirtualization = filtered.length >= VIRTUALIZATION_THRESHOLD && !reorderMode;
 
@@ -221,18 +178,18 @@ export default function CardList({
   }
 
   return (
-    <div className="space-y-3" onDragOver={reorderMode ? handleContainerDragOver : undefined}>
+    <div className="space-y-3" onDragOver={reorderMode ? dnd.handleContainerDragOver : undefined}>
       {filtered.map((card, index) => (
         <div
           key={card.id}
           draggable={reorderMode}
-          onDragStart={reorderMode ? () => handleDragStart(index) : undefined}
-          onDragOver={reorderMode ? (e) => handleDragOver(e, index) : undefined}
-          onDrop={reorderMode ? () => handleDrop(index) : undefined}
-          onDragEnd={reorderMode ? handleDragEnd : undefined}
+          onDragStart={reorderMode ? () => dnd.handleDragStart(index) : undefined}
+          onDragOver={reorderMode ? (e) => dnd.handleDragOver(e, index) : undefined}
+          onDrop={reorderMode ? () => dnd.handleDrop(index) : undefined}
+          onDragEnd={reorderMode ? dnd.handleDragEnd : undefined}
           className={`transition-all ${reorderMode ? "cursor-grab active:cursor-grabbing" : ""} ${
-            dragOverIndex === index && dragIndex !== index ? "border-t-2 border-primary" : ""
-          } ${dragIndex === index ? "opacity-40" : ""}`}
+            dnd.dragOverIndex === index && dnd.dragIndex !== index ? "border-t-2 border-primary" : ""
+          } ${dnd.dragIndex === index ? "opacity-40" : ""}`}
         >
           <div className="flex items-stretch gap-0">
             {reorderMode && (
