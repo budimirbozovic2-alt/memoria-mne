@@ -21,6 +21,19 @@ interface Props {
 
 export default function SRSettingsPanel({ settings, onUpdate }: Props) {
   const [local, setLocal] = useState<SRSettings>({ ...settings });
+  const [scrolled, setScrolled] = useState(false);
+  const stickyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = stickyRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setScrolled(!entry.isIntersecting),
+      { threshold: 1, rootMargin: "-1px 0px 0px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const initialAppRef = useRef(loadAppSettings());
   const initialTtsRef = useRef(loadTTSSettings());
   const [exportImportOpen, setExportImportOpen] = useState(false);
