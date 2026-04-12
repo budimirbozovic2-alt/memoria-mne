@@ -1,39 +1,33 @@
 
 
-# Memoizacija `highlightKeyParts` poziva
+# Dekompozicija MindMapCanvas (407 → ~150 + ~270 linija)
 
-## Problem
-`highlightKeyParts` kreira RegExp objekte i poziva DOMPurify sanitizaciju na svakom renderu. U sesijama učenja/konsolidacije, ovo se poziva nepotrebno kada se `content` i `keyParts` nisu promijenili (npr. pri promjeni `showAnswer`, `confidence`, timer state-a).
+## Pristup
+Izdvojiti svu logiku (state, callbacks, efekti) u `useMindMapCanvas` hook. `MindMapCanvasInner` postaje čist orchestrator koji samo renderuje.
 
-## Rješenje
-Dodati `useMemo` wrapper oko svakog `highlightKeyParts` poziva u 4 komponente. Zavisnosti: `[content, keyParts]`.
+## Novi fajl: `src/hooks/useMindMapCanvas.ts` (~270 linija)
 
-## Izmjene po fajlu
+Sadrži sve iz linija 34-287 trenutne komponente:
+- State deklaracije (title, dirty, deletedStack, presentationMode, selectedEdgeId, exportOpen, snapLines)
+- Stable callback refs (onUpdateRef, onDuplicateRef, stableOnUpdate, stableOnDuplicate)
+- initialNodes memo, useNodesState, useEdgesState
+- handleNodesChange (delete with undo), handleEdgesChange
+- Snap guide logika (onNodeDrag, onNodeDragStop)
+- Edge logika (onConnect, updateEdge, deleteEdge, onEdgeClick)
+- Node helpers (addNodeFromTemplate, addBlankNode, handleAutoLayout)
+- handleSave + auto-save effect + Ctrl+S effect
+- Izvedene vrijednosti (mode, isProcedure, templates, edgeStroke, edgeStyle, selectedEdge)
 
-### 1. `src/components/review/ReviewCard.tsx`
-- 1 poziv (linija 285) — memoizirati sa `useMemo(() => highlightKeyParts(section.content, card.keyParts), [section.content, card.keyParts])`
+**Return type**: Objekat sa svim potrebnim vrijednostima i callback-ovima za renderovanje.
 
-### 2. `src/components/learn/StudyModeFree.tsx`
-- 2 poziva (linije 90, 112) — ovi su unutar `.map()` i conditional renderinga. Kreirati helper komponentu `HighlightedContent` koja interno koristi `useMemo`, ili memoizirati na nivou kartice (jedan `useMemo` za sve sekcije koji vraća `Map<sectionId, html>`).
+## Izmjena: `src/components/mindmap/MindMapCanvas.tsx` (~150 linija)
 
-### 3. `src/components/learn/StudyModeRecall.tsx`
-- 2 poziva (linije 102, 133) — isti pristup: memoizirati po sekciji.
-
-### 4. `src/components/learn/StudyModeChain.tsx`
-- 2 poziva (linije 150, 178) — memoizirati po aktivnom chain indeksu.
-
-## Implementacijski pristup
-Kreirati malu helper komponentu `MemoizedHighlight` u `src/lib/highlight-key-parts.ts`:
-
-```tsx
-export function useHighlightedContent(content: string, keyParts?: string[]): string {
-  return useMemo(() => highlightKeyParts(content, keyParts), [content, keyParts]);
-}
-```
-
-Svaki poziv `highlightKeyParts` u renderingu zamijeniti sa `useHighlightedContent` hook-om ili `useMemo` wraperom direktno. Za pozive unutar `.map()` loop-ova, koristiti malu `<HighlightedSection>` komponentu koja enkapsulira `useMemo`.
+- Import `useMindMapCanvas` iz novog hook-a
+- `MindMapCanvasInner` poziva hook, destrukturira rezultat, i renderuje JSX (linije 289-397)
+- Wrapper `MindMapCanvas` ostaje nepromijenjen (ReactFlowProvider)
 
 ## Scope
-- 5 fajlova (4 komponente + `highlight-key-parts.ts`)
+- 1 novi fajl (`useMindMapCanvas.ts`)
+- 1 izmjena (`MindMapCanvas.tsx` — zamjena logike sa hook pozivom)
 - Bez funkcionalnih promjena
 
