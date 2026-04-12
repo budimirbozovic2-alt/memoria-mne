@@ -4,7 +4,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
-import { highlightKeyParts } from "@/lib/highlight-key-parts";
+import { HighlightedSection } from "@/lib/highlight-key-parts";
 import SessionHeader from "./SessionHeader";
 import QuestionDots from "./QuestionDots";
 import GradeButtons from "./GradeButtons";
@@ -99,7 +99,7 @@ export default function StudyModeRecall({
                   {sections.map(section => (
                     <div key={section.id} className="rounded-xl border bg-card p-4">
                       <p className="font-medium text-sm mb-2">{section.title}</p>
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightKeyParts(section.content, card.keyParts) }} />
+                      <HighlightedSection content={section.content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
                     </div>
                   ))}
                 </div>
@@ -130,7 +130,7 @@ export default function StudyModeRecall({
                 ) : (
                   <div className="space-y-4">
                     <div className="rounded-lg bg-secondary/50 p-4">
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightKeyParts(sections[drillIndex].content, card.keyParts) }} />
+                      <HighlightedSection content={sections[drillIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
                     </div>
                     <GradeButtons onGrade={handleArGrade} hint="Ocijeni svoje znanje (samo 4 = napredak)" />
                   </div>

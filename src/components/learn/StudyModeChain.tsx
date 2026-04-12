@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { highlightKeyParts } from "@/lib/highlight-key-parts";
+import { HighlightedSection } from "@/lib/highlight-key-parts";
 import SessionHeader from "./SessionHeader";
 import QuestionDots from "./QuestionDots";
 import GradeButtons from "./GradeButtons";
@@ -147,7 +147,7 @@ export default function StudyModeChain({
                     ) : (
                       <div className="space-y-4">
                         <div className="rounded-lg bg-secondary/50 p-4">
-                          <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightKeyParts(sections[chainIndex].content, card.keyParts) }} />
+                          <HighlightedSection content={sections[chainIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
                         </div>
                         <GradeButtons onGrade={handleChainGrade} hint="Ocijeni (samo 4 = napredak)" />
                       </div>
@@ -175,7 +175,7 @@ export default function StudyModeChain({
                     ) : (
                       <div className="space-y-4">
                         <div className="rounded-lg bg-secondary/50 p-4">
-                          <div className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightKeyParts(sections[chainReviewIndex].content, card.keyParts) }} />
+                          <HighlightedSection content={sections[chainReviewIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
                         </div>
                         <GradeButtons onGrade={handleChainReviewGrade} hint="Bilo šta ispod 4 = reset na modul 1" />
                       </div>
