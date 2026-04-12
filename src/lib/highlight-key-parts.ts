@@ -1,4 +1,5 @@
 import { sanitizeHtml } from "@/lib/sanitize";
+import React, { useMemo } from "react";
 
 /**
  * Highlights key parts in HTML content by wrapping matched text
