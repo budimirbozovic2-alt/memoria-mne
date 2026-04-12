@@ -2,7 +2,7 @@ import { ArrowLeft, Eye, ChevronRight, AlertTriangle, Pause, Scale } from "lucid
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { Card, Section, GRADES, isLeech, formatInterval, previewIntervals, SRSettings } from "@/lib/spaced-repetition";
 import { useCategoryData } from "@/contexts/AppContext";
-import { highlightKeyParts } from "@/lib/highlight-key-parts";
+import { HighlightedSection } from "@/lib/highlight-key-parts";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -282,7 +282,7 @@ export default function ReviewCard({
                     <span className="text-xs uppercase tracking-widest text-muted-foreground">{section.title}</span>
                   )}
                 </div>
-                <div className={`${!isFlash ? "mt-4" : ""} text-base leading-relaxed whitespace-pre-wrap`} dangerouslySetInnerHTML={{ __html: highlightKeyParts(section.content, card.keyParts) }} />
+                <HighlightedSection content={section.content} keyParts={card.keyParts} className={`${!isFlash ? "mt-4" : ""} text-base leading-relaxed whitespace-pre-wrap`} />
                 <p className="mt-3 text-[10px] text-muted-foreground/60 flex items-center gap-1">
                   Označi tekst + pritisni <kbd className="px-1 py-0.5 rounded bg-secondary border text-[9px] font-mono">N</kbd> za bilježenje greške
                 </p>

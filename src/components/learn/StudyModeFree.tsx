@@ -4,7 +4,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
-import { highlightKeyParts } from "@/lib/highlight-key-parts";
+import { HighlightedSection } from "@/lib/highlight-key-parts";
 import SessionHeader from "./SessionHeader";
 import QuestionDots from "./QuestionDots";
 import { ViewWidth, viewWidthClasses } from "./types";
@@ -87,7 +87,7 @@ export default function StudyModeFree({
                 </button>
                 {expandedSections.has(0) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                    <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightKeyParts(card.sections[0]?.content || "", card.keyParts) }} />
+                    <HighlightedSection content={card.sections[0]?.content || ""} keyParts={card.keyParts} className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
                   </motion.div>
                 )}
               </div>
@@ -109,7 +109,7 @@ export default function StudyModeFree({
                     </button>
                     {expandedSections.has(i) && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                        <div className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: highlightKeyParts(section.content, card.keyParts) }} />
+                        <HighlightedSection content={section.content} keyParts={card.keyParts} className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
                       </motion.div>
                     )}
                   </div>
