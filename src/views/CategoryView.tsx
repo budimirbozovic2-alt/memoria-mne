@@ -74,16 +74,10 @@ export default function CategoryView() {
   const [kmSearch, setKmSearch] = useState("");
   const [masteryFilter, setMasteryFilter] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("cards");
-  const [activeSourceTab, setActiveSourceTab] = useState<"propis" | "skripta">("propis");
   const [showKnowledge, setShowKnowledge] = useState(false);
 
-  // Sources: separate state for reader (full-screen) and editor (dialog)
+  // Sources: reader state only (editor/import/delete moved to SourcesTab)
   const [readerSource, setReaderSource] = useState<Source | null>(null);
-  const [editorSource, setEditorSource] = useState<Source | null>(null);
-  const [importing, setImporting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Source | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-open source from GlobalSearch navigation
   useEffect(() => {
@@ -97,47 +91,6 @@ export default function CategoryView() {
   const handleSourceUpdated = useCallback(() => {
     invalidateSourcesCache();
   }, []);
-
-  const handleDocxImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !categoryId) return;
-    e.target.value = "";
-
-    setImporting(true);
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const { parseDocxInWorker } = await import("@/lib/docx-parser");
-      const rawHtml = await parseDocxInWorker(arrayBuffer);
-      const cleanHtml = sanitizeHtml(rawHtml);
-      const promotedHtml = (await import("@/lib/heading-promotion")).promoteHeadings(cleanHtml);
-      const injectedHtml = injectHeadingIds(promotedHtml);
-      const outline = extractOutline(injectedHtml);
-      const articles = parseArticles(injectedHtml);
-      const title = file.name.replace(/\.docx?$/i, "");
-
-      const newSource: Source = {
-        id: crypto.randomUUID(),
-        categoryId,
-        title,
-        date: new Date().toISOString().slice(0, 10),
-        htmlContent: promotedHtml,
-        outline,
-        articles,
-        version: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        sourceKind: activeSourceTab,
-      };
-
-      await saveSource(newSource);
-      invalidateSourcesCache();
-      toast.success(`Izvor "${title}" uspješno importovan.`);
-    } catch (err) {
-      toast.error(`Greška pri importu: ${err instanceof Error ? err.message : "Nepoznata greška"}`);
-    } finally {
-      setImporting(false);
-    }
-  }, [categoryId, activeSourceTab]);
 
   // Derive SubcategoryNode[] from category record (must be before early returns)
   const subcategoryNodes: SubcategoryNode[] = useMemo(() => {
