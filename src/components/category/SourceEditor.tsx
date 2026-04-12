@@ -243,6 +243,19 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
               </Label>
             </div>
 
+            <div className="space-y-1.5">
+              <Label>Tip izvora</Label>
+              <Select value={sourceKind} onValueChange={(v) => setSourceKind(v as SourceKind)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="propis">Propis</SelectItem>
+                  <SelectItem value="skripta">Skripta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {source.officialGazetteInfo && (
               <div className="text-xs text-muted-foreground bg-muted/50 rounded px-3 py-2">
                 <span className="font-medium">Auto-detektovano:</span> {source.officialGazetteInfo}
