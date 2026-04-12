@@ -95,7 +95,7 @@ export function Sidebar({ className, collapsible = "icon", children, ...props }:
       data-state={state}
       data-collapsible={collapsible}
       className={cn(
-        "group/sidebar flex flex-col border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-in-out overflow-hidden shrink-0",
+        "group/sidebar sticky top-0 h-screen flex flex-col border-r bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-in-out overflow-hidden shrink-0",
         state === "expanded" ? "w-[var(--sidebar-width)]" : "w-[var(--sidebar-width-icon)]",
         className
       )}
