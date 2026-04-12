@@ -82,8 +82,7 @@ export function useCardBootstrap(setters: BootSetters) {
       try {
         markBootStep("cards:init-start");
         splashProgress(5, "Otvaranje baze…");
-        console.log("[boot:diag] step 1: ensureDbOpen");
-        markBootStep("cards:db-open-start");
+        if (import.meta.env.DEV) console.log("[boot:diag] step 1: ensureDbOpen");
         const dbOk = await ensureDbOpen(6000);
         markBootStep("cards:db-open-done", dbOk ? "ok" : "failed");
         if (!dbOk) {
@@ -100,7 +99,7 @@ export function useCardBootstrap(setters: BootSetters) {
 
         markBootStep("cards:migration-start");
         splashProgress(10, "Migracija podataka…");
-        console.log("[boot:diag] step 2: migrateFromLocalStorage");
+        if (import.meta.env.DEV) console.log("[boot:diag] step 2: migrateFromLocalStorage");
         await withTimeout(migrateFromLocalStorage(), 3000, "migration", undefined);
         
         // Mnemonics migration (localStorage -> IDB)
@@ -114,7 +113,7 @@ export function useCardBootstrap(setters: BootSetters) {
 
         // Initialize in-memory caches from IDB (replaces localStorage)
         splashProgress(15, "Inicijalizacija keša…");
-        console.log("[boot:diag] step 3: initCaches");
+        if (import.meta.env.DEV) console.log("[boot:diag] step 3: initCaches");
         const { initMetacognitiveCache } = await import("@/lib/metacognitive-storage");
         const { initPlannerCache } = await import("@/lib/planner-storage");
         await withTimeout(
@@ -123,14 +122,23 @@ export function useCardBootstrap(setters: BootSetters) {
         );
 
         splashProgress(25, "Učitavanje kartica…");
-        console.log("[boot:diag] step 4: loading data");
+        if (import.meta.env.DEV) console.log("[boot:diag] step 4: loading data");
         markBootStep("cards:data-load-start");
         const c = await withTimeout(idbLoadCards(), 5000, "cards load", []);
 
         splashProgress(50, `${c.length} kartica učitano`);
         // Load CategoryRecord[] from IDB, seed defaults if empty
         const catRecords = await withTimeout(seedDefaultCategories(), 2500, "categories load", []);
-        console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
+        if (import.meta.env.DEV) console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
+
+        // Build card-by-category index O(n) instead of O(n×categories)
+        const cardsByCat = new Map<string, typeof c>();
+        for (const card of c) {
+          const arr = cardsByCat.get(card.categoryId) || [];
+          arr.push(card);
+          cardsByCat.set(card.categoryId, arr);
+        }
+
         // Build subcategories map + fallback "Opšte" nodes for orphaned cards
         const updatedRecords: CategoryRecord[] = [];
         let needsPersist = false;
@@ -164,7 +172,7 @@ export function useCardBootstrap(setters: BootSetters) {
           });
 
           // Scan cards belonging to this category for orphaned subcategories/chapters
-          const catCards = c.filter((card) => card.categoryId === r.id);
+          const catCards = cardsByCat.get(r.id) || [];
           for (const card of catCards) {
             const sub = card.subcategoryId || "";
             const ch = card.chapterId || "";
@@ -175,12 +183,12 @@ export function useCardBootstrap(setters: BootSetters) {
               node = { id: crypto.randomUUID(), name: sub, chapters: [], sortOrder: nodes.length };
               nodes.push(node);
               needsPersist = true;
-              console.log(`[boot] fallback SubcategoryNode created: "${sub}" in category ${r.name}`);
+              if (import.meta.env.DEV) console.log(`[boot] fallback SubcategoryNode created: "${sub}" in category ${r.name}`);
             }
             if (ch && !node.chapters.some(c => c.id === ch)) {
               node.chapters.push({ id: crypto.randomUUID(), name: ch, sortOrder: node.chapters.length });
               needsPersist = true;
-              console.log(`[boot] fallback chapter registered: "${ch}" under "${sub}" in ${r.name}`);
+              if (import.meta.env.DEV) console.log(`[boot] fallback chapter registered: "${ch}" under "${sub}" in ${r.name}`);
             }
           }
 
@@ -191,7 +199,7 @@ export function useCardBootstrap(setters: BootSetters) {
           nodes = nodes.filter(n => {
             if (!uuidPattern.test(n.name)) return true;
             if (cardSubIds.has(n.id)) return true;
-            console.log(`[boot] removing phantom subcategory: "${n.name}" from ${r.name}`);
+            if (import.meta.env.DEV) console.log(`[boot] removing phantom subcategory: "${n.name}" from ${r.name}`);
             needsPersist = true;
             return false;
           });
@@ -201,7 +209,7 @@ export function useCardBootstrap(setters: BootSetters) {
             n.chapters = n.chapters.filter(ch => {
               if (!uuidPattern.test(ch.name)) return true;
               if (cardChapIds.has(ch.id)) return true;
-              console.log(`[boot] removing phantom chapter: "${ch.name}" from ${n.name}`);
+              if (import.meta.env.DEV) console.log(`[boot] removing phantom chapter: "${ch.name}" from ${n.name}`);
               needsPersist = true;
               return false;
             });
@@ -238,7 +246,7 @@ export function useCardBootstrap(setters: BootSetters) {
         );
         markBootStep("cards:data-load-done", `${c.length} cards`);
 
-        console.log("[boot:diag] setting state — cards:", c.length, "categories:", finalRecords.length);
+        if (import.meta.env.DEV) console.log("[boot:diag] setting state — cards:", c.length, "categories:", finalRecords.length);
         setCardMapState(arrayToMap(c));
         bumpMapVersion();
         setCategoryRecordsState(finalRecords);
