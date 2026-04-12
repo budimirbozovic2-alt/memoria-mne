@@ -1,51 +1,26 @@
 
 
-# Dekompozicija CardList i CardViewMode
+# Fix: Sidebar ne prati scroll
 
-## Trenutno stanje
-Obe komponente su već djelimično dekomponovane (CardRow, useCardListFilters, CardViewTable, CardViewDialogs), ali sadrže 270 i 298 linija respektivno. Postoji prostor za dalje izdvajanje.
+## Problem
+`<aside>` (Sidebar) nema `sticky top-0 h-screen`. Kada sadržaj stranice prelazi visinu viewporta, cijela stranica skroluje zajedno sa sidebarom — sidebar nestaje prema gore.
 
-## Plan
+## Rješenje
+Dodati `sticky top-0 h-screen` na `<aside>` element u `src/components/ui/sidebar.tsx`. Ovo osigurava da sidebar ostane fiksiran uz vrh ekrana dok se glavni sadržaj skroluje, a `SidebarContent` (koji već ima `overflow-y-auto`) upravlja internim skrolovanjem ako sidebar ima previše stavki.
 
-### 1. CardList — izdvojiti drag-and-drop logiku
+## Izmjena
 
-**Novi fajl: `src/hooks/useCardListDnd.ts`** (~50 linija)
+**Fajl: `src/components/ui/sidebar.tsx`** — u `Sidebar` komponenti, dodati klase `sticky top-0 h-screen` na `<aside>`:
 
-Izdvaja sve drag-and-drop callback-ove i state iz CardList-a:
-- `dragIndex`, `dragOverIndex` state
-- `handleDragStart`, `handleDragOver`, `handleDrop`, `handleDragEnd`
-- `handleContainerDragOver` (auto-scroll pri rubovima ekrana)
-- `scrollRafRef`
+```tsx
+// Prije:
+"group/sidebar flex flex-col border-r bg-sidebar ... shrink-0"
 
-Hook prima `filtered` kartice i `onReorder` callback, vraća state i handlere.
-
-**Izmjena `CardList.tsx`**: Zamijeniti ~45 linija DnD koda sa jednim `useCardListDnd()` pozivom. Komponenta pada na ~225 linija.
-
-### 2. CardViewMode — izdvojiti filter toolbar u komponentu
-
-**Novi fajl: `src/components/category/CardViewFilterBar.tsx`** (~110 linija)
-
-Izdvaja kompletnu filter traku (linije 155-249) uključujući:
-- Subcategory, chapter, type, tag select-ove
-- Mastery filter badge
-- Reset dugme
-- Action dugmad (Izaberi, Masovni Import, Nova kartica)
-
-Props: filter state + setteri, counts, nameMap, akcije.
-
-**Novi fajl: `src/hooks/useCardViewFilters.ts`** (~60 linija)
-
-Izdvaja filter logiku iz CardViewMode (linije 39-106):
-- Filter state (`filterSubcategory`, `filterChapter`, `filterType`, `filterTag`)
-- Izvedene vrijednosti (`nameMap`, `subcategoryCounts`, `uniqueSubcategories`, `chapterCounts`, `uniqueChapters`, `filteredCards`, `hasActiveFilters`)
-- `resetFilters` callback
-
-Hook prima `cards`, `allCategories`, `categoryId`, `masteryFilter`.
-
-**Izmjena `CardViewMode.tsx`**: Zamijeniti ~70 linija filter logike + ~95 linija filter JSX-a sa hook pozivom i `<CardViewFilterBar />`. Komponenta pada na ~130 linija.
+// Poslije:
+"group/sidebar sticky top-0 h-screen flex flex-col border-r bg-sidebar ... shrink-0"
+```
 
 ## Scope
-- 3 nova fajla (2 hook-a + 1 komponenta)
-- 2 izmjene (CardList, CardViewMode)
-- Bez funkcionalnih promjena
+- 1 fajl, 1 linija izmjene
+- Bez funkcionalnih promjena osim fiksiranog pozicioniranja sidebara
 
