@@ -40,6 +40,8 @@ export interface SourceArticle {
   text: string;
 }
 
+export type SourceKind = "propis" | "skripta";
+
 export interface Source {
   id: string;
   categoryId: string;
@@ -54,6 +56,7 @@ export interface Source {
   officialGazetteInfo?: string;
   slMarkings?: string;
   isExclusive?: boolean;
+  sourceKind?: SourceKind;
 }
 
 export type MindMapMode = "hierarchy" | "procedure";
@@ -149,6 +152,10 @@ class MemoriaDB extends Dexie {
       mnemonics: "id, categoryId, subcategoryId, mnemonicStatus, hookType, createdAt",
       majorSystem: "id",
       mnemonicTestLog: "++id, cardId, timestamp",
+    });
+
+    this.version(11).stores({
+      sources: "id, categoryId, title, version, createdAt, sourceKind, [categoryId+sourceKind]",
     });
   }
 }

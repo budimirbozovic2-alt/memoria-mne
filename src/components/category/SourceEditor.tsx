@@ -4,13 +4,14 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { type Source, db } from "@/lib/db";
+import { type Source, type SourceKind, db } from "@/lib/db";
 import { saveSource, extractOutline } from "@/lib/sources-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { injectHeadingIds } from "@/lib/sources-storage";
@@ -35,6 +36,7 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
   const [dateStr, setDateStr] = useState(source.date);
   const [dateObj, setDateObj] = useState<Date | undefined>(source.date ? new Date(source.date) : undefined);
   const [isExclusive, setIsExclusive] = useState(source.isExclusive || false);
+  const [sourceKind, setSourceKind] = useState<SourceKind>(source.sourceKind ?? "propis");
   const [dirty, setDirty] = useState(false);
 
   // Update source text
@@ -55,10 +57,10 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
   } | null>(null);
 
   useEffect(() => {
-    if (title !== source.title || slMarkings !== (source.slMarkings || "") || dateStr !== source.date || isExclusive !== (source.isExclusive || false)) {
+    if (title !== source.title || slMarkings !== (source.slMarkings || "") || dateStr !== source.date || isExclusive !== (source.isExclusive || false) || sourceKind !== (source.sourceKind ?? "propis")) {
       setDirty(true);
     }
-  }, [title, slMarkings, dateStr, isExclusive, source]);
+  }, [title, slMarkings, dateStr, isExclusive, sourceKind, source]);
 
   // ─── DOCX file handling ───────────────────────────────
   const handleDocxFile = useCallback(async (file: File) => {
@@ -136,6 +138,7 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
               slMarkings: slMarkings.trim() || undefined,
               date: dateStr,
               isExclusive,
+              sourceKind,
               htmlContent,
               outline,
               articles,
@@ -159,6 +162,7 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
       slMarkings: slMarkings.trim() || undefined,
       date: dateStr,
       isExclusive,
+      sourceKind,
       htmlContent,
       outline,
       articles,
@@ -237,6 +241,19 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
               <Label htmlFor="exclusive" className="text-xs leading-tight cursor-pointer">
                 Ovo je isključivi/glavni izvor za ovu kategoriju
               </Label>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Tip izvora</Label>
+              <Select value={sourceKind} onValueChange={(v) => setSourceKind(v as SourceKind)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="propis">Propis</SelectItem>
+                  <SelectItem value="skripta">Skripta</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {source.officialGazetteInfo && (
