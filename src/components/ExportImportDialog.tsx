@@ -1,6 +1,6 @@
 import { Download, Upload, FileBox, Package, AlertTriangle, Check, Clock, FileArchive, Loader2, ShieldCheck } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
-import { sanitizeHtml } from "@/lib/sanitize";
+
 import { db } from "@/lib/db";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
