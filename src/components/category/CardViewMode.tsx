@@ -1,16 +1,14 @@
 import { useState, useCallback, useMemo } from "react";
-import { Filter, X, Plus, Upload, CheckSquare, Trash2 } from "lucide-react";
-import { getCardMasteryLevel, MASTERY_LEVELS } from "@/lib/mastery";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { type Card, CARD_TAGS } from "@/lib/spaced-repetition";
+import { type Card } from "@/lib/spaced-repetition";
 import { type CategoryRecord } from "@/lib/db";
-import { cn } from "@/lib/utils";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import CardViewTable from "./CardViewTable";
+import CardViewFilterBar from "./CardViewFilterBar";
 import { AddCardDialog, MoveCardDialog, BulkImportWrapper } from "./CardViewDialogs";
+import { useCardViewFilters } from "@/hooks/useCardViewFilters";
 
 interface Props {
   cards: Card[];
@@ -35,75 +33,12 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [moveCardId, setMoveCardId] = useState<string | null>(null);
 
-  // Filter state
-  const [filterSubcategory, setFilterSubcategory] = useState<string>("__all__");
-  const [filterChapter, setFilterChapter] = useState<string>("__all__");
-  const [filterType, setFilterType] = useState<"all" | "essay" | "flash" | "mnemonic">("all");
-  const [filterTag, setFilterTag] = useState<string>("__all__");
+  const filters = useCardViewFilters({ cards, allCategories, categoryId, masteryFilter, onClearMasteryFilter });
 
   const otherCategories = useMemo(
     () => allCategories.filter(c => c.id !== categoryId),
     [allCategories, categoryId]
   );
-
-  // UUID→name lookup from category records
-  const nameMap = useMemo(() => {
-    const m: Record<string, string> = {};
-    const catRec = allCategories.find(c => c.id === categoryId);
-    if (catRec) {
-      for (const sub of catRec.subcategories ?? []) {
-        m[sub.id] = sub.name;
-        for (const ch of sub.chapters ?? []) m[ch.id] = ch.name;
-      }
-    }
-    return m;
-  }, [allCategories, categoryId]);
-
-  const subcategoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    cards.forEach(c => { if (c.subcategoryId) counts[c.subcategoryId] = (counts[c.subcategoryId] || 0) + 1; });
-    return counts;
-  }, [cards]);
-
-  const uniqueSubcategories = useMemo(() => {
-    return Object.keys(subcategoryCounts).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
-  }, [subcategoryCounts, nameMap]);
-
-  const chapterCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    cards.forEach(c => {
-      if (filterSubcategory !== "__all__" && c.subcategoryId !== filterSubcategory) return;
-      if (c.chapterId) counts[c.chapterId] = (counts[c.chapterId] || 0) + 1;
-    });
-    return counts;
-  }, [cards, filterSubcategory]);
-
-  const uniqueChapters = useMemo(() => {
-    return Object.keys(chapterCounts).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
-  }, [chapterCounts, nameMap]);
-
-  const filteredCards = useMemo(() => {
-    return cards.filter(c => {
-      if (masteryFilter !== null && masteryFilter !== undefined && getCardMasteryLevel(c) !== masteryFilter) return false;
-      if (filterSubcategory !== "__all__" && (c.subcategoryId || "") !== filterSubcategory) return false;
-      if (filterChapter !== "__all__" && (c.chapterId || "") !== filterChapter) return false;
-      if (filterType === "essay" && c.type !== "essay") return false;
-      if (filterType === "flash" && c.type !== "flash") return false;
-      if (filterType === "mnemonic" && !(c.tags?.includes("mnemonic"))) return false;
-      if (filterTag !== "__all__" && !(c.tags?.includes(filterTag))) return false;
-      return true;
-    });
-  }, [cards, filterSubcategory, filterChapter, filterType, filterTag, masteryFilter]);
-
-  const hasActiveFilters = filterSubcategory !== "__all__" || filterChapter !== "__all__" || filterType !== "all" || filterTag !== "__all__" || (masteryFilter !== null && masteryFilter !== undefined);
-
-  const resetFilters = useCallback(() => {
-    setFilterSubcategory("__all__");
-    setFilterChapter("__all__");
-    setFilterType("all");
-    setFilterTag("__all__");
-    onClearMasteryFilter?.();
-  }, [onClearMasteryFilter]);
 
   const toggle = useCallback((id: string) => {
     setExpandedId(prev => prev === id ? null : id);
@@ -151,109 +86,38 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
 
   return (
     <div className="space-y-3">
-      {/* Filter toolbar */}
-      <div className="flex items-center gap-2 flex-wrap rounded-lg border bg-card p-2.5">
-        <Filter className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+      <CardViewFilterBar
+        filterSubcategory={filters.filterSubcategory}
+        onChangeSubcategory={filters.changeSubcategory}
+        filterChapter={filters.filterChapter}
+        onChangeChapter={filters.setFilterChapter}
+        filterType={filters.filterType}
+        onChangeType={filters.setFilterType}
+        filterTag={filters.filterTag}
+        onChangeTag={filters.setFilterTag}
+        masteryFilter={masteryFilter}
+        onClearMasteryFilter={onClearMasteryFilter}
+        hasActiveFilters={filters.hasActiveFilters}
+        onResetFilters={filters.resetFilters}
+        uniqueSubcategories={filters.uniqueSubcategories}
+        subcategoryCounts={filters.subcategoryCounts}
+        uniqueChapters={filters.uniqueChapters}
+        chapterCounts={filters.chapterCounts}
+        nameMap={filters.nameMap}
+        filteredCount={filters.filteredCards.length}
+        totalCount={cards.length}
+        selectionMode={selectionMode}
+        onToggleSelectionMode={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
+        onBulkImport={() => setBulkImportOpen(true)}
+        onAddCard={() => setAddDialogOpen(true)}
+        onDelete={onDelete}
+      />
 
-        {uniqueSubcategories.length > 0 && (
-          <Select value={filterSubcategory} onValueChange={(v) => { setFilterSubcategory(v); setFilterChapter("__all__"); }}>
-            <SelectTrigger className="h-7 w-auto min-w-[120px] text-xs">
-              <SelectValue placeholder="Potkategorija" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Sve potkategorije</SelectItem>
-              {uniqueSubcategories.map(sub => (
-                <SelectItem key={sub} value={sub} className="text-xs">{nameMap[sub] ?? sub} ({subcategoryCounts[sub]})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        {uniqueChapters.length > 0 && (
-          <Select value={filterChapter} onValueChange={setFilterChapter}>
-            <SelectTrigger className="h-7 w-auto min-w-[100px] text-xs">
-              <SelectValue placeholder="Glava" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Sve glave</SelectItem>
-              {uniqueChapters.map(ch => (
-                <SelectItem key={ch} value={ch} className="text-xs">{nameMap[ch] ?? ch} ({chapterCounts[ch]})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        <div className="flex items-center gap-0.5 rounded-md border p-0.5">
-          {(["all", "essay", "flash", "mnemonic"] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setFilterType(t)}
-              className={cn(
-                "px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
-                filterType === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {t === "all" ? "Sve" : t === "essay" ? "Esej" : t === "flash" ? "Blic" : "Mnemo"}
-            </button>
-          ))}
-        </div>
-
-        <Select value={filterTag} onValueChange={setFilterTag}>
-          <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
-            <SelectValue placeholder="Tag" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Svi tagovi</SelectItem>
-            {CARD_TAGS.map(tag => (
-              <SelectItem key={tag.id} value={tag.id} className="text-xs">{tag.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {masteryFilter !== null && masteryFilter !== undefined && (
-          <button
-            onClick={onClearMasteryFilter}
-            className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-[10px] font-medium hover:bg-secondary transition-colors"
-          >
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MASTERY_LEVELS[masteryFilter].color }} />
-            {MASTERY_LEVELS[masteryFilter].label}
-            <X className="h-3 w-3" />
-          </button>
-        )}
-
-        <div className="flex items-center gap-2 ml-auto">
-          <span className="text-[10px] text-muted-foreground">{filteredCards.length}/{cards.length}</span>
-          {hasActiveFilters && (
-            <Button variant="ghost" size="sm" onClick={resetFilters} className="h-6 px-2 text-[10px] gap-1">
-              <X className="h-3 w-3" /> Reset
-            </Button>
-          )}
-          {onDelete && (
-            <Button
-              variant={selectionMode ? "secondary" : "outline"}
-              size="sm"
-              onClick={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
-              className="h-7 gap-1.5 text-xs"
-            >
-              <CheckSquare className="h-3.5 w-3.5" />
-              {selectionMode ? "Otkaži" : "Izaberi"}
-            </Button>
-          )}
-          <Button variant="outline" size="sm" onClick={() => setBulkImportOpen(true)} className="h-7 gap-1.5 text-xs">
-            <Upload className="h-3.5 w-3.5" /> Masovni Import
-          </Button>
-          <Button variant="default" size="sm" onClick={() => setAddDialogOpen(true)} className="h-7 gap-1.5 text-xs">
-            <Plus className="h-3.5 w-3.5" /> Nova kartica
-          </Button>
-        </div>
-      </div>
-
-      {/* Batch delete toolbar */}
       {selectionMode && (
         <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/50 p-2.5">
           <span className="text-xs font-medium text-foreground">{selectedIds.size} izabrano</span>
-          <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set(filteredCards.map(c => c.id)))} className="h-7 gap-1.5 text-xs">
-            Označi sve ({filteredCards.length})
+          <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set(filters.filteredCards.map(c => c.id)))} className="h-7 gap-1.5 text-xs">
+            Označi sve ({filters.filteredCards.length})
           </Button>
           {selectedIds.size > 0 && (
             <Button variant="destructive" size="sm" onClick={handleBatchDelete} className="h-7 gap-1.5 text-xs">
@@ -266,9 +130,8 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
         </div>
       )}
 
-      {/* Card table */}
       <CardViewTable
-        filteredCards={filteredCards}
+        filteredCards={filters.filteredCards}
         allCategories={allCategories}
         expandedId={expandedId}
         onToggle={toggle}
@@ -279,12 +142,11 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
         onEdit={onEdit}
         onDelete={onDelete}
         onOpenMoveModal={(cardId) => { setMoveCardId(cardId); setMoveModalOpen(true); }}
-        hasActiveFilters={hasActiveFilters}
+        hasActiveFilters={filters.hasActiveFilters}
         totalCount={cards.length}
-        onResetFilters={resetFilters}
+        onResetFilters={filters.resetFilters}
       />
 
-      {/* Dialogs */}
       <MoveCardDialog
         open={moveModalOpen}
         onOpenChange={setMoveModalOpen}
