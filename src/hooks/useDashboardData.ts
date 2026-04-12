@@ -140,21 +140,22 @@ export function useDashboardData(
   }, [appSettings]);
   const lastBackup = useDeferredCompute(() => getLastBackupTime(), []);
 
+  const velocity7 = useDeferredCompute(() => calcVelocity(reviewLog, 7), [reviewLog]);
+  const plannerConfig = useDeferredCompute(() => loadPlanner(), []);
+
   const plannerData = useDeferredCompute(() => {
-    const planner = loadPlanner();
-    if (!planner.finalGoalDate) return null;
-    const velocity = calcVelocity(reviewLog, 7);
+    if (!plannerConfig?.finalGoalDate || velocity7 === null) return null;
     const remaining = stats.totalSections - stats.learnedSections;
-    const estimated = calcEstimatedFinish(remaining, velocity);
-    const status = getPlannerStatus(estimated, planner.finalGoalDate, planner.bufferPercent ?? 15);
-    const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
-    const timeRec = suggestion ? calcDailyTimeRecommendation(suggestion.suggestedToday, velocity, stats.due) : null;
+    const estimated = calcEstimatedFinish(remaining, velocity7);
+    const status = getPlannerStatus(estimated, plannerConfig.finalGoalDate, plannerConfig.bufferPercent ?? 15);
+    const suggestion = getSmartSuggestion(null, cards, plannerConfig.finalGoalDate, velocity7, plannerConfig.bufferPercent ?? 15);
+    const timeRec = suggestion ? calcDailyTimeRecommendation(suggestion.suggestedToday, velocity7, stats.due) : null;
     const activePhase = null;
     const dailyMapped = getDailyMappedCount();
     const dailyQuota = suggestion?.suggestedToday ?? 0;
-    const redistResult = autoRedistributeIfNeeded(cards, planner.finalGoalDate, planner.bufferPercent ?? 15);
+    const redistResult = autoRedistributeIfNeeded(cards, plannerConfig.finalGoalDate, plannerConfig.bufferPercent ?? 15);
     return { status, suggestion, timeRec, remaining, totalSections: stats.totalSections, learnedSections: stats.learnedSections, activePhase, dailyMapped, dailyQuota, redistResult };
-  }, [stats, reviewLog, cards]);
+  }, [stats, velocity7, plannerConfig, cards]);
 
   const cognitiveDebt = useDeferredCompute(() => getCognitiveDebt(dailyGoal), [dailyGoal]);
   const energyRec = useDeferredCompute(() => calcEnergyRecommendation(), []);
