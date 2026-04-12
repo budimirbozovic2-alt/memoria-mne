@@ -1,29 +1,26 @@
 
 
-# Razdvajanje Sistem taba na dva taba
+# Povećanje centralne figure na ikonici aplikacije
 
 ## Problem
-Sistem tab trenutno sadrži tri nepovezane sekcije: Backup & Restore, Predmeti (CategoryManager) i Health Monitor. To ga čini pretrpanim i logički nekoherentnim.
+Centralni simbol (zlatni kodeks) unutar teget-plavog kruga je premali i teško se raspoznaje, naročito na manjim veličinama (favicon, taskbar).
 
 ## Rješenje
-Podijeliti sadržaj na dva taba:
-- **Predmeti** — sadrži samo CategoryManager (upravljanje predmetima/potkategorijama)
-- **Sistem** — sadrži Backup & Restore i Health Monitor (održavanje baze)
+Programski generisati novu verziju svih ikonica koristeći Python (Pillow):
+1. Učitati postojeći `logo-icon.png`
+2. Izrezati centralnu figuru (crop sadržaj bez okružujućeg padding-a)
+3. Ponovo je postaviti na teget-plavi kružni pozadinski sloj, ali sa značajno manje padding-a (~10-12% umjesto trenutnih ~25-30%)
+4. Generisati sve potrebne veličine: `logo-icon.png`, `favicon.png`, `icon-64.png`, `icon-192.png`, `icon-256.png`, `icon-512.png`
+5. Konvertovati `favicon.png` u `favicon.ico`
 
-## Izmjene
+## Fajlovi koji se ažuriraju
+- `public/logo-icon.png` — glavna ikonica (koristi se u sidebar, title bar, splash)
+- `public/favicon.png` — browser tab
+- `public/icon-64.png`, `icon-192.png`, `icon-256.png`, `icon-512.png` — PWA/manifest ikone
+- `public/favicon.ico` — fallback
 
-### 1. Kreirati `src/components/settings/SubjectsTab.tsx`
-Nova komponenta koja preuzima CategoryManager sekciju iz SystemTab-a. Prima iste props za categories/subcategories/onAdd/onRename/onDelete.
-
-### 2. Ažurirati `src/components/settings/SystemTab.tsx`
-Ukloniti CategoryManager sekciju — ostaviti samo Backup & Restore i Health Monitor.
-
-### 3. Ažurirati `src/components/SRSettingsPanel.tsx`
-- Promijeniti grid sa `grid-cols-4` na `grid-cols-5`
-- Dodati novi tab "Predmeti" (sa `FolderOpen` ikonom) između "Tok rada" i "Sistem"
-- Renderovati `SubjectsTab` u novom `TabsContent`
-
-## Scope
-- 1 novi fajl, 2 editovana fajla
-- Čisto UI preraspoređivanje, bez logičkih promjena
+## Pristup
+- Koristiću Pillow da analiziram bounding box centralne figure i zatim je rescale-ujem da zauzima ~80% prečnika kruga umjesto trenutnih ~50-55%
+- Pozadinska boja ostaje ista (midnight navy `#0a1628`)
+- Oblik ostaje kružni
 
