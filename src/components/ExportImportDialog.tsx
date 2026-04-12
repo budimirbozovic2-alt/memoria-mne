@@ -120,14 +120,8 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
         }
       }
 
-      // Sanitize and Validate Cards Schema
-      const importedCards: any[] = (parsed.cards || []).map((c: any) => ({
-        ...c,
-        question: typeof c.question === "string" ? sanitizeHtml(c.question) : c.question,
-        sections: Array.isArray(c.sections)
-          ? c.sections.map((s: any) => ({ ...s, content: typeof s.content === "string" ? sanitizeHtml(s.content) : s.content }))
-          : c.sections,
-      }));
+      // Validate Cards Schema (sanitization happens in useCardImport)
+      const importedCards: any[] = parsed.cards || [];
 
       if (importedCards.length > 0) {
         for (let i = 0; i < importedCards.length; i++) {
