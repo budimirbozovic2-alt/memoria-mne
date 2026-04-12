@@ -123,14 +123,23 @@ export function useCardBootstrap(setters: BootSetters) {
         );
 
         splashProgress(25, "Učitavanje kartica…");
-        console.log("[boot:diag] step 4: loading data");
+        if (import.meta.env.DEV) console.log("[boot:diag] step 4: loading data");
         markBootStep("cards:data-load-start");
         const c = await withTimeout(idbLoadCards(), 5000, "cards load", []);
 
         splashProgress(50, `${c.length} kartica učitano`);
         // Load CategoryRecord[] from IDB, seed defaults if empty
         const catRecords = await withTimeout(seedDefaultCategories(), 2500, "categories load", []);
-        console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
+        if (import.meta.env.DEV) console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
+
+        // Build card-by-category index O(n) instead of O(n×categories)
+        const cardsByCat = new Map<string, typeof c>();
+        for (const card of c) {
+          const arr = cardsByCat.get(card.categoryId) || [];
+          arr.push(card);
+          cardsByCat.set(card.categoryId, arr);
+        }
+
         // Build subcategories map + fallback "Opšte" nodes for orphaned cards
         const updatedRecords: CategoryRecord[] = [];
         let needsPersist = false;

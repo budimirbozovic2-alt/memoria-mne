@@ -62,20 +62,23 @@ export interface PomodoroStatsResult {
 
 export async function getPomodoroStats(): Promise<PomodoroStatsResult> {
   const { db } = await import("@/lib/db");
-  const log = await db.pomodoroLog.toArray();
   const todayStart = new Date().setHours(0, 0, 0, 0);
   const weekStart = todayStart - new Date().getDay() * 86400000;
 
+  // Use IDB range query instead of loading entire history
+  const log = await db.pomodoroLog.where("timestamp").aboveOrEqual(weekStart).toArray();
   const focusSessions = log.filter((e) => e.type === "focus");
   const today = focusSessions.filter((e) => e.timestamp >= todayStart);
-  const week = focusSessions.filter((e) => e.timestamp >= weekStart);
+
+  // Total still needs full count — use IDB count for efficiency
+  const total = await db.pomodoroLog.where("type").equals("focus").count();
 
   return {
     today: today.length,
     todayMinutes: today.reduce((s, e) => s + e.durationMinutes, 0),
-    week: week.length,
-    weekMinutes: week.reduce((s, e) => s + e.durationMinutes, 0),
-    total: focusSessions.length,
+    week: focusSessions.length,
+    weekMinutes: focusSessions.reduce((s, e) => s + e.durationMinutes, 0),
+    total,
   };
 }
 
