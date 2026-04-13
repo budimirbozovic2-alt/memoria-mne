@@ -233,6 +233,7 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
         } catch (delErr) {
           console.error("[MemoriaDB] Failed to delete DB for reset", delErr);
           dbErrorState = { type: "version", message: e.message };
+          startUnblockWatch();
           return false;
         }
       } else if (e.message === "DB_OPEN_TIMEOUT" || e.message === "DB_BLOCKED") {
@@ -250,6 +251,7 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
             window.location.reload();
           }
         }, 30000);
+        startUnblockWatch();
       }
       return false;
     }
@@ -262,6 +264,7 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
       ok = await tryOpen();
     } catch {
       dbErrorState = { type: "version", message: "Nije moguće otvoriti bazu nakon resetovanja." };
+      startUnblockWatch();
       return false;
     }
   }
