@@ -1,4 +1,5 @@
-import { memo, useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { SourceEditToolbar } from "./SourceEditToolbar";
 
 interface Props {
@@ -14,6 +15,7 @@ export const SourceContent = memo(function SourceContent({
   html, onMouseUp, contentRef, editMode, onFormat, onInput,
 }: Props) {
   const initializedRef = useRef(false);
+  const safeHtml = useMemo(() => sanitizeHtml(html), [html]);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (editMode) return;
@@ -61,7 +63,7 @@ export const SourceContent = memo(function SourceContent({
     if (editMode) {
       // In edit mode, set innerHTML only once (avoid cursor reset)
       if (!initializedRef.current) {
-        node.innerHTML = html;
+        node.innerHTML = safeHtml;
         initializedRef.current = true;
       }
     } else {
@@ -75,7 +77,7 @@ export const SourceContent = memo(function SourceContent({
       icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`;
       h.appendChild(icon);
     });
-  }, [contentRef, html, editMode]);
+  }, [contentRef, safeHtml, editMode]);
 
   // Reset initialized flag when switching out of edit mode
   useEffect(() => {
@@ -110,7 +112,7 @@ export const SourceContent = memo(function SourceContent({
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         onInput={onInput}
-        {...(!editMode ? { dangerouslySetInnerHTML: { __html: html } } : {})}
+        {...(!editMode ? { dangerouslySetInnerHTML: { __html: safeHtml } } : {})}
       />
     </div>
   );

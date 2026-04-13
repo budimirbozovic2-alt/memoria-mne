@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } fro
 import { Card, getCardScore } from "@/lib/spaced-repetition";
 import { LearnMode, LearnCardProgress, loadLearnProgress, saveLearnProgress } from "@/lib/storage";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
-import { recordDayDiscipline, getSmartSuggestion, calcVelocity, loadPlanner } from "@/lib/planner-storage";
 import SessionComplete from "./learn/SessionComplete";
 import ModeSelector from "./learn/ModeSelector";
 import FilterSetup from "./learn/FilterSetup";
@@ -160,7 +159,8 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
       activityLoggedRef.current = true;
       const activityType = learnMode === "free" ? "learn-free" as const : learnMode === "active-recall" ? "learn-active" as const : "learn-chain" as const;
       addActivityEntry({ timestamp: Date.now(), type: activityType, durationMs: elapsed });
-      try {
+      (async () => { try {
+        const { loadPlanner, calcVelocity, getSmartSuggestion, recordDayDiscipline } = await import("@/lib/planner-storage");
         const plannerConfig = loadPlanner();
         const velocity = calcVelocity(reviewLogProp, 7);
         const suggestion = getSmartSuggestion(null, cards, plannerConfig.finalGoalDate, velocity, plannerConfig.bufferPercent ?? 15);
@@ -168,7 +168,7 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
         const today = new Date().toISOString().slice(0, 10);
         const reviewsDoneToday = reviewLogProp.filter(e => new Date(e.timestamp).toISOString().slice(0, 10) === today).length;
         recordDayDiscipline(today, reviewsDoneToday, dailyGoal, null);
-      } catch {}
+      } catch {} })();
     }
 
     return (
