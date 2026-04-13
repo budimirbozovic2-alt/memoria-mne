@@ -1,5 +1,5 @@
 import { HelpCircle } from "lucide-react";
-import { useState, useMemo, lazy, Suspense } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useCardData, useCategoryData, useReviewData, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "@/components/Dashboard";
@@ -16,10 +16,7 @@ export default function DashboardPage() {
   const { setView } = useUIContext();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const lastSourceLabel = useMemo(() => {
-    const lastUsed = localStorage.getItem("sr-last-source-label");
-    return lastUsed || (cards.some(c => c.sourceId) ? "Izvor" : null);
-  }, [cards]);
+
 
   if (!ready) {
     return (
@@ -54,7 +51,7 @@ export default function DashboardPage() {
               <HelpCircle className="h-4 w-4" />
             </button>
           </div>
-          <QuickActions dueCount={stats.due} hasCards={cards.length > 0} lastSourceLabel={lastSourceLabel} />
+          <QuickActions dueCount={stats.due} hasCards={cards.length > 0} />
           <Dashboard
             stats={stats}
             categoryStats={categoryStats}
