@@ -103,7 +103,7 @@ export default function MindMapList({ onOpen }: Props) {
         </div>
       ) : maps.length === 0 && !showCreate ? (
         <div className="text-center py-16 space-y-4">
-          <Network className="h-12 w-12 mx-auto text-muted-foreground/40" />
+          <Map className="h-12 w-12 mx-auto text-muted-foreground/40" />
           <p className="text-muted-foreground">Nemate nijednu mentalnu mapu.</p>
           <Button variant="outline" onClick={() => setShowCreate(true)}>
             <Plus className="h-4 w-4 mr-1" /> Kreiraj prvu mapu

@@ -1,4 +1,4 @@
-import { Layers, BookMarked } from "lucide-react";
+import { Layers, BookMarked, Zap } from "lucide-react";
 import type { Card } from "@/lib/spaced-repetition";
 import type { Source } from "@/lib/sources-storage";
 import ScrollableRow from "@/components/ScrollableRow";
