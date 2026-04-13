@@ -15,11 +15,22 @@ function setupBackupSystem({ app, getMainWindow, logCrash, isDev }) {
     }
   }
 
+  // ── O1 Fix: Parse timestamp from filename instead of statSync ──
+  function parseTimestampFromName(filename) {
+    // Format: Codex_AutoBackup_2026_04_13_12_30.json
+    const match = filename.match(/Codex_AutoBackup_(\d{4}_\d{2}_\d{2}_\d{2}_\d{2})/);
+    if (match) {
+      const parts = match[1].split('_');
+      return new Date(`${parts[0]}-${parts[1]}-${parts[2]}T${parts[3]}:${parts[4]}:00`).getTime() || 0;
+    }
+    return 0;
+  }
+
   function cleanOldBackups() {
     try {
       const files = fs.readdirSync(BACKUP_DIR)
         .filter(f => f.startsWith('Codex_AutoBackup_') && f.endsWith('.json'))
-        .map(f => ({ name: f, time: fs.statSync(path.join(BACKUP_DIR, f)).mtimeMs }))
+        .map(f => ({ name: f, time: parseTimestampFromName(f) }))
         .sort((a, b) => b.time - a.time);
       while (files.length > MAX_BACKUPS) {
         const old = files.pop();
@@ -44,13 +55,14 @@ function setupBackupSystem({ app, getMainWindow, logCrash, isDev }) {
     } catch (_) {}
   }
 
-  function writeBackup(jsonString) {
+  // ── B3 Fix: Async writeBackup ──
+  async function writeBackup(jsonString) {
     try {
       ensureBackupDir();
       const now = new Date();
       const ts = now.toISOString().replace(/[-:T]/g, '_').slice(0, 15);
       const filename = `Codex_AutoBackup_${ts}.json`;
-      fs.writeFileSync(path.join(BACKUP_DIR, filename), jsonString);
+      await fs.promises.writeFile(path.join(BACKUP_DIR, filename), jsonString);
       cleanOldBackups();
       setLastAutoBackupTime();
       return true;
@@ -120,12 +132,10 @@ function setupBackupSystem({ app, getMainWindow, logCrash, isDev }) {
           new Promise(resolve => {
             const handler = backupDoneHandler(resolve);
             ipcMain.once('quit-backup-done', handler);
-            // Store handler for cleanup
             mainWindow._quitBackupHandler = handler;
             mainWindow.webContents.send('quit-backup-requested');
           }),
           new Promise(resolve => setTimeout(() => {
-            // Cleanup the listener if timeout wins
             if (mainWindow._quitBackupHandler) {
               ipcMain.removeListener('quit-backup-done', mainWindow._quitBackupHandler);
               delete mainWindow._quitBackupHandler;

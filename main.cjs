@@ -56,6 +56,29 @@ const backup = setupBackupSystem({
   isDev,
 });
 
+// ── K1 Fix: Path validation helper ──
+const ALLOWED_DIRS = () => [
+  app.getPath('documents'),
+  app.getPath('downloads'),
+  app.getPath('desktop'),
+];
+
+function isPathAllowed(filePath) {
+  const resolved = path.resolve(filePath);
+  return ALLOWED_DIRS().some(dir => resolved.startsWith(dir + path.sep) || resolved === dir);
+}
+
+// ── K2 Fix: Dialog options whitelist ──
+const DIALOG_ALLOWED_KEYS = ['defaultPath', 'filters', 'properties', 'title', 'buttonLabel', 'message'];
+function sanitizeDialogOptions(options) {
+  if (!options || typeof options !== 'object') return {};
+  const clean = {};
+  for (const key of DIALOG_ALLOWED_KEYS) {
+    if (key in options) clean[key] = options[key];
+  }
+  return clean;
+}
+
 // ── Renderer error logging IPC ──
 ipcMain.handle('log-error', (_event, message) => {
   const timestamp = new Date().toISOString();
@@ -64,23 +87,28 @@ ipcMain.handle('log-error', (_event, message) => {
   return true;
 });
 
-// ── Native file dialogs ──
+// ── Native file dialogs (K2: sanitized options) ──
 ipcMain.handle('show-save-dialog', async (_event, options) => {
   const win = getMainWindow();
   if (!win) return { canceled: true };
-  return dialog.showSaveDialog(win, options);
+  return dialog.showSaveDialog(win, sanitizeDialogOptions(options));
 });
 
 ipcMain.handle('show-open-dialog', async (_event, options) => {
   const win = getMainWindow();
   if (!win) return { canceled: true, filePaths: [] };
-  return dialog.showOpenDialog(win, options);
+  return dialog.showOpenDialog(win, sanitizeDialogOptions(options));
 });
 
+// ── File operations (K1: path validation, B1/B2: async FS) ──
 ipcMain.handle('save-file', async (_event, filePath, base64Data) => {
   try {
+    if (!isPathAllowed(filePath)) {
+      logCrash('save-file-blocked', `Path not allowed: ${filePath}`);
+      return false;
+    }
     const cleanBase64 = base64Data.replace(/^data:.*?;base64,/, '');
-    fs.writeFileSync(filePath, Buffer.from(cleanBase64, 'base64'));
+    await fs.promises.writeFile(filePath, Buffer.from(cleanBase64, 'base64'));
     return true;
   } catch (err) {
     logCrash('save-file', err);
@@ -90,7 +118,11 @@ ipcMain.handle('save-file', async (_event, filePath, base64Data) => {
 
 ipcMain.handle('read-file', async (_event, filePath) => {
   try {
-    const data = fs.readFileSync(filePath);
+    if (!isPathAllowed(filePath)) {
+      logCrash('read-file-blocked', `Path not allowed: ${filePath}`);
+      return null;
+    }
+    const data = await fs.promises.readFile(filePath);
     return { data: data.toString('base64'), name: path.basename(filePath) };
   } catch (err) {
     logCrash('read-file', err);
@@ -102,7 +134,6 @@ app.whenReady().then(() => {
   // ── Register app:// protocol handler for production ──
   if (!isDev) {
     const distPath = path.join(__dirname, 'dist');
-    // C4 fix: Serve files with correct MIME types via explicit Content-Type header
     const MIME_TYPES = {
       '.html': 'text/html', '.js': 'application/javascript', '.mjs': 'application/javascript',
       '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml',
@@ -125,7 +156,6 @@ app.whenReady().then(() => {
           headers: { 'Content-Type': mime },
         });
       } catch {
-        // Fallback: serve index.html for SPA client-side routing
         const indexData = fs.readFileSync(path.join(distPath, 'index.html'));
         return new Response(indexData, {
           status: 200,
@@ -138,7 +168,6 @@ app.whenReady().then(() => {
   // ── CSP headers in production ──
   if (!isDev) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-      // Skip CSP for file:// and app:// — 'self' works with app:// but we keep it simple
       if (details.url.startsWith('file://')) {
         return callback({ responseHeaders: details.responseHeaders });
       }
@@ -164,7 +193,7 @@ app.whenReady().then(() => {
   });
 });
 
-// Before quit: wait for backup to finish (with timeout)
+// ── G1 Fix: Use app.exit(0) instead of app.quit() to avoid recursive before-quit ──
 let isQuitting = false;
 app.on('before-quit', async (e) => {
   if (isQuitting) return;
@@ -173,7 +202,7 @@ app.on('before-quit', async (e) => {
   try {
     await backup.performBeforeQuitBackup();
   } catch (_) {}
-  app.quit();
+  app.exit(0);
 });
 
 // ── Focus existing window if second instance attempted ──
