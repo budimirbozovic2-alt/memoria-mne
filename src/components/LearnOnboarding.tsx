@@ -1,6 +1,3 @@
-
-
-
 import { Sparkles, BookOpen, Brain, Link2, CheckCircle2 } from "lucide-react";
 import OnboardingModal, { type OnboardingSlide, hasSeenOnboarding as _hasSeenOnboarding } from "@/components/OnboardingModal";
 const ONBOARDING_KEY = "sr-learn-onboarding-seen";

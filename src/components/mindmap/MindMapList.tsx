@@ -1,17 +1,22 @@
-import { Plus, Trash2, Map, GitBranch, Workflow } from "lucide-react";
+import { Plus, Trash2, Map, GitBranch, Workflow, HelpCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { MindMapDoc, MindMapMode } from "@/lib/db";
 import { loadMindMaps, deleteMindMap, saveMindMap } from "@/lib/mindmap-storage";
 import { Button } from "@/components/ui/button";
-
-
+import { AnimatePresence } from "framer-motion";
+import InfoPanel from "@/components/InfoPanel";
+import MindMapOnboarding from "@/components/mindmap/MindMapOnboarding";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+
 interface Props {
   onOpen: (doc: MindMapDoc) => void;
+  showOnboarding?: boolean;
+  onShowOnboarding?: () => void;
+  onCloseOnboarding?: () => void;
 }
 
-export default function MindMapList({ onOpen }: Props) {
+export default function MindMapList({ onOpen, showOnboarding, onShowOnboarding, onCloseOnboarding }: Props) {
   const [maps, setMaps] = useState<MindMapDoc[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -52,6 +57,12 @@ export default function MindMapList({ onOpen }: Props) {
 
   return (
     <div className="max-w-3xl mx-auto py-8 px-4 space-y-6">
+      <AnimatePresence>
+        {showOnboarding && onCloseOnboarding && (
+          <MindMapOnboarding onComplete={onCloseOnboarding} />
+        )}
+      </AnimatePresence>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -62,9 +73,27 @@ export default function MindMapList({ onOpen }: Props) {
             Vizuelni dijagrami za organizacione strukture i tokove postupaka.
           </p>
         </div>
-        <Button onClick={() => setShowCreate(!showCreate)}>
-          <Plus className="h-4 w-4 mr-1" /> Nova mapa
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <InfoPanel title="Mentalne mape">
+              <p><strong>Hijerarhija</strong> — organizacione strukture sa grananjem od vrha ka dnu (sudski sistemi, organi vlasti).</p>
+              <p><strong>Procedura</strong> — tok postupka sa fazama, rokovima i odlučnim tačkama.</p>
+              <p>Dvoklik na canvas dodaje novi čvor. Povuci iz handle-a za nove veze.</p>
+              <p>Gotove mape možeš eksportovati kao kartice u bazu podataka.</p>
+            </InfoPanel>
+            <button
+              onClick={onShowOnboarding}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary"
+              title="Vodič kroz mentalne mape"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Onboarding</span>
+            </button>
+          </div>
+          <Button onClick={() => setShowCreate(!showCreate)}>
+            <Plus className="h-4 w-4 mr-1" /> Nova mapa
+          </Button>
+        </div>
       </div>
 
       {/* Create mode chooser */}

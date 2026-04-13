@@ -1,4 +1,4 @@
-import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, Info, RotateCcw } from "lucide-react";
+import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { Card, getDueSections, SRSettings, SectionState, getRetrievability, isLeech } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,19 +7,7 @@ import { Button } from "@/components/ui/button";
 import OnboardingModal, { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { DueItem, ReviewMode, REVIEW_ONBOARDING_KEY, REVIEW_SLIDES } from "./review-constants";
 import type { CategoryRecord } from "@/lib/db";
-function HowItWorksCorner({ onShowOnboarding }: { onShowOnboarding: () => void }) {
-  return (
-    <div className="absolute top-0 right-0">
-      <button
-        onClick={onShowOnboarding}
-        className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-        title="Vodič kroz konsolidaciju"
-      >
-        <HelpCircle className="h-5 w-5" />
-      </button>
-    </div>
-  );
-}
+import InfoPanel from "@/components/InfoPanel";
 
 interface ReviewSetupProps {
   dueCards: Card[];
@@ -161,7 +149,7 @@ export default function ReviewSetup({
   // ── Step 1: Choose mode ──
   if (setupStep === "mode") {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10 relative">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10">
         <AnimatePresence>
           {showOnboarding && (
             <OnboardingModal
@@ -172,11 +160,27 @@ export default function ReviewSetup({
             />
           )}
         </AnimatePresence>
-        <HowItWorksCorner onShowOnboarding={() => setShowOnboarding(true)} />
-
-        <div>
-          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2"><RotateCcw className="h-6 w-6 text-primary" /> Konsolidacija</h2>
-          <p className="text-muted-foreground mt-2">Izaberi režim ponavljanja koji odgovara tvom cilju.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2"><RotateCcw className="h-6 w-6 text-primary" /> Konsolidacija</h2>
+            <p className="text-muted-foreground mt-2">Izaberi režim ponavljanja koji odgovara tvom cilju.</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <InfoPanel title="Konsolidacija">
+              <p><strong>Fokusirano utvrđivanje</strong> — cilja nove i nedavno pogrešene kartice za brzu stabilizaciju.</p>
+              <p><strong>Kritični pregled</strong> — hvata kartice u idealnom trenutku zaborava (R ≈ 80–85%).</p>
+              <p><strong>Najteža pitanja</strong> — okršaj sa do 50 statistički najzahtjevnijih kartica.</p>
+              <p>Svi rezultati se upisuju u FSRS algoritam za optimalno zakazivanje ponavljanja.</p>
+            </InfoPanel>
+            <button
+              onClick={() => setShowOnboarding(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary"
+              title="Vodič kroz konsolidaciju"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Onboarding</span>
+            </button>
+          </div>
         </div>
 
         {/* Resume saved session */}
