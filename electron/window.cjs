@@ -4,11 +4,9 @@ const fs = require('fs');
 
 // ── Resolve preload path for both dev and packaged builds ──
 function resolvePreloadPath(isDev, baseDir) {
-  // Dev mode: preload.cjs is in project root
   if (isDev) {
     return path.join(baseDir, 'preload.cjs');
   }
-  // Packaged: try process.resourcesPath first (extraFiles destination)
   const candidates = [
     path.join(process.resourcesPath, 'preload.cjs'),
     path.join(baseDir, 'preload.cjs'),
@@ -17,7 +15,6 @@ function resolvePreloadPath(isDev, baseDir) {
   for (const p of candidates) {
     if (fs.existsSync(p)) return p;
   }
-  // Fallback — log warning, return first candidate
   console.error('[CODEX] preload.cjs not found in any candidate path:', candidates);
   return candidates[0];
 }
@@ -73,16 +70,21 @@ function createSplashWindow(isDev, baseDir) {
   return splash;
 }
 
-// ── Crash recovery tracking ──
+// ── O2 Fix: Crash recovery with circular buffer ──
 const MAX_CRASHES = 3;
 const CRASH_WINDOW_MS = 60000;
-let crashTimestamps = [];
+const crashTimestamps = new Array(MAX_CRASHES).fill(0);
+let crashIndex = 0;
 
 function shouldAllowRecovery() {
   const now = Date.now();
-  crashTimestamps = crashTimestamps.filter(t => now - t < CRASH_WINDOW_MS);
-  crashTimestamps.push(now);
-  return crashTimestamps.length <= MAX_CRASHES;
+  // Check if the oldest entry in the circular buffer is within the window
+  const oldest = crashTimestamps[crashIndex];
+  const tooMany = oldest > 0 && (now - oldest) < CRASH_WINDOW_MS;
+  // Write current timestamp and advance index
+  crashTimestamps[crashIndex] = now;
+  crashIndex = (crashIndex + 1) % MAX_CRASHES;
+  return !tooMany;
 }
 
 // ── Main Window ──
@@ -109,8 +111,7 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
     },
   });
 
-  // ── Window control IPC handlers (scoped to this window via webContents ID) ──
-  // C3/H4 fix: Use functions we can remove on crash recovery instead of anonymous lambdas
+  // ── Window control IPC handlers ──
   const onMinimize = () => { if (!win.isDestroyed()) win.minimize(); };
   const onMaximize = () => {
     if (!win.isDestroyed()) {
@@ -153,10 +154,8 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
   if (isDev) {
     win.loadURL('http://localhost:8080');
   } else {
-    // Use app:// protocol for stable origin (IndexedDB persistence)
     win.loadURL('app://localhost/index.html').catch((err) => {
       logCrash('loadURL-app-protocol-failed', err);
-      // Fallback to file:// if app:// fails
       const indexPath = getDistPath(isDev, baseDir, 'index.html');
       win.loadFile(indexPath).catch((err2) => logCrash('loadFile-fallback-failed', err2));
     });
@@ -188,7 +187,6 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
         ipcMain.removeListener('window-minimize', onMinimize);
         ipcMain.removeListener('window-maximize', onMaximize);
         ipcMain.removeListener('window-close', onClose);
-        // H1 fix: Guard removeHandler to prevent throw on second crash recovery
         try { ipcMain.removeHandler('window-is-maximized'); } catch (_) {}
         ipcMain.removeListener('renderer-ready', showWindow);
         clearTimeout(fallbackTimer);
@@ -231,24 +229,16 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
 
   ipcMain.once('renderer-ready', showWindow);
 
+  // ── G2 Fix: Removed confusing ready-to-show handler — renderer-ready + 6s fallback suffice ──
   const fallbackTimer = setTimeout(showWindow, 6000);
 
-  // Cleanup IPC listeners on normal window close (not just crash)
+  // Cleanup IPC listeners on normal window close
   win.on('closed', () => {
     ipcMain.removeListener('window-minimize', onMinimize);
     ipcMain.removeListener('window-maximize', onMaximize);
     ipcMain.removeListener('window-close', onClose);
     try { ipcMain.removeHandler('window-is-maximized'); } catch (_) {}
     clearTimeout(fallbackTimer);
-  });
-
-  win.once('ready-to-show', () => {
-    setTimeout(() => {
-      if (!appReady) {
-        clearTimeout(fallbackTimer);
-        setTimeout(showWindow, 3000);
-      }
-    }, 500);
   });
 }
 
