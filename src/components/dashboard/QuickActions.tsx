@@ -1,14 +1,13 @@
-import { GraduationCap, RotateCcw, BookOpen } from "lucide-react";
+import { GraduationCap, RotateCcw } from "lucide-react";
 import { memo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 interface Props {
   dueCount: number;
   hasCards: boolean;
-  lastSourceLabel: string | null;
 }
 
-export const QuickActions = memo(function QuickActions({ dueCount, hasCards, lastSourceLabel }: Props) {
+export const QuickActions = memo(function QuickActions({ dueCount, hasCards }: Props) {
   if (!hasCards) return null;
 
   return (
@@ -24,13 +23,6 @@ export const QuickActions = memo(function QuickActions({ dueCount, hasCards, las
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg border bg-card text-sm font-medium hover:bg-secondary transition-colors">
           <RotateCcw className="h-4 w-4 text-warning" />
           Ponovi dospjele ({dueCount})
-        </Link>
-      )}
-      {lastSourceLabel && (
-      <Link to="/categories"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg border bg-card text-sm font-medium hover:bg-secondary transition-colors">
-          <BookOpen className="h-4 w-4 text-primary" />
-          Otvori izvor
         </Link>
       )}
     </motion.div>

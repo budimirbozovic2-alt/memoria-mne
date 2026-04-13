@@ -16,10 +16,7 @@ export default function DashboardPage() {
   const { setView } = useUIContext();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
-  const lastSourceLabel = useMemo(() => {
-    const lastUsed = localStorage.getItem("sr-last-source-label");
-    return lastUsed || (cards.some(c => c.sourceId) ? "Izvor" : null);
-  }, [cards]);
+
 
   if (!ready) {
     return (
