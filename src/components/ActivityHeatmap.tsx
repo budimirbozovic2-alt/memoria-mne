@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { ReviewLogEntry } from "@/lib/storage";
-import { loadDisciplineLog, getDisciplineEmoji } from "@/lib/planner-storage";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useDeferredCompute } from "@/hooks/useDeferredCompute";
 
 interface Props {
   reviewLog: ReviewLogEntry[];
@@ -26,7 +26,9 @@ const INTENSITY_CLASSES = [
 ];
 
 export default function ActivityHeatmap({ reviewLog }: Props) {
-  const disciplineLog = useMemo(() => {
+  // R3 fix: defer discipline log load to avoid blocking paint
+  const disciplineLog = useDeferredCompute(async () => {
+    const { loadDisciplineLog, getDisciplineEmoji } = await import("@/lib/planner-storage");
     const log = loadDisciplineLog();
     const map = new Map<string, string>();
     log.forEach(e => map.set(e.date, getDisciplineEmoji(e.status)));
@@ -76,7 +78,7 @@ export default function ActivityHeatmap({ reviewLog }: Props) {
 
         // Convert to ISO date for discipline lookup
         const isoKey = d.toISOString().slice(0, 10);
-        cells.push({ key, count, intensity, date: new Date(d), discipline: disciplineLog.get(isoKey) });
+        cells.push({ key, count, intensity, date: new Date(d), discipline: disciplineLog?.get(isoKey) });
       }
       cursor.setDate(cursor.getDate() + 7);
       col++;
