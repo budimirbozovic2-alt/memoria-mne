@@ -760,6 +760,22 @@ nav button, nav a {
 [contenteditable="false"],
 .prose:not([contenteditable="true"]) {
   caret-color: transparent;
+  user-select: none;
+}
+
+/* Prevent text cursor on non-interactive elements */
+h1, h2, h3, h4, h5, h6, p, span, label, div {
+  cursor: default;
+}
+
+/* Restore text cursor where editing/selection is expected */
+input, textarea, [contenteditable="true"], .prose[contenteditable="true"],
+[role="textbox"], .select-text {
+  cursor: text;
+}
+
+a, button, [role="button"], summary, [tabindex] {
+  cursor: pointer;
 }
 
 /* ─── Number input spinners — themed ─────────── */
