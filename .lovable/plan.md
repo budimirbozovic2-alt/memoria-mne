@@ -1,22 +1,24 @@
 
 
-# Plan: Speed Reader opis + uklanjanje dugmeta "Otvori izvor"
+# Plan: Premještanje QuickActions na dno lijeve kolone + preimenovanje naslova
 
-## Izmjena 1: Speed Reader — dodati opis ispod naslova
-**Fajl:** `src/components/speed-reader/SpeedReaderSelector.tsx`
+## Izmjene
 
-Dodati `<p>` tag ispod naslova, kao na ostalim stranicama:
-```tsx
-<p className="text-muted-foreground text-sm mt-1">Brzo čitanje kartica i izvora — treniraj brzinu i fokus</p>
-```
+### 1. Preimenovati "Dashboard" u "Početna tabla"
+**Fajl:** `src/components/Dashboard.tsx` (linija 39)
+Zamijeniti tekst `Dashboard` sa `Početna tabla`.
 
-## Izmjena 2: Ukloniti dugme "Otvori izvor" sa Dashboarda
-**Fajl:** `src/components/dashboard/QuickActions.tsx`
+### 2. Premjestiti QuickActions na dno lijeve kolone
+**Fajl:** `src/views/DashboardPage.tsx`
+- Ukloniti `<QuickActions>` sa linije 54 (iznad Dashboard komponente)
+- Proslijediti `dueCount` i `hasCards` kao props u `Dashboard`
 
-Ukloniti cijeli blok koji renderuje "Otvori izvor" link (linije 27-33), kao i `lastSourceLabel` prop iz komponente i interfejsa. Ukloniti `BookOpen` import.
+**Fajl:** `src/components/Dashboard.tsx`
+- Dodati `dueCount` i `hasCards` u Props interfejs
+- Renderovati `<QuickActions>` na kraju lijeve kolone (nakon `DailyBriefing`, linija ~105), unutar existing `<div className="space-y-6">` bloka
 
-Također očistiti `lastSourceLabel` prop gdje god se proslijeđuje u `QuickActions` (vjerovatno u `Dashboard.tsx`).
+Ovako će dugmad "Nastavi učenje" i "Ponovi dospjele" biti na dnu lijeve kolone, popunjavajući prazan prostor i balansirajući layout.
 
 ## Scope
-- 2-3 fajla, minimalne izmjene
+- 2 fajla, minimalne izmjene
 
