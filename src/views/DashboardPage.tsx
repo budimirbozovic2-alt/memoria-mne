@@ -51,7 +51,7 @@ export default function DashboardPage() {
               <HelpCircle className="h-4 w-4" />
             </button>
           </div>
-          <QuickActions dueCount={stats.due} hasCards={cards.length > 0} lastSourceLabel={lastSourceLabel} />
+          <QuickActions dueCount={stats.due} hasCards={cards.length > 0} />
           <Dashboard
             stats={stats}
             categoryStats={categoryStats}
