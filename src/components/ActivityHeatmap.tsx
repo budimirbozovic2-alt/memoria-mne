@@ -78,7 +78,7 @@ export default function ActivityHeatmap({ reviewLog }: Props) {
 
         // Convert to ISO date for discipline lookup
         const isoKey = d.toISOString().slice(0, 10);
-        cells.push({ key, count, intensity, date: new Date(d), discipline: disciplineLog.get(isoKey) });
+        cells.push({ key, count, intensity, date: new Date(d), discipline: disciplineLog?.get(isoKey) });
       }
       cursor.setDate(cursor.getDate() + 7);
       col++;
