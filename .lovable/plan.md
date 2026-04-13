@@ -1,125 +1,120 @@
 
 
-# Deep Audit: Electron Arhitektura — Greške i Uska Grla
+# Deep Audit: React Renderer — Memory Leakovi i Nepotrebni Re-renderi
 
 ## Rezime
 
-Electron infrastruktura je solidna: custom `app://` protokol, crash recovery sa limitom, backup sistem sa timeout guardom, i čist preload API. Pronašao sam **9 konkretnih problema** — 2 sigurnosna, 3 uska grla, 2 greške u logici, i 2 optimizacije.
+Renderer je generalno dobro optimiziran: kontekst dekompozicija, Proxy za stabilne akcije, Zustand store sa granularnim selektorima. Pronašao sam **8 konkretnih problema** — 3 memory leaka, 3 nepotrebna re-rendera, i 2 optimizacije.
 
 ---
 
-## KRITIČNI (sigurnost)
+## MEMORY LEAKOVI
 
-### K1. Path traversal u `save-file` i `read-file` IPC handlerima
-**Problem:** `main.cjs:80-98` — `save-file` i `read-file` primaju proizvoljni `filePath` od renderera bez ikakve validacije. Maliciozni ili kompromitovani renderer može pisati/čitati bilo koji fajl na disku:
-```js
-// Renderer može poslati:
-electronAPI.saveFile('/etc/passwd', base64Data)
-electronAPI.readFile('/home/user/.ssh/id_rsa')
+### M1. ZenMode kreira novi AudioContext pri svakom chime-u — nikad ga ne zatvara
+**Problem:** `ZenMode.tsx:60` — `playChime` kreira `new AudioContext()` svaki put kad se pozove (kraj fokus/pauza faze). AudioContext drži sistemske audio resurse i nikad se ne zatvara. Nakon 10 ciklusa, 10 AudioContext-ova ostaje u memoriji.
+
+**Fix:** Koristiti singleton AudioContext (reuse `ambient-audio.ts` getCtx pattern) ili zatvoriti nakon reprodukcije:
+```tsx
+const playChime = useCallback((type: "focus" | "break") => {
+  const ctx = new AudioContext();
+  // ...existing code...
+  // Close after last note finishes
+  setTimeout(() => ctx.close(), 1500);
+}, []);
 ```
-Iako je `contextIsolation: true`, ako renderer bude kompromitovan (XSS, maliciozni import), ovo je direktan pristup fajl sistemu.
 
-**Fix:** Validirati da `filePath` počinje sa korisničkim direktorijumom (`app.getPath('documents')` ili `app.getPath('downloads')`):
-```js
-const allowedDirs = [app.getPath('documents'), app.getPath('downloads'), app.getPath('desktop')];
-if (!allowedDirs.some(dir => path.resolve(filePath).startsWith(dir))) {
-  return false; // ili null za read
+### M2. NudgeWatcher u MainLayout prima `cards` i `reviewLog` — re-renderuje se pri svakoj mutaciji
+**Problem:** `MainLayout.tsx:23-24` — NudgeWatcher čita `useCardData().cards` i `useReviewData().reviewLog`. Ovo znači da se NudgeWatcher re-renderuje pri SVAKOJ promjeni kartica ili review loga, iako mu ti podaci trebaju samo pri navigaciji. Svaki re-render čuva closure reference na cijeli `cards` niz (potencijalno hiljade objekata).
+
+**Fix:** Premjestiti `cards` i `reviewLog` čitanje unutar async efekta koristeći ref ili direktno čitanje iz cardMapRef:
+```tsx
+const NudgeWatcher = memo(function NudgeWatcher() {
+  const { pathname } = useLocation();
+  const prevPathRef = useRef(pathname);
+  const nudgeShownRef = useRef(false);
+  // ... čitaj cards/reviewLog SAMO unutar efekta kad je navigacija detektovana
+});
+```
+Alternativa: koristiti `useRef` za cards/reviewLog umjesto direktnog čitanja iz konteksta.
+
+### M3. `useSourceReaderActions` heading menu listener ne čisti addEventListener
+**Problem:** `useSourceReaderActions.ts:336-339`:
+```tsx
+if (state.headingMenu && !prev.headingMenu) {
+  const close = () => store.getState().setHeadingMenu(null);
+  window.addEventListener("click", close, { once: true });
 }
 ```
+Ako korisnik otvori heading menu ali nikad ne klikne (npr. pritisne Escape ili navigira), `click` listener ostaje registrovan. Sa `{ once: true }` ovo je minor, ali pattern je nečist — svako otvaranje menija bez klika akumulira listenere.
 
-### K2. `show-save-dialog` i `show-open-dialog` primaju nefiltrirane `options`
-**Problem:** `main.cjs:68-78` — opcije za dialog se proslijeđuju direktno od renderera. Iako Electron dialog API nije direktno exploitable, proslijeđivanje nefiltriranih objekata iz renderera u native API je loša praksa.
-
-**Fix:** Whitelist-ovati dozvoljene ključeve (`defaultPath`, `filters`, `properties`).
+**Fix:** Čuvati referencu na listener i čistiti u Zustand unsubscribe ili dodati cleanup u useEffect return.
 
 ---
 
-## USKA GRLA
+## NEPOTREBNI RE-RENDERI
 
-### B1. `save-file` koristi sinkroni `writeFileSync` za potencijalno velike fajlove
-**Problem:** `main.cjs:83` — `fs.writeFileSync` blokira main process event loop dok piše fajl. Za backup od 20-50MB, ovo može zamrznuti UI na 1-2s (window controls ne reaguju, IPC queue se blokira).
+### R1. PomodoroProvider re-renderuje SVE potrošače svake sekunde
+**Problem:** `AppContext.tsx:244-248` — `useGlobalPomodoro` vraća novi `useMemo` objekat svake sekunde (jer se `seconds` mijenja). Ovo propagira kroz `PomodoroProvider` → `PomodoroContext.Provider` → re-render svih potrošača (`PomodoroTimer`, `ZenMode` header, itd.).
 
-**Fix:** Zamijeniti sa `fs.promises.writeFile`:
-```js
-await fs.promises.writeFile(filePath, Buffer.from(cleanBase64, 'base64'));
+Problem: `PomodoroTimer` se renderuje u sidebaru i kompaktnom modu — svake sekunde uzrokuje Sidebar layout recalculation.
+
+**Fix:** Izdvojiti `seconds` u zaseban kontekst ili koristiti `useRef` za seconds + `forceUpdate` samo u komponentama koje prikazuju tajmer. Alternativno, PomodoroTimer može direktno koristiti `useRef` + `setInterval` bez konteksta.
+
+### R2. `useDashboardData` eagerly importuje `planner-storage` — teški modul na svaki Dashboard render
+**Problem:** `useDashboardData.ts:7-12` — statički importuje `loadPlanner`, `calcVelocity`, `getSmartSuggestion` itd. Ovo znači da se cijeli `planner-storage.ts` (577 linija + `date-fns`) učitava čim korisnik otvori Dashboard, čak i ako planner nije konfigurisan.
+
+**Fix:** Lazy import unutar `useDeferredCompute` callback-ova:
+```tsx
+const plannerConfig = useDeferredCompute(async () => {
+  const { loadPlanner } = await import("@/lib/planner-storage");
+  return loadPlanner();
+}, []);
 ```
 
-### B2. `read-file` koristi sinkroni `readFileSync` — isti problem
-**Problem:** `main.cjs:93` — čitanje velikog fajla blokira main process.
+### R3. `ActivityHeatmap` poziva `loadDisciplineLog()` sinkrono u `useMemo` sa praznim deps `[]`
+**Problem:** `ActivityHeatmap.tsx:29-34` — `useMemo(() => loadDisciplineLog(), [])` čita localStorage sinkrono prilikom renderovanja. Ovo blokira paint za ~2-5ms. Takođe, prazan dependency niz znači da se disciplina nikad ne osvježi dok je Dashboard otvoren.
 
-**Fix:** Zamijeniti sa `fs.promises.readFile`.
-
-### B3. Backup `writeBackup` koristi sinkroni `writeFileSync`
-**Problem:** `backup.cjs:53` — `fs.writeFileSync` za backup JSON (može biti 10-50MB). Main process je blokiran tokom pisanja.
-
-**Fix:** Zamijeniti sa `await fs.promises.writeFile` i učiniti `writeBackup` async.
-
----
-
-## GREŠKE U LOGICI
-
-### G1. `before-quit` handler poziva `app.quit()` rekurzivno
-**Problem:** `main.cjs:169-177`:
-```js
-app.on('before-quit', async (e) => {
-  if (isQuitting) return;       // ← Guard radi samo jednom
-  isQuitting = true;
-  e.preventDefault();
-  await backup.performBeforeQuitBackup();
-  app.quit();                   // ← Ovo ponovo triggeruje 'before-quit'
-});
-```
-Drugi put ulazi u handler, `isQuitting` je `true`, pa `return` — ali `e.preventDefault()` se NE poziva, pa quit prolazi. Ovo *funkcioniše* ali je fragilan pattern. Ako se `isQuitting` resetuje (npr. pri macOS re-open), backup se neće izvršiti.
-
-**Fix:** Eksplicitno koristiti `app.exit(0)` umjesto `app.quit()` za finalni izlaz (zaobilazi `before-quit` event potpuno).
-
-### G2. `ready-to-show` timer logika je konfuzna i potencijalno kontraproduktivna
-**Problem:** `window.cjs:245-252`:
-```js
-win.once('ready-to-show', () => {
-  setTimeout(() => {
-    if (!appReady) {
-      clearTimeout(fallbackTimer);         // Poništava 6s fallback
-      setTimeout(showWindow, 3000);        // Čeka JOŠ 3s
-    }
-  }, 500);
-});
-```
-Logika: ako `ready-to-show` fire-uje, čekaj 500ms, pa ako app nije ready, poništi 6s fallback i čekaj još 3s. Problem: `ready-to-show` se emituje kad je Chromium spreman za paint (obično ~1-2s). Ovo **produžava** čekanje od 6s na 3.5s od `ready-to-show`, što može biti DUŽE od originalnog 6s fallbacka. Neto efekat: nepredvidivo ponašanje zavisno od toga kad se `ready-to-show` emituje.
-
-**Fix:** Ukloniti `ready-to-show` handler — `renderer-ready` IPC signal iz `useCardBootstrap` + 6s fallback su dovoljni.
+**Fix:** Koristiti `useDeferredCompute` ili `useEffect` + `useState` za async učitavanje.
 
 ---
 
 ## OPTIMIZACIJE
 
-### O1. `cleanOldBackups` čita `statSync` za svaki fajl — nepotrebno
-**Problem:** `backup.cjs:20-23` — za svaki backup fajl se radi `fs.statSync` da se dobije `mtimeMs`. Sa MAX_BACKUPS=3, ovo je zanemarljivo, ali fajlovi već imaju timestamp u imenu (`Codex_AutoBackup_2026_04_13...`).
+### O1. `Dashboard` koristi `motion` iz `framer-motion` za ProgressRing wrapper
+**Problem:** `Dashboard.tsx:7` — `import { motion } from "framer-motion"` se eagerly učitava. Ovo vuče ~40KB gzipped biblioteku samo za jednu `motion.div` animaciju (fade-in na ProgressRing).
 
-**Fix:** Parsirati timestamp iz imena fajla umjesto `statSync`. Minor optimizacija.
+**Fix:** Zamijeniti sa CSS animation/transition:
+```tsx
+<div className="animate-in fade-in slide-in-from-bottom-4 duration-300 glass-card p-5">
+```
+Tailwind `animate-in` plugin ili custom CSS transition eliminišu potrebu za framer-motion na Dashboardu.
 
-### O2. `crashTimestamps` je globalni niz koji nikad ne oslobađa memoriju starijih zapisa
-**Problem:** `window.cjs:79` — `crashTimestamps` filtrira pri svakom pozivu, ali akumulira se tokom životnog vijeka procesa. Za normalnu upotrebu ovo je zanemarljivo (max 3 entry-ja), ali pattern je nečist.
+### O2. `Breadcrumbs` čita `useCategoryData()` — re-renderuje se pri svakoj promjeni kategorija
+**Problem:** `Breadcrumbs.tsx:29` — `useCategoryData()` se pretplaćuje na cijeli `CategoryStateContext`. Breadcrumbs treba SAMO `categoryRecords` za lookup imena, ali se re-renderuje i kad se `categoryStats`, `subcategories` ili `categories` promijene.
 
-**Fix:** Zamijeni sa circular buffer od 3 elementa — trivijalna izmjena.
+**Fix:** Selektivni selektor ili memoizacija:
+```tsx
+const categoryRecords = useCategoryData().categoryRecords;
+// + memo wrapper na Breadcrumbs komponentu
+```
+Ovo je minor jer se `CategoryStateContext` rijetko mijenja, ali je nečist pattern.
 
 ---
 
 ## Šta je DOBRO (ne treba mijenjati)
 
-- `app://` custom protokol sa SPA fallback — odlično rješenje za IndexedDB persistenciju
-- Crash recovery sa limitom (3 crashes / 60s) — sprečava beskonačni loop
-- IPC handler cleanup pri crash recovery i window close — čist lifecycle management
-- Single instance lock sa focus restore — standard pattern
-- `sandbox: false` je potreban za preload.cjs — korektna konfiguracija
-- Splash → main window tranzicija sa `renderer-ready` signalom
-- Quit backup sa 5s timeout + race — ne blokira izlaz
-- `contextIsolation: true` + `nodeIntegration: false` — ispravan security model
-- preload.cjs path resolution sa candidate lista — robustan za različite build konfiguracije
+- Proxy pattern za CardActions — stabilna referenca, 0 re-rendera
+- Kontekst dekompozicija na 5 providera — odlična granularnost
+- Zustand store za SourceReader sa granularnim selektorima
+- `memo()` na NudgeWatcher, GlobalSearchWrapper, DocxImporterWrapper
+- `useCallback` na svim action handlerima u CRUD i Annotations
+- Lazy loading svih route stranica
+- SessionContext sa ref-based queueing — 0 re-rendera tokom sesije
+- `mapToArray` version cache — sprečava O(n) na svaki render
 
 ---
 
 ## Scope implementacije
 
-**3 fajla** (`main.cjs`, `electron/window.cjs`, `electron/backup.cjs`). Najvažniji su K1 (path validation ~10 linija) i B1-B3 (zamjena sync → async, ~5 linija svaka). Ukupno ~30min rada.
+**5-6 fajlova**. Najvažniji su M1 (jednoliner — close AudioContext), R1 (refaktoring Pomodoro konteksta), i R2 (lazy import u useDashboardData). M2 je srednji effort (refaktoring NudgeWatcher). Ukupno ~1.5h rada.
 
