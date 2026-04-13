@@ -1,5 +1,5 @@
-import { HelpCircle } from "lucide-react";
 import { useState, lazy, Suspense } from "react";
+import { useCardData, useCategoryData, useReviewData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import { useCardData, useCategoryData, useReviewData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MetacognitiveCenter from "@/components/MetacognitiveCenter";

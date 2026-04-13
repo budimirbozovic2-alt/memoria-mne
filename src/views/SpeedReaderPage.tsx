@@ -1,5 +1,5 @@
-import { HelpCircle } from "lucide-react";
 import { useState, lazy, Suspense } from "react";
+import SpeedReader from "@/components/SpeedReader";
 import SpeedReader from "@/components/SpeedReader";
 import { AnimatePresence } from "framer-motion";
 
