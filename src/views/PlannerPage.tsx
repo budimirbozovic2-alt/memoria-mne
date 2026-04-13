@@ -30,16 +30,9 @@ export default function PlannerPage() {
 
   return (
     <ErrorBoundary label="Planer" onNavigateHome={() => setView("dashboard")}>
-      <div className="relative">
-        <button
-          onClick={() => setShowOnboarding(true)}
-          className="absolute top-0 right-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors z-10"
-          title="Vodič za planer"
-          aria-label="Vodič za planer"
-        >
-          <HelpCircle className="h-4 w-4" />
-        </button>
+      <div>
         <StrategicPlanner
+          onShowOnboarding={() => setShowOnboarding(true)}
           cards={cards}
           categories={categories}
           categoryRecords={categoryRecords}

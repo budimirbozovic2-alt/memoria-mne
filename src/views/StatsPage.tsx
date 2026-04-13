@@ -25,16 +25,9 @@ export default function StatsPage() {
 
   return (
     <ErrorBoundary label="Statistike" onNavigateHome={() => setView("dashboard")}>
-      <div className="relative">
-        <button
-          onClick={() => setShowOnboarding(true)}
-          className="absolute top-0 right-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors z-10"
-          title="Vodič za statistiku"
-          aria-label="Vodič za statistiku"
-        >
-          <HelpCircle className="h-4 w-4" />
-        </button>
+      <div>
         <MyStats
+          onShowOnboarding={() => setShowOnboarding(true)}
           cards={cards}
           categories={categories}
           categoryRecords={categoryRecords}
