@@ -1,6 +1,5 @@
 import { useState, lazy, Suspense } from "react";
 import { useCardData, useCategoryData, useReviewData, useUIContext } from "@/contexts/AppContext";
-import { useCardData, useCategoryData, useReviewData, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import MyStats from "@/components/MyStats";
 import { AnimatePresence } from "framer-motion";

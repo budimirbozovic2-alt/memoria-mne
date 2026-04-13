@@ -1,6 +1,5 @@
 import { useState, lazy, Suspense } from "react";
 import SpeedReader from "@/components/SpeedReader";
-import SpeedReader from "@/components/SpeedReader";
 import { AnimatePresence } from "framer-motion";
 
 const SpeedReaderOnboarding = lazy(() => import("@/components/SpeedReaderOnboarding"));
