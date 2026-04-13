@@ -2,9 +2,11 @@ import { useState } from "react";
 import { MindMapDoc } from "@/lib/db";
 import MindMapList from "@/components/mindmap/MindMapList";
 import MindMapCanvas from "@/components/mindmap/MindMapCanvas";
+import { hasSeenOnboarding } from "@/components/mindmap/MindMapOnboarding";
 
 export default function MindMapPage() {
   const [activeDoc, setActiveDoc] = useState<MindMapDoc | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
 
   if (activeDoc) {
     return (
@@ -14,5 +16,12 @@ export default function MindMapPage() {
     );
   }
 
-  return <MindMapList onOpen={setActiveDoc} />;
+  return (
+    <MindMapList
+      onOpen={setActiveDoc}
+      showOnboarding={showOnboarding}
+      onShowOnboarding={() => setShowOnboarding(true)}
+      onCloseOnboarding={() => setShowOnboarding(false)}
+    />
+  );
 }

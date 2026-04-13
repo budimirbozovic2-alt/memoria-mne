@@ -4,6 +4,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { LearnMode, ReviewLogEntry } from "@/lib/storage";
 import { motion, AnimatePresence } from "framer-motion";
 import LearnOnboarding from "@/components/LearnOnboarding";
+import InfoPanel from "@/components/InfoPanel";
 
 interface Props {
   cards: Card[];
@@ -89,10 +90,22 @@ export default function ModeSelector({ cards, learnMode, dueCount, reviewLog, on
             <h2 className="text-2xl font-bold text-foreground flex items-center gap-2"><GraduationCap className="h-6 w-6 text-primary" /> Učenje</h2>
             <p className="text-muted-foreground mt-2">Izaberi režim učenja koji odgovara tvom nivou.</p>
           </div>
-          <button onClick={() => setShowOnboarding(true)}
-            className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" title="Vodič kroz režime učenja">
-            <HelpCircle className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <InfoPanel title="Režimi učenja">
+              <p><strong>Slobodno učenje</strong> — čitaj materijal bez pritiska, označavaj pročitano. Idealno za prvi kontakt.</p>
+              <p><strong>Aktivno prisjećanje</strong> — pregledaj pa reprodukuj na glas. Naučno najefektivniji metod.</p>
+              <p><strong>Metod lanca</strong> — kumulativno ponavljanje: svaki novi modul zahtijeva reprodukciju svih prethodnih bez greške.</p>
+              <p>Ocjene se upisuju u FSRS algoritam i utiču na buduća ponavljanja.</p>
+            </InfoPanel>
+            <button
+              onClick={() => setShowOnboarding(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary"
+              title="Vodič kroz režime učenja"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Onboarding</span>
+            </button>
+          </div>
         </div>
       </div>
 
