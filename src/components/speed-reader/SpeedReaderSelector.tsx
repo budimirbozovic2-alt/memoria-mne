@@ -49,7 +49,6 @@ export default function SpeedReaderSelector({
         <InfoPanel title="Speed Reader">{SPEED_READER_INFO}</InfoPanel>
       </div>
       <p className="text-muted-foreground text-sm -mt-4">Brzo čitanje kartica i izvora — treniraj brzinu i fokus</p>
-      </div>
 
       {/* Content source toggle */}
       <div className="flex items-center rounded-lg border border-border bg-muted/50 p-0.5 w-fit">
