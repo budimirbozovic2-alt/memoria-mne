@@ -15,6 +15,7 @@ export const SourceContent = memo(function SourceContent({
   html, onMouseUp, contentRef, editMode, onFormat, onInput,
 }: Props) {
   const initializedRef = useRef(false);
+  const safeHtml = useMemo(() => sanitizeHtml(html), [html]);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     if (editMode) return;
