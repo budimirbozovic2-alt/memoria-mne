@@ -42,25 +42,21 @@ window.onunhandledrejection = (event) => {
 
 markBootStep("main:error-handlers-registered");
 
-// ── Splash fallback timeout — always runs even if imports fail ──
-setTimeout(() => {
-  hideSplashImmediately();
-}, 8000);
-
 // ── Guarded async bootstrap ──
 (async () => {
   try {
-    markBootStep("main:theme-init-start");
-    const { initColorTheme } = await import("./lib/app-settings");
+    markBootStep("main:parallel-import-start");
+    const [{ initColorTheme }, { default: App }, { createRoot }] = await Promise.all([
+      import("./lib/app-settings"),
+      import("./App"),
+      import("react-dom/client"),
+    ]);
+    markBootStep("main:parallel-import-done");
+
     initColorTheme();
     markBootStep("main:theme-init-done");
 
-    markBootStep("main:app-import-start");
-    const { default: App } = await import("./App");
-    markBootStep("main:app-import-done");
-
     markBootStep("main:react-render-start");
-    const { createRoot } = await import("react-dom/client");
     createRoot(document.getElementById("root")!).render(<App />);
     markBootStep("main:react-render-done");
 

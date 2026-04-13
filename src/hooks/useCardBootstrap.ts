@@ -121,14 +121,19 @@ export function useCardBootstrap(setters: BootSetters) {
           3000, "cache init", undefined
         );
 
-        splashProgress(25, "Učitavanje kartica…");
-        if (import.meta.env.DEV) console.log("[boot:diag] step 4: loading data");
+        splashProgress(25, "Učitavanje podataka…");
+        if (import.meta.env.DEV) console.log("[boot:diag] step 4: loading data (parallel)");
         markBootStep("cards:data-load-start");
-        const c = await withTimeout(idbLoadCards(), 5000, "cards load", []);
 
-        splashProgress(50, `${c.length} kartica učitano`);
-        // Load CategoryRecord[] from IDB, seed defaults if empty
-        const catRecords = await withTimeout(seedDefaultCategories(), 2500, "categories load", []);
+        // B2: Parallelize all independent IDB loads
+        const [c, catRecords, log, settings] = await Promise.all([
+          withTimeout(idbLoadCards(), 5000, "cards load", []),
+          withTimeout(seedDefaultCategories(), 2500, "categories load", []),
+          withTimeout(idbLoadRecentReviewLog(90), 2500, "review log load", []),
+          withTimeout(idbLoadSettings<SRSettings>("srSettings", DEFAULT_SR_SETTINGS), 2500, "settings load", DEFAULT_SR_SETTINGS),
+        ]);
+
+        splashProgress(60, `${c.length} kartica učitano`);
         if (import.meta.env.DEV) console.log("[boot:diag] categories loaded:", catRecords.length, catRecords.map((r: CategoryRecord) => r.name));
 
         // Build card-by-category index O(n) instead of O(n×categories)
@@ -232,18 +237,7 @@ export function useCardBootstrap(setters: BootSetters) {
         // Always use updatedRecords (with migrated nodes) as canonical state
         const finalRecords = needsPersist ? updatedRecords : catRecords;
 
-        splashProgress(65, "Učitavanje kategorija…");
-
-        splashProgress(80, "Učitavanje dnevnika…");
-        const log = await withTimeout(idbLoadRecentReviewLog(90), 2500, "review log load", []);
-
-        splashProgress(90, "Učitavanje podešavanja…");
-        const settings = await withTimeout(
-          idbLoadSettings<SRSettings>("srSettings", DEFAULT_SR_SETTINGS),
-          2500,
-          "settings load",
-          DEFAULT_SR_SETTINGS,
-        );
+        splashProgress(85, "Finalizacija…");
         markBootStep("cards:data-load-done", `${c.length} cards`);
 
         if (import.meta.env.DEV) console.log("[boot:diag] setting state — cards:", c.length, "categories:", finalRecords.length);

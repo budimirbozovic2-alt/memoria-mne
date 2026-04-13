@@ -6,11 +6,9 @@ import ZenMode from "@/components/ZenMode";
 import AppSidebar from "@/components/AppSidebar";
 import BlockingModal from "@/components/db/BlockingModal";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AnimatePresence } from "framer-motion";
 import { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
 import { toast } from "sonner";
-import { type PlannerConfig, loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } from "@/lib/planner-storage";
 import { Moon, Sun, Search, Focus, HelpCircle } from "lucide-react";
 import { setDarkMode } from "@/lib/app-settings";
 
@@ -20,22 +18,17 @@ const AppOnboarding = lazy(() => import("@/components/AppOnboarding"));
 
 const SOURCE_ROUTES = ["/categories", "/category/"];
 
-/** Isolated component for planner nudge */
+/** Isolated component for planner nudge — lazy-loads planner-storage */
 const NudgeWatcher = memo(function NudgeWatcher() {
   const { cards } = useCardData();
   const { reviewLog } = useReviewData();
   const { pathname } = useLocation();
   const prevPathRef = useRef(pathname);
   const nudgeShownRef = useRef(false);
-  const plannerRef = useRef<PlannerConfig | null>(null);
-
-  const getPlannerCached = () => {
-    if (!plannerRef.current) plannerRef.current = loadPlanner();
-    return plannerRef.current;
-  };
+  const plannerModRef = useRef<typeof import("@/lib/planner-storage") | null>(null);
 
   useEffect(() => {
-    if (pathname === "/planner") plannerRef.current = null;
+    if (pathname === "/planner") plannerModRef.current = null;
   }, [pathname]);
 
   useEffect(() => {
@@ -45,23 +38,29 @@ const NudgeWatcher = memo(function NudgeWatcher() {
     if (SOURCE_ROUTES.some(r => pathname.startsWith(r))) return;
     if (nudgeShownRef.current) return;
 
-    try {
-      const planner = getPlannerCached();
-      if (!planner.finalGoalDate || planner.phases.length === 0) return;
-      const velocity = calcVelocity(reviewLog, 7);
-      const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
-      if (!suggestion || suggestion.suggestedToday <= 0) return;
-      const dailyDone = getDailyMappedCount();
-      const remaining = suggestion.suggestedToday - dailyDone;
-      if (remaining > 0 && dailyDone < suggestion.suggestedToday) {
-        nudgeShownRef.current = true;
-        toast("📌 Ostani fokusiran", {
-          description: `Preostalo ti je još ${remaining} od ${suggestion.suggestedToday} planiranih sekcija za danas.`,
-          duration: 5000,
-        });
-        setTimeout(() => { nudgeShownRef.current = false; }, 30 * 60 * 1000);
-      }
-    } catch {}
+    (async () => {
+      try {
+        if (!plannerModRef.current) {
+          plannerModRef.current = await import("@/lib/planner-storage");
+        }
+        const { loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } = plannerModRef.current;
+        const planner = loadPlanner();
+        if (!planner.finalGoalDate || planner.phases.length === 0) return;
+        const velocity = calcVelocity(reviewLog, 7);
+        const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
+        if (!suggestion || suggestion.suggestedToday <= 0) return;
+        const dailyDone = getDailyMappedCount();
+        const remaining = suggestion.suggestedToday - dailyDone;
+        if (remaining > 0 && dailyDone < suggestion.suggestedToday) {
+          nudgeShownRef.current = true;
+          toast("📌 Ostani fokusiran", {
+            description: `Preostalo ti je još ${remaining} od ${suggestion.suggestedToday} planiranih sekcija za danas.`,
+            duration: 5000,
+          });
+          setTimeout(() => { nudgeShownRef.current = false; }, 30 * 60 * 1000);
+        }
+      } catch {}
+    })();
   }, [pathname, cards, reviewLog]);
 
   return null;
@@ -206,17 +205,13 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       </div>
 
       <DocxImporterWrapper open={docxOpen} onClose={() => setDocxOpen(false)} />
-      <AnimatePresence>
-        <ZenMode active={zenMode} onToggle={() => setZenMode(false)} />
-      </AnimatePresence>
+      <ZenMode active={zenMode} onToggle={() => setZenMode(false)} />
       <GlobalSearchWrapper open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
-      <AnimatePresence>
-        {showAppOnboarding && (
-          <Suspense fallback={null}>
-            <AppOnboarding onComplete={() => setShowAppOnboarding(false)} />
-          </Suspense>
-        )}
-      </AnimatePresence>
+      {showAppOnboarding && (
+        <Suspense fallback={null}>
+          <AppOnboarding onComplete={() => setShowAppOnboarding(false)} />
+        </Suspense>
+      )}
       <BlockingModal />
     </SidebarProvider>
   );
