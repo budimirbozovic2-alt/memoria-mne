@@ -143,6 +143,7 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Alati</SidebarGroupLabel>
           <SidebarGroupContent>
+            <nav aria-label="Alati">
             <SidebarMenu>
               {TOOLS_NAV.map(({ path, icon: Icon, label }) => (
                 <SidebarMenuItem key={path}>
@@ -159,6 +160,7 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
+            </nav>
           </SidebarGroupContent>
         </SidebarGroup>
 
