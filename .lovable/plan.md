@@ -1,120 +1,125 @@
 
 
-# Deep Audit: React Renderer — Memory Leakovi i Nepotrebni Re-renderi
+# Deep Audit: UI/UX — Desktop Electron Fokus
 
 ## Rezime
 
-Renderer je generalno dobro optimiziran: kontekst dekompozicija, Proxy za stabilne akcije, Zustand store sa granularnim selektorima. Pronašao sam **8 konkretnih problema** — 3 memory leaka, 3 nepotrebna re-rendera, i 2 optimizacije.
+UI je vizuelno kohezivan sa dobrim dark mode sistemom, skip-to-content linkom i ARIA labelima. Fokus ovog audita je isključivo na desktop Electron okruženje. Pronašao sam **8 konkretnih problema** — 2 accessibility, 2 konzistentnost, 2 optimizacije bundle-a, i 2 UX poboljšanja.
 
 ---
 
-## MEMORY LEAKOVI
+## ACCESSIBILITY
 
-### M1. ZenMode kreira novi AudioContext pri svakom chime-u — nikad ga ne zatvara
-**Problem:** `ZenMode.tsx:60` — `playChime` kreira `new AudioContext()` svaki put kad se pozove (kraj fokus/pauza faze). AudioContext drži sistemske audio resurse i nikad se ne zatvara. Nakon 10 ciklusa, 10 AudioContext-ova ostaje u memoriji.
+### A1. Nema nijednog `aria-live` regiona u aplikaciji
+**Problem:** Pretraga po cijelom projektu daje 0 rezultata za `aria-live`. Pomodoro tajmer (countdown svake sekunde), session progress (broj kartica u Learn/Review), i due badge u sidebaru — ništa od toga nema live region. Screen reader korisnik nema feedback o napretku.
 
-**Fix:** Koristiti singleton AudioContext (reuse `ambient-audio.ts` getCtx pattern) ili zatvoriti nakon reprodukcije:
-```tsx
-const playChime = useCallback((type: "focus" | "break") => {
-  const ctx = new AudioContext();
-  // ...existing code...
-  // Close after last note finishes
-  setTimeout(() => ctx.close(), 1500);
-}, []);
-```
+**Fix:** Dodati `aria-live="polite"` na: Pomodoro tajmer display (`PomodoroTimer.tsx:32,66`), session progress counter, i due count badge u sidebaru.
 
-### M2. NudgeWatcher u MainLayout prima `cards` i `reviewLog` — re-renderuje se pri svakoj mutaciji
-**Problem:** `MainLayout.tsx:23-24` — NudgeWatcher čita `useCardData().cards` i `useReviewData().reviewLog`. Ovo znači da se NudgeWatcher re-renderuje pri SVAKOJ promjeni kartica ili review loga, iako mu ti podaci trebaju samo pri navigaciji. Svaki re-render čuva closure reference na cijeli `cards` niz (potencijalno hiljade objekata).
+### A2. Sidebar navigacione grupe nemaju `<nav>` semantiku
+**Problem:** `AppSidebar.tsx` — sve grupe ("Navigacija", "Predmeti", "Alati") koriste `<div>` elemente. Screen reader ne može razlikovati navigacione sekcije. `SidebarGroupLabel` je `<div>` bez `role` ili `aria` atributa.
 
-**Fix:** Premjestiti `cards` i `reviewLog` čitanje unutar async efekta koristeći ref ili direktno čitanje iz cardMapRef:
-```tsx
-const NudgeWatcher = memo(function NudgeWatcher() {
-  const { pathname } = useLocation();
-  const prevPathRef = useRef(pathname);
-  const nudgeShownRef = useRef(false);
-  // ... čitaj cards/reviewLog SAMO unutar efekta kad je navigacija detektovana
-});
-```
-Alternativa: koristiti `useRef` za cards/reviewLog umjesto direktnog čitanja iz konteksta.
-
-### M3. `useSourceReaderActions` heading menu listener ne čisti addEventListener
-**Problem:** `useSourceReaderActions.ts:336-339`:
-```tsx
-if (state.headingMenu && !prev.headingMenu) {
-  const close = () => store.getState().setHeadingMenu(null);
-  window.addEventListener("click", close, { once: true });
-}
-```
-Ako korisnik otvori heading menu ali nikad ne klikne (npr. pritisne Escape ili navigira), `click` listener ostaje registrovan. Sa `{ once: true }` ovo je minor, ali pattern je nečist — svako otvaranje menija bez klika akumulira listenere.
-
-**Fix:** Čuvati referencu na listener i čistiti u Zustand unsubscribe ili dodati cleanup u useEffect return.
+**Fix:** Wrapovati grupe u `<nav aria-label="Glavna navigacija">`, `<nav aria-label="Predmeti">`, `<nav aria-label="Alati">`.
 
 ---
 
-## NEPOTREBNI RE-RENDERI
+## KONZISTENTNOST
 
-### R1. PomodoroProvider re-renderuje SVE potrošače svake sekunde
-**Problem:** `AppContext.tsx:244-248` — `useGlobalPomodoro` vraća novi `useMemo` objekat svake sekunde (jer se `seconds` mijenja). Ovo propagira kroz `PomodoroProvider` → `PomodoroContext.Provider` → re-render svih potrošača (`PomodoroTimer`, `ZenMode` header, itd.).
+### K1. Miješanje `focus:` i `focus-visible:` patterna
+**Problem:** 11 fajlova koristi `focus:outline-none focus:ring-2` (ExamSidebar, MajorSystemSettings, SharedWidgets, MnemonicWorkshop, WorkshopCardItem, itd.), dok shadcn UI komponente koriste `focus-visible:`. `focus:` se aktivira i na klik miša — prikazuje ring oko svakog kliknutog elementa, što je vizualno ometajuće na desktopu.
 
-Problem: `PomodoroTimer` se renderuje u sidebaru i kompaktnom modu — svake sekunde uzrokuje Sidebar layout recalculation.
+**Fajlovi za popravku:**
+- `ExamSidebar.tsx` (1 instanca)
+- `MajorSystemSettings.tsx` (1)
+- `SharedWidgets.tsx` (1)
+- `MnemonicWorkshop.tsx` (1)
+- `SmartSplitSummaryDialog.tsx` (1)
+- `EssayCreationDialog.tsx` (1)
+- `WorkshopCardItem.tsx` (2)
 
-**Fix:** Izdvojiti `seconds` u zaseban kontekst ili koristiti `useRef` za seconds + `forceUpdate` samo u komponentama koje prikazuju tajmer. Alternativno, PomodoroTimer može direktno koristiti `useRef` + `setInterval` bez konteksta.
+**Fix:** Zamijeniti `focus:outline-none focus:ring` sa `focus-visible:outline-none focus-visible:ring` u svih 8 instanci.
 
-### R2. `useDashboardData` eagerly importuje `planner-storage` — teški modul na svaki Dashboard render
-**Problem:** `useDashboardData.ts:7-12` — statički importuje `loadPlanner`, `calcVelocity`, `getSmartSuggestion` itd. Ovo znači da se cijeli `planner-storage.ts` (577 linija + `date-fns`) učitava čim korisnik otvori Dashboard, čak i ako planner nije konfigurisan.
+### K2. Score badge kontrast u sidebaru
+**Problem:** `AppSidebar.tsx:118` — score badge koristi `color: hsl(var(--success))` na `backgroundColor: hsl(var(--success) / 0.15)`. U light mode-u, teal tekst na gotovo prozirnom teal pozadini ima nizak kontrast.
 
-**Fix:** Lazy import unutar `useDeferredCompute` callback-ova:
-```tsx
-const plannerConfig = useDeferredCompute(async () => {
-  const { loadPlanner } = await import("@/lib/planner-storage");
-  return loadPlanner();
-}, []);
-```
-
-### R3. `ActivityHeatmap` poziva `loadDisciplineLog()` sinkrono u `useMemo` sa praznim deps `[]`
-**Problem:** `ActivityHeatmap.tsx:29-34` — `useMemo(() => loadDisciplineLog(), [])` čita localStorage sinkrono prilikom renderovanja. Ovo blokira paint za ~2-5ms. Takođe, prazan dependency niz znači da se disciplina nikad ne osvježi dok je Dashboard otvoren.
-
-**Fix:** Koristiti `useDeferredCompute` ili `useEffect` + `useState` za async učitavanje.
+**Fix:** Povećati opacity pozadine na 0.25 i dodati `font-semibold` za bolju čitljivost.
 
 ---
 
-## OPTIMIZACIJE
+## BUNDLE OPTIMIZACIJA
 
-### O1. `Dashboard` koristi `motion` iz `framer-motion` za ProgressRing wrapper
-**Problem:** `Dashboard.tsx:7` — `import { motion } from "framer-motion"` se eagerly učitava. Ovo vuče ~40KB gzipped biblioteku samo za jednu `motion.div` animaciju (fade-in na ProgressRing).
+### O1. `framer-motion` u 54 fajla — ~40KB gzipped za uglavnom trivijalne fade-in animacije
+**Problem:** Dashboard komponente (`QuickActions`, `VelocityWidget`, `CoreStats`, `DailyBriefing`, `ExamProgressBar`, `StatusIconsRow`, `StudyFlowWidget`, `EmptyState`) sve koriste `motion.div` sa istim patternom: `initial={{ opacity: 0, y: N }} animate={{ opacity: 1, y: 0 }}`. Ovo je ekvivalentno Tailwind `animate-in fade-in slide-in-from-bottom-N`.
 
-**Fix:** Zamijeniti sa CSS animation/transition:
+**Fix — Faza 1 (Dashboard ekosistem, 8 fajlova):**
+Zamijeniti `motion.div` sa CSS klasama u:
+- `QuickActions.tsx`
+- `VelocityWidget.tsx`
+- `CoreStats.tsx`
+- `DailyBriefing.tsx`
+- `ExamProgressBar.tsx`
+- `StatusIconsRow.tsx`
+- `StudyFlowWidget.tsx`
+- `EmptyState.tsx`
+
+Pattern zamjene:
 ```tsx
-<div className="animate-in fade-in slide-in-from-bottom-4 duration-300 glass-card p-5">
-```
-Tailwind `animate-in` plugin ili custom CSS transition eliminišu potrebu za framer-motion na Dashboardu.
+// Prije:
+<motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
 
-### O2. `Breadcrumbs` čita `useCategoryData()` — re-renderuje se pri svakoj promjeni kategorija
-**Problem:** `Breadcrumbs.tsx:29` — `useCategoryData()` se pretplaćuje na cijeli `CategoryStateContext`. Breadcrumbs treba SAMO `categoryRecords` za lookup imena, ali se re-renderuje i kad se `categoryStats`, `subcategories` ili `categories` promijene.
-
-**Fix:** Selektivni selektor ili memoizacija:
-```tsx
-const categoryRecords = useCategoryData().categoryRecords;
-// + memo wrapper na Breadcrumbs komponentu
+// Poslije:
+<div className="animate-in fade-in slide-in-from-bottom-3 duration-300" style={{ animationDelay: "40ms" }}>
 ```
-Ovo je minor jer se `CategoryStateContext` rijetko mijenja, ali je nečist pattern.
+
+Ovo ne uklanja framer-motion iz bundle-a (još uvijek se koristi u 46 drugih fajlova), ali smanjuje eager import chain za Dashboard — najčešću stranicu.
+
+### O2. `user-select: none` na `.prose` sprečava kopiranje teksta
+**Problem:** `index.css:761-764` — `.prose:not([contenteditable="true"]) { user-select: none; }` sprečava korisnika da selektuje i kopira tekst iz Source Readera i prikaza kartica. Na desktopu, kopiranje teksta je osnovna funkcionalnost.
+
+**Fix:** Ukloniti `user-select: none` sa `.prose`, zadržati samo `caret-color: transparent`.
 
 ---
 
-## Šta je DOBRO (ne treba mijenjati)
+## UX POBOLJŠANJA
 
-- Proxy pattern za CardActions — stabilna referenca, 0 re-rendera
-- Kontekst dekompozicija na 5 providera — odlična granularnost
-- Zustand store za SourceReader sa granularnim selektorima
-- `memo()` na NudgeWatcher, GlobalSearchWrapper, DocxImporterWrapper
-- `useCallback` na svim action handlerima u CRUD i Annotations
-- Lazy loading svih route stranica
-- SessionContext sa ref-based queueing — 0 re-rendera tokom sesije
-- `mapToArray` version cache — sprečava O(n) na svaki render
+### U1. Pomodoro tajmer nema keyboard shortcut za start/pauza
+**Problem:** `PomodoroTimer.tsx` — jedini način za pokretanje/pauziranje tajmera je klik na dugme. Na desktopu, korisnik koji koristi Zen Mode želi brzi shortcut. Ctrl+B je zauzet za sidebar, Ctrl+K za search.
+
+**Fix:** Dodati `Alt+P` ili `Shift+Space` (kad PomodoroTimer ima fokus) za toggle. Registrovati u `useEffect` sa `keydown` listenerom.
+
+### U2. Sidebar predmeti nemaju drag-to-reorder
+**Problem:** `AppSidebar.tsx:90-134` — predmeti su prikazani fiksnim redoslijedom (`categoryRecords.map`). Korisnik sa 10+ predmeta ne može reorganizovati sidebar po prioritetu. Ovo je desktop-specifičan UX problem — na desktopu korisnici očekuju drag-and-drop reorganizaciju.
+
+**Fix:** Ovo je veći feature — izvan scope-a ovog audita, ali vrijedi zabilježiti kao budući improvement.
+
+---
+
+## Šta je DOBRO
+
+- Skip-to-content link sa `:focus` pozicioniranjem
+- `aria-label` na svim icon-only dugmićima u headeru
+- `aria-pressed` na Zen Mode toggle-u
+- Consistent dark mode sa CSS varijablama i force-override za inline styles
+- `tabular-nums` na Pomodoro tajmeru — sprečava layout shift
+- Sidebar tooltip-ovi na collapsed stanju
+- Themed scrollbars sa hover efekatom
+- Glassmorphism card pattern — konzistentan vizuelni identitet
 
 ---
 
 ## Scope implementacije
 
-**5-6 fajlova**. Najvažniji su M1 (jednoliner — close AudioContext), R1 (refaktoring Pomodoro konteksta), i R2 (lazy import u useDashboardData). M2 je srednji effort (refaktoring NudgeWatcher). Ukupno ~1.5h rada.
+**Prioritet 1 (brzi fix, ~20min):**
+- A1: `aria-live` na tajmer i progress (3-4 jednoliner-a)
+- K1: `focus:` → `focus-visible:` zamjena (8 fajlova, regex replace)
+- O2: Ukloniti `user-select: none` sa `.prose` (1 linija CSS)
+
+**Prioritet 2 (srednji effort, ~30min):**
+- A2: `<nav>` semantika u sidebaru (~10 linija)
+- K2: Score badge kontrast fix (2 linije)
+- U1: Keyboard shortcut za Pomodoro (~15 linija)
+
+**Prioritet 3 (veći effort, ~1h):**
+- O1: framer-motion → Tailwind animate-in migracija za 8 Dashboard komponenti
+
+Ukupno: **6-7 fajlova** za Prioritet 1+2, **14-15 fajlova** za sve.
 
