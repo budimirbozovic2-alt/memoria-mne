@@ -1,19 +1,16 @@
 import { BookOpen, Brain, Sparkles, Info, FileText, Layers, type LucideIcon } from "lucide-react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 
 interface Props {
   type: "dashboard" | "review" | "cards" | "sources" | "generic";
   onAction?: () => void;
   actionLabel?: string;
-  /** FSRS diagnostics for review empty state */
   diagnostics?: {
     totalCards: number;
     newSections: number;
     reviewSections: number;
     nextDueDate?: string;
   };
-  // For generic type
   icon?: LucideIcon;
   title?: string;
   description?: string;
@@ -37,23 +34,16 @@ const PRESETS: Record<string, { icon: LucideIcon; title: string; description: st
 export default function EmptyState({ type, onAction, actionLabel, diagnostics, icon, title, description }: Props) {
   if (type === "dashboard") {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col items-center justify-center py-20 text-center space-y-6"
+      <div
+        className="animate-in fade-in slide-in-from-bottom-6 duration-500 flex flex-col items-center justify-center py-20 text-center space-y-6"
       >
         <div className="relative">
           <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
             <BookOpen className="h-10 w-10 text-primary" />
           </div>
-          <motion.div
-            animate={{ y: [-2, 2, -2], rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="absolute -top-2 -right-2"
-          >
+          <div className="absolute -top-2 -right-2 animate-bounce">
             <Sparkles className="h-6 w-6 text-warning" />
-          </motion.div>
+          </div>
         </div>
         <div className="space-y-2 max-w-sm">
           <h2 className="text-2xl font-semibold">Počnite sa učenjem</h2>
@@ -66,30 +56,22 @@ export default function EmptyState({ type, onAction, actionLabel, diagnostics, i
             <BookOpen className="h-4 w-4" /> Kreiraj prvu karticu
           </Button>
         )}
-      </motion.div>
+      </div>
     );
   }
 
-  // Review empty state with FSRS diagnostics
   if (type === "review") {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="flex flex-col items-center justify-center py-20 text-center space-y-6"
+      <div
+        className="animate-in fade-in slide-in-from-bottom-6 duration-500 flex flex-col items-center justify-center py-20 text-center space-y-6"
       >
         <div className="relative">
           <div className="w-24 h-24 rounded-full bg-success/10 flex items-center justify-center">
             <Brain className="h-10 w-10 text-success" />
           </div>
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-success/20 flex items-center justify-center"
-          >
+          <div className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-success/20 flex items-center justify-center animate-pulse">
             <span className="text-success text-xs">✓</span>
-          </motion.div>
+          </div>
         </div>
         <div className="space-y-2 max-w-sm">
           <h2 className="text-2xl font-semibold">Sve je ponovljeno!</h2>
@@ -128,11 +110,10 @@ export default function EmptyState({ type, onAction, actionLabel, diagnostics, i
             )}
           </div>
         )}
-      </motion.div>
+      </div>
     );
   }
 
-  // Cards, sources, generic — unified template
   const preset = PRESETS[type];
   const Icon = icon || preset?.icon || Layers;
   const heading = title || preset?.title || "Nema podataka";
@@ -140,11 +121,8 @@ export default function EmptyState({ type, onAction, actionLabel, diagnostics, i
   const ctaLabel = actionLabel || preset?.actionLabel || "Dodaj";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-      className="flex flex-col items-center justify-center py-16 text-center space-y-5"
+    <div
+      className="animate-in fade-in slide-in-from-bottom-5 duration-400 flex flex-col items-center justify-center py-16 text-center space-y-5"
     >
       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
         <Icon className="h-7 w-7 text-muted-foreground" />
@@ -158,6 +136,6 @@ export default function EmptyState({ type, onAction, actionLabel, diagnostics, i
           <Icon className="h-4 w-4" /> {ctaLabel}
         </Button>
       )}
-    </motion.div>
+    </div>
   );
 }

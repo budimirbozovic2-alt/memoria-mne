@@ -33,9 +33,9 @@ function scoreColor(score: number): string {
 }
 
 function scoreBg(score: number): string {
-  if (score > 70) return "hsl(var(--success) / 0.15)";
-  if (score > 40) return "hsl(var(--warning) / 0.15)";
-  return "hsl(var(--destructive) / 0.15)";
+  if (score > 70) return "hsl(var(--success) / 0.25)";
+  if (score > 40) return "hsl(var(--warning) / 0.25)";
+  return "hsl(var(--destructive) / 0.25)";
 }
 
 export default function AppSidebar() {
@@ -50,6 +50,7 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Navigacija</SidebarGroupLabel>
           <SidebarGroupContent>
+            <nav aria-label="Glavna navigacija">
             <SidebarMenu>
               {STATIC_NAV.map(({ path, icon: Icon, label, badge }) => (
                 <SidebarMenuItem key={path}>
@@ -72,12 +73,14 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
+            </nav>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
           <SidebarGroupLabel>Predmeti</SidebarGroupLabel>
           <SidebarGroupContent>
+            <nav aria-label="Predmeti">
             <SidebarMenu>
               {categoryRecords.length === 0 && (
                 <SidebarMenuItem>
@@ -115,7 +118,7 @@ export default function AppSidebar() {
                             <div className="flex items-center gap-1">
                               <span className="truncate text-[13px]">{cat.name}</span>
                               <span className="ml-auto flex items-center gap-1 shrink-0">
-                                <span className="text-[9px] font-medium px-1 py-0.5 rounded" style={{ color: color, backgroundColor: scoreBg(score) }}>
+                                <span className="text-[9px] font-semibold px-1 py-0.5 rounded" style={{ color: color, backgroundColor: scoreBg(score) }}>
                                   {score}%
                                 </span>
                                 {due > 0 && (
@@ -133,12 +136,14 @@ export default function AppSidebar() {
                 );
               })}
             </SidebarMenu>
+            </nav>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
           <SidebarGroupLabel>Alati</SidebarGroupLabel>
           <SidebarGroupContent>
+            <nav aria-label="Alati">
             <SidebarMenu>
               {TOOLS_NAV.map(({ path, icon: Icon, label }) => (
                 <SidebarMenuItem key={path}>
@@ -155,6 +160,7 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
+            </nav>
           </SidebarGroupContent>
         </SidebarGroup>
 

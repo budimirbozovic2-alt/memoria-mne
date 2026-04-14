@@ -1,5 +1,4 @@
 import { memo, ReactNode } from "react";
-import { motion } from "framer-motion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export interface StatusIcon {
@@ -22,8 +21,8 @@ export const StatusIconsRow = memo(function StatusIconsRow({ icons, onExport, st
 
   return (
     <TooltipProvider delayDuration={200}>
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.34 }}
-        className="flex items-center gap-2 flex-wrap">
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex items-center gap-2 flex-wrap"
+        style={{ animationDelay: "340ms", animationFillMode: "both" }}>
         {icons.map(si => (
           <Tooltip key={si.key}>
             <TooltipTrigger asChild>
@@ -40,7 +39,7 @@ export const StatusIconsRow = memo(function StatusIconsRow({ icons, onExport, st
             </TooltipContent>
           </Tooltip>
         ))}
-      </motion.div>
+      </div>
     </TooltipProvider>
   );
 });
