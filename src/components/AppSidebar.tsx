@@ -80,6 +80,7 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Predmeti</SidebarGroupLabel>
           <SidebarGroupContent>
+            <nav aria-label="Predmeti">
             <SidebarMenu>
               {categoryRecords.length === 0 && (
                 <SidebarMenuItem>
