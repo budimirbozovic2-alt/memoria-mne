@@ -136,6 +136,7 @@ export default function AppSidebar() {
                 );
               })}
             </SidebarMenu>
+            </nav>
           </SidebarGroupContent>
         </SidebarGroup>
 
