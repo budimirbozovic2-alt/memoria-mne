@@ -73,6 +73,7 @@ export default function AppSidebar() {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
+            </nav>
           </SidebarGroupContent>
         </SidebarGroup>
 
