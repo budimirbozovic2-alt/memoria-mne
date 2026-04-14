@@ -33,12 +33,12 @@ interface SessionContextValue {
   snapshot: SessionSnapshot | null;
   /** Start a session — takes a snapshot of current data */
   startSession: (cards: Card[], reviewLog: ReviewLogEntry[]) => void;
-  /** End session — flushes queued actions and triggers processing indicator */
+  /** End session — flushes queued actions and awaits persist */
   endSession: (
     flushReviews: (reviews: QueuedReview[]) => void,
     flushErrors: (errors: QueuedError[]) => void,
     flushReads: (reads: QueuedMarkRead[]) => void,
-  ) => void;
+  ) => Promise<void>;
   /** Queue a review grade (buffered until session ends) */
   queueReview: (cardId: string, sectionId: string, grade: number) => void;
   /** Queue an error log (buffered until session ends) */
@@ -57,8 +57,7 @@ export function useSessionContext() {
   return ctx;
 }
 
-// Processing duration (visual indicator)
-const PROCESSING_DURATION_MS = 2500;
+// Processing indicator duration reduced — actual wait is on persist flush
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [isSessionActive, setIsSessionActive] = useState(false);
