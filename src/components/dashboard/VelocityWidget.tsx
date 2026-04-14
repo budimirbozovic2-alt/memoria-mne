@@ -1,6 +1,5 @@
 import { TrendingUp, BarChart3 } from "lucide-react";
 import { memo } from "react";
-import { motion } from "framer-motion";
 interface Props {
   velocityData: { velocity: number; trend: "up" | "down" | "flat" } | null;
   weakestCategories: { name: string; score: number; total: number }[];
@@ -14,8 +13,8 @@ export const VelocityWidget = memo(function VelocityWidget({ velocityData, weake
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {showVelocity && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
-          className="glass-card p-5 space-y-2">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 glass-card p-5 space-y-2"
+          style={{ animationDelay: "320ms", animationFillMode: "both" }}>
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-medium">Brzina učenja</h3>
@@ -35,11 +34,11 @@ export const VelocityWidget = memo(function VelocityWidget({ velocityData, weake
           ) : (
             <p className="text-sm text-muted-foreground">Učitavanje...</p>
           )}
-        </motion.div>
+        </div>
       )}
       {showWeakCategories && weakestCategories.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.36 }}
-          className="glass-card p-5 space-y-3">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 glass-card p-5 space-y-3"
+          style={{ animationDelay: "360ms", animationFillMode: "both" }}>
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-primary" />
             <h3 className="text-sm font-medium">Najslabije kategorije</h3>
@@ -63,7 +62,7 @@ export const VelocityWidget = memo(function VelocityWidget({ velocityData, weake
               </div>
             ))}
           </div>
-        </motion.div>
+        </div>
       )}
     </div>
   );

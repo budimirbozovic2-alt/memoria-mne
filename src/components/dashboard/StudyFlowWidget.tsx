@@ -1,5 +1,4 @@
 import { ClipboardList, ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useUIContext } from "@/contexts/AppContext";
@@ -19,11 +18,9 @@ export function StudyFlowWidget({ data }: { data: StudyFlowData }) {
   const progressPct = data.dailyQuota > 0 ? Math.min(100, Math.round((data.dailyMapped / data.dailyQuota) * 100)) : 0;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-      className="glass-card p-5 space-y-4"
+    <div
+      className="animate-in fade-in slide-in-from-bottom-4 duration-300 glass-card p-5 space-y-4"
+      style={{ animationDelay: "100ms", animationFillMode: "both" }}
     >
       <div className="flex items-center gap-2">
         <ClipboardList className="h-4 w-4 text-primary" />
@@ -56,6 +53,6 @@ export function StudyFlowWidget({ data }: { data: StudyFlowData }) {
       >
         Nastavi učenje <ArrowRight className="h-3.5 w-3.5" />
       </Button>
-    </motion.div>
+    </div>
   );
 }
