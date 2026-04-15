@@ -98,6 +98,7 @@ export function saveCalibration(entries: CalibrationEntry[]) {
 
 export function addCalibrationEntry(entry: CalibrationEntry) {
   _calibrationCache = [..._calibrationCache, entry];
+  if (_calibrationCache.length > 2000) _calibrationCache = _calibrationCache.slice(-2000);
   db.calibrationLog.add(entry).catch((e) => console.warn("[silent]", e));
 }
 
@@ -124,6 +125,7 @@ export function saveLatency(entries: LatencyEntry[]) {
 
 export function addLatencyEntry(entry: LatencyEntry) {
   _latencyCache = [..._latencyCache, entry];
+  if (_latencyCache.length > 2000) _latencyCache = _latencyCache.slice(-2000);
   db.latencyLog.add(entry).catch((e) => console.warn("[silent]", e));
 }
 
@@ -263,6 +265,7 @@ export function loadActivityLog(): ActivityEntry[] {
 
 export function addActivityEntry(entry: ActivityEntry) {
   _activityCache = [..._activityCache, entry];
+  if (_activityCache.length > 2000) _activityCache = _activityCache.slice(-2000);
   db.activityLog.add(entry).catch((e) => console.warn("[silent]", e));
 }
 

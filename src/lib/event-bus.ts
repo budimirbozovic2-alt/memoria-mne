@@ -31,6 +31,7 @@ class EventBus {
   private listeners: Map<EventType, Set<(payload: any) => void>> = new Map();
   private activeTabs: Map<string, number> = new Map();
   private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
+  private _beforeUnloadHandler: (() => void) | null = null;
 
   constructor() {
     try {
@@ -61,9 +62,8 @@ class EventBus {
         });
 
         // Notify others when leaving
-        window.addEventListener("beforeunload", () => {
-          this.emit(EVENT_TYPES.TAB_LEAVING, { sourceTabId: TAB_ID });
-        });
+        this._beforeUnloadHandler = () => this.emit(EVENT_TYPES.TAB_LEAVING, { sourceTabId: TAB_ID });
+        window.addEventListener("beforeunload", this._beforeUnloadHandler);
 
         // Initial discovery
         this.emit(EVENT_TYPES.TAB_HEARTBEAT, { sourceTabId: TAB_ID });
@@ -93,6 +93,10 @@ class EventBus {
     if (this.heartbeatIntervalId) {
       clearInterval(this.heartbeatIntervalId);
       this.heartbeatIntervalId = null;
+    }
+    if (this._beforeUnloadHandler) {
+      window.removeEventListener("beforeunload", this._beforeUnloadHandler);
+      this._beforeUnloadHandler = null;
     }
     this.channel?.close();
     this.channel = null;

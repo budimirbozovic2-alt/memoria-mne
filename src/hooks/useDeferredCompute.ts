@@ -16,7 +16,8 @@ export function useDeferredCompute<T>(compute: () => T | Promise<T>, deps: unkno
       if (cancelled) return;
       const val = computeRef.current();
       if (val instanceof Promise) {
-        val.then((resolved) => { if (!cancelled) setResult(resolved as Awaited<T>); });
+        val.then((resolved) => { if (!cancelled) setResult(resolved as Awaited<T>); })
+           .catch((err) => { console.warn("[useDeferredCompute] async error", err); });
       } else {
         setResult(val as Awaited<T>);
       }
