@@ -60,12 +60,22 @@ export function useStatsData({ cards, categories, categoryStats, reviewLog, srSe
     const now = new Date();
     const start = subDays(now, 13);
     const days = eachDayOfInterval({ start, end: now });
+
+    // Single-pass: bucket reviews and cards by day key
+    const reviewByDay = new Map<string, number>();
+    for (const r of reviewLog) {
+      const key = format(new Date(r.timestamp), "dd.MM");
+      reviewByDay.set(key, (reviewByDay.get(key) || 0) + 1);
+    }
+    const createdByDay = new Map<string, number>();
+    for (const c of cards) {
+      const key = format(new Date(c.createdAt), "dd.MM");
+      createdByDay.set(key, (createdByDay.get(key) || 0) + 1);
+    }
+
     return days.map((day) => {
-      const dayStart = startOfDay(day).getTime();
-      const dayEnd = dayStart + 86400000;
-      const reviews = reviewLog.filter((r) => r.timestamp >= dayStart && r.timestamp < dayEnd).length;
-      const created = cards.filter((c) => c.createdAt >= dayStart && c.createdAt < dayEnd).length;
-      return { name: format(day, "dd.MM"), Ponavljanja: reviews, "Nove kartice": created };
+      const key = format(day, "dd.MM");
+      return { name: key, Ponavljanja: reviewByDay.get(key) || 0, "Nove kartice": createdByDay.get(key) || 0 };
     });
   }, [reviewLog, cards]);
 
