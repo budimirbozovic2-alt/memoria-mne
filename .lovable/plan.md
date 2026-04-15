@@ -1,125 +1,166 @@
 
 
-# Deep Audit: UI/UX — Desktop Electron Fokus
+# Deep Audit: Kompletna Arhitektura — Runda 3
 
 ## Rezime
 
-UI je vizuelno kohezivan sa dobrim dark mode sistemom, skip-to-content linkom i ARIA labelima. Fokus ovog audita je isključivo na desktop Electron okruženje. Pronašao sam **8 konkretnih problema** — 2 accessibility, 2 konzistentnost, 2 optimizacije bundle-a, i 2 UX poboljšanja.
+Prethodne runde su pokrile Electron, renderer memory leakove, i prvu grupu arhitektonskih nalaza (I1, I2, G1-G3, B1, O1-O3). Ova runda fokusira se na **nove probleme** koji su prethodno preskočeni. Pronašao sam **7 konkretnih problema** — 2 integritetna, 2 logička, 2 performansna, i 1 sigurnosni.
 
 ---
 
-## ACCESSIBILITY
+## INTEGRITET PODATAKA
 
-### A1. Nema nijednog `aria-live` regiona u aplikaciji
-**Problem:** Pretraga po cijelom projektu daje 0 rezultata za `aria-live`. Pomodoro tajmer (countdown svake sekunde), session progress (broj kartica u Learn/Review), i due badge u sidebaru — ništa od toga nema live region. Screen reader korisnik nema feedback o napretku.
+### I1. `deleteCategory` — `fallbackId` se koristi asinhrono PRIJE nego što `optimisticCategoryUpdate` garantovano izvrši updater
 
-**Fix:** Dodati `aria-live="polite"` na: Pomodoro tajmer display (`PomodoroTimer.tsx:32,66`), session progress counter, i due count badge u sidebaru.
+**Fajl:** `useCategoryManagement.ts:67-119`
 
-### A2. Sidebar navigacione grupe nemaju `<nav>` semantiku
-**Problem:** `AppSidebar.tsx` — sve grupe ("Navigacija", "Predmeti", "Alati") koriste `<div>` elemente. Screen reader ne može razlikovati navigacione sekcije. `SidebarGroupLabel` je `<div>` bez `role` ili `aria` atributa.
+**Problem:** `deleteCategory` poziva `optimisticCategoryUpdate` koji interno koristi `setCategoryRecords(prev => ...)` — React odlaže izvršavanje ovog updatera. Odmah nakon toga, kod koristi `fallbackId` (linija 80-118) za prebacivanje kartica i izvora. Ali `fallbackId` se postavlja UNUTAR React updater-a (linija 75), koji se možda još nije izvršio kad se dođe do linije 84-118.
 
-**Fix:** Wrapovati grupe u `<nav aria-label="Glavna navigacija">`, `<nav aria-label="Predmeti">`, `<nav aria-label="Alati">`.
+**Rizik:** U praksi React obično izvršava updater sinhrono unutar event handlera, ali u `useCallback` koji se poziva iz async konteksta (npr. nakon confirm dialoga), React može batchovati i odložiti. U tom slučaju `fallbackId` ostaje prazan string, i sve kartice dobiju `categoryId: ""` — postaju siročad.
 
----
-
-## KONZISTENTNOST
-
-### K1. Miješanje `focus:` i `focus-visible:` patterna
-**Problem:** 11 fajlova koristi `focus:outline-none focus:ring-2` (ExamSidebar, MajorSystemSettings, SharedWidgets, MnemonicWorkshop, WorkshopCardItem, itd.), dok shadcn UI komponente koriste `focus-visible:`. `focus:` se aktivira i na klik miša — prikazuje ring oko svakog kliknutog elementa, što je vizualno ometajuće na desktopu.
-
-**Fajlovi za popravku:**
-- `ExamSidebar.tsx` (1 instanca)
-- `MajorSystemSettings.tsx` (1)
-- `SharedWidgets.tsx` (1)
-- `MnemonicWorkshop.tsx` (1)
-- `SmartSplitSummaryDialog.tsx` (1)
-- `EssayCreationDialog.tsx` (1)
-- `WorkshopCardItem.tsx` (2)
-
-**Fix:** Zamijeniti `focus:outline-none focus:ring` sa `focus-visible:outline-none focus-visible:ring` u svih 8 instanci.
-
-### K2. Score badge kontrast u sidebaru
-**Problem:** `AppSidebar.tsx:118` — score badge koristi `color: hsl(var(--success))` na `backgroundColor: hsl(var(--success) / 0.15)`. U light mode-u, teal tekst na gotovo prozirnom teal pozadini ima nizak kontrast.
-
-**Fix:** Povećati opacity pozadine na 0.25 i dodati `font-semibold` za bolju čitljivost.
-
----
-
-## BUNDLE OPTIMIZACIJA
-
-### O1. `framer-motion` u 54 fajla — ~40KB gzipped za uglavnom trivijalne fade-in animacije
-**Problem:** Dashboard komponente (`QuickActions`, `VelocityWidget`, `CoreStats`, `DailyBriefing`, `ExamProgressBar`, `StatusIconsRow`, `StudyFlowWidget`, `EmptyState`) sve koriste `motion.div` sa istim patternom: `initial={{ opacity: 0, y: N }} animate={{ opacity: 1, y: 0 }}`. Ovo je ekvivalentno Tailwind `animate-in fade-in slide-in-from-bottom-N`.
-
-**Fix — Faza 1 (Dashboard ekosistem, 8 fajlova):**
-Zamijeniti `motion.div` sa CSS klasama u:
-- `QuickActions.tsx`
-- `VelocityWidget.tsx`
-- `CoreStats.tsx`
-- `DailyBriefing.tsx`
-- `ExamProgressBar.tsx`
-- `StatusIconsRow.tsx`
-- `StudyFlowWidget.tsx`
-- `EmptyState.tsx`
-
-Pattern zamjene:
-```tsx
-// Prije:
-<motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 }}>
-
-// Poslije:
-<div className="animate-in fade-in slide-in-from-bottom-3 duration-300" style={{ animationDelay: "40ms" }}>
+**Fix:** Izračunati `fallbackId` PRIJE poziva `optimisticCategoryUpdate`, čitanjem iz `getCategoryRecords()`:
+```ts
+const deleteCategory = useCallback((categoryId: string, purgeCards = false) => {
+  const currentRecs = getCategoryRecords();
+  const remaining = currentRecs.filter(r => r.id !== categoryId);
+  const fallbackId = remaining.length > 0 ? remaining[0].id : "";
+  
+  optimisticCategoryUpdate(setCategoryRecords, prev => prev.filter(r => r.id !== categoryId), "deleteCategory");
+  // ... rest uses pre-computed fallbackId
+}, [...]);
 ```
 
-Ovo ne uklanja framer-motion iz bundle-a (još uvijek se koristi u 46 drugih fajlova), ali smanjuje eager import chain za Dashboard — najčešću stranicu.
+### I2. `optimisticCategoryUpdate` rollback koristi stale snapshot
 
-### O2. `user-select: none` na `.prose` sprečava kopiranje teksta
-**Problem:** `index.css:761-764` — `.prose:not([contenteditable="true"]) { user-select: none; }` sprečava korisnika da selektuje i kopira tekst iz Source Readera i prikaza kartica. Na desktopu, kopiranje teksta je osnovna funkcionalnost.
+**Fajl:** `category-service.ts:17-41`
 
-**Fix:** Ukloniti `user-select: none` sa `.prose`, zadržati samo `caret-color: transparent`.
+**Problem:** `rollbackSnapshot` se hvata unutar `setCategoryRecords(prev => ...)`. Ako mutex zadatak kasni (npr. IDB je spor), a korisnik napravi DRUGU mutaciju u međuvremenu, `rollbackSnapshot` je zastarjeli state. Rollback bi vratio stanje PRIJE obje promjene — gubeći drugu promjenu koja je uspješno prošla.
 
----
-
-## UX POBOLJŠANJA
-
-### U1. Pomodoro tajmer nema keyboard shortcut za start/pauza
-**Problem:** `PomodoroTimer.tsx` — jedini način za pokretanje/pauziranje tajmera je klik na dugme. Na desktopu, korisnik koji koristi Zen Mode želi brzi shortcut. Ctrl+B je zauzet za sidebar, Ctrl+K za search.
-
-**Fix:** Dodati `Alt+P` ili `Shift+Space` (kad PomodoroTimer ima fokus) za toggle. Registrovati u `useEffect` sa `keydown` listenerom.
-
-### U2. Sidebar predmeti nemaju drag-to-reorder
-**Problem:** `AppSidebar.tsx:90-134` — predmeti su prikazani fiksnim redoslijedom (`categoryRecords.map`). Korisnik sa 10+ predmeta ne može reorganizovati sidebar po prioritetu. Ovo je desktop-specifičan UX problem — na desktopu korisnici očekuju drag-and-drop reorganizaciju.
-
-**Fix:** Ovo je veći feature — izvan scope-a ovog audita, ali vrijedi zabilježiti kao budući improvement.
+**Fix:** Rollback treba koristiti fresh read iz IDB-a umjesto snapshotovanog React stanja:
+```ts
+catch (e) {
+  console.error(`[${label}] IDB persist failed, rolling back`, e);
+  const freshFromIdb = await idbLoadCategories();
+  setCategoryRecords(freshFromIdb);
+  toast.error("Greška", { description: "Promjena nije sačuvana." });
+}
+```
 
 ---
 
-## Šta je DOBRO
+## LOGIČKE GREŠKE
 
-- Skip-to-content link sa `:focus` pozicioniranjem
-- `aria-label` na svim icon-only dugmićima u headeru
-- `aria-pressed` na Zen Mode toggle-u
-- Consistent dark mode sa CSS varijablama i force-override za inline styles
-- `tabular-nums` na Pomodoro tajmeru — sprečava layout shift
-- Sidebar tooltip-ovi na collapsed stanju
-- Themed scrollbars sa hover efekatom
-- Glassmorphism card pattern — konzistentan vizuelni identitet
+### G1. `reviewLog` raste neograničeno u React stanu — nikad se ne trunca
+
+**Fajl:** `useCardAnnotations.ts:60`
+
+**Problem:** Svaki review dodaje entry u `reviewLog` state array:
+```ts
+setReviewLog((log) => [...log, entry]);
+```
+Bootstrap učitava samo 90 dana (`idbLoadRecentReviewLog(90)`), ali tokom jedne sesije korisnik može napraviti stotine review-ova. Array se nikad ne čisti dok se aplikacija ne restartuje. Za korisnika sa 3000+ kartica koji radi intenzivne sesije, ovaj array može narasti na 10K+ entryja u memoriji, usporavajući sve `useMemo` derivacije koje ga koriste.
+
+**Fix:** Dodati cap na in-memory reviewLog — držati max 5000 entryja, trimovati najstarije:
+```ts
+setReviewLog((log) => {
+  const next = [...log, entry];
+  return next.length > 5000 ? next.slice(-5000) : next;
+});
+```
+
+### G2. `mapToArray` cache se invalidira globalno — nema per-consumer granularnosti
+
+**Fajl:** `persist-queue.ts:17-29`
+
+**Problem:** `_mapVersion` i `_cachedArray` su module-level singletoni. `bumpMapVersion()` se poziva nakon SVAKE mutacije (add, delete, patch, bulk). Ali `mapToArray()` vraća `Object.values(map)` — novi array svaki put kad se version promijeni. Ovo znači da `useMemo(() => mapToArray(cardMap), [cardMap])` u `useCards.ts:57` UVIJEK kreira novi array jer `cardMap` se mijenja na svaku mutaciju (spread operator u `patchCard`).
+
+Cache je efektivno beskoristan jer se `cardMap` referenca mijenja istovremeno sa `_mapVersion`. Jedini slučaj kad bi cache pomogao je višestruki poziv `mapToArray` sa istim mapom u istom renderingu — ali to se ne dešava.
+
+**Rizik:** Nizak — ovo je propuštena optimizacija, ne bug. Ali za 5000+ kartica, `Object.values()` na svaki render košta ~1ms.
+
+**Fix:** Koristiti `useMemo` sa deep comparison umjesto cache-a, ili prihvatiti da je O(n) neizbježan pri promjeni mape.
+
+---
+
+## PERFORMANSE
+
+### P1. `getCategoryStats` u `spaced-repetition.ts` je O(n) po kategoriji — ali se ne koristi
+
+**Fajl:** `spaced-repetition.ts:366-372`
+
+**Problem:** `getCategoryStats()` filtrira SVE kartice za jednu kategoriju. Ali u `useCards.ts:158-231`, postoji optimizirani single-pass koji računa `categoryStats` za sve kategorije odjednom. `getCategoryStats` se exportuje ali se NE KORISTI nigdje u aplikaciji (pretraga po projektu potvrđuje). Ovo je mrtav kod.
+
+**Fix:** Ukloniti `getCategoryStats` i `getStats` iz exporta — već su zamijenjeni inline single-pass implementacijom.
+
+### P2. `cardCountByCategory` se rekonstruiše na svaku mutaciju kartica
+
+**Fajl:** `useCards.ts:165-177`
+
+**Problem:** `useMemo` blok (linija 158-232) se re-evaluira na svaku promjenu `cards` ili `categories`. Unutra se gradi `countByCategory` Record. Za operacije poput `patchCard` (koja samo mijenja jednu karticu), cijeli single-pass se restartuje — uključujući sortiranje `dueCards`, iteraciju svih sekcija, itd. Za 5000 kartica ovo je ~5-10ms na svaku ocjenu.
+
+**Fix:** Razdvojiti `dueCards` (koje ovise o `cards`) od `cardCountByCategory` (koji se može cachirati separatno). Alternativno, koristiti incremental update pattern za count.
+
+---
+
+## SIGURNOST
+
+### S1. `localStorageData` import ne filtrira ključeve
+
+**Fajl:** `useCardImport.ts:292-296`
+
+**Problem:**
+```ts
+if (data.localStorageData && typeof data.localStorageData === "object") {
+  for (const [key, value] of Object.entries(data.localStorageData as Record<string, unknown>)) {
+    localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+  }
+}
+```
+Ovo piše BILO KOJI ključ u localStorage iz importovanog JSON fajla. Napadač može pripremiti backup fajl sa malicioznim ključevima koji prepisuju:
+- `sidebar-state` → prisilno zatvaranje sidebara
+- Bilo koji custom ključ koji aplikacija čita na boot-u
+
+**Fix:** Dozvoliti samo whitelistane ključeve:
+```ts
+const ALLOWED_LS_KEYS = new Set([
+  "codex-app-settings", "codex-source-registry", "codex-monument-types",
+  "sr-planner", "sr-mnemonic-system",
+]);
+for (const [key, value] of Object.entries(data.localStorageData)) {
+  if (!ALLOWED_LS_KEYS.has(key)) continue;
+  localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+}
+```
+
+---
+
+## Šta je DOBRO (ne treba mijenjati)
+
+- Context dekompozicija (Card/Category/Review/Pomodoro) — sprečava kaskadne re-rendere
+- Proxy-based actions — stabilna referenca, nikad ne uzrokuje re-render
+- Ref-Delta pattern — sinhrona mutacija ref-a prije async persist-a
+- Mutex u category-service — serijalizacija IDB upisa
+- Surgical persist queue sa visibility change flush
+- Boot timeout chain (panic 8s → splash 10s) — nikad ne blokira UI
+- EventBus HMR cleanup — sprečava BroadcastChannel akumulaciju
+- Lazy loading svih route stranica + teških biblioteka
 
 ---
 
 ## Scope implementacije
 
-**Prioritet 1 (brzi fix, ~20min):**
-- A1: `aria-live` na tajmer i progress (3-4 jednoliner-a)
-- K1: `focus:` → `focus-visible:` zamjena (8 fajlova, regex replace)
-- O2: Ukloniti `user-select: none` sa `.prose` (1 linija CSS)
+**Prioritet 1 (kritično, ~30min):**
+- I1: Pre-compute `fallbackId` u `deleteCategory` (~5 linija)
+- S1: Whitelist za `localStorageData` import (~8 linija)
+- I2: Rollback iz IDB umjesto stale snapshot (~3 linije)
 
-**Prioritet 2 (srednji effort, ~30min):**
-- A2: `<nav>` semantika u sidebaru (~10 linija)
-- K2: Score badge kontrast fix (2 linije)
-- U1: Keyboard shortcut za Pomodoro (~15 linija)
+**Prioritet 2 (optimizacija, ~20min):**
+- G1: Cap reviewLog na 5000 entryja (~3 linije)
+- P1: Ukloniti mrtav kod `getCategoryStats`/`getStats` (~15 linija)
 
-**Prioritet 3 (veći effort, ~1h):**
-- O1: framer-motion → Tailwind animate-in migracija za 8 Dashboard komponenti
+**Prioritet 3 (nice-to-have):**
+- P2: Razdvajanje dueCards od countByCategory — veći refaktor
+- G2: mapToArray cache cleanup — minimalan uticaj
 
-Ukupno: **6-7 fajlova** za Prioritet 1+2, **14-15 fajlova** za sve.
+Ukupno: **4 fajla** za Prioritet 1+2.
 
