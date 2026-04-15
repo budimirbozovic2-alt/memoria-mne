@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
 import { idbDeleteCard } from "@/lib/db";
+import { invalidateCoverageCache } from "@/lib/coverage-analysis";
 import { toast } from "sonner";
 import {
   Card,
@@ -25,6 +26,13 @@ export function useCardCRUD({
     const card = cardMapRef.current![id];
     if (!card) return;
     const updated = { ...patcher(card), updatedAt: Date.now() };
+    // Invalidate coverage cache if source snippet changed
+    if (updated.sourceId && (
+      updated.originalSourceSnippet !== card.originalSourceSnippet ||
+      JSON.stringify(updated.sourceModules) !== JSON.stringify(card.sourceModules)
+    )) {
+      invalidateCoverageCache(updated.sourceId);
+    }
     cardMapRef.current = { ...cardMapRef.current, [id]: updated }; // Sync ref — prevents double-mutation race
     schedulePersist({ type: "put", card: updated });
     setCardMapState(prev => {
@@ -133,6 +141,8 @@ export function useCardCRUD({
 
   // H5 fix: IDB delete with retry on failure
   const deleteCard = useCallback((id: string) => {
+    const card = cardMapRef.current[id];
+    if (card?.sourceId) invalidateCoverageCache(card.sourceId);
     const nextRef = { ...cardMapRef.current }; delete nextRef[id]; cardMapRef.current = nextRef;
     setCardMapState((prev) => {
       const next = { ...prev };

@@ -56,9 +56,18 @@ interface CardStateContextValue {
 
 const CardStateContext = createContext<CardStateContextValue | null>(null);
 
+const EMPTY_CARD_STATE: CardStateContextValue = {
+  cards: [], dueCards: [],
+  stats: { due: 0, total: 0, totalSections: 0, learnedSections: 0, leechCount: 0 },
+  cardCountByCategory: {}, ready: false, dbError: null,
+};
+
 export function useCardData() {
   const ctx = useContext(CardStateContext);
-  if (!ctx) throw new Error("useCardData must be used within CardProvider");
+  if (!ctx) {
+    if (import.meta.env.DEV) console.warn("[useCardData] no provider — returning empty fallback (HMR?)");
+    return EMPTY_CARD_STATE;
+  }
   return ctx;
 }
 
@@ -74,9 +83,16 @@ interface CategoryStateContextValue {
 
 const CategoryStateContext = createContext<CategoryStateContextValue | null>(null);
 
+const EMPTY_CATEGORY_STATE: CategoryStateContextValue = {
+  categories: [], categoryRecords: [], subcategories: {}, categoryStats: {},
+};
+
 export function useCategoryData() {
   const ctx = useContext(CategoryStateContext);
-  if (!ctx) throw new Error("useCategoryData must be used within CardProvider");
+  if (!ctx) {
+    if (import.meta.env.DEV) console.warn("[useCategoryData] no provider — returning empty fallback (HMR?)");
+    return EMPTY_CATEGORY_STATE;
+  }
   return ctx;
 }
 
@@ -90,9 +106,16 @@ interface ReviewStateContextValue {
 
 const ReviewStateContext = createContext<ReviewStateContextValue | null>(null);
 
+const EMPTY_REVIEW_STATE: ReviewStateContextValue = {
+  reviewLog: [], srSettings: {} as import("@/lib/spaced-repetition").SRSettings,
+};
+
 export function useReviewData() {
   const ctx = useContext(ReviewStateContext);
-  if (!ctx) throw new Error("useReviewData must be used within CardProvider");
+  if (!ctx) {
+    if (import.meta.env.DEV) console.warn("[useReviewData] no provider — returning empty fallback (HMR?)");
+    return EMPTY_REVIEW_STATE;
+  }
   return ctx;
 }
 
