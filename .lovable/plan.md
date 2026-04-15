@@ -1,48 +1,98 @@
 
 
-# Deep Audit: Kompletna Arhitektura — Runda 3
+# Deep Audit: Kompletna Arhitektura — Runda 4
 
 ## Rezime
 
-Prethodne runde su pokrile Electron, renderer memory leakove, i prvu grupu arhitektonskih nalaza (I1, I2, G1-G3, B1, O1-O3). Ova runda fokusira se na **nove probleme** koji su prethodno preskočeni. Pronašao sam **7 konkretnih problema** — 2 integritetna, 2 logička, 2 performansna, i 1 sigurnosni.
+Fokus ove runde su aspekti koji do sada NISU bili predmet analiza: metacognitive/planner storage pattern, coverage analysis, import transakcijski integritet, HealthMonitor, TTS modul, useStatsData performanse, i nepokriven runtime error. Pronašao sam **9 konkretnih problema** — 3 integritetna, 2 performansna, 2 logička, 1 memory leak, i 1 reliability.
+
+---
+
+## RUNTIME ERROR (AKTIVAN)
+
+### E1. HMR izaziva "useCardData must be used within CardProvider"
+**Problem:** Runtime errors pokazuju da `AppSidebar` i `Breadcrumbs` padaju prilikom HMR refresha jer React Refresh remountira komponente van CardProvider stabla. Ovo se dešava samo u dev modu (stack trace sadrži `performReactRefresh`), ali za razvoj je ometajuće — svaki save u `AppContext.tsx` razbija UI.
+
+**Fix:** Dodati defensive check u `useCardData` i `useCategoryData` hookove — umjesto throw-a, vratiti fallback vrijednosti kad je context `null`:
+```ts
+export function useCardData() {
+  const ctx = useContext(CardStateContext);
+  if (!ctx) {
+    if (import.meta.env.DEV) console.warn("useCardData: no provider, returning empty fallback");
+    return EMPTY_CARD_STATE; // { cards: [], dueCards: [], stats: ... }
+  }
+  return ctx;
+}
+```
+Alternativa: zaštititi samo u DEV modu da se sačuva strictnost u produkciji.
 
 ---
 
 ## INTEGRITET PODATAKA
 
-### I1. `deleteCategory` — `fallbackId` se koristi asinhrono PRIJE nego što `optimisticCategoryUpdate` garantovano izvrši updater
+### I1. `importData` — nema transakcije oko kartica + kategorija + izvora
+**Fajl:** `useCardImport.ts:77-246`
 
-**Fajl:** `useCategoryManagement.ts:67-119`
+**Problem:** Import obavlja 6 odvojenih IDB operacija: (1) clear cards, (2) bulkPut cards, (3) clear categories, (4) bulkPut categories, (5) bulkPut sources, (6) clear/add review log. Ako browser crash-ne ili korisnik zatvori tab između koraka 2 i 4, baza ostaje u nekonzistentnom stanju — kartice referišu kategorije koje ne postoje.
 
-**Problem:** `deleteCategory` poziva `optimisticCategoryUpdate` koji interno koristi `setCategoryRecords(prev => ...)` — React odlaže izvršavanje ovog updatera. Odmah nakon toga, kod koristi `fallbackId` (linija 80-118) za prebacivanje kartica i izvora. Ali `fallbackId` se postavlja UNUTAR React updater-a (linija 75), koji se možda još nije izvršio kad se dođe do linije 84-118.
-
-**Rizik:** U praksi React obično izvršava updater sinhrono unutar event handlera, ali u `useCallback` koji se poziva iz async konteksta (npr. nakon confirm dialoga), React može batchovati i odložiti. U tom slučaju `fallbackId` ostaje prazan string, i sve kartice dobiju `categoryId: ""` — postaju siročad.
-
-**Fix:** Izračunati `fallbackId` PRIJE poziva `optimisticCategoryUpdate`, čitanjem iz `getCategoryRecords()`:
+**Fix:** Wrapovati kritične korake u jednu Dexie transakciju:
 ```ts
-const deleteCategory = useCallback((categoryId: string, purgeCards = false) => {
-  const currentRecs = getCategoryRecords();
-  const remaining = currentRecs.filter(r => r.id !== categoryId);
-  const fallbackId = remaining.length > 0 ? remaining[0].id : "";
-  
-  optimisticCategoryUpdate(setCategoryRecords, prev => prev.filter(r => r.id !== categoryId), "deleteCategory");
-  // ... rest uses pre-computed fallbackId
-}, [...]);
+await db.transaction("rw", [db.cards, db.categories, db.sources, db.reviewLog], async () => {
+  // All clears + puts inside single transaction
+});
 ```
 
-### I2. `optimisticCategoryUpdate` rollback koristi stale snapshot
+### I2. `HealthMonitor.handleCleanOrphans` — direktno piše u IDB, zaobilazi in-memory cardMap
+**Fajl:** `HealthMonitor.tsx:114-136`
 
-**Fajl:** `category-service.ts:17-41`
+**Problem:** `db.cards.update(id, { categoryId: fallbackId })` mijenja IDB direktno, bez ažuriranja React state-a u `useCards`. `eventBus.emit(CARDS_UPDATED)` triggeruje full reload koji popravlja stvar, ali postoji vremenski prozor (dok reload ne završi) u kojem in-memory cardMap ima stare `categoryId` vrijednosti. Ako korisnik u tom prozoru napravi review, `patchCard` će zapisati stari `categoryId` nazad u IDB — poništavajući cleanup.
 
-**Problem:** `rollbackSnapshot` se hvata unutar `setCategoryRecords(prev => ...)`. Ako mutex zadatak kasni (npr. IDB je spor), a korisnik napravi DRUGU mutaciju u međuvremenu, `rollbackSnapshot` je zastarjeli state. Rollback bi vratio stanje PRIJE obje promjene — gubeći drugu promjenu koja je uspješno prošla.
+**Fix:** Umjesto direktnog `db.cards.update`, koristiti `patchCard` iz AppContext (zahtijeva refaktor da HealthMonitor primi akcije), ili dodati `await` na eventBus handler da sačeka reload.
 
-**Fix:** Rollback treba koristiti fresh read iz IDB-a umjesto snapshotovanog React stanja:
+### I3. Metacognitive cache-ovi rastu neograničeno tokom sesije
+**Fajl:** `metacognitive-storage.ts:100,126,265`
+
+**Problem:** `addCalibrationEntry`, `addLatencyEntry`, i `addActivityEntry` sve rade `_cache = [..._cache, entry]` — nikad ne trimaju. Za korisnika koji napravi 200+ review-ova u jednoj sesiji, `_calibrationCache` i `_latencyCache` rastu linearno. Bootstrap učitava samo 90 dana, ali jednodnevna sesija može dodati stotine entryja. Ovo pogađa `getTimeDistribution` i `getDeepWorkStats` koji iteriraju cijeli cache.
+
+**Fix:** Dodati cap (npr. 2000 entryja) ili trimovati entryje starije od 90 dana iz cache-a:
 ```ts
-catch (e) {
-  console.error(`[${label}] IDB persist failed, rolling back`, e);
-  const freshFromIdb = await idbLoadCategories();
-  setCategoryRecords(freshFromIdb);
-  toast.error("Greška", { description: "Promjena nije sačuvana." });
+export function addCalibrationEntry(entry: CalibrationEntry) {
+  _calibrationCache.push(entry);
+  if (_calibrationCache.length > 2000) _calibrationCache = _calibrationCache.slice(-2000);
+  db.calibrationLog.add(entry).catch(...);
+}
+```
+
+---
+
+## PERFORMANSE
+
+### P1. `useStatsData.activityData` — O(n×14) iteracija za svaki dan
+**Fajl:** `useStatsData.ts:59-69`
+
+**Problem:** Za svaki od 14 dana, `reviewLog.filter()` i `cards.filter()` skeniraju CIJELI array. Sa 10K review entryja × 14 dana = 140K iteracija. Plus `cards.filter()` za `createdAt` (5K × 14 = 70K).
+
+**Fix:** Pre-buildati Map po danu u jednom prolazu:
+```ts
+const reviewByDay = new Map<string, number>();
+for (const r of reviewLog) {
+  const day = format(new Date(r.timestamp), "dd.MM");
+  reviewByDay.set(day, (reviewByDay.get(day) || 0) + 1);
+}
+```
+
+### P2. `getMnemonicStats` — 4 odvojena filtera umjesto jednog prolaza
+**Fajl:** `mnemonic-storage.ts:263-273`
+
+**Problem:** `cards.filter()` se poziva 4 puta za isti array (new, in-workshop, ready, testCount>0). Za 500+ mnemoničkih kartica, to je 2000 iteracija umjesto 500.
+
+**Fix:** Jedan prolaz sa switch:
+```ts
+let newCount=0, workshopCount=0, readyCount=0;
+for (const c of cards) {
+  if (c.mnemonicStatus === "new") newCount++;
+  else if (c.mnemonicStatus === "in-workshop") workshopCount++;
+  else readyCount++;
 }
 ```
 
@@ -50,117 +100,89 @@ catch (e) {
 
 ## LOGIČKE GREŠKE
 
-### G1. `reviewLog` raste neograničeno u React stanu — nikad se ne trunca
+### G1. `loadSources` vraća stale cache nakon `saveSource` u drugom tabu
+**Fajl:** `sources-storage.ts:55-60`
 
-**Fajl:** `useCardAnnotations.ts:60`
+**Problem:** `loadSources()` koristi in-memory `_cache`. Kad se izvor sačuva u tabu A, `_cache` se nullira i `_notify()` obavještava lokalne listenere. Ali tab B nikad ne nullira svoj `_cache` — nema cross-tab invalidaciju za sources. EventBus ima `CARDS_UPDATED` ali ne i `SOURCES_UPDATED`.
 
-**Problem:** Svaki review dodaje entry u `reviewLog` state array:
-```ts
-setReviewLog((log) => [...log, entry]);
-```
-Bootstrap učitava samo 90 dana (`idbLoadRecentReviewLog(90)`), ali tokom jedne sesije korisnik može napraviti stotine review-ova. Array se nikad ne čisti dok se aplikacija ne restartuje. Za korisnika sa 3000+ kartica koji radi intenzivne sesije, ovaj array može narasti na 10K+ entryja u memoriji, usporavajući sve `useMemo` derivacije koje ga koriste.
+**Rizik:** Nizak za Electron (uglavnom jedan prozor), ali ako korisnik otvori dva taba u browseru, tab B vidi stale izvore dok se ne refreshuje.
 
-**Fix:** Dodati cap na in-memory reviewLog — držati max 5000 entryja, trimovati najstarije:
-```ts
-setReviewLog((log) => {
-  const next = [...log, entry];
-  return next.length > 5000 ? next.slice(-5000) : next;
-});
-```
+**Fix:** Dodati `SOURCES_UPDATED` event u EventBus i subscribovati se u sources-storage za invalidaciju. Ili prihvatiti kao known limitation za desktop-only app.
 
-### G2. `mapToArray` cache se invalidira globalno — nema per-consumer granularnosti
+### G2. `coverage-analysis.ts` cache nikad ne invalidira po promjeni kartica
+**Fajl:** `coverage-analysis.ts:121-127`
 
-**Fajl:** `persist-queue.ts:17-29`
+**Problem:** Cache key koristi `sourceId + htmlContent.length + coverageSignature`. `coverageSignature` se gradi od linked kartica. Kad korisnik obriše karticu ili promijeni `originalSourceSnippet`, coverage se ne re-kalkuliše dok se ne promijeni `sourceHtmlContent` ili dok se ne pozove `invalidateCoverageCache`. Ali `invalidateCoverageCache` se nigdje ne poziva automatski nakon card delete/update.
 
-**Problem:** `_mapVersion` i `_cachedArray` su module-level singletoni. `bumpMapVersion()` se poziva nakon SVAKE mutacije (add, delete, patch, bulk). Ali `mapToArray()` vraća `Object.values(map)` — novi array svaki put kad se version promijeni. Ovo znači da `useMemo(() => mapToArray(cardMap), [cardMap])` u `useCards.ts:57` UVIJEK kreira novi array jer `cardMap` se mijenja na svaku mutaciju (spread operator u `patchCard`).
-
-Cache je efektivno beskoristan jer se `cardMap` referenca mijenja istovremeno sa `_mapVersion`. Jedini slučaj kad bi cache pomogao je višestruki poziv `mapToArray` sa istim mapom u istom renderingu — ali to se ne dešava.
-
-**Rizik:** Nizak — ovo je propuštena optimizacija, ne bug. Ali za 5000+ kartica, `Object.values()` na svaki render košta ~1ms.
-
-**Fix:** Koristiti `useMemo` sa deep comparison umjesto cache-a, ili prihvatiti da je O(n) neizbježan pri promjeni mape.
+**Fix:** Pozivati `invalidateCoverageCache(sourceId)` u `deleteCard` kad obrisana kartica ima `sourceId`, i u `patchCard` kad se mijenja `originalSourceSnippet`.
 
 ---
 
-## PERFORMANSE
+## MEMORY LEAK
 
-### P1. `getCategoryStats` u `spaced-repetition.ts` je O(n) po kategoriji — ali se ne koristi
+### M1. `EventBus.beforeunload` listener se nikad ne čisti
+**Fajl:** `event-bus.ts:64-66`
 
-**Fajl:** `spaced-repetition.ts:366-372`
+**Problem:** `window.addEventListener("beforeunload", ...)` u konstruktoru se ne čisti u `destroy()`. U HMR scenariju, svaki hot reload kreira novi EventBus (star se destroyira), ali `beforeunload` handler ostaje jer `destroy()` ne uklanja window listener.
 
-**Problem:** `getCategoryStats()` filtrira SVE kartice za jednu kategoriju. Ali u `useCards.ts:158-231`, postoji optimizirani single-pass koji računa `categoryStats` za sve kategorije odjednom. `getCategoryStats` se exportuje ali se NE KORISTI nigdje u aplikaciji (pretraga po projektu potvrđuje). Ovo je mrtav kod.
-
-**Fix:** Ukloniti `getCategoryStats` i `getStats` iz exporta — već su zamijenjeni inline single-pass implementacijom.
-
-### P2. `cardCountByCategory` se rekonstruiše na svaku mutaciju kartica
-
-**Fajl:** `useCards.ts:165-177`
-
-**Problem:** `useMemo` blok (linija 158-232) se re-evaluira na svaku promjenu `cards` ili `categories`. Unutra se gradi `countByCategory` Record. Za operacije poput `patchCard` (koja samo mijenja jednu karticu), cijeli single-pass se restartuje — uključujući sortiranje `dueCards`, iteraciju svih sekcija, itd. Za 5000 kartica ovo je ~5-10ms na svaku ocjenu.
-
-**Fix:** Razdvojiti `dueCards` (koje ovise o `cards`) od `cardCountByCategory` (koji se može cachirati separatno). Alternativno, koristiti incremental update pattern za count.
-
----
-
-## SIGURNOST
-
-### S1. `localStorageData` import ne filtrira ključeve
-
-**Fajl:** `useCardImport.ts:292-296`
-
-**Problem:**
+**Fix:** Sačuvati referencu i ukloniti u `destroy()`:
 ```ts
-if (data.localStorageData && typeof data.localStorageData === "object") {
-  for (const [key, value] of Object.entries(data.localStorageData as Record<string, unknown>)) {
-    localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
-  }
-}
-```
-Ovo piše BILO KOJI ključ u localStorage iz importovanog JSON fajla. Napadač može pripremiti backup fajl sa malicioznim ključevima koji prepisuju:
-- `sidebar-state` → prisilno zatvaranje sidebara
-- Bilo koji custom ključ koji aplikacija čita na boot-u
-
-**Fix:** Dozvoliti samo whitelistane ključeve:
-```ts
-const ALLOWED_LS_KEYS = new Set([
-  "codex-app-settings", "codex-source-registry", "codex-monument-types",
-  "sr-planner", "sr-mnemonic-system",
-]);
-for (const [key, value] of Object.entries(data.localStorageData)) {
-  if (!ALLOWED_LS_KEYS.has(key)) continue;
-  localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
-}
+private _beforeUnloadHandler: (() => void) | null = null;
+// u konstruktoru:
+this._beforeUnloadHandler = () => this.emit(EVENT_TYPES.TAB_LEAVING, { sourceTabId: TAB_ID });
+window.addEventListener("beforeunload", this._beforeUnloadHandler);
+// u destroy():
+if (this._beforeUnloadHandler) window.removeEventListener("beforeunload", this._beforeUnloadHandler);
 ```
 
 ---
 
-## Šta je DOBRO (ne treba mijenjati)
+## RELIABILITY
 
-- Context dekompozicija (Card/Category/Review/Pomodoro) — sprečava kaskadne re-rendere
-- Proxy-based actions — stabilna referenca, nikad ne uzrokuje re-render
-- Ref-Delta pattern — sinhrona mutacija ref-a prije async persist-a
-- Mutex u category-service — serijalizacija IDB upisa
-- Surgical persist queue sa visibility change flush
-- Boot timeout chain (panic 8s → splash 10s) — nikad ne blokira UI
-- EventBus HMR cleanup — sprečava BroadcastChannel akumulaciju
-- Lazy loading svih route stranica + teških biblioteka
+### R1. `useDeferredCompute` guta greške iz async computacija
+**Fajl:** `useDeferredCompute.ts:18-19`
+
+**Problem:** `val.then((resolved) => { ... })` nema `.catch()`. Ako `compute()` vrati rejected Promise, greška se gubi — `result` ostaje `null` zauvijek. Komponente koje koriste ovu vrijednost (Dashboard widgeti) prikazuju loading stanje koje nikad ne nestane.
+
+**Fix:** Dodati catch handler:
+```ts
+val.then((resolved) => { if (!cancelled) setResult(resolved); })
+   .catch((err) => { console.warn("[useDeferredCompute] async error", err); });
+```
+
+---
+
+## Šta je DOBRO (neauditivno do sada)
+
+- Planner storage ima čist cache/IDB dual-write pattern
+- Mnemonic migration je transakcijska (all-or-nothing)
+- DOCX import koristi Web Workere — ne blokira UI
+- Coverage analysis ima bounded cache (max 20)
+- Source delete koristi transakciju za atomsko brisanje
+- TTS modul pravilno sanitizira HTML prije govorenja
+- Export koristi chunked JSON serialization za velike backupe
 
 ---
 
 ## Scope implementacije
 
 **Prioritet 1 (kritično, ~30min):**
-- I1: Pre-compute `fallbackId` u `deleteCategory` (~5 linija)
-- S1: Whitelist za `localStorageData` import (~8 linija)
-- I2: Rollback iz IDB umjesto stale snapshot (~3 linije)
+- E1: Defensive fallback u context hookovima za HMR stabilnost (~10 linija)
+- R1: Error handling u useDeferredCompute (1 linija)
+- I3: Cap metacognitive cache-ove (3×2 linije)
+- M1: Cleanup beforeunload u EventBus.destroy (~5 linija)
 
-**Prioritet 2 (optimizacija, ~20min):**
-- G1: Cap reviewLog na 5000 entryja (~3 linije)
-- P1: Ukloniti mrtav kod `getCategoryStats`/`getStats` (~15 linija)
+**Prioritet 2 (integritet, ~30min):**
+- I1: Transakcija za import (wrap existing code u `db.transaction`)
+- G2: Auto-invalidacija coverage cache-a nakon card mutacija (~5 linija)
 
-**Prioritet 3 (nice-to-have):**
-- P2: Razdvajanje dueCards od countByCategory — veći refaktor
-- G2: mapToArray cache cleanup — minimalan uticaj
+**Prioritet 3 (optimizacija, ~15min):**
+- P1: Single-pass Map u useStatsData.activityData
+- P2: Single-pass u getMnemonicStats
 
-Ukupno: **4 fajla** za Prioritet 1+2.
+**Prioritet 4 (nice-to-have):**
+- I2: HealthMonitor cleanup kroz AppContext akcije (veći refaktor)
+- G1: Cross-tab source invalidacija (low priority za Electron)
+
+Ukupno: **6-7 fajlova** za Prioritet 1+2.
 
