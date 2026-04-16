@@ -1,18 +1,20 @@
-import { useCategoryData, useCardActions, useUIContext, type View } from "@/contexts/AppContext";
+import { useCategoryData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import CardForm from "@/components/CardForm";
 import { useEffect, useRef, useCallback } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import type { Card } from "@/lib/spaced-repetition";
 
 export default function EditPage() {
   const { categories, subcategories, categoryRecords } = useCategoryData();
   const { updateCard, splitCard } = useCardActions();
   const { setView, editingCard, setEditingCard } = useUIContext();
-  const previousViewRef = useRef<View | null>(null);
+  const navigate = useNavigate();
+  const previousViewRef = useRef<string | null>(null);
 
   useEffect(() => {
     const stored = sessionStorage.getItem("sr-edit-return-view");
-    if (stored) previousViewRef.current = stored as View;
+    if (stored) previousViewRef.current = stored;
   }, []);
 
   const navigateBack = useCallback(() => {
@@ -20,11 +22,16 @@ export default function EditPage() {
     sessionStorage.removeItem("sr-edit-return-view");
     if (returnTo.startsWith("category:")) {
       const catId = returnTo.slice("category:".length);
-      window.location.hash = `#/category/${catId}`;
+      navigate(`/category/${catId}`);
     } else {
       setView(returnTo);
     }
-  }, [setView]);
+  }, [setView, navigate]);
+
+  // R1: Guard — redirect if no card to edit
+  if (!editingCard) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleCancel = () => {
     setEditingCard(null);

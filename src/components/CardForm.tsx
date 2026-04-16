@@ -1,5 +1,6 @@
 import { X, FileText, Loader2, Scissors } from "lucide-react";
 import { lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/lib/spaced-repetition";
 import { Button } from "@/components/ui/button";
 import { useCardActions } from "@/hooks/useCardActions";
@@ -35,6 +36,7 @@ const widthLabels: Record<FormWidth, string> = {
 
 export default function CardForm({ categories, subcategories, categoryRecords, onSave, onSaveFlash, onCancel, editCard, onUpdate, onSplit }: Props) {
   const a = useCardActions({ categories, subcategories, categoryRecords, editCard, onSave, onSaveFlash, onUpdate });
+  const navigate = useNavigate();
 
   return (
     <form onSubmit={a.handleSubmit} className={`space-y-6 ${widthClasses[a.formWidth]} transition-all duration-300`}>
@@ -46,7 +48,7 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
             <button
               type="button"
               onClick={() => {
-                window.location.hash = `#/category/${editCard.categoryId}`;
+                navigate(`/category/${editCard.categoryId}`);
               }}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-success/10 text-success hover:bg-success/20 transition-colors"
             >

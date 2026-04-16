@@ -114,7 +114,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setTimeout(() => {
       setIsProcessing(false);
       setSnapshot(null);
-    }, 600);
+    }, 200);
   }, []);
 
   const queueReview = useCallback((cardId: string, sectionId: string, grade: number) => {

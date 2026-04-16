@@ -359,9 +359,12 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
 
   // ─── Navigate to covered card ───
   const handleOpenCoveredCard = useCallback((cardId: string) => {
-    sessionStorage.setItem("sr-scroll-to-card", cardId);
-    window.location.hash = "#/categories";
-  }, []);
+    const card = cards.find(c => c.id === cardId);
+    if (card) {
+      sessionStorage.setItem("sr-scroll-to-card", cardId);
+      window.location.hash = `#/category/${card.categoryId}`;
+    }
+  }, [cards]);
 
   // ─── Keyboard shortcuts ───
   useEffect(() => {

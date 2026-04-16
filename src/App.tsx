@@ -10,7 +10,7 @@ import TitleBar from "@/components/TitleBar";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
 import { lazy, Suspense } from "react";
 import { PageSkeleton } from "@/components/ui/page-skeleton";
-import NotFound from "./pages/NotFound";
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Lazy-loaded route pages
 const DashboardPage = lazy(() => import("@/views/DashboardPage"));
