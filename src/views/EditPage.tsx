@@ -4,6 +4,7 @@ import CardForm from "@/components/CardForm";
 import { useEffect, useRef, useCallback } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import type { Card } from "@/lib/spaced-repetition";
+import type { View } from "@/contexts/AppContext";
 
 export default function EditPage() {
   const { categories, subcategories, categoryRecords } = useCategoryData();
