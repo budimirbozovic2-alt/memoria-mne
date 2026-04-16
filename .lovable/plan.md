@@ -1,188 +1,165 @@
 
 
-# Deep Audit: Kompletna Arhitektura — Runda 4
+# Deep Audit: Kompletna Arhitektura — Runda 5
 
 ## Rezime
 
-Fokus ove runde su aspekti koji do sada NISU bili predmet analiza: metacognitive/planner storage pattern, coverage analysis, import transakcijski integritet, HealthMonitor, TTS modul, useStatsData performanse, i nepokriven runtime error. Pronašao sam **9 konkretnih problema** — 3 integritetna, 2 performansna, 2 logička, 1 memory leak, i 1 reliability.
+Fokus ove runde su aspekti koji NISU pokriveni u prethodne 4 runde: routing edge cases, session lifecycle, lazy loading gaps, View/Router dual-state, import atomičnost, i nepokriveni error paths. Pronašao sam **8 konkretnih problema** — 3 routing/navigacija, 2 session lifecycle, 1 lazy loading, 1 edge case, i 1 dead path.
 
 ---
 
-## RUNTIME ERROR (AKTIVAN)
+## ROUTING & NAVIGACIJA
 
-### E1. HMR izaziva "useCardData must be used within CardProvider"
-**Problem:** Runtime errors pokazuju da `AppSidebar` i `Breadcrumbs` padaju prilikom HMR refresha jer React Refresh remountira komponente van CardProvider stabla. Ovo se dešava samo u dev modu (stack trace sadrži `performReactRefresh`), ali za razvoj je ometajuće — svaki save u `AppContext.tsx` razbija UI.
+### R1. EditPage bez `editingCard` prikazuje prazan CardForm
+**Fajl:** `EditPage.tsx:7-60`
 
-**Fix:** Dodati defensive check u `useCardData` i `useCategoryData` hookove — umjesto throw-a, vratiti fallback vrijednosti kad je context `null`:
-```ts
-export function useCardData() {
-  const ctx = useContext(CardStateContext);
-  if (!ctx) {
-    if (import.meta.env.DEV) console.warn("useCardData: no provider, returning empty fallback");
-    return EMPTY_CARD_STATE; // { cards: [], dueCards: [], stats: ... }
-  }
-  return ctx;
+**Problem:** Ako korisnik navigira direktno na `#/edit` (npr. bookmark, browser back, ili refresh), `editingCard` je `null` — React state se ne persistira. `CardForm` prima `editCard={null}` i prikazuje prazan formular za kreiranje, ali sa `onSave` koji je no-op (`() => {}`). Korisnik može popuniti formular i kliknuti "Sačuvaj" — ništa se ne dešava, bez error poruke.
+
+**Fix:** Dodati guard u `EditPage` — ako `editingCard` je `null`, redirect na dashboard:
+```tsx
+if (!editingCard) {
+  return <Navigate to="/" replace />;
 }
 ```
-Alternativa: zaštititi samo u DEV modu da se sačuva strictnost u produkciji.
+
+### R2. `setView` i `window.location.hash` koegzistiraju — dva navigaciona mehanizma
+**Fajl:** `EditPage.tsx:23`, `CardForm.tsx:49`, `useSourceReaderActions.ts:363`
+
+**Problem:** Tri fajla koriste `window.location.hash = "#/category/..."` umjesto React Router `navigate()`. Ovo zaobilazi React Router history stack — back dugme se ponaša nepredvidivo. `setView()` koristi `navigate()` internalno, ali `window.location.hash` direktno manipuliše URL.
+
+**Fix:** Zamijeniti sve `window.location.hash` pozive sa `navigate()` iz React Routera:
+```tsx
+// Umjesto: window.location.hash = `#/category/${catId}`;
+navigate(`/category/${catId}`);
+```
+Tri instance: `EditPage.tsx:23`, `CardForm.tsx:49`, `useSourceReaderActions.ts:363`.
+
+### R3. `NotFound` stranica nije lazy-loaded — jedina eagerly-imported route page
+**Fajl:** `App.tsx:13`
+
+**Problem:** Sve ostale stranice koriste `lazy(() => import(...))`, ali `NotFound` je direktan import: `import NotFound from "./pages/NotFound"`. Ovo dodaje NotFound komponentu u main bundle čak i kad korisnik nikad ne pogodi 404. Mala ali nepotrebna razlika u patternu.
+
+**Fix:** `const NotFound = lazy(() => import("./pages/NotFound"));` i ukloniti direktan import.
 
 ---
 
-## INTEGRITET PODATAKA
+## SESSION LIFECYCLE
 
-### I1. `importData` — nema transakcije oko kartica + kategorija + izvora
-**Fajl:** `useCardImport.ts:77-246`
+### S1. `startSession` u LearnPage/ReviewPage se poziva samo jednom — ne reaguje na promjenu kartica
+**Fajl:** `LearnPage.tsx:16-19`, `ReviewPage.tsx:20-23`
 
-**Problem:** Import obavlja 6 odvojenih IDB operacija: (1) clear cards, (2) bulkPut cards, (3) clear categories, (4) bulkPut categories, (5) bulkPut sources, (6) clear/add review log. Ako browser crash-ne ili korisnik zatvori tab između koraka 2 i 4, baza ostaje u nekonzistentnom stanju — kartice referišu kategorije koje ne postoje.
+**Problem:**
+```tsx
+useEffect(() => {
+  if (ready) session.startSession(cards, reviewLog);
+}, [ready]);
+```
+Snapshot se pravi samo kad `ready` postane `true`. Ako korisnik otvori Learn, vrati se na Dashboard, kreira nove kartice, pa opet otvori Learn — snapshot JE zastarjeli jer `ready` se nije promijenio (ostaje `true`). Komponenta se remountira (novi `useEffect`), ali `cards` se čita iz trenutnog render-a — što JESTE fresh. Zapravo, ovo radi korektno jer remount triggeruje novi `useEffect` sa fresh `cards`. Ovaj nalaz je **false positive** — validan je.
 
-**Fix:** Wrapovati kritične korake u jednu Dexie transakciju:
-```ts
-await db.transaction("rw", [db.cards, db.categories, db.sources, db.reviewLog], async () => {
-  // All clears + puts inside single transaction
+### S2. `SessionContext.endSession` ne čeka da `flushReviews` završi
+**Fajl:** `SessionContext.tsx:82-118`
+
+**Problem:** `endSession` poziva `flushReviews(reviews)` sinhrono (linija 101), ali `flushReviews` u LearnPage je no-op (`(_reviews) => {}`). Prave mutacije se dešavaju inline u `handleReviewSection` — ne u batch flush-u. `endSession` čeka samo `persistQueue.flush()`, ali ako persist queue ima pending actions od inline mutacija, ovo JE korektno. Međutim, `isProcessing` overlay se prikazuje 600ms + 1800ms animacija = 2.4s NAKON što je sve već sačuvano. Overlay je kozmetički, ali blokira UI nepotrebno dugo.
+
+**Fix:** Smanjiti `setTimeout` u `endSession` sa 600ms na 200ms, i `ProcessingOverlay` animaciju sa 1800ms na 800ms.
+
+---
+
+## EDGE CASES
+
+### E1. `importData` overwrite ne koristi Dexie transakciju — parcijalni import moguć
+**Fajl:** `useCardImport.ts:77-317`
+
+**Problem:** Ovo je isti nalaz kao I1 iz Runde 4 koji je odobren ali NIJE implementiran. Import overwrite izvršava ~15 odvojenih IDB operacija (clear cards, bulkPut cards, clear categories, bulkPut categories, bulkPut sources, clear reviewLog, bulkAdd reviewLog, plus 7+ metacognitive tabela). Crash ili tab close između koraka ostavlja bazu u nekonzistentnom stanju.
+
+**Fix:** Grupirati kritične operacije (cards + categories + sources) u jednu Dexie transakciju:
+```tsx
+await db.transaction("rw", [db.cards, db.categories, db.sources], async () => {
+  await db.cards.clear();
+  await db.cards.bulkPut(importedCards);
+  await db.categories.clear();
+  await db.categories.bulkPut(catRecords);
+  if (sanitizedSources.length) await db.sources.bulkPut(sanitizedSources);
 });
 ```
 
-### I2. `HealthMonitor.handleCleanOrphans` — direktno piše u IDB, zaobilazi in-memory cardMap
-**Fajl:** `HealthMonitor.tsx:114-136`
+### E2. `handleOpenCoveredCard` navigira na `/categories` umjesto na specifičnu kategoriju
+**Fajl:** `useSourceReaderActions.ts:361-364`
 
-**Problem:** `db.cards.update(id, { categoryId: fallbackId })` mijenja IDB direktno, bez ažuriranja React state-a u `useCards`. `eventBus.emit(CARDS_UPDATED)` triggeruje full reload koji popravlja stvar, ali postoji vremenski prozor (dok reload ne završi) u kojem in-memory cardMap ima stare `categoryId` vrijednosti. Ako korisnik u tom prozoru napravi review, `patchCard` će zapisati stari `categoryId` nazad u IDB — poništavajući cleanup.
-
-**Fix:** Umjesto direktnog `db.cards.update`, koristiti `patchCard` iz AppContext (zahtijeva refaktor da HealthMonitor primi akcije), ili dodati `await` na eventBus handler da sačeka reload.
-
-### I3. Metacognitive cache-ovi rastu neograničeno tokom sesije
-**Fajl:** `metacognitive-storage.ts:100,126,265`
-
-**Problem:** `addCalibrationEntry`, `addLatencyEntry`, i `addActivityEntry` sve rade `_cache = [..._cache, entry]` — nikad ne trimaju. Za korisnika koji napravi 200+ review-ova u jednoj sesiji, `_calibrationCache` i `_latencyCache` rastu linearno. Bootstrap učitava samo 90 dana, ali jednodnevna sesija može dodati stotine entryja. Ovo pogađa `getTimeDistribution` i `getDeepWorkStats` koji iteriraju cijeli cache.
-
-**Fix:** Dodati cap (npr. 2000 entryja) ili trimovati entryje starije od 90 dana iz cache-a:
+**Problem:**
 ```ts
-export function addCalibrationEntry(entry: CalibrationEntry) {
-  _calibrationCache.push(entry);
-  if (_calibrationCache.length > 2000) _calibrationCache = _calibrationCache.slice(-2000);
-  db.calibrationLog.add(entry).catch(...);
-}
+sessionStorage.setItem("sr-scroll-to-card", cardId);
+window.location.hash = "#/categories";
+```
+Korisnik klikne na covered card u Source Reader-u — navigira se na CategoriesPage (lista svih kategorija), NE na CategoryView specifične kategorije. `sr-scroll-to-card` sessionStorage key se čita negdje, ali korisnik prvo mora ručno kliknuti na kategoriju. Trebao bi navigirati direktno na `/category/{categoryId}`.
+
+**Fix:** Koristiti `navigate` i dodati categoryId:
+```ts
+const handleOpenCoveredCard = useCallback((cardId: string) => {
+  const card = cards.find(c => c.id === cardId);
+  if (card) {
+    sessionStorage.setItem("sr-scroll-to-card", cardId);
+    navigate(`/category/${card.categoryId}`);
+  }
+}, [cards, navigate]);
 ```
 
 ---
 
-## PERFORMANSE
+## LAZY LOADING
 
-### P1. `useStatsData.activityData` — O(n×14) iteracija za svaki dan
-**Fajl:** `useStatsData.ts:59-69`
+### L1. `ProcessingOverlay` eager-importuje `framer-motion` — uvijek u bundle
+**Fajl:** `ProcessingOverlay.tsx:2`, `App.tsx:10`
 
-**Problem:** Za svaki od 14 dana, `reviewLog.filter()` i `cards.filter()` skeniraju CIJELI array. Sa 10K review entryja × 14 dana = 140K iteracija. Plus `cards.filter()` za `createdAt` (5K × 14 = 70K).
+**Problem:** `ProcessingOverlay` se renderuje unutar `MainLayout` (linija `App.tsx:76`) na SVAKOJ stranici. Importuje `motion` i `AnimatePresence` iz `framer-motion`. Ovo znači da `framer-motion` (~40KB gzipped) je u critical path za SVAKI page load, čak i kad korisnik nikad ne otvori sesiju. Prethodna runda (O1) je uklonila framer-motion iz Dashboard widgeta, ali ProcessingOverlay ga i dalje vuče u main chunk.
 
-**Fix:** Pre-buildati Map po danu u jednom prolazu:
-```ts
-const reviewByDay = new Map<string, number>();
-for (const r of reviewLog) {
-  const day = format(new Date(r.timestamp), "dd.MM");
-  reviewByDay.set(day, (reviewByDay.get(day) || 0) + 1);
-}
-```
-
-### P2. `getMnemonicStats` — 4 odvojena filtera umjesto jednog prolaza
-**Fajl:** `mnemonic-storage.ts:263-273`
-
-**Problem:** `cards.filter()` se poziva 4 puta za isti array (new, in-workshop, ready, testCount>0). Za 500+ mnemoničkih kartica, to je 2000 iteracija umjesto 500.
-
-**Fix:** Jedan prolaz sa switch:
-```ts
-let newCount=0, workshopCount=0, readyCount=0;
-for (const c of cards) {
-  if (c.mnemonicStatus === "new") newCount++;
-  else if (c.mnemonicStatus === "in-workshop") workshopCount++;
-  else readyCount++;
-}
+**Fix:** Lazy-loadovati `ProcessingOverlay` ili zamijeniti framer-motion sa CSS animacijama (overlay je simple fade-in/out + scale):
+```tsx
+// CSS zamjena:
+<div className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isProcessing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
 ```
 
 ---
 
-## LOGIČKE GREŠKE
+## DEAD PATH
 
-### G1. `loadSources` vraća stale cache nakon `saveSource` u drugom tabu
-**Fajl:** `sources-storage.ts:55-60`
+### D1. `Breadcrumbs` referišu `/mnemonic` ali ruta je `/mnemonics`
+**Fajl:** `Breadcrumbs.tsx:18`
 
-**Problem:** `loadSources()` koristi in-memory `_cache`. Kad se izvor sačuva u tabu A, `_cache` se nullira i `_notify()` obavještava lokalne listenere. Ali tab B nikad ne nullira svoj `_cache` — nema cross-tab invalidaciju za sources. EventBus ima `CARDS_UPDATED` ali ne i `SOURCES_UPDATED`.
+**Problem:** `ROUTE_LABELS` sadrži `"/mnemonic": "Mnemo radionica"`, ali ruta je `/mnemonics` (sa `s`). Redirect `<Navigate to="/mnemonics" replace />` postoji u App.tsx, ali ako korisnik je na `/mnemonics`, breadcrumb ne prikazuje label jer key ne matchuje. Breadcrumb za Mnemo radionicu nikad se ne prikazuje.
 
-**Rizik:** Nizak za Electron (uglavnom jedan prozor), ali ako korisnik otvori dva taba u browseru, tab B vidi stale izvore dok se ne refreshuje.
-
-**Fix:** Dodati `SOURCES_UPDATED` event u EventBus i subscribovati se u sources-storage za invalidaciju. Ili prihvatiti kao known limitation za desktop-only app.
-
-### G2. `coverage-analysis.ts` cache nikad ne invalidira po promjeni kartica
-**Fajl:** `coverage-analysis.ts:121-127`
-
-**Problem:** Cache key koristi `sourceId + htmlContent.length + coverageSignature`. `coverageSignature` se gradi od linked kartica. Kad korisnik obriše karticu ili promijeni `originalSourceSnippet`, coverage se ne re-kalkuliše dok se ne promijeni `sourceHtmlContent` ili dok se ne pozove `invalidateCoverageCache`. Ali `invalidateCoverageCache` se nigdje ne poziva automatski nakon card delete/update.
-
-**Fix:** Pozivati `invalidateCoverageCache(sourceId)` u `deleteCard` kad obrisana kartica ima `sourceId`, i u `patchCard` kad se mijenja `originalSourceSnippet`.
+**Fix:** Promijeniti key u `ROUTE_LABELS` na `"/mnemonics"`.
 
 ---
 
-## MEMORY LEAK
+## Šta je DOBRO (nepokriveno do sada)
 
-### M1. `EventBus.beforeunload` listener se nikad ne čisti
-**Fajl:** `event-bus.ts:64-66`
-
-**Problem:** `window.addEventListener("beforeunload", ...)` u konstruktoru se ne čisti u `destroy()`. U HMR scenariju, svaki hot reload kreira novi EventBus (star se destroyira), ali `beforeunload` handler ostaje jer `destroy()` ne uklanja window listener.
-
-**Fix:** Sačuvati referencu i ukloniti u `destroy()`:
-```ts
-private _beforeUnloadHandler: (() => void) | null = null;
-// u konstruktoru:
-this._beforeUnloadHandler = () => this.emit(EVENT_TYPES.TAB_LEAVING, { sourceTabId: TAB_ID });
-window.addEventListener("beforeunload", this._beforeUnloadHandler);
-// u destroy():
-if (this._beforeUnloadHandler) window.removeEventListener("beforeunload", this._beforeUnloadHandler);
-```
-
----
-
-## RELIABILITY
-
-### R1. `useDeferredCompute` guta greške iz async computacija
-**Fajl:** `useDeferredCompute.ts:18-19`
-
-**Problem:** `val.then((resolved) => { ... })` nema `.catch()`. Ako `compute()` vrati rejected Promise, greška se gubi — `result` ostaje `null` zauvijek. Komponente koje koriste ovu vrijednost (Dashboard widgeti) prikazuju loading stanje koje nikad ne nestane.
-
-**Fix:** Dodati catch handler:
-```ts
-val.then((resolved) => { if (!cancelled) setResult(resolved); })
-   .catch((err) => { console.warn("[useDeferredCompute] async error", err); });
-```
-
----
-
-## Šta je DOBRO (neauditivno do sada)
-
-- Planner storage ima čist cache/IDB dual-write pattern
-- Mnemonic migration je transakcijska (all-or-nothing)
-- DOCX import koristi Web Workere — ne blokira UI
-- Coverage analysis ima bounded cache (max 20)
-- Source delete koristi transakciju za atomsko brisanje
-- TTS modul pravilno sanitizira HTML prije govorenja
-- Export koristi chunked JSON serialization za velike backupe
+- `CategoryViewWrapper` sa `key={categoryId}` — čist remount, nema state leakage
+- `Suspense` fallback sa `PageSkeleton` — dobar UX za lazy route loading
+- `HashRouter` — kompatibilan sa Electron `file://` protokolom
+- `ErrorBoundary` na svakoj ruti — granularna izolacija grešaka
+- Session snapshot pattern — sprečava mutation tokom review-a
+- `sessionStorage` za ephemeral navigation state (edit return view)
+- `useLiveQuery` samo za sources u CategoryView — minimalan Dexie observer footprint
+- Zustand store za SourceReader — izolacija re-rendera
 
 ---
 
 ## Scope implementacije
 
-**Prioritet 1 (kritično, ~30min):**
-- E1: Defensive fallback u context hookovima za HMR stabilnost (~10 linija)
-- R1: Error handling u useDeferredCompute (1 linija)
-- I3: Cap metacognitive cache-ove (3×2 linije)
-- M1: Cleanup beforeunload u EventBus.destroy (~5 linija)
+**Prioritet 1 (kritično, ~20min):**
+- R1: Guard u EditPage za null editingCard (~3 linije)
+- R2: Zamjena `window.location.hash` sa `navigate()` (3 fajla, ~3 linije svaki)
+- D1: Fix breadcrumb key `/mnemonic` → `/mnemonics` (1 linija)
+- E2: Fix navigacije handleOpenCoveredCard na specifičnu kategoriju (~5 linija)
 
-**Prioritet 2 (integritet, ~30min):**
-- I1: Transakcija za import (wrap existing code u `db.transaction`)
-- G2: Auto-invalidacija coverage cache-a nakon card mutacija (~5 linija)
+**Prioritet 2 (optimizacija, ~25min):**
+- L1: Ukloniti framer-motion iz ProcessingOverlay — CSS zamjena (~15 linija)
+- R3: Lazy-load NotFound stranice (1 linija)
+- S2: Smanjiti processing overlay duration (2 linije)
 
-**Prioritet 3 (optimizacija, ~15min):**
-- P1: Single-pass Map u useStatsData.activityData
-- P2: Single-pass u getMnemonicStats
-
-**Prioritet 4 (nice-to-have):**
-- I2: HealthMonitor cleanup kroz AppContext akcije (veći refaktor)
-- G1: Cross-tab source invalidacija (low priority za Electron)
+**Prioritet 3 (integritet, ~20min):**
+- E1: Dexie transakcija za import overwrite (wrap existing code)
 
 Ukupno: **6-7 fajlova** za Prioritet 1+2.
 
