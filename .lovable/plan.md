@@ -1,165 +1,84 @@
 
 
-# Deep Audit: Kompletna Arhitektura — Runda 5
+Analiziram zahtjev. Tri konkretna problema + analiza za dodatna unapređenja.
 
-## Rezime
+## Problemi za ispraviti
 
-Fokus ove runde su aspekti koji NISU pokriveni u prethodne 4 runde: routing edge cases, session lifecycle, lazy loading gaps, View/Router dual-state, import atomičnost, i nepokriveni error paths. Pronašao sam **8 konkretnih problema** — 3 routing/navigacija, 2 session lifecycle, 1 lazy loading, 1 edge case, i 1 dead path.
+### 1. Breadcrumb "Laboratorija" → "Alati"
+**Fajl:** `src/components/Breadcrumbs.tsx:28`
 
----
+Trenutno `LAB_ROUTES` set ubacuje "Laboratorija" za stats/metacognitive/mnemonic/planner/speed-reader/mind-map. Promijeniti string "Laboratorija" → "Alati".
 
-## ROUTING & NAVIGACIJA
+### 2. Memorizacija ne prikazuje "Alati" u breadcrumbu
+**Fajl:** `src/components/Breadcrumbs.tsx:18`
 
-### R1. EditPage bez `editingCard` prikazuje prazan CardForm
-**Fajl:** `EditPage.tsx:7-60`
+`LAB_ROUTES` sadrži `/mnemonic` (singular), ali stvarna ruta je `/mnemonics` (plural). Iako je u prethodnoj rundi popravljen `ROUTE_LABELS` key, `LAB_ROUTES` set nije ažuriran. Promijeniti `/mnemonic` → `/mnemonics` u `LAB_ROUTES`.
 
-**Problem:** Ako korisnik navigira direktno na `#/edit` (npr. bookmark, browser back, ili refresh), `editingCard` je `null` — React state se ne persistira. `CardForm` prima `editCard={null}` i prikazuje prazan formular za kreiranje, ali sa `onSave` koji je no-op (`() => {}`). Korisnik može popuniti formular i kliknuti "Sačuvaj" — ništa se ne dešava, bez error poruke.
+### 3. Naslov "Podešavanja" žute boje
+**Provjera:** Trebam pogledati `SRSettingsPanel.tsx` i `SettingsPage.tsx` da vidim gdje je naslov i koja klasa daje žutu boju.
+<lov-tool-use id="toolu_vrtx_01J9oseHq7zmQZecuLj1Mxnn" name="code--search_files" integration-id="code" data="{\"query\": \"Podešavanja\", \"include_patterns\": \"src/components/SRSettingsPanel.tsx,src/views/SettingsPage.tsx\"}">
+</lov-tool-use>
 
-**Fix:** Dodati guard u `EditPage` — ako `editingCard` je `null`, redirect na dashboard:
-```tsx
-if (!editingCard) {
-  return <Navigate to="/" replace />;
-}
-```
+<lov-tool-use id="toolu_vrtx_0186iaFZyZrhVJQVhGaxeQM3" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/SRSettingsPanel.tsx\", \"lines\": \"1-80\"}">
+</lov-tool-use>
 
-### R2. `setView` i `window.location.hash` koegzistiraju — dva navigaciona mehanizma
-**Fajl:** `EditPage.tsx:23`, `CardForm.tsx:49`, `useSourceReaderActions.ts:363`
+<lov-tool-use id="toolu_vrtx_01JUb5u4v51KNd3TuAaGTdbo" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/Breadcrumbs.tsx\"}">
+</lov-tool-use>
 
-**Problem:** Tri fajla koriste `window.location.hash = "#/category/..."` umjesto React Router `navigate()`. Ovo zaobilazi React Router history stack — back dugme se ponaša nepredvidivo. `setView()` koristi `navigate()` internalno, ali `window.location.hash` direktno manipuliše URL.
+<lov-tool-use id="toolu_vrtx_01KjmztvxhHu4mJ4A1sgewug" name="code--view" integration-id="code" data="{\"file_path\": \"src/components/SRSettingsPanel.tsx\", \"lines\": \"1-100\"}">
+</lov-tool-use>
 
-**Fix:** Zamijeniti sve `window.location.hash` pozive sa `navigate()` iz React Routera:
-```tsx
-// Umjesto: window.location.hash = `#/category/${catId}`;
-navigate(`/category/${catId}`);
-```
-Tri instance: `EditPage.tsx:23`, `CardForm.tsx:49`, `useSourceReaderActions.ts:363`.
+<lov-tool-use id="toolu_vrtx_01R4A1co858jaV93E2GSkL51" name="code--search_files" integration-id="code" data="{\"query\": \"imperial-title\", \"include_patterns\": \"src/index.css,src/**/*.tsx\"}">
+</lov-tool-use>
 
-### R3. `NotFound` stranica nije lazy-loaded — jedina eagerly-imported route page
-**Fajl:** `App.tsx:13`
+<lov-tool-use id="toolu_vrtx_01W18rGdqiuVFxMiY2KUS7MJ" name="code--view" integration-id="code" data="{\"file_path\": \"src/index.css\", \"lines\": \"700-740\"}">
+</lov-tool-use>
+Now I have enough context. The `imperial-title` class still uses gold color — earlier the user requested all titles to be white. Let me check memory for that.
+<lov-tool-use id="toolu_vrtx_0178XktdiJDz5URnmfE3K9bw" name="code--exec" integration-id="code" data="{\"command\": \"grep -r \\\"imperial-title\\\\|--gold\\\" /dev-server/.lovable/memory/ 2>/dev/null | head -20\", \"user_facing_description\": \"Checking memory for title color rules\"}">
+</lov-tool-use>
 
-**Problem:** Sve ostale stranice koriste `lazy(() => import(...))`, ali `NotFound` je direktan import: `import NotFound from "./pages/NotFound"`. Ovo dodaje NotFound komponentu u main bundle čak i kad korisnik nikad ne pogodi 404. Mala ali nepotrebna razlika u patternu.
+<lov-tool-use id="toolu_vrtx_01PxCWgSaJ7rPapHGNYgVg1g" name="code--view" integration-id="code" data="{\"file_path\": \"mem://ui/layout-and-navigation-v5\"}">
+</lov-tool-use>
+Confirmed: titles should be white bold. The `imperial-title` class needs updating. Now I have everything needed for the plan.
 
-**Fix:** `const NotFound = lazy(() => import("./pages/NotFound"));` i ukloniti direktan import.
+<lov-plan>
 
----
+# Plan: UI/UX Konzistentnost — Naslovi, Breadcrumbs, dodatna unapređenja
 
-## SESSION LIFECYCLE
+## Problem analiza
 
-### S1. `startSession` u LearnPage/ReviewPage se poziva samo jednom — ne reaguje na promjenu kartica
-**Fajl:** `LearnPage.tsx:16-19`, `ReviewPage.tsx:20-23`
+1. **Breadcrumbs prikazuje "Laboratorija"** — naziv ne postoji nigdje u sidebaru (sidebar koristi "Alati"). Stranice Statistika, Dnevnik, Strateški planer, Speed Reader, Mentalne mape pokazuju `Laboratorija › X`.
+2. **Memorizacija (`/mnemonics`) ne dobija grupni breadcrumb** — nije u `LAB_ROUTES` setu (ima i tipo: `/mnemonic` umjesto `/mnemonics`).
+3. **Naslov "Podešavanja" je žut** — globalna CSS klasa `.imperial-title` koristi `color: hsl(var(--gold))`. Memorija (`layout-and-navigation-v5`) nalaže bijele bold naslove. Klasa se koristi na **11 mjesta** kroz aplikaciju (CardForm, MnemonicWorkshop, MnemonicTest, MajorSystemSettings, BulkImportDialog, ReviewSetup, FrequentErrors, SharedWidgets, FilterSetup, SRSettingsPanel) — sve su trenutno žute, što krši pravilo.
 
-**Problem:**
-```tsx
-useEffect(() => {
-  if (ready) session.startSession(cards, reviewLog);
-}, [ready]);
-```
-Snapshot se pravi samo kad `ready` postane `true`. Ako korisnik otvori Learn, vrati se na Dashboard, kreira nove kartice, pa opet otvori Learn — snapshot JE zastarjeli jer `ready` se nije promijenio (ostaje `true`). Komponenta se remountira (novi `useEffect`), ali `cards` se čita iz trenutnog render-a — što JESTE fresh. Zapravo, ovo radi korektno jer remount triggeruje novi `useEffect` sa fresh `cards`. Ovaj nalaz je **false positive** — validan je.
+## Izmjene
 
-### S2. `SessionContext.endSession` ne čeka da `flushReviews` završi
-**Fajl:** `SessionContext.tsx:82-118`
+### 1. `src/components/Breadcrumbs.tsx`
+- Preimenovati grupu `"Laboratorija"` → `"Alati"`.
+- Dodati `/mnemonics` u `LAB_ROUTES` set.
+- Ukloniti dead key `"/mnemonic"` iz `LAB_ROUTES` (već popravljen u `ROUTE_LABELS` ali ostao u setu).
+- Rezultat: `Početna tabla › Alati › Statistika`, `Početna tabla › Alati › Mnemo radionica`.
 
-**Problem:** `endSession` poziva `flushReviews(reviews)` sinhrono (linija 101), ali `flushReviews` u LearnPage je no-op (`(_reviews) => {}`). Prave mutacije se dešavaju inline u `handleReviewSection` — ne u batch flush-u. `endSession` čeka samo `persistQueue.flush()`, ali ako persist queue ima pending actions od inline mutacija, ovo JE korektno. Međutim, `isProcessing` overlay se prikazuje 600ms + 1800ms animacija = 2.4s NAKON što je sve već sačuvano. Overlay je kozmetički, ali blokira UI nepotrebno dugo.
+### 2. `src/index.css` — `.imperial-title`
+- Promijeniti `color: hsl(var(--gold))` → `color: hsl(var(--foreground))` (bijela u dark temi, tamna u light — ali aplikacija je primarno dark).
+- Ovo automatski popravlja naslove na svih 11 mjesta odjednom (uključujući "Podešavanja", "Novi modul", "Najčešće greške", "Mentalne tablice", itd.).
 
-**Fix:** Smanjiti `setTimeout` u `endSession` sa 600ms na 200ms, i `ProcessingOverlay` animaciju sa 1800ms na 800ms.
+## Dodatna UI/UX unapređenja (mali, sigurni)
 
----
+### 3. Konzistentnost label-a u Breadcrumbs
+- `"/mnemonics": "Mnemo radionica"` → `"/mnemonics": "Memorizacija"` (uskladiti sa sidebar labelom "Memorizacija" iz `AppSidebar.tsx`).
 
-## EDGE CASES
+### 4. Sitno čišćenje
+- Ukloniti zaostali prazan red u `ROUTE_LABELS` između `/stats` i `/metacognitive` (kozmetika).
 
-### E1. `importData` overwrite ne koristi Dexie transakciju — parcijalni import moguć
-**Fajl:** `useCardImport.ts:77-317`
+## Što NE diram
+- Sidebar labeli i grupisanje — već korektno ("Alati").
+- Druga upotreba `--gold` boje (npr. `.btn-imperial` border, brand ikona) — ostaju netaknuti.
+- Funkcionalna logika ruta.
 
-**Problem:** Ovo je isti nalaz kao I1 iz Runde 4 koji je odobren ali NIJE implementiran. Import overwrite izvršava ~15 odvojenih IDB operacija (clear cards, bulkPut cards, clear categories, bulkPut categories, bulkPut sources, clear reviewLog, bulkAdd reviewLog, plus 7+ metacognitive tabela). Crash ili tab close između koraka ostavlja bazu u nekonzistentnom stanju.
+## Fajlovi
+- `src/components/Breadcrumbs.tsx` — 4 male izmjene
+- `src/index.css` — 1 linija (color value)
 
-**Fix:** Grupirati kritične operacije (cards + categories + sources) u jednu Dexie transakciju:
-```tsx
-await db.transaction("rw", [db.cards, db.categories, db.sources], async () => {
-  await db.cards.clear();
-  await db.cards.bulkPut(importedCards);
-  await db.categories.clear();
-  await db.categories.bulkPut(catRecords);
-  if (sanitizedSources.length) await db.sources.bulkPut(sanitizedSources);
-});
-```
-
-### E2. `handleOpenCoveredCard` navigira na `/categories` umjesto na specifičnu kategoriju
-**Fajl:** `useSourceReaderActions.ts:361-364`
-
-**Problem:**
-```ts
-sessionStorage.setItem("sr-scroll-to-card", cardId);
-window.location.hash = "#/categories";
-```
-Korisnik klikne na covered card u Source Reader-u — navigira se na CategoriesPage (lista svih kategorija), NE na CategoryView specifične kategorije. `sr-scroll-to-card` sessionStorage key se čita negdje, ali korisnik prvo mora ručno kliknuti na kategoriju. Trebao bi navigirati direktno na `/category/{categoryId}`.
-
-**Fix:** Koristiti `navigate` i dodati categoryId:
-```ts
-const handleOpenCoveredCard = useCallback((cardId: string) => {
-  const card = cards.find(c => c.id === cardId);
-  if (card) {
-    sessionStorage.setItem("sr-scroll-to-card", cardId);
-    navigate(`/category/${card.categoryId}`);
-  }
-}, [cards, navigate]);
-```
-
----
-
-## LAZY LOADING
-
-### L1. `ProcessingOverlay` eager-importuje `framer-motion` — uvijek u bundle
-**Fajl:** `ProcessingOverlay.tsx:2`, `App.tsx:10`
-
-**Problem:** `ProcessingOverlay` se renderuje unutar `MainLayout` (linija `App.tsx:76`) na SVAKOJ stranici. Importuje `motion` i `AnimatePresence` iz `framer-motion`. Ovo znači da `framer-motion` (~40KB gzipped) je u critical path za SVAKI page load, čak i kad korisnik nikad ne otvori sesiju. Prethodna runda (O1) je uklonila framer-motion iz Dashboard widgeta, ali ProcessingOverlay ga i dalje vuče u main chunk.
-
-**Fix:** Lazy-loadovati `ProcessingOverlay` ili zamijeniti framer-motion sa CSS animacijama (overlay je simple fade-in/out + scale):
-```tsx
-// CSS zamjena:
-<div className={`fixed inset-0 z-[100] transition-opacity duration-300 ${isProcessing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-```
-
----
-
-## DEAD PATH
-
-### D1. `Breadcrumbs` referišu `/mnemonic` ali ruta je `/mnemonics`
-**Fajl:** `Breadcrumbs.tsx:18`
-
-**Problem:** `ROUTE_LABELS` sadrži `"/mnemonic": "Mnemo radionica"`, ali ruta je `/mnemonics` (sa `s`). Redirect `<Navigate to="/mnemonics" replace />` postoji u App.tsx, ali ako korisnik je na `/mnemonics`, breadcrumb ne prikazuje label jer key ne matchuje. Breadcrumb za Mnemo radionicu nikad se ne prikazuje.
-
-**Fix:** Promijeniti key u `ROUTE_LABELS` na `"/mnemonics"`.
-
----
-
-## Šta je DOBRO (nepokriveno do sada)
-
-- `CategoryViewWrapper` sa `key={categoryId}` — čist remount, nema state leakage
-- `Suspense` fallback sa `PageSkeleton` — dobar UX za lazy route loading
-- `HashRouter` — kompatibilan sa Electron `file://` protokolom
-- `ErrorBoundary` na svakoj ruti — granularna izolacija grešaka
-- Session snapshot pattern — sprečava mutation tokom review-a
-- `sessionStorage` za ephemeral navigation state (edit return view)
-- `useLiveQuery` samo za sources u CategoryView — minimalan Dexie observer footprint
-- Zustand store za SourceReader — izolacija re-rendera
-
----
-
-## Scope implementacije
-
-**Prioritet 1 (kritično, ~20min):**
-- R1: Guard u EditPage za null editingCard (~3 linije)
-- R2: Zamjena `window.location.hash` sa `navigate()` (3 fajla, ~3 linije svaki)
-- D1: Fix breadcrumb key `/mnemonic` → `/mnemonics` (1 linija)
-- E2: Fix navigacije handleOpenCoveredCard na specifičnu kategoriju (~5 linija)
-
-**Prioritet 2 (optimizacija, ~25min):**
-- L1: Ukloniti framer-motion iz ProcessingOverlay — CSS zamjena (~15 linija)
-- R3: Lazy-load NotFound stranice (1 linija)
-- S2: Smanjiti processing overlay duration (2 linije)
-
-**Prioritet 3 (integritet, ~20min):**
-- E1: Dexie transakcija za import overwrite (wrap existing code)
-
-Ukupno: **6-7 fajlova** za Prioritet 1+2.
+Ukupno: **2 fajla**, ~6 izmijenjenih linija. Globalni efekat na 11 naslova + 5 stranica breadcrumbs-a.
 
