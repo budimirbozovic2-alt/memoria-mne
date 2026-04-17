@@ -85,11 +85,14 @@ function setupBackupSystem({ app, getMainWindow, logCrash, isDev }) {
   }
 
   // ── IPC Handlers ──
+  const MAX_BACKUP_BYTES = 200 * 1024 * 1024; // I2: 200 MB cap
   ipcMain.handle('request-backup', async (_event, jsonData) => {
-    if (typeof jsonData === 'string' && jsonData.length > 2) {
-      return writeBackup(jsonData);
+    if (typeof jsonData !== 'string' || jsonData.length <= 2) return false;
+    if (jsonData.length > MAX_BACKUP_BYTES) {
+      logCrash('backup-too-large', `Payload ${jsonData.length} bytes exceeds ${MAX_BACKUP_BYTES}`);
+      return false;
     }
-    return false;
+    return writeBackup(jsonData);
   });
 
   ipcMain.handle('get-app-version', () => {

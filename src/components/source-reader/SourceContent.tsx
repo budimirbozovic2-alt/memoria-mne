@@ -37,10 +37,12 @@ export const SourceContent = memo(function SourceContent({
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     if (!editMode) return;
+    // X1: strict MIME whitelist — exclude svg+xml (script vector)
+    const SAFE_IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
     const items = e.clipboardData?.items;
     if (items) {
       for (const item of Array.from(items)) {
-        if (item.type.startsWith("image/")) {
+        if (SAFE_IMAGE_MIME.has(item.type)) {
           e.preventDefault();
           const file = item.getAsFile();
           if (!file) return;

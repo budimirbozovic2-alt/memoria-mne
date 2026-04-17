@@ -220,11 +220,12 @@ export default function RichTextEditor({ value, onChange, placeholder, minimal }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
-    // Smart Image Paste: check for image files in clipboard
+    // Smart Image Paste: strict MIME whitelist (X1: exclude svg+xml — script vector)
+    const SAFE_IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      if (item.type.startsWith("image/")) {
+      if (SAFE_IMAGE_MIME.has(item.type)) {
         e.preventDefault();
         const file = item.getAsFile();
         if (!file) return;
