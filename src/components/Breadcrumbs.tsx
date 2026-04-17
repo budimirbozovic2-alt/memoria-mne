@@ -21,7 +21,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/forum": "Forum",
 };
 
-const LAB_ROUTES = new Set(["/stats", "/metacognitive", "/mnemonic", "/planner", "/speed-reader", "/mind-map"]);
+const LAB_ROUTES = new Set(["/stats", "/metacognitive", "/mnemonics", "/planner", "/speed-reader", "/mind-map"]);
 
 // O2 fix: memo prevents re-renders from parent when categoryRecords haven't changed
 export default memo(function Breadcrumbs() {
