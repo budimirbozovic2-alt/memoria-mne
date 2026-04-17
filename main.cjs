@@ -100,11 +100,18 @@ ipcMain.handle('show-open-dialog', async (_event, options) => {
   return dialog.showOpenDialog(win, sanitizeDialogOptions(options));
 });
 
-// ── File operations (K1: path validation, B1/B2: async FS) ──
+// ── File operations (K1: path validation, B1/B2: async FS, I1: size cap) ──
+const MAX_SAVE_FILE_BYTES = 100 * 1024 * 1024; // 100 MB raw
+const MAX_SAVE_FILE_BASE64_LEN = Math.ceil(MAX_SAVE_FILE_BYTES * 1.4); // base64 overhead
+
 ipcMain.handle('save-file', async (_event, filePath, base64Data) => {
   try {
     if (!isPathAllowed(filePath)) {
       logCrash('save-file-blocked', `Path not allowed: ${filePath}`);
+      return false;
+    }
+    if (typeof base64Data !== 'string' || base64Data.length > MAX_SAVE_FILE_BASE64_LEN) {
+      logCrash('save-file-too-large', `Payload exceeds limit: ${typeof base64Data === 'string' ? base64Data.length : 'non-string'} bytes`);
       return false;
     }
     const cleanBase64 = base64Data.replace(/^data:.*?;base64,/, '');

@@ -38,10 +38,17 @@ export class ErrorBoundary extends Component<Props, State> {
     try {
       const LOG_KEY = "codex-crash-log";
       const MAX_ENTRIES = 30;
+      const MAX_LOG_BYTES = 1_000_000; // LS1: size guard pre JSON.parse
       const now = new Date().toISOString();
       const lbl = this.props.label || "unknown";
       const msg = error.message;
-      const existing: CrashEntry[] = JSON.parse(localStorage.getItem(LOG_KEY) || "[]");
+      const raw = localStorage.getItem(LOG_KEY);
+      if (raw && raw.length > MAX_LOG_BYTES) {
+        try { localStorage.removeItem(LOG_KEY); } catch (_) {}
+      }
+      let existing: CrashEntry[] = [];
+      try { existing = raw && raw.length <= MAX_LOG_BYTES ? JSON.parse(raw) : []; } catch (_) { existing = []; }
+      if (!Array.isArray(existing)) existing = [];
       const dupIndex = existing.findIndex(e => e.label === lbl && e.message === msg);
       if (dupIndex !== -1) {
         existing[dupIndex].count += 1;

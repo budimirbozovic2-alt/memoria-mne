@@ -247,11 +247,23 @@ export function useCardImport({
             }
           }
           if (Array.isArray(data.mindMaps) && (data.mindMaps as unknown[]).length > 0) {
+            // IM2: sanitize string fields in mindMap nodes/edges (label, description)
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await db.mindMaps.bulkPut(data.mindMaps as any[]);
-            if (strategy === "overwrite") {
+            const sanitizedMindMaps = (data.mindMaps as any[]).map((mm) => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const importedIds = new Set((data.mindMaps as any[]).map((m: { id: string }) => m.id));
+              const cleanNodes = Array.isArray(mm.nodes) ? mm.nodes.map((n: any) => ({
+                ...n,
+                data: n.data && typeof n.data === "object" ? {
+                  ...n.data,
+                  label: typeof n.data.label === "string" ? sanitizeHtml(n.data.label) : n.data.label,
+                  description: typeof n.data.description === "string" ? sanitizeHtml(n.data.description) : n.data.description,
+                } : n.data,
+              })) : mm.nodes;
+              return { ...mm, nodes: cleanNodes };
+            });
+            await db.mindMaps.bulkPut(sanitizedMindMaps);
+            if (strategy === "overwrite") {
+              const importedIds = new Set(sanitizedMindMaps.map((m: { id: string }) => m.id));
               const allKeys = await db.mindMaps.toCollection().primaryKeys();
               const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
               if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
@@ -302,15 +314,46 @@ export function useCardImport({
           }
         }
 
-        // Restore localStorage data (v4+) — S1 fix: whitelist allowed keys
+        // Restore localStorage data (v4+) — S1: key whitelist + IM1: value shape validation
         const ALLOWED_LS_KEYS = new Set([
-          "codex-app-settings", "codex-source-registry", "codex-monument-types",
+          "codex-app-settings", "sr-app-settings", "codex-source-registry", "codex-monument-types",
           "sr-planner", "sr-mnemonic-system", "sr-pomodoro-settings",
         ]);
+        const VALID_THEMES = new Set(["amber", "slate", "forest", "ocean", "rose", "midnight"]);
+        // Recursively strip dangerous strings from imported settings objects
+        const sanitizeLSValue = (v: unknown): unknown => {
+          if (typeof v === "string") {
+            // Reject anything containing HTML/script-like markers in setting values
+            if (/[<>]/.test(v)) return "";
+            return v;
+          }
+          if (Array.isArray(v)) return v.map(sanitizeLSValue);
+          if (v && typeof v === "object") {
+            const out: Record<string, unknown> = {};
+            for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
+              out[k] = sanitizeLSValue(val);
+            }
+            // Enforce theme enum if present
+            if (typeof out.colorTheme === "string" && !VALID_THEMES.has(out.colorTheme)) {
+              out.colorTheme = "ocean";
+            }
+            return out;
+          }
+          return v;
+        };
         if (data.localStorageData && typeof data.localStorageData === "object") {
           for (const [key, value] of Object.entries(data.localStorageData as Record<string, unknown>)) {
             if (!ALLOWED_LS_KEYS.has(key)) continue;
-            localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+            try {
+              const parsed = typeof value === "string" ? JSON.parse(value) : value;
+              const clean = sanitizeLSValue(parsed);
+              localStorage.setItem(key, JSON.stringify(clean));
+            } catch {
+              // Non-JSON string value: only accept if no HTML markers
+              if (typeof value === "string" && !/[<>]/.test(value)) {
+                localStorage.setItem(key, value);
+              }
+            }
           }
         }
         if (strategy === "overwrite") {
