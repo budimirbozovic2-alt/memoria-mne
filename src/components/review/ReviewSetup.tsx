@@ -121,17 +121,44 @@ export default function ReviewSetup({
     return dueCards.filter(c => c.tags?.includes("često-na-ispitu")).length;
   }, [dueCards]);
 
+  const subPosMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of categoryRecords) {
+      (r.subcategories || []).forEach((sub: any, i: number) => {
+        const id = typeof sub === "string" ? sub : sub.id;
+        const pos = typeof sub === "string" ? i : (sub.sortOrder ?? i);
+        m[id] = pos;
+      });
+    }
+    return m;
+  }, [categoryRecords]);
+
+  const chapPosMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of categoryRecords) {
+      for (const sub of r.subcategories || []) {
+        if (typeof sub === "string") continue;
+        (sub.chapters || []).forEach((ch: any, i: number) => {
+          const id = typeof ch === "string" ? ch : ch.id;
+          const pos = typeof ch === "string" ? i : (ch.sortOrder ?? i);
+          m[id] = pos;
+        });
+      }
+    }
+    return m;
+  }, [categoryRecords]);
+
   const dueSubcategories = useMemo(() => {
     if (!selectedCategory) return [];
     const subs = new Set(dueCards.filter((c) => c.categoryId === selectedCategory && c.subcategoryId).map((c) => c.subcategoryId!));
-    return Array.from(subs).sort();
-  }, [dueCards, selectedCategory]);
+    return Array.from(subs).sort((a, b) => (subPosMap[a] ?? 999) - (subPosMap[b] ?? 999));
+  }, [dueCards, selectedCategory, subPosMap]);
 
   const dueChapters = useMemo(() => {
     if (!selectedSubcategory) return [];
     const chapters = new Set(dueCards.filter(c => c.categoryId === selectedCategory && c.subcategoryId === selectedSubcategory && c.chapterId).map(c => c.chapterId!));
-    return Array.from(chapters).sort();
-  }, [dueCards, selectedCategory, selectedSubcategory]);
+    return Array.from(chapters).sort((a, b) => (chapPosMap[a] ?? 999) - (chapPosMap[b] ?? 999));
+  }, [dueCards, selectedCategory, selectedSubcategory, chapPosMap]);
 
   const modeLabels: Record<string, string> = {
     stabilization: "Fokusirano Utvrđivanje",
