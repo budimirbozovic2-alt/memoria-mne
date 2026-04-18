@@ -59,13 +59,29 @@ export default function SessionFilters({
   }, [categoryRecords]);
   const availableSubs = selectedCategory ? (subcategories[selectedCategory] || []) : [];
 
+  const chapterPosMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of (categoryRecords || [])) {
+      for (const sub of (r.subcategories || [])) {
+        if (typeof sub === 'object' && sub.chapters) {
+          sub.chapters.forEach((ch: any, i: number) => {
+            const id = typeof ch === 'string' ? ch : ch.id;
+            const order = typeof ch === 'string' ? i : (ch.sortOrder ?? i);
+            m[id] = order;
+          });
+        }
+      }
+    }
+    return m;
+  }, [categoryRecords]);
+
   const chaptersInSub = useMemo(() => {
     if (!selectedSubcategory) return [];
     return Array.from(new Set(
       cards.filter(c => c.categoryId === selectedCategory && c.subcategoryId === selectedSubcategory && c.chapterId)
         .map(c => c.chapterId!)
-    )).sort((a, b) => (subNameMap[a] || a).localeCompare(subNameMap[b] || b));
-  }, [cards, selectedCategory, selectedSubcategory]);
+    )).sort((a, b) => (chapterPosMap[a] ?? 999) - (chapterPosMap[b] ?? 999));
+  }, [cards, selectedCategory, selectedSubcategory, chapterPosMap]);
 
   if (categories.length < 1) return null;
 
