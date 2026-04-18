@@ -34,7 +34,14 @@ export function useCards() {
   const subcategories = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const r of categoryRecords) {
-      map[r.id] = (r.subcategories || []).map((n: any) =>
+      const subs = [...(r.subcategories || [])];
+      // Sort by sortOrder (objects only; legacy strings keep insertion order)
+      subs.sort((a: any, b: any) => {
+        const ao = typeof a === "string" ? 0 : (a.sortOrder ?? 0);
+        const bo = typeof b === "string" ? 0 : (b.sortOrder ?? 0);
+        return ao - bo;
+      });
+      map[r.id] = subs.map((n: any) =>
         typeof n === "string" ? n : n.id  // UUID, not name
       );
     }
