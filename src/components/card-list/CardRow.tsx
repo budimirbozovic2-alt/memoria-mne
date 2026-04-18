@@ -127,7 +127,7 @@ const CardRow = memo(function CardRow({
         <TextSelectionTooltip cardId={card.id} question={card.question} category={card.categoryId} subcategoryId={card.subcategoryId} tags={card.tags} keyParts={card.keyParts} onMarkKeyPart={onAddKeyPart ? (text: string) => onAddKeyPart(card.id, text) : undefined}>
           <div className="px-5 pb-5 space-y-3 border-t pt-4 max-h-[60vh] overflow-y-auto">
             {isFlash ? (
-              <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: highlightKeyParts(card.sections[0]?.content || "", card.keyParts) }} />
+              <div className="text-sm text-muted-foreground card-prose" dangerouslySetInnerHTML={{ __html: highlightKeyParts(card.sections[0]?.content || "", card.keyParts) }} />
             ) : (
               card.sections.map(s => {
                 const sScore = getSectionScore(s);
@@ -144,7 +144,7 @@ const CardRow = memo(function CardRow({
                       </div>
                     </div>
                     <SectionBar score={sScore} />
-                    <div className="text-sm text-muted-foreground line-clamp-2" dangerouslySetInnerHTML={{ __html: highlightKeyParts(s.content, card.keyParts) }} />
+                    <div className="text-sm text-muted-foreground line-clamp-2 card-prose" dangerouslySetInnerHTML={{ __html: highlightKeyParts(s.content, card.keyParts) }} />
                   </div>
                 );
               })

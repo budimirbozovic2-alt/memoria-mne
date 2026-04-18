@@ -87,7 +87,7 @@ export default function StudyModeFree({
                 </button>
                 {expandedSections.has(0) && (
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                    <HighlightedSection content={card.sections[0]?.content || ""} keyParts={card.keyParts} className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
+                    <HighlightedSection content={card.sections[0]?.content || ""} keyParts={card.keyParts} className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none card-prose" />
                   </motion.div>
                 )}
               </div>
@@ -109,7 +109,7 @@ export default function StudyModeFree({
                     </button>
                     {expandedSections.has(i) && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="px-4 pb-4 border-t">
-                        <HighlightedSection content={section.content} keyParts={card.keyParts} className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
+                        <HighlightedSection content={section.content} keyParts={card.keyParts} className="pt-4 text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none card-prose" />
                       </motion.div>
                     )}
                   </div>

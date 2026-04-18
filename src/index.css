@@ -789,3 +789,19 @@ input[type="number"] {
   appearance: textfield;
 }
 
+/* ─── Card prose — suptilna separacija pasusa unutar kartica ───
+   Daje ~7-8px razmaka između susjednih blokova (umjesto ~20px praznog reda).
+   Override-uje default <p> margine i Tailwind Typography prose margine. */
+.card-prose p {
+  margin-block: 0;
+}
+.card-prose p + p,
+.card-prose p + ul,
+.card-prose p + ol,
+.card-prose ul + p,
+.card-prose ol + p,
+.card-prose blockquote + p,
+.card-prose p + blockquote {
+  margin-top: 0.55em;
+}
+
