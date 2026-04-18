@@ -147,7 +147,7 @@ export default function StudyModeChain({
                     ) : (
                       <div className="space-y-4">
                         <div className="rounded-lg bg-secondary/50 p-4">
-                          <HighlightedSection content={sections[chainIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
+                          <HighlightedSection content={sections[chainIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none card-prose" />
                         </div>
                         <GradeButtons onGrade={handleChainGrade} hint="Ocijeni (samo 4 = napredak)" />
                       </div>
@@ -175,7 +175,7 @@ export default function StudyModeChain({
                     ) : (
                       <div className="space-y-4">
                         <div className="rounded-lg bg-secondary/50 p-4">
-                          <HighlightedSection content={sections[chainReviewIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
+                          <HighlightedSection content={sections[chainReviewIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none card-prose" />
                         </div>
                         <GradeButtons onGrade={handleChainReviewGrade} hint="Bilo šta ispod 4 = reset na modul 1" />
                       </div>

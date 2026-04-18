@@ -99,7 +99,7 @@ export default function StudyModeRecall({
                   {sections.map(section => (
                     <div key={section.id} className="rounded-xl border bg-card p-4">
                       <p className="font-medium text-sm mb-2">{section.title}</p>
-                      <HighlightedSection content={section.content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
+                      <HighlightedSection content={section.content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none card-prose" />
                     </div>
                   ))}
                 </div>
@@ -130,7 +130,7 @@ export default function StudyModeRecall({
                 ) : (
                   <div className="space-y-4">
                     <div className="rounded-lg bg-secondary/50 p-4">
-                      <HighlightedSection content={sections[drillIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none" />
+                      <HighlightedSection content={sections[drillIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none card-prose" />
                     </div>
                     <GradeButtons onGrade={handleArGrade} hint="Ocijeni svoje znanje (samo 4 = napredak)" />
                   </div>
