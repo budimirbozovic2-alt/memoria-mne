@@ -1,59 +1,45 @@
 
 
-# Plan: Učenje i Konsolidacija — poštuj `sortOrder` glava i potkategorija
+## Plan: Sortiranje `dueSubcategories` u ReviewSetup po `sortOrder`
 
-## Dijagnoza
+### Dijagnoza
 
-Korisnikov manuelni redoslijed iz **Strukture predmeta** (`sortOrder` na `SubcategoryNode` i `ChapterNode`) se ne primjenjuje u Učenju ni Konsolidaciji:
+U `ReviewSetup.tsx:124-128`, `dueSubcategories` koristi `Array.from(...).sort()` što sortira UUID-ove leksikografski (random redoslijed). Iako pillovi potkategorija idu kroz `SessionFilters` koji već dobija sortiranu mapu iz `useCards.subcategories` (riješeno u prethodnoj rundi), ovaj lokalni memo se ne koristi za UI direktno — ali postoji kao **dead-ish code** koji može zbuniti budući rad.
 
-1. **`SessionFilters.tsx:62-68`** — pillovi glava se sortiraju **alfabetski po nazivu** (`localeCompare`).
-2. **`useCards.ts:34-42`** — derivacija `subcategories: Record<string, string[]>` čita iz `categoryRecords` direktno bez explicit sortiranja po `sortOrder`. Trenutno nekad radi (DB redoslijed), ali nije garantovano poslije reorder-a.
-3. **`ReviewSetup.tsx:130-134`** — `dueChapters` koristi `Array.from(...).sort()` što sortira po UUID stringu (random redoslijed).
-4. **`LearnSession.sortedCards`** — kad je `sortMode === "order"`, sortira se po `subPos`/`chapPos` koje **dolaze iz `sortOrder`-a** — ovo radi ispravno, ali pillovi za **filter** (gdje korisnik bira koju glavu otvoriti) prikazuju ih pogrešnim redoslijedom.
+Provjerom `SessionFilters.tsx`, lista potkategorija u pillovima se gradi iz `subcategories` propa (UUID liste već sortirane po `sortOrder`), tako da je vizuelni redoslijed već ispravan. Međutim, da bi `ReviewSetup` lokalna logika bila konzistentna sa ostatkom koda, ima smisla ovaj memo uskladiti.
 
-## Rješenje: jedinstven izvor istine — `sortOrder`
+### Rješenje
 
-### 1. `src/hooks/useCards.ts` — sortiraj potkategorije pri derivaciji
-U `subcategories` memo, prije mapiranja na ID-ove dodaj sort po `sortOrder`:
+U `ReviewSetup.tsx` zamijeniti `dueSubcategories` memo da koristi poziciju iz `categoryRecords`:
+
 ```ts
-map[r.id] = [...(r.subcategories || [])]
-  .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-  .map(n => typeof n === "string" ? n : n.id);
-```
-
-### 2. `src/components/SessionFilters.tsx` — sortiraj glave po `sortOrder` iz `categoryRecords`
-Zamijeni `chaptersInSub` memo da koristi UUID → `sortOrder` mapu izgrađenu iz `categoryRecords`:
-```ts
-const chapterPosMap = useMemo(() => {
+const subPosMap = useMemo(() => {
   const m: Record<string, number> = {};
-  for (const r of categoryRecords || [])
-    for (const sub of r.subcategories || [])
-      (sub.chapters || []).forEach((ch, i) =>
-        m[typeof ch === "string" ? ch : ch.id] = typeof ch === "string" ? i : (ch.sortOrder ?? i)
-      );
+  for (const r of categoryRecords) {
+    (r.subcategories || []).forEach((sub, i) => {
+      const id = typeof sub === "string" ? sub : sub.id;
+      const pos = typeof sub === "string" ? i : (sub.sortOrder ?? i);
+      m[id] = pos;
+    });
+  }
   return m;
 }, [categoryRecords]);
 
-const chaptersInSub = useMemo(() => {
-  if (!selectedSubcategory) return [];
-  return Array.from(new Set(
-    cards.filter(c => c.categoryId === selectedCategory && c.subcategoryId === selectedSubcategory && c.chapterId)
-      .map(c => c.chapterId!)
-  )).sort((a, b) => (chapterPosMap[a] ?? 999) - (chapterPosMap[b] ?? 999));
-}, [cards, selectedCategory, selectedSubcategory, chapterPosMap]);
+const dueSubcategories = useMemo(() => {
+  if (!selectedCategory) return [];
+  const subs = new Set(
+    dueCards.filter(c => c.categoryId === selectedCategory && c.subcategoryId)
+      .map(c => c.subcategoryId!)
+  );
+  return Array.from(subs).sort((a, b) => (subPosMap[a] ?? 999) - (subPosMap[b] ?? 999));
+}, [dueCards, selectedCategory, subPosMap]);
 ```
 
-### 3. `src/components/review/ReviewSetup.tsx` — `dueChapters` koristi isti princip
-Ovaj memo se pravi lokalno, ali rezultat se ne koristi za UI direktno (pillovi idu kroz `SessionFilters` koji sad ima vlastitu logiku). **Provjera:** `dueChapters` se zapravo nigdje ne renderuje u JSX-u — može se ukloniti (dead code) ili ostaviti netaknuto. Ostavljam netaknuto, uklanjanje van scope-a.
+Isto principijelno za `dueChapters` (linija 130-134) — sortirati po `sortOrder` glava umjesto UUID stringa.
 
-### Što NE diram
-- `SortMode === "order"` u `LearnSession` (već radi ispravno preko `positionMaps`).
-- Strukturu, drag&drop, persistenciju `sortOrder`-a — sve ostaje.
-- `ReviewSetup.dueSubcategories` (alfa po UUID, ali pillovi idu kroz `SessionFilters` → riješeno automatski).
+### Fajlovi
 
-## Fajlovi
-- `src/hooks/useCards.ts` — 3 linije (sort u memo)
-- `src/components/SessionFilters.tsx` — ~12 linija (novi `chapterPosMap` memo + izmjena `chaptersInSub`)
+- `src/components/review/ReviewSetup.tsx` — ~20 izmijenjenih linija (novi `subPosMap` + `chapPosMap` memo + izmjene postojećih `dueSubcategories` i `dueChapters` memo-a)
 
-Ukupno: **2 fajla**, ~15 izmijenjenih linija. Nakon primjene, glave i potkategorije u Učenju i Konsolidaciji prate redoslijed iz Strukture predmeta.
+Ukupno: **1 fajl**. Konzistentnost sa `SessionFilters` pristupom iz prethodne runde.
 
