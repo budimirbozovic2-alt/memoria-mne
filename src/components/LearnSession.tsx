@@ -106,6 +106,13 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   const goNext = useCallback(() => { if (currentIndex + 1 < sortedCards.length) goToCard(currentIndex + 1); }, [currentIndex, sortedCards.length, goToCard]);
   const goPrev = useCallback(() => { if (currentIndex > 0) goToCard(currentIndex - 1); }, [currentIndex, goToCard]);
 
+  // Defensive clamp: ako filter smanji listu ispod currentIndex
+  useEffect(() => {
+    if (started && sortedCards.length > 0 && currentIndex >= sortedCards.length) {
+      goToCard(sortedCards.length - 1);
+    }
+  }, [started, sortedCards.length, currentIndex, goToCard]);
+
   const handleMarkRead = useCallback((id: string) => {
     onMarkRead(id);
     setReadCards(prev => new Set(prev).add(id));
