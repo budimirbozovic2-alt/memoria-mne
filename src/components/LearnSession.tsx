@@ -167,6 +167,21 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
       );
   }
 
+  // ── EMPTY FILTER STATE (no cards match) ──
+  if (!card && sortedCards.length === 0) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-muted-foreground">Nema kartica za odabrani filter.</p>
+        <button
+          onClick={() => setStarted(false)}
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+        >
+          Promijeni filter
+        </button>
+      </div>
+    );
+  }
+
   // ── FINISHED STATE ──
   if (!card) {
     const elapsed = Date.now() - sessionStartTime;
