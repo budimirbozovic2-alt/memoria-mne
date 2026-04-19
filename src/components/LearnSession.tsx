@@ -153,7 +153,15 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
           onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
           onFilterTypeChange={setFilterType}
           onSortModeChange={setSortMode}
-          onStart={() => setStarted(true)}
+          onStart={() => {
+            setCurrentIndex(0);
+            sessionStorage.setItem("sr-learn-current-index", "0");
+            setReadCards(new Set());
+            setCompletedCards(new Set());
+            setChainCompletedCards(new Set());
+            activityLoggedRef.current = false;
+            setStarted(true);
+          }}
           onBackToMode={() => setSetupStep("mode")}
         />
       );
