@@ -106,6 +106,13 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   const goNext = useCallback(() => { if (currentIndex + 1 < sortedCards.length) goToCard(currentIndex + 1); }, [currentIndex, sortedCards.length, goToCard]);
   const goPrev = useCallback(() => { if (currentIndex > 0) goToCard(currentIndex - 1); }, [currentIndex, goToCard]);
 
+  // Defensive clamp: ako filter smanji listu ispod currentIndex
+  useEffect(() => {
+    if (started && sortedCards.length > 0 && currentIndex >= sortedCards.length) {
+      goToCard(sortedCards.length - 1);
+    }
+  }, [started, sortedCards.length, currentIndex, goToCard]);
+
   const handleMarkRead = useCallback((id: string) => {
     onMarkRead(id);
     setReadCards(prev => new Set(prev).add(id));
@@ -146,10 +153,33 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
           onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
           onFilterTypeChange={setFilterType}
           onSortModeChange={setSortMode}
-          onStart={() => setStarted(true)}
+          onStart={() => {
+            setCurrentIndex(0);
+            sessionStorage.setItem("sr-learn-current-index", "0");
+            setReadCards(new Set());
+            setCompletedCards(new Set());
+            setChainCompletedCards(new Set());
+            activityLoggedRef.current = false;
+            setStarted(true);
+          }}
           onBackToMode={() => setSetupStep("mode")}
         />
       );
+  }
+
+  // ── EMPTY FILTER STATE (no cards match) ──
+  if (!card && sortedCards.length === 0) {
+    return (
+      <div className="text-center py-20 space-y-4">
+        <p className="text-muted-foreground">Nema kartica za odabrani filter.</p>
+        <button
+          onClick={() => setStarted(false)}
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+        >
+          Promijeni filter
+        </button>
+      </div>
+    );
   }
 
   // ── FINISHED STATE ──
