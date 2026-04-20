@@ -1,10 +1,24 @@
-import { Flame } from "lucide-react";
-import { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Flame, type LucideIcon } from "lucide-react";
+import { useMemo, type ComponentType } from "react";
+import { motion } from "framer-motion";
 
 import ScrollableRow from "@/components/ScrollableRow";
 import type { Card } from "@/lib/spaced-repetition";
 import type { CategoryRecord } from "@/lib/db";
+
+export interface SortControlOption<T extends string = string> {
+  key: T;
+  label: string;
+  desc: string;
+  icon: LucideIcon | ComponentType<{ className?: string }>;
+}
+
+export interface SortControl<T extends string = string> {
+  value: T;
+  onChange: (next: T) => void;
+  options: ReadonlyArray<SortControlOption<T>>;
+  label?: string;
+}
 
 interface SessionFiltersProps {
   /** Unique prefix for layoutId animations (e.g. "learn", "review") */
@@ -25,6 +39,8 @@ interface SessionFiltersProps {
   onSelectChapter: (ch: string | null) => void;
   onToggleExamFrequent: () => void;
   onFilterTypeChange?: (type: "all" | "essay" | "flash") => void;
+  /** Optional sort control rendered at the bottom of the panel */
+  sortControl?: SortControl;
 }
 
 const PILL_BASE = "relative px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 transition-colors";
