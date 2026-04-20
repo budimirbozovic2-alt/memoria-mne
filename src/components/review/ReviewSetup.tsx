@@ -176,7 +176,7 @@ export default function ReviewSetup({
   // ── Step 1: Choose mode ──
   if (setupStep === "mode") {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto space-y-8 py-10">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto space-y-8 py-10">
         <AnimatePresence>
           {showOnboarding && (
             <OnboardingModal
