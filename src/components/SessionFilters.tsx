@@ -64,6 +64,7 @@ export default function SessionFilters({
   onSelectChapter,
   onToggleExamFrequent,
   onFilterTypeChange,
+  sortControl,
 }: SessionFiltersProps) {
   // Helper to resolve UUID → display name
   const catName = (id: string) => categoryRecords?.find(r => r.id === id)?.name ?? id;
