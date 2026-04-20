@@ -27,6 +27,10 @@ interface SessionFiltersProps {
   onFilterTypeChange?: (type: "all" | "essay" | "flash") => void;
 }
 
+const PILL_BASE = "relative px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 transition-colors";
+const PILL_ACTIVE = "text-primary-foreground";
+const PILL_IDLE = "text-muted-foreground hover:text-foreground";
+
 export default function SessionFilters({
   layoutPrefix,
   cards,
@@ -83,76 +87,101 @@ export default function SessionFilters({
     )).sort((a, b) => (chapterPosMap[a] ?? 999) - (chapterPosMap[b] ?? 999));
   }, [cards, selectedCategory, selectedSubcategory, chapterPosMap]);
 
+  // Live count: how many cards match the currently selected filters
+  const filteredCount = useMemo(() => {
+    return cards.filter(c => {
+      if (selectedCategory && c.categoryId !== selectedCategory) return false;
+      if (selectedSubcategory && c.subcategoryId !== selectedSubcategory) return false;
+      if (selectedChapter && c.chapterId !== selectedChapter) return false;
+      if (filterType === "essay" && c.type !== "essay") return false;
+      if (filterType === "flash" && c.type !== "flash") return false;
+      if (filterExamFrequent && !c.tags?.includes("exam-frequent")) return false;
+      return true;
+    }).length;
+  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, filterType, filterExamFrequent]);
+
   if (categories.length < 1) return null;
 
   return (
-    <div className="space-y-3">
-      {/* Type + Exam frequent row */}
-      <div className="flex items-center gap-6 flex-wrap">
-        {onFilterTypeChange && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Tip</span>
-            <div className="flex gap-1">
-              {(["all", "essay", "flash"] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => onFilterTypeChange(t)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${filterType === t ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
-                >
-                  {t === "all" ? "Sve" : t === "essay" ? "Esejska" : "Blic"}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {onFilterTypeChange && examFrequentCount > 0 && <div className="w-px h-6 bg-border hidden sm:block" />}
-        {examFrequentCount > 0 && (
-          <button
-            onClick={onToggleExamFrequent}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${filterExamFrequent ? "bg-destructive/15 text-destructive border border-destructive/30" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
-          >
-            <Flame className="h-3 w-3" />
-            Često na ispitu ({examFrequentCount})
-          </button>
-        )}
-      </div>
-
+    <div className="glass-card rounded-xl p-5 space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Kategorija</label>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">Filteri</h3>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          <span className="text-foreground font-medium">{filteredCount}</span>
+          <span className="text-muted-foreground/60"> / {cards.length}</span>
+          <span className="ml-1">modula</span>
+        </span>
       </div>
 
-      {/* Category pills */}
-      <ScrollableRow>
-        <motion.button
-          onClick={() => onSelectCategory(null)}
-          className={`relative px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedCategory ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-          whileTap={{ scale: 0.95 }}
-        >
-          {!selectedCategory && (
-            <motion.span layoutId={`${layoutPrefix}-cat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
+      {/* Type + Exam frequent row */}
+      {(onFilterTypeChange || examFrequentCount > 0) && (
+        <div className="flex items-center gap-3 flex-wrap">
+          {onFilterTypeChange && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Tip</span>
+              <div className="flex gap-1">
+                {(["all", "essay", "flash"] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => onFilterTypeChange(t)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${filterType === t ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+                  >
+                    {t === "all" ? "Sve" : t === "essay" ? "Esejska" : "Blic"}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
-          <span className="relative z-10">Sve</span>
-        </motion.button>
-        {categories.map((c) => (
+          {examFrequentCount > 0 && (
+            <button
+              onClick={onToggleExamFrequent}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ml-auto ${filterExamFrequent ? "bg-destructive/15 text-destructive border border-destructive/30" : "text-muted-foreground hover:text-foreground hover:bg-secondary"}`}
+            >
+              <Flame className="h-3 w-3" />
+              Često na ispitu ({examFrequentCount})
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="h-px bg-border/60" />
+
+      {/* Predmet (Category) */}
+      <div className="space-y-2">
+        <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Predmet</label>
+        <ScrollableRow>
           <motion.button
-            key={c}
-            onClick={() => onSelectCategory(c)}
-            className={`relative px-3 py-1.5 rounded-md text-xs font-medium flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-colors ${selectedCategory === c ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            onClick={() => onSelectCategory(null)}
+            className={`${PILL_BASE} ${!selectedCategory ? PILL_ACTIVE : PILL_IDLE}`}
             whileTap={{ scale: 0.95 }}
           >
-            {selectedCategory === c && (
+            {!selectedCategory && (
               <motion.span layoutId={`${layoutPrefix}-cat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
             )}
-            <span className="relative z-10">{catName(c)}</span>
-            <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
-              {cards.filter(card => card.categoryId === c).length}
-            </span>
+            <span className="relative z-10">Sve</span>
           </motion.button>
-        ))}
-      </ScrollableRow>
+          {categories.map((c) => (
+            <motion.button
+              key={c}
+              onClick={() => onSelectCategory(c)}
+              className={`${PILL_BASE} flex items-center gap-1.5 ${selectedCategory === c ? PILL_ACTIVE : PILL_IDLE}`}
+              whileTap={{ scale: 0.95 }}
+            >
+              {selectedCategory === c && (
+                <motion.span layoutId={`${layoutPrefix}-cat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
+              )}
+              <span className="relative z-10">{catName(c)}</span>
+              <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
+                {cards.filter(card => card.categoryId === c).length}
+              </span>
+            </motion.button>
+          ))}
+        </ScrollableRow>
+      </div>
 
-      {/* Subcategory pills */}
-      <AnimatePresence>
+      {/* Potkategorija */}
+      <AnimatePresence initial={false}>
         {selectedCategory && availableSubs.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -161,37 +190,40 @@ export default function SessionFilters({
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <ScrollableRow className="pl-3 border-l-2 border-primary/20 ml-1">
-              <motion.button
-                onClick={() => onSelectSubcategory(null)}
-                className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedSubcategory ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                whileTap={{ scale: 0.95 }}
-              >
-                {!selectedSubcategory && (
-                  <motion.span layoutId={`${layoutPrefix}-subcat-pill`} className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
-                )}
-                <span className="relative z-10">Sve podkat.</span>
-              </motion.button>
-              {availableSubs.map((sc) => (
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Potkategorija</label>
+              <ScrollableRow>
                 <motion.button
-                  key={sc}
-                  onClick={() => onSelectSubcategory(sc)}
-                  className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${selectedSubcategory === sc ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={() => onSelectSubcategory(null)}
+                  className={`${PILL_BASE} ${!selectedSubcategory ? PILL_ACTIVE : PILL_IDLE}`}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {selectedSubcategory === sc && (
-                    <motion.span layoutId={`${layoutPrefix}-subcat-pill`} className="absolute inset-0 rounded-md bg-primary/15" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                  {!selectedSubcategory && (
+                    <motion.span layoutId={`${layoutPrefix}-subcat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
                   )}
-                  <span className="relative z-10">{subNameMap[sc] || sc}</span>
+                  <span className="relative z-10">Sve</span>
                 </motion.button>
-              ))}
-            </ScrollableRow>
+                {availableSubs.map((sc) => (
+                  <motion.button
+                    key={sc}
+                    onClick={() => onSelectSubcategory(sc)}
+                    className={`${PILL_BASE} ${selectedSubcategory === sc ? PILL_ACTIVE : PILL_IDLE}`}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {selectedSubcategory === sc && (
+                      <motion.span layoutId={`${layoutPrefix}-subcat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                    )}
+                    <span className="relative z-10">{subNameMap[sc] || sc}</span>
+                  </motion.button>
+                ))}
+              </ScrollableRow>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Chapter pills */}
-      <AnimatePresence>
+      {/* Glava (Chapter) */}
+      <AnimatePresence initial={false}>
         {selectedSubcategory && chaptersInSub.length > 0 && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -200,31 +232,34 @@ export default function SessionFilters({
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="overflow-hidden"
           >
-            <ScrollableRow className="pl-6 border-l-2 border-primary/10 ml-1">
-              <motion.button
-                onClick={() => onSelectChapter(null)}
-                className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${!selectedChapter ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
-                whileTap={{ scale: 0.95 }}
-              >
-                {!selectedChapter && (
-                  <motion.span layoutId={`${layoutPrefix}-chapter-pill`} className="absolute inset-0 rounded-md bg-primary/10" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
-                )}
-                <span className="relative z-10">Sve glave</span>
-              </motion.button>
-              {chaptersInSub.map((ch) => (
+            <div className="space-y-2">
+              <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Glava</label>
+              <ScrollableRow>
                 <motion.button
-                  key={ch}
-                  onClick={() => onSelectChapter(ch)}
-                  className={`relative px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap flex-shrink-0 transition-colors ${selectedChapter === ch ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  onClick={() => onSelectChapter(null)}
+                  className={`${PILL_BASE} ${!selectedChapter ? PILL_ACTIVE : PILL_IDLE}`}
                   whileTap={{ scale: 0.95 }}
                 >
-                  {selectedChapter === ch && (
-                    <motion.span layoutId={`${layoutPrefix}-chapter-pill`} className="absolute inset-0 rounded-md bg-primary/10" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                  {!selectedChapter && (
+                    <motion.span layoutId={`${layoutPrefix}-chapter-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
                   )}
-                  <span className="relative z-10">{subNameMap[ch] || ch}</span>
+                  <span className="relative z-10">Sve</span>
                 </motion.button>
-              ))}
-            </ScrollableRow>
+                {chaptersInSub.map((ch) => (
+                  <motion.button
+                    key={ch}
+                    onClick={() => onSelectChapter(ch)}
+                    className={`${PILL_BASE} ${selectedChapter === ch ? PILL_ACTIVE : PILL_IDLE}`}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {selectedChapter === ch && (
+                      <motion.span layoutId={`${layoutPrefix}-chapter-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.3, bounce: 0.15 }} />
+                    )}
+                    <span className="relative z-10">{subNameMap[ch] || ch}</span>
+                  </motion.button>
+                ))}
+              </ScrollableRow>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
