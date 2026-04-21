@@ -32,6 +32,9 @@ const MindMapPage = lazy(() => import("@/views/MindMapPage"));
 
 const CategoryView = lazy(() => import("@/views/CategoryView"));
 const SubjectDashboard = lazy(() => import("@/views/SubjectDashboard"));
+const SubjectSpeedReaderPage = lazy(() => import("@/views/SubjectSpeedReaderPage"));
+const SubjectMindMapPage = lazy(() => import("@/views/SubjectMindMapPage"));
+const SubjectMnemonicPage = lazy(() => import("@/views/SubjectMnemonicPage"));
 
 /** key={categoryId} forces full remount when navigating between categories — resets all local state */
 function CategoryViewWrapper() {
