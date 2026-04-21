@@ -1,54 +1,92 @@
 
 
-## Plan: Dashboard prominent cards + SubjectDashboard placeholder
+## Plan: SubjectDashboard sa Workflow karticama, Prikazom Znanja i Kontekstualnim Alatima
 
-### Korak 1 — Dva istaknuta dugmeta na Dashboard-u
+### Pregled
 
-U `src/components/Dashboard.tsx`, dodati novu komponentu `ToolCards` koja renderuje dva velika `glass-card` linka u grid rasporedu (`grid-cols-2`) odmah ispod `QuickActions` u lijevoj koloni:
+Proširiće se `SubjectDashboard.tsx` iz placeholder-a u funkcionalni dashboard za jedan predmet, sa tri sekcije:
 
-1. **"Strateški planer"** — ikona `Gauge`, link ka `/planner`, kratak opis "Planiraj tempo i prioritete"
-2. **"Statistika"** — ikona `BarChart3`, link ka `/stats`, kratak opis "Pregled napretka i analitika"
+1. **Integrisani Workflow Učenja** — 5 vizuelno distinktnih kartica
+2. **Prikaz Znanja** — progress barovi po potkategorijama/glavama iz postojećih podataka
+3. **Kontekstualni Alati** — pristupne tačke za Speed Reader, Mentalne mape i Mnemoničke kuke, scoped na `categoryId`
 
-Stil: `glass-card rounded-xl p-5 hover:border-primary/40 transition-all` sa ikonom, naslovom i jednim redom opisa. Konzistentno sa postojećim widget-ima (CoreStats, DailyBriefing). Koristiće `Link` iz react-router-dom.
+### Sekcija 1: Integrisani Workflow Učenja
 
-**Fajl:** `src/components/dashboard/ToolCards.tsx` (novi) + import u `src/components/Dashboard.tsx` (1 linija import + 1 linija JSX ispod `QuickActions`).
+Pet `glass-card` kartica u gridu (`grid-cols-5` na desktop-u, `grid-cols-2` + `col-span-full` na manjim):
 
-### Korak 2 — SubjectDashboard placeholder stranica
+| # | Naziv | Ikona | Link | Opis |
+|---|-------|-------|------|------|
+| 1 | Slobodno istraživanje | `Compass` | `/category/{categoryId}` (postojeći CategoryView sa izvorima) | "Čitaj izvore, pravi kartice" |
+| 2 | Pasivno čitanje | `/subject/{categoryId}/speed-reader` (nova ruta) | `BookOpen` | "Brzo čitanje kartica i izvora" |
+| 3 | Aktivno prisjećanje | `/learn?cat={categoryId}` | `Brain` | "Učenje i testiranje znanja" |
+| 4 | Lokalna Konsolidacija | `/review?cat={categoryId}` | `RefreshCw` | "Ponavljanje dospjelih kartica" |
+| 5 | Globalna Konsolidacija | `/review` | `Globe` | "Ponavljanje svih predmeta" |
 
-Nova ruta `/subject/:categoryId` sa placeholder stranicom:
+Korake 3, 4 i 5 linkuju na postojeće `/learn` i `/review` rute. Kategorija se prosljeđuje kao query parametar `cat` koji se može koristiti za automatski pre-select filtera (odvojena buduća iteracija — za sada samo navigira).
 
-1. **`src/views/SubjectDashboard.tsx`** (novi fajl):
-   - Čita `categoryId` iz URL parametara (`useParams`)
-   - Mapira UUID na ime predmeta iz `categoryRecords` (preko `useCategoryData()`)
-   - Prikazuje naslov predmeta, `glass-card` placeholder sekcija "Učenje" (sa placeholder tekstom), i "Nazad na početnu" dugme (`Link to="/"`)
-   - Čist, minimalan dizajn konzistentan sa ostatkom app-a
+### Sekcija 2: Prikaz Znanja
 
-2. **`src/App.tsx`** — dodati novu rutu:
-   ```
-   <Route path="/subject/:categoryId" element={<SubjectDashboardWrapper />} />
-   ```
-   Sa `key={categoryId}` wrapper-om kao kod postojećeg `CategoryViewWrapper`.
+Koristi `useCardData()` i `useCategoryData()` za izračunavanje progresa po potkategorijama i glavama za dati `categoryId`:
 
-3. **`src/views/CategoriesRoutePage.tsx`** (ili `CategoryManager.tsx`):
-   - Dodati `onClick` na svaku kategoriju karticu koja navigira na `/subject/{categoryId}`
-   - Postojeća `/category/:categoryId` ruta i `CategoryView` ostaju potpuno netaknuti
+- Filtriraj `cards` po `card.categoryId === categoryId`
+- Grupiši po `subcategoryId` (mapiraj UUID na ime iz `categoryRecords`)
+- Za svaku grupu izračunaj:
+  - Ukupan broj kartica
+  - Prosječni mastery level koristeći `getCardMasteryLevel()` iz `src/lib/mastery.ts`
+  - Procenat "naučenih" sekcija (state !== New)
+- Renderuj `Progress` bar za svaku potkategoriju sa brojem kartica i procentom
+- Ako potkategorija ima glave, prikažu se ugniježdeno (indent) ispod
+- Koristi boje iz `getMasteryColor()` za progress indikator
 
-### Šta NE diram
+### Sekcija 3: Kontekstualni Alati
 
-- Sidebar navigacija — nepromijenjena, i dalje vodi na `/category/:categoryId`
-- `CategoryView.tsx` — netaknut, radi kao i prije
-- Svi postojeći widgeti na Dashboard-u — nijedan se ne uklanja ni pomjera
-- Existing navigation links i rute — sve ostaje
+Tri kartice u `grid-cols-3`:
+
+| Alat | Ikona | Akcija |
+|------|-------|--------|
+| Speed Reader | `Zap` | Navigira na `/subject/{categoryId}/speed-reader` |
+| Mentalne mape | `GitBranch` | Navigira na `/subject/{categoryId}/mind-maps` |
+| Mnemoničke kuke | `Brain` | Navigira na `/subject/{categoryId}/mnemonics` |
+
+Za sada, ove rute će biti registrovane u `App.tsx` kao wrapper stranice koje proslijeđuju `categoryId` kao prop ili ga čitaju iz URL-a. Postojeće globalne rute (`/speed-reader`, `/mind-map`, `/mnemonics`) ostaju netaknute.
+
+### Nove rute u App.tsx
+
+Tri nove rute koje renderuju postojeće komponente sa pre-selected `categoryId`:
+
+```
+/subject/:categoryId/speed-reader → SpeedReaderPage sa initialCategoryId prop
+/subject/:categoryId/mind-maps → MindMapPage sa categoryId filter
+/subject/:categoryId/mnemonics → MnemonicPage sa categoryId filter
+```
+
+Wrapper komponente čitaju `categoryId` iz `useParams()` i proslijeđuju ga kao prop.
+
+### Izmjene u postojećim komponentama
+
+**`SpeedReader.tsx` / `useSpeedReaderEngine.ts`:**
+- Dodati opcioni `initialCategoryId?: string` prop u `useSpeedReaderEngine`
+- Ako je proslijeđen, `selCat` se inicijalizuje na tu vrijednost umjesto `null`
+- Postojeće globalno ponašanje ostaje kad prop nije proslijeđen
+
+**`MindMapList.tsx`:**
+- Dodati opcioni `categoryId?: string` prop
+- Kad je proslijeđen, filtrirati `maps` po `categoryId` polju (ako MindMapDoc ima categoryId)
+- Pošto MindMapDoc nema `categoryId`, za sada proslijediti kao naslovnu informaciju i prikazati "Mape za {categoryName}" header
+
+**`MnemonicModule.tsx`:**
+- Ne treba promjena — mnemoničke kartice su globalne po dizajnu
+- Wrapper stranica samo dodaje back navigaciju na `/subject/{categoryId}`
 
 ### Fajlovi
 
 | Fajl | Akcija |
 |------|--------|
-| `src/components/dashboard/ToolCards.tsx` | Novi — 2 prominentne kartice |
-| `src/components/Dashboard.tsx` | Edit — import + render ToolCards |
-| `src/views/SubjectDashboard.tsx` | Novi — placeholder stranica |
-| `src/App.tsx` | Edit — dodati rutu + lazy import + wrapper |
-| `src/components/CategoryManager.tsx` | Edit — dodati onClick navigaciju na kategoriju |
+| `src/views/SubjectDashboard.tsx` | Potpuni redizajn — 3 sekcije, ~200 linija |
+| `src/App.tsx` | +3 nove rute za kontekstualne alate |
+| `src/hooks/useSpeedReaderEngine.ts` | +1 opcioni prop `initialCategoryId`, 2 linije |
+| `src/components/SpeedReader.tsx` | Proslijediti prop iz page → engine |
+| `src/views/SpeedReaderPage.tsx` | Dodati opcioni `categoryId` prop, proslijediti |
 
-**Ukupno: 3 nova fajla, 3 editovana. 0 uklonjenih funkcionalnosti.**
+**Ukupno: 5 fajlova. 0 uklonjenih funkcionalnosti. Globalni alati ostaju netaknuti.**
 
