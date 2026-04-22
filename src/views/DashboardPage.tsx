@@ -4,6 +4,8 @@ import { useCardData, useCategoryData, useReviewData, useUIContext } from "@/con
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "@/components/Dashboard";
 import EmptyState from "@/components/EmptyState";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+import { ToolCards } from "@/components/dashboard/ToolCards";
 
 import InfoPanel from "@/components/InfoPanel";
 import { AnimatePresence } from "framer-motion";
