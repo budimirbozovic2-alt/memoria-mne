@@ -100,7 +100,7 @@ export default function AppSidebar() {
                   <SidebarMenuItem key={cat.id}>
                     <SidebarMenuButton asChild tooltip={`${cat.name} — ${score}%`}>
                       <NavLink
-                        to={`/category/${cat.id}`}
+                        to={`/subject/${cat.id}`}
                         className="hover:bg-sidebar-accent/50"
                         activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                       >
