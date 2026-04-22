@@ -4,6 +4,8 @@ import { useCardData, useCategoryData, useReviewData, useUIContext } from "@/con
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Dashboard from "@/components/Dashboard";
 import EmptyState from "@/components/EmptyState";
+import { QuickActions } from "@/components/dashboard/QuickActions";
+import { ToolCards } from "@/components/dashboard/ToolCards";
 
 import InfoPanel from "@/components/InfoPanel";
 import { AnimatePresence } from "framer-motion";
@@ -30,7 +32,11 @@ export default function DashboardPage() {
   return (
     <ErrorBoundary label="Dashboard" onNavigateHome={() => setView("dashboard")}>
       {cards.length === 0 ? (
-        <EmptyState type="dashboard" onAction={() => setView("create")} />
+        <div className="space-y-6">
+          <EmptyState type="dashboard" onAction={() => setView("create")} />
+          <QuickActions dueCount={0} hasCards={false} />
+          <ToolCards />
+        </div>
       ) : (
         <div className="relative space-y-6">
           <div className="absolute top-0 right-0 flex items-center gap-1 z-10">
