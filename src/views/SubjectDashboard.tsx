@@ -2,10 +2,14 @@ import { useParams, Link } from "react-router-dom";
 import { useCardData, useCategoryData } from "@/contexts/AppContext";
 import { useMemo } from "react";
 import {
-  ArrowLeft, Compass, BookOpen, Brain, RefreshCw, Globe,
-  Zap, GitBranch, Sparkles, BookMarked,
+  ArrowLeft, BookMarked, Brain, RefreshCw, BarChart3,
+  Info, Settings, Network, BookOpen, Layers,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { getCardMasteryLevel, getMasteryColor, MASTERY_LEVELS } from "@/lib/mastery";
 import { SectionState } from "@/lib/spaced-repetition";
 
@@ -19,45 +23,6 @@ export default function SubjectDashboard() {
     [categoryRecords, categoryId],
   );
   const categoryName = categoryRec?.name ?? "Nepoznat predmet";
-
-  // ─── Workflow cards ──────────────────────────────────
-  const workflowCards = useMemo(() => [
-    {
-      to: `/category/${categoryId}`,
-      icon: Compass,
-      title: "Slobodno istraživanje",
-      desc: "Čitaj izvore, pravi kartice",
-      accent: "bg-blue-500/10 text-blue-400",
-    },
-    {
-      to: `/subject/${categoryId}/speed-reader`,
-      icon: BookOpen,
-      title: "Pasivno čitanje",
-      desc: "Brzo čitanje kartica i izvora",
-      accent: "bg-emerald-500/10 text-emerald-400",
-    },
-    {
-      to: `/learn?cat=${categoryId}`,
-      icon: Brain,
-      title: "Aktivno prisjećanje",
-      desc: "Učenje i testiranje znanja",
-      accent: "bg-violet-500/10 text-violet-400",
-    },
-    {
-      to: `/review?cat=${categoryId}`,
-      icon: RefreshCw,
-      title: "Lokalna Konsolidacija",
-      desc: "Ponavljanje dospjelih kartica",
-      accent: "bg-amber-500/10 text-amber-400",
-    },
-    {
-      to: "/review",
-      icon: Globe,
-      title: "Globalna Konsolidacija",
-      desc: "Ponavljanje svih predmeta",
-      accent: "bg-rose-500/10 text-rose-400",
-    },
-  ], [categoryId]);
 
   // ─── Knowledge progress data ──────────────────────────
   const subProgressData = useMemo(() => {
@@ -93,73 +58,85 @@ export default function SubjectDashboard() {
     });
   }, [categoryId, categoryRec, cards]);
 
-  // ─── Contextual tools ──────────────────────────────────
-  const contextTools = useMemo(() => [
+  const metaTools = [
+    { icon: BarChart3, label: "Statistika", to: "/stats" },
+    { icon: Info, label: "Informacije o predmetu", to: "#" },
+    { icon: Settings, label: "Podešavanja", to: "/settings" },
+  ] as const;
+
+  const knowledgeBaseCards = useMemo(() => [
     {
-      to: `/subject/${categoryId}/speed-reader`,
-      icon: Zap,
-      title: "Speed Reader",
-      desc: "Brzo čitanje unutar predmeta",
-      accent: "bg-emerald-500/10 text-emerald-400",
+      to: "#",
+      icon: Network,
+      title: "Zettelkasten",
+      desc: "Baza znanja i mentalne mape",
     },
     {
-      to: `/subject/${categoryId}/mind-maps`,
-      icon: GitBranch,
-      title: "Mentalne mape",
-      desc: "Vizualizacija znanja",
-      accent: "bg-sky-500/10 text-sky-400",
+      to: `/category/${categoryId}`,
+      icon: BookOpen,
+      title: "Izvori",
+      desc: "Zakoni, skripte i fokusirano čitanje",
     },
     {
-      to: `/subject/${categoryId}/mnemonics`,
-      icon: Sparkles,
-      title: "Mnemoničke kuke",
-      desc: "Memorijske tehnike",
-      accent: "bg-fuchsia-500/10 text-fuchsia-400",
+      to: "#",
+      icon: Layers,
+      title: "Kartice",
+      desc: "Upravljanje karticama, struktura i mnemonika",
+    },
+  ], [categoryId]);
+
+  const coreActions = useMemo(() => [
+    {
+      to: `/learn?cat=${categoryId}`,
+      icon: Brain,
+      title: "Učenje uz aktivno prisjećanje",
+      desc: "Testiranje i učvršćivanje znanja",
+    },
+    {
+      to: `/review?cat=${categoryId}`,
+      icon: RefreshCw,
+      title: "Konsolidacija znanja",
+      desc: "Ponavljanje dospjelih kartica",
     },
   ], [categoryId]);
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link
-          to="/"
-          className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-          aria-label="Nazad na početnu"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{categoryName}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Dashboard predmeta</p>
+      {/* ─── Header + Meta Tools ─────────────────────────── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            to="/"
+            className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+            aria-label="Nazad na početnu"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-foreground truncate">{categoryName}</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">Dashboard predmeta</p>
+          </div>
         </div>
+
+        <TooltipProvider delayDuration={300}>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {metaTools.map(({ icon: Icon, label, to }) => (
+              <Tooltip key={label}>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-9 w-9" asChild>
+                    <Link to={to}>
+                      <Icon className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">{label}</TooltipContent>
+              </Tooltip>
+            ))}
+          </div>
+        </TooltipProvider>
       </div>
 
-      {/* ─── Section 1: Integrisani Workflow ────────────── */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Integrisani Workflow Učenja
-        </h2>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          {workflowCards.map(({ to, icon: Icon, title, desc, accent }) => (
-            <Link
-              key={title}
-              to={to}
-              className="glass-card rounded-xl p-4 flex flex-col gap-3 hover:border-primary/40 transition-all group"
-            >
-              <div className={`p-2.5 rounded-lg ${accent} w-fit group-hover:scale-105 transition-transform`}>
-                <Icon className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm text-foreground">{title}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ─── Section 2: Prikaz Znanja ────────────────────── */}
+      {/* ─── Prikaz Znanja ───────────────────────────────── */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <BookMarked className="h-4 w-4 text-primary" />
@@ -191,7 +168,6 @@ export default function SubjectDashboard() {
                 </div>
                 <Progress value={sub.pct} className="h-1.5" style={{ "--progress-color": getMasteryColor(sub.mastery) } as React.CSSProperties} />
 
-                {/* Chapters nested */}
                 {sub.chapters.length > 0 && (
                   <div className="pl-4 space-y-1.5 pt-1 border-l border-border/40 ml-1">
                     {sub.chapters.map(ch => (
@@ -212,24 +188,48 @@ export default function SubjectDashboard() {
         )}
       </section>
 
-      {/* ─── Section 3: Kontekstualni Alati ──────────────── */}
+      {/* ─── Baza i Izvori znanja ────────────────────────── */}
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-          Kontekstualni Alati
+          Baza i Izvori znanja
         </h2>
         <div className="grid grid-cols-3 gap-3">
-          {contextTools.map(({ to, icon: Icon, title, desc, accent }) => (
+          {knowledgeBaseCards.map(({ to, icon: Icon, title, desc }) => (
             <Link
               key={title}
               to={to}
               className="glass-card rounded-xl p-5 flex items-start gap-4 hover:border-primary/40 transition-all group"
             >
-              <div className={`p-2.5 rounded-lg ${accent} shrink-0 group-hover:scale-105 transition-transform`}>
+              <div className="p-2.5 rounded-lg bg-secondary text-muted-foreground shrink-0 group-hover:text-foreground transition-colors">
                 <Icon className="h-5 w-5" />
               </div>
               <div className="min-w-0">
                 <p className="font-semibold text-sm text-foreground">{title}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── Alati za učenje ─────────────────────────────── */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Alati za učenje
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          {coreActions.map(({ to, icon: Icon, title, desc }) => (
+            <Link
+              key={title}
+              to={to}
+              className="glass-card rounded-xl p-6 flex items-start gap-4 hover:border-primary/40 transition-all group border-primary/20"
+            >
+              <div className="p-3 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
+                <Icon className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-bold text-base text-foreground">{title}</p>
+                <p className="text-xs text-muted-foreground mt-1">{desc}</p>
               </div>
             </Link>
           ))}
