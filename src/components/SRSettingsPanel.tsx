@@ -21,6 +21,11 @@ interface Props {
 }
 
 export default function SRSettingsPanel({ settings, onUpdate }: Props) {
+  const [searchParams] = useSearchParams();
+  const initialTab = useMemo(() => {
+    const t = searchParams.get("tab");
+    return t && ["algorithm", "personalization", "workflow", "subjects", "system"].includes(t) ? t : "algorithm";
+  }, [searchParams]);
   const [local, setLocal] = useState<SRSettings>({ ...settings });
   const [scrolled, setScrolled] = useState(false);
   const stickyRef = useRef<HTMLDivElement>(null);
