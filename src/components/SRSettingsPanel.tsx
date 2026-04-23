@@ -1,5 +1,6 @@
 import { RotateCcw, Database, FolderOpen } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { AppSettings, DEFAULT_APP_SETTINGS, loadAppSettings, saveAppSettings } from "@/lib/app-settings";
 import { TTSSettings, DEFAULT_TTS_SETTINGS, loadTTSSettings, saveTTSSettings, getAvailableVoices } from "@/lib/tts";
@@ -20,6 +21,11 @@ interface Props {
 }
 
 export default function SRSettingsPanel({ settings, onUpdate }: Props) {
+  const [searchParams] = useSearchParams();
+  const initialTab = useMemo(() => {
+    const t = searchParams.get("tab");
+    return t && ["algorithm", "personalization", "workflow", "subjects", "system"].includes(t) ? t : "algorithm";
+  }, [searchParams]);
   const [local, setLocal] = useState<SRSettings>({ ...settings });
   const [scrolled, setScrolled] = useState(false);
   const stickyRef = useRef<HTMLDivElement>(null);
@@ -95,7 +101,7 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
         </InfoPanel>
       </div>
       <div ref={stickyRef} className="h-0" />
-      <Tabs defaultValue="algorithm" className="w-full">
+      <Tabs defaultValue={initialTab} className="w-full">
         <div className={`sticky top-0 z-10 bg-background pb-4 -mx-1 px-1 transition-shadow duration-200 ${scrolled ? "shadow-md" : ""}`}>
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="algorithm">Algoritam</TabsTrigger>

@@ -61,7 +61,7 @@ export default function SubjectDashboard() {
   const metaTools = [
     { icon: BarChart3, label: "Statistika", to: "/stats" },
     { icon: Info, label: "Informacije o predmetu", to: "#" },
-    { icon: Settings, label: "Podešavanja", to: "/settings" },
+    { icon: Settings, label: "Podešavanja", to: `/settings?tab=algorithm&subject=${categoryId}` },
   ] as const;
 
   const knowledgeBaseCards = useMemo(() => [
