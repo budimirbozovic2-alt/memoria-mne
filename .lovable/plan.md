@@ -1,57 +1,57 @@
 
 
-## Plan: Dodavanje `frequencyTag` i `sourceType` polja na kartice
+## Plan: Intent-Based SubjectDashboard Redesign (horizontalni layout)
 
-### Korak 1 — Dexie schema upgrade (v12)
+### Layout struktura
 
-**`src/lib/db-schema.ts`**
-- Dodati `version(12)` sa novim indeksom na `cards` tabeli: dodaje `frequencyTag` i `sourceType` u index string
-- Indeksi: `"id, categoryId, subcategoryId, type, createdAt, sourceId, frequencyTag, sourceType, [categoryId+subcategoryId]"`
+```text
+┌─────────────────────────────────────────────────┐
+│  ← Back   Subject Name          [📊] [ℹ] [⚙]  │
+├─────────────────────────────────────────────────┤
+│  Prikaz Znanja (progress barovi po glavama)     │
+├─────────────────────────────────────────────────┤
+│  BAZA I IZVORI ZNANJA                           │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
+│  │Zettelkast│  │ Izvori   │  │ Kartice  │      │
+│  │en        │  │          │  │          │      │
+│  └──────────┘  └──────────┘  └──────────┘      │
+├─────────────────────────────────────────────────┤
+│  ALATI ZA UČENJE                                │
+│  ┌─────────────────────┐ ┌────────────────────┐ │
+│  │ 🧠 Učenje uz aktivno│ │ 🔄 Konsolidacija   │ │
+│  │    prisjećanje       │ │    znanja          │ │
+│  └─────────────────────┘ └────────────────────┘ │
+└─────────────────────────────────────────────────┘
+```
 
-### Korak 2 — Card TypeScript interfejs
+### Izmjene u `src/views/SubjectDashboard.tsx`
 
-**`src/lib/spaced-repetition.ts`**
-- Dodati dva nova opcionalna polja u `Card` interfejs:
-  - `frequencyTag?: "često" | "rijetko" | "nikad"`
-  - `sourceType?: "skripta" | "zakon"`
-- Dodati nove konstante:
-  - `FREQUENCY_TAGS` array sa label/value/color za UI selektore
-  - `SOURCE_TYPES` array sa label/value za UI selektore
+**Header** — bez promjena u odnosu na prethodni plan: back dugme + naziv predmeta lijevo, 3 icon buttona desno (BarChart3, Info, Settings) sa Tooltip-om.
 
-### Korak 3 — useCardActions hook
+**Prikaz Znanja** — bez promjena, full-width sekcija sa progress barovima.
 
-**`src/hooks/useCardActions.ts`**
-- Dodati state: `frequencyTag` i `sourceType` (inicijalizovano iz `editCard` ako postoji)
-- Dodati ih u `onUpdate` tip i `handleSubmit` — proslijediti u `onSave`/`onUpdate` pozive
-- Eksportovati iz hook return objekta
-- Ažurirati `UseCardActionsProps.onSave` i `onUpdate` tipove da uključe nova polja
+**Baza i Izvori znanja** — full-width sekcija sa `grid-cols-3` rasporedom:
+1. "Zettelkasten" (icon: `Network`, desc: "Baza znanja i mentalne mape", link: `#`)
+2. "Izvori" (icon: `BookOpen`, desc: "Zakoni, skripte i fokusirano čitanje", link: `/category/${categoryId}`)
+3. "Kartice" (icon: `Layers`, desc: "Upravljanje karticama, struktura i mnemonika", link: `#`)
+- Sekundarni vizuelni stil (glass-card, neutralni akcenti)
 
-### Korak 4 — CardForm + MetadataSection UI
+**Alati za učenje** — full-width sekcija sa `grid-cols-2` rasporedom na dnu:
+1. "Učenje uz aktivno prisjećanje" (icon: `Brain`, link: `/learn?cat=${categoryId}`)
+2. "Konsolidacija znanja" (icon: `RefreshCw`, link: `/review?cat=${categoryId}`)
+- Primarni vizuelni stil (veće kartice, primary accent boje)
 
-**`src/components/card-form/MetadataSection.tsx`**
-- Dodati dva nova UI elementa u metadata sekciju:
-  1. **"Frekventnost na ispitu"** — `Select` sa 3 opcije: "Često dolazi" / "Rijetko dolazi" / "Gotovo nikad" + opcija "Nije označeno" (prazna vrijednost)
-  2. **"Tip izvora"** — `Select` sa 2 opcije: "Skripta" / "Zakon" + opcija "Nije označeno"
-- Props: `frequencyTag`, `setFrequencyTag`, `sourceType`, `setSourceType`
+### Uklanjanja
 
-**`src/components/CardForm.tsx`**
-- Proslijediti nove props iz `a` (useCardActions) u `MetadataSection`
-
-### Korak 5 — Propagacija kroz CRUD
-
-**`src/hooks/useCardCRUD.ts`** (ili gdje se `addCard` implementira)
-- Osigurati da `addCard` i `updateCard` primaju i perzistiraju `frequencyTag` i `sourceType`
+- Stara 5-kartica "Integrisani Workflow" sekcija i `workflowCards` memo
+- "Kontekstualni Alati" sekcija i `contextTools` memo
+- Nekorišteni importi (`Compass`, `Globe`, `Zap`, `GitBranch`, `Sparkles`)
 
 ### Fajlovi
 
 | Fajl | Akcija |
 |------|--------|
-| `src/lib/db-schema.ts` | +1 verzija (v12), ~3 linije |
-| `src/lib/spaced-repetition.ts` | +2 polja u Card, +2 konstante, ~15 linija |
-| `src/hooks/useCardActions.ts` | +2 state, ažuriran submit, ~20 linija |
-| `src/components/card-form/MetadataSection.tsx` | +2 selektora u UI, ~40 linija |
-| `src/components/CardForm.tsx` | Proslijediti 4 nova props, ~4 linije |
-| `src/hooks/useCardCRUD.ts` | Prihvatiti nova polja u CRUD, ~5 linija |
+| `src/views/SubjectDashboard.tsx` | Potpuni rewrite — novi layout, ~180 linija |
 
-**Ukupno: 6 fajlova, ~90 linija. Postojeći podaci ostaju netaknuti — nova polja su opcionalna.**
+**1 fajl. Nema novih fajlova. Nema promjena ruta.**
 
