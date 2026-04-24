@@ -1,5 +1,88 @@
 // FSRS v5 Algorithm with per-section tracking, state machine, leech detection
 import { loadAppSettings } from "./app-settings";
+import type { ExaminerProfile } from "./db-schema";
+
+export type { ExaminerProfile } from "./db-schema";
+
+// ─── Adaptive scheduling modifiers ─────────────────────────
+// Adjusts FSRS scheduling based on card metadata (frequencyTag, sourceType)
+// and examiner profile. Backward-compatible: omitting ctx → no change.
+
+export interface AdaptiveContext {
+  frequencyTag?: FrequencyTag;
+  sourceType?: CardSourceType;
+  examinerProfile?: ExaminerProfile;
+}
+
+export interface AdaptiveModifiers {
+  retentionBoost: number;     // added to targetRetention
+  intervalMultiplier: number; // multiplied with calculated interval
+}
+
+const RETENTION_MIN = 0.80;
+const RETENTION_MAX = 0.98;
+const INTERVAL_MULT_MIN = 0.5;
+const INTERVAL_MULT_MAX = 1.5;
+
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+export function computeAdaptiveModifiers(ctx?: AdaptiveContext): AdaptiveModifiers {
+  if (!ctx || (ctx.frequencyTag === undefined && ctx.sourceType === undefined && ctx.examinerProfile === undefined)) {
+    return { retentionBoost: 0, intervalMultiplier: 1 };
+  }
+
+  let retentionBoost = 0;
+  let intervalMultiplier = 1;
+
+  // Frequency tag — highest priority signal
+  switch (ctx.frequencyTag) {
+    case "često":
+      retentionBoost += 0.03;
+      intervalMultiplier *= 0.80;
+      break;
+    case "rijetko":
+      retentionBoost -= 0.02;
+      intervalMultiplier *= 1.15;
+      break;
+    case "nikad":
+      retentionBoost -= 0.04;
+      intervalMultiplier *= 1.30;
+      break;
+  }
+
+  // Examiner preference × source type matching
+  const pref = ctx.examinerProfile?.preferredAnswerType;
+  const src = ctx.sourceType;
+  if (pref === "esej" && src === "skripta") {
+    retentionBoost += 0.02;
+    intervalMultiplier *= 0.90;
+  } else if (pref === "definicija" && src === "zakon") {
+    retentionBoost += 0.02;
+    intervalMultiplier *= 0.90;
+  } else if (pref === "potpitanja" && (src === "skripta" || src === "zakon")) {
+    retentionBoost += 0.01;
+    intervalMultiplier *= 0.95;
+  }
+
+  // Examiner difficulty bias
+  switch (ctx.examinerProfile?.difficulty) {
+    case "tezak":
+      retentionBoost += 0.01;
+      intervalMultiplier *= 0.95;
+      break;
+    case "lak":
+      retentionBoost -= 0.01;
+      intervalMultiplier *= 1.05;
+      break;
+  }
+
+  return {
+    retentionBoost,
+    intervalMultiplier: clamp(intervalMultiplier, INTERVAL_MULT_MIN, INTERVAL_MULT_MAX),
+  };
+}
 
 // Module-level cached retention to avoid repeated localStorage parse in hot paths
 let _cachedRetention: number | null = null;
@@ -171,7 +254,12 @@ function nextState(currentState: SectionState, grade: number): SectionState {
   }
 }
 
-export function calculateNextReview(section: Section, grade: number, targetRetention?: number): Partial<Section> {
+export function calculateNextReview(
+  section: Section,
+  grade: number,
+  targetRetention?: number,
+  ctx?: AdaptiveContext,
+): Partial<Section> {
   let newStability: number;
   let newDifficulty: number;
   let newLapses = section.lapses || 0;
@@ -212,8 +300,11 @@ export function calculateNextReview(section: Section, grade: number, targetReten
     }
   }
 
-  const retention = targetRetention ?? getCachedRetention();
-  const interval = Math.max(calculateInterval(newStability, retention), 1 / (24 * 60));
+  const baseRetention = targetRetention ?? getCachedRetention();
+  const mods = computeAdaptiveModifiers(ctx);
+  const effectiveRetention = clamp(baseRetention + mods.retentionBoost, RETENTION_MIN, RETENTION_MAX);
+  const rawInterval = Math.max(calculateInterval(newStability, effectiveRetention), 1 / (24 * 60));
+  const interval = rawInterval * mods.intervalMultiplier;
 
   let finalNextReview = Date.now() + interval * 24 * 60 * 60 * 1000;
   let finalState = newState;
@@ -272,11 +363,11 @@ export function formatInterval(interval: number): string {
   return `${(interval / 365).toFixed(1)}g`;
 }
 
-export function previewIntervals(section: Section): Record<number, string> {
+export function previewIntervals(section: Section, ctx?: AdaptiveContext): Record<number, string> {
   const cachedRetention = getCachedRetention();
   const result: Record<number, string> = {};
   for (const grade of [1, 2, 3, 4]) {
-    const next = calculateNextReview(section, grade, cachedRetention);
+    const next = calculateNextReview(section, grade, cachedRetention, ctx);
     result[grade] = formatInterval(next.interval || 0);
   }
   return result;
