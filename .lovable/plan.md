@@ -1,57 +1,90 @@
 
 
-## Plan: Intent-Based SubjectDashboard Redesign (horizontalni layout)
+## Plan: "Informacije o predmetu" — Examiner Profile
 
-### Layout struktura
+Wire-up the Info meta-button to open a modal where the user picks examiner difficulty and preferred answer type for the current subject. Persist on the existing `categories` table as a new optional `examinerProfile` field.
 
-```text
-┌─────────────────────────────────────────────────┐
-│  ← Back   Subject Name          [📊] [ℹ] [⚙]  │
-├─────────────────────────────────────────────────┤
-│  Prikaz Znanja (progress barovi po glavama)     │
-├─────────────────────────────────────────────────┤
-│  BAZA I IZVORI ZNANJA                           │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
-│  │Zettelkast│  │ Izvori   │  │ Kartice  │      │
-│  │en        │  │          │  │          │      │
-│  └──────────┘  └──────────┘  └──────────┘      │
-├─────────────────────────────────────────────────┤
-│  ALATI ZA UČENJE                                │
-│  ┌─────────────────────┐ ┌────────────────────┐ │
-│  │ 🧠 Učenje uz aktivno│ │ 🔄 Konsolidacija   │ │
-│  │    prisjećanje       │ │    znanja          │ │
-│  └─────────────────────┘ └────────────────────┘ │
-└─────────────────────────────────────────────────┘
+### 1. Schema — `src/lib/db-schema.ts`
+
+Extend `CategoryRecord`:
+```ts
+export type ExaminerDifficulty = "tezak" | "lak";
+export type PreferredAnswerType = "esej" | "definicija" | "potpitanja";
+
+export interface ExaminerProfile {
+  difficulty?: ExaminerDifficulty;
+  preferredAnswerType?: PreferredAnswerType;
+  notes?: string;       // free-form, optional
+  updatedAt?: number;
+}
+
+export interface CategoryRecord {
+  // ...postojeća polja
+  examinerProfile?: ExaminerProfile;
+}
 ```
 
-### Izmjene u `src/views/SubjectDashboard.tsx`
+Bump Dexie to **v13** as a no-op marker (no new index — `examinerProfile` is an embedded object, not queried):
+```ts
+this.version(13).stores({
+  categories: "id, name, sortOrder",   // no schema change, marker only
+});
+```
+Existing data stays intact (Dexie tolerates new optional fields without migration).
 
-**Header** — bez promjena u odnosu na prethodni plan: back dugme + naziv predmeta lijevo, 3 icon buttona desno (BarChart3, Info, Settings) sa Tooltip-om.
+### 2. Persistence action — `src/hooks/useCategoryManagement.ts`
 
-**Prikaz Znanja** — bez promjena, full-width sekcija sa progress barovima.
+Add a new orchestrated action:
+```ts
+const updateExaminerProfile = useCallback(
+  (categoryId: string, profile: ExaminerProfile) => {
+    optimisticCategoryUpdate(
+      setCategoryRecords,
+      prev => prev.map(r =>
+        r.id === categoryId
+          ? { ...r, examinerProfile: { ...profile, updatedAt: Date.now() } }
+          : r
+      ),
+      "updateExaminerProfile"
+    );
+  },
+  [setCategoryRecords],
+);
+```
+Export it from the hook and propagate through `useCards.ts` → `AppContext` (categoryActions Proxy already forwards declared keys; we add `updateExaminerProfile` to the surface).
 
-**Baza i Izvori znanja** — full-width sekcija sa `grid-cols-3` rasporedom:
-1. "Zettelkasten" (icon: `Network`, desc: "Baza znanja i mentalne mape", link: `#`)
-2. "Izvori" (icon: `BookOpen`, desc: "Zakoni, skripte i fokusirano čitanje", link: `/category/${categoryId}`)
-3. "Kartice" (icon: `Layers`, desc: "Upravljanje karticama, struktura i mnemonika", link: `#`)
-- Sekundarni vizuelni stil (glass-card, neutralni akcenti)
+### 3. New modal — `src/components/ExaminerProfileDialog.tsx`
 
-**Alati za učenje** — full-width sekcija sa `grid-cols-2` rasporedom na dnu:
-1. "Učenje uz aktivno prisjećanje" (icon: `Brain`, link: `/learn?cat=${categoryId}`)
-2. "Konsolidacija znanja" (icon: `RefreshCw`, link: `/review?cat=${categoryId}`)
-- Primarni vizuelni stil (veće kartice, primary accent boje)
+A `Dialog` (shadcn) component:
+- Props: `open`, `onOpenChange`, `categoryId`, `categoryName`, `initialProfile`, `onSave(profile)`
+- Body:
+  - **Težina ispitivača** — `Select`: "Težak" / "Lak" / "Nije označeno" (clear)
+  - **Preferirani tip odgovora** — `Select`: "Esej" / "Definicija" / "Potpitanja" / "Nije označeno"
+  - **Napomena** (optional) — `Textarea`, kratak slobodan tekst (do 500 char)
+- Footer: `Otkaži` + `Sačuvaj` button
+- On save: calls `onSave({ difficulty, preferredAnswerType, notes })`, toast "Profil sačuvan", closes modal.
 
-### Uklanjanja
+Sanitization: notes pass through `sanitizeText` (existing util) before save.
 
-- Stara 5-kartica "Integrisani Workflow" sekcija i `workflowCards` memo
-- "Kontekstualni Alati" sekcija i `contextTools` memo
-- Nekorišteni importi (`Compass`, `Globe`, `Zap`, `GitBranch`, `Sparkles`)
+### 4. Wire-up in `src/views/SubjectDashboard.tsx`
 
-### Fajlovi
+- Replace the static "Informacije o predmetu" link with a button that opens local state `infoOpen`.
+- Read `categoryRec.examinerProfile` as `initialProfile`.
+- On save, call `categoryActions.updateExaminerProfile(categoryId, profile)`.
+- Keep BarChart3 → `/stats` and Settings → `/settings?...` as `<Link>`s as today.
 
-| Fajl | Akcija |
+Refactored meta-tools row will mix `<Link>` (Stats, Settings) and `<button>` (Info opens modal).
+
+### Files
+
+| File | Action |
 |------|--------|
-| `src/views/SubjectDashboard.tsx` | Potpuni rewrite — novi layout, ~180 linija |
+| `src/lib/db-schema.ts` | +ExaminerProfile types, +`examinerProfile?` on CategoryRecord, +v13 marker (~15 lines) |
+| `src/hooks/useCategoryManagement.ts` | +`updateExaminerProfile` action, exported (~12 lines) |
+| `src/hooks/useCards.ts` | Forward new action from `useCategoryManagement` (~2 lines) |
+| `src/contexts/AppContext.tsx` | Expose `updateExaminerProfile` on category actions (~2 lines) |
+| `src/components/ExaminerProfileDialog.tsx` | **NEW** — modal with 2 selects + textarea (~110 lines) |
+| `src/views/SubjectDashboard.tsx` | Wire Info button to open modal, pass categoryRec.examinerProfile (~25 lines) |
 
-**1 fajl. Nema novih fajlova. Nema promjena ruta.**
+**6 fajlova, ~165 linija. Postojeći podaci ostaju netaknuti — `examinerProfile` je opcionalno polje. Bez novih indeksa.**
 
