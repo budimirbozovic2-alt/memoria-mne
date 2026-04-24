@@ -119,7 +119,11 @@ export default function ReviewCard({
   const sectionIsLeech = isLeech(section, srSettings);
   const lapses = section.lapses || 0;
   const isFlash = card.type === "flash";
-  const intervals = previewIntervals(section);
+  const intervals = previewIntervals(section, {
+    frequencyTag: card.frequencyTag,
+    sourceType: card.sourceType,
+    examinerProfile: catRecord?.examinerProfile,
+  });
 
   return (
     <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
