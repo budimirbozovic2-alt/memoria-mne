@@ -148,6 +148,7 @@ export function useCards() {
     reorderSubcategories,
     reorderChapters,
     reorderCategories,
+    updateExaminerProfile,
   } = useCategoryManagement({
     setCategoryRecords: setCategoryRecordsState,
     setCardMapState, cardMapRef, getCategoryRecords,
@@ -284,6 +285,7 @@ export function useCards() {
     reorderCategories,
     reorderSubcategories,
     reorderChapters,
+    updateExaminerProfile,
     updateSRSettings,
   };
 }
