@@ -1,7 +1,7 @@
 import { useCallback, MutableRefObject } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { db, idbDeleteCard, type CategoryRecord, type SubcategoryNode, type ChapterNode } from "@/lib/db";
+import { db, idbDeleteCard, type CategoryRecord, type SubcategoryNode, type ChapterNode, type ExaminerProfile } from "@/lib/db";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { toast } from "sonner";
 import { optimisticCategoryUpdate } from "@/lib/category-service";
@@ -345,6 +345,21 @@ export function useCategoryManagement({
     );
   }, [setCategoryRecords]);
 
+  const updateExaminerProfile = useCallback(
+    (categoryId: string, profile: ExaminerProfile) => {
+      optimisticCategoryUpdate(
+        setCategoryRecords,
+        prev => prev.map(r =>
+          r.id === categoryId
+            ? { ...r, examinerProfile: { ...profile, updatedAt: Date.now() } }
+            : r
+        ),
+        "updateExaminerProfile"
+      );
+    },
+    [setCategoryRecords],
+  );
+
   return {
     addCategory,
     renameCategory,
@@ -359,5 +374,6 @@ export function useCategoryManagement({
     reorderSubcategories,
     reorderChapters,
     reorderCategories,
+    updateExaminerProfile,
   };
 }

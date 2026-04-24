@@ -1,10 +1,12 @@
 import { useParams, Link } from "react-router-dom";
-import { useCardData, useCategoryData } from "@/contexts/AppContext";
-import { useMemo } from "react";
+import { useCardData, useCategoryData, useCardActions } from "@/contexts/AppContext";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft, BookMarked, Brain, RefreshCw, BarChart3,
   Info, Settings, Network, BookOpen, Layers,
 } from "lucide-react";
+import ExaminerProfileDialog from "@/components/ExaminerProfileDialog";
+import type { ExaminerProfile } from "@/lib/db";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +25,9 @@ export default function SubjectDashboard() {
     [categoryRecords, categoryId],
   );
   const categoryName = categoryRec?.name ?? "Nepoznat predmet";
+
+  const { updateExaminerProfile } = useCardActions();
+  const [infoOpen, setInfoOpen] = useState(false);
 
   // ─── Knowledge progress data ──────────────────────────
   const subProgressData = useMemo(() => {
@@ -58,9 +63,8 @@ export default function SubjectDashboard() {
     });
   }, [categoryId, categoryRec, cards]);
 
-  const metaTools = [
+  const linkTools = [
     { icon: BarChart3, label: "Statistika", to: "/stats" },
-    { icon: Info, label: "Informacije o predmetu", to: "#" },
     { icon: Settings, label: "Podešavanja", to: `/settings?tab=algorithm&subject=${categoryId}` },
   ] as const;
 
@@ -120,21 +124,55 @@ export default function SubjectDashboard() {
 
         <TooltipProvider delayDuration={300}>
           <div className="flex items-center gap-1.5 shrink-0">
-            {metaTools.map(({ icon: Icon, label, to }) => (
-              <Tooltip key={label}>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-9 w-9" asChild>
-                    <Link to={to}>
-                      <Icon className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">{label}</TooltipContent>
-              </Tooltip>
-            ))}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9" asChild>
+                  <Link to="/stats">
+                    <BarChart3 className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Statistika</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => setInfoOpen(true)}
+                  aria-label="Informacije o predmetu"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Informacije o predmetu</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9" asChild>
+                  <Link to={`/settings?tab=algorithm&subject=${categoryId}`}>
+                    <Settings className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Podešavanja</TooltipContent>
+            </Tooltip>
           </div>
         </TooltipProvider>
       </div>
+
+      <ExaminerProfileDialog
+        open={infoOpen}
+        onOpenChange={setInfoOpen}
+        categoryName={categoryName}
+        initialProfile={categoryRec?.examinerProfile}
+        onSave={(profile: ExaminerProfile) => {
+          if (categoryId) updateExaminerProfile(categoryId, profile);
+        }}
+      />
 
       {/* ─── Prikaz Znanja ───────────────────────────────── */}
       <section className="space-y-3">

@@ -156,6 +156,7 @@ interface CardActionsContextValue {
   reorderCategories: ReturnType<typeof useCards>["reorderCategories"];
   reorderSubcategories: ReturnType<typeof useCards>["reorderSubcategories"];
   reorderChapters: ReturnType<typeof useCards>["reorderChapters"];
+  updateExaminerProfile: ReturnType<typeof useCards>["updateExaminerProfile"];
   updateSRSettings: ReturnType<typeof useCards>["updateSRSettings"];
 }
 
@@ -324,6 +325,7 @@ function CardProvider({ children }: { children: ReactNode }) {
     addChapter: h.addChapter, renameChapter: h.renameChapter, deleteChapter: h.deleteChapter,
     reorderCategories: h.reorderCategories, reorderSubcategories: h.reorderSubcategories,
     reorderChapters: h.reorderChapters,
+    updateExaminerProfile: h.updateExaminerProfile,
     updateSRSettings: h.updateSRSettings,
   };
 

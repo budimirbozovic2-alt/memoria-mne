@@ -25,12 +25,23 @@ export interface SubcategoryNode {
   sortOrder: number;
 }
 
+export type ExaminerDifficulty = "tezak" | "lak";
+export type PreferredAnswerType = "esej" | "definicija" | "potpitanja";
+
+export interface ExaminerProfile {
+  difficulty?: ExaminerDifficulty;
+  preferredAnswerType?: PreferredAnswerType;
+  notes?: string;
+  updatedAt?: number;
+}
+
 export interface CategoryRecord {
   id: string;
   name: string;
   sortOrder: number;
   subcategories: SubcategoryNode[];
   color?: string;
+  examinerProfile?: ExaminerProfile;
 }
 
 export interface SourceArticle {
@@ -160,6 +171,11 @@ class MemoriaDB extends Dexie {
 
     this.version(12).stores({
       cards: "id, categoryId, subcategoryId, type, createdAt, sourceId, frequencyTag, sourceType, [categoryId+subcategoryId]",
+    });
+
+    // v13 marker: examinerProfile added as embedded optional field on CategoryRecord (no index change)
+    this.version(13).stores({
+      categories: "id, name, sortOrder",
     });
   }
 }
