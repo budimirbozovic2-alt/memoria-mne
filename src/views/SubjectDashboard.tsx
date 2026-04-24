@@ -63,11 +63,6 @@ export default function SubjectDashboard() {
     });
   }, [categoryId, categoryRec, cards]);
 
-  const linkTools = [
-    { icon: BarChart3, label: "Statistika", to: "/stats" },
-    { icon: Settings, label: "Podešavanja", to: `/settings?tab=algorithm&subject=${categoryId}` },
-  ] as const;
-
   const knowledgeBaseCards = useMemo(() => [
     {
       to: "#",
