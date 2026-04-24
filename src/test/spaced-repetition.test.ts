@@ -9,7 +9,7 @@ import {
   getCardScore,
   getDueCards,
   getDueSections,
-  
+  computeAdaptiveModifiers,
   createSection,
   SectionState,
   Section,
