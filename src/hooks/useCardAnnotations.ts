@@ -1,8 +1,23 @@
 import { useCallback, MutableRefObject } from "react";
-import { Card, calculateNextReview, getCachedRetention } from "@/lib/spaced-repetition";
+import { Card, calculateNextReview, getCachedRetention, AdaptiveContext } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { idbAddReviewLogEntry } from "@/lib/db";
+import { idbAddReviewLogEntry, db, type ExaminerProfile } from "@/lib/db";
+
+// ─── Module-level examiner profile cache (TTL 30s) ─────────
+const EP_TTL_MS = 30_000;
+const _epCache = new Map<string, { profile: ExaminerProfile | undefined; ts: number }>();
+
+function getCachedExaminerProfile(categoryId: string): ExaminerProfile | undefined {
+  const entry = _epCache.get(categoryId);
+  const now = Date.now();
+  if (entry && now - entry.ts < EP_TTL_MS) return entry.profile;
+  // Async refresh — first call returns undefined, subsequent within TTL get cached value
+  db.categories.get(categoryId).then(rec => {
+    _epCache.set(categoryId, { profile: rec?.examinerProfile, ts: Date.now() });
+  }).catch(() => { /* ignore */ });
+  return entry?.profile;
+}
 
 interface UseCardAnnotationsParams {
   patchCard: (id: string, patcher: (card: Card) => Card) => void;
@@ -39,11 +54,17 @@ export function useCardAnnotations({
           errorLog = errorLog.map((e) => ({ ...e, successStreak: 0 }));
         }
 
+        const adaptiveCtx: AdaptiveContext = {
+          frequencyTag: c.frequencyTag,
+          sourceType: c.sourceType,
+          examinerProfile: getCachedExaminerProfile(c.categoryId),
+        };
+
         return {
           ...c,
           ...(errorLog ? { errorLog } : {}),
           sections: c.sections.map((s) =>
-            s.id !== sectionId ? s : { ...s, ...calculateNextReview(s, grade, cachedRetention) },
+            s.id !== sectionId ? s : { ...s, ...calculateNextReview(s, grade, cachedRetention, adaptiveCtx) },
           ),
         };
       });
