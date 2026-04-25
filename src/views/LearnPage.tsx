@@ -87,6 +87,7 @@ export default function LearnPage() {
         onAddKeyPart={addKeyPart}
         dueCount={stats.due}
         reviewLog={reviewLog}
+        initialFilters={initialFilters}
       />
     </ErrorBoundary>
   );
