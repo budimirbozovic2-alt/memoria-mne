@@ -109,10 +109,10 @@ export default function SubjectDashboard() {
 
   const coreActions = useMemo(() => [
     {
-      to: `/learn?cat=${categoryId}`,
+      onClick: () => setMatrixOpen(true),
       icon: Brain,
       title: "Učenje uz aktivno prisjećanje",
-      desc: "Testiranje i učvršćivanje znanja",
+      desc: "Matrični filter — testiranje i učvršćivanje znanja",
     },
     {
       to: `/review?cat=${categoryId}`,
