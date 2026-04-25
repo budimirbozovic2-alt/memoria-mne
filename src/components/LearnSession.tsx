@@ -11,16 +11,18 @@ const StudyModeFree = lazy(() => import("./learn/StudyModeFree"));
 const StudyModeRecall = lazy(() => import("./learn/StudyModeRecall"));
 const StudyModeChain = lazy(() => import("./learn/StudyModeChain"));
 
-export default function LearnSession({ cards, categories, categoryRecords, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0, reviewLog: reviewLogProp = [] }: LearnSessionProps) {
+export default function LearnSession({ cards, categories, categoryRecords, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0, reviewLog: reviewLogProp = [], initialFilters }: LearnSessionProps) {
+  const isStrictRecall = initialFilters?.mode === "strict-recall";
   const [setupStep, setSetupStep] = useState<"mode" | "filter" | "ready">("mode");
-  const [learnMode, setLearnMode] = useState<LearnMode>("free");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [learnMode, setLearnMode] = useState<LearnMode>(isStrictRecall ? "active-recall" : "free");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialFilters?.categoryId ?? null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(initialFilters?.subcategoryId ?? null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">("order");
+  const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">(initialFilters?.sortMode ?? "order");
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
-  const [started, setStarted] = useState(false);
+  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">(initialFilters?.type ?? "all");
+  const [frequencyFilter, setFrequencyFilter] = useState<"all" | "često" | "rijetko" | "nikad">(initialFilters?.frequencyTag ?? "all");
+  const [started, setStarted] = useState(isStrictRecall);
 
   const [currentIndex, setCurrentIndex] = useState(() => {
     const saved = sessionStorage.getItem("sr-learn-current-index");
