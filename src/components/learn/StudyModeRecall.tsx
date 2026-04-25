@@ -30,6 +30,7 @@ interface Props {
   setTotalGrades: React.Dispatch<React.SetStateAction<number[]>>;
   setModulesCompleted: React.Dispatch<React.SetStateAction<number>>;
   updateProgress: (cardId: string, update: Partial<LearnCardProgress>) => void;
+  strictRecall?: boolean;
 }
 
 export default function StudyModeRecall({
@@ -38,8 +39,9 @@ export default function StudyModeRecall({
   onMarkRead, onReviewSection, onAddKeyPart,
   goToCard, goNext, goPrev, onBack,
   setCompletedCards, setTotalGrades, setModulesCompleted, updateProgress,
+  strictRecall = false,
 }: Props) {
-  const [arPhase, setArPhase] = useState<"preview" | "drill">("preview");
+  const [arPhase, setArPhase] = useState<"preview" | "drill">(strictRecall ? "drill" : "preview");
   const [drillIndex, setDrillIndex] = useState(0);
   const [drillRevealed, setDrillRevealed] = useState(false);
 
@@ -48,10 +50,11 @@ export default function StudyModeRecall({
 
   // Reset state when card changes
   useEffect(() => {
-    setArPhase("preview");
+    setArPhase(strictRecall ? "drill" : "preview");
     setDrillIndex(0);
     setDrillRevealed(false);
-  }, [card.id]);
+    if (strictRecall) onMarkRead(card.id);
+  }, [card.id, strictRecall, onMarkRead]);
 
   const handleArGrade = useCallback((grade: number) => {
     const section = sections[drillIndex];
