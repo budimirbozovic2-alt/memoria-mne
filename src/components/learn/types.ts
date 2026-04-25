@@ -38,6 +38,15 @@ export const GRADE_COLORS = [
   "bg-success text-success-foreground",
 ];
 
+export interface InitialFilters {
+  mode: "strict-recall";
+  categoryId: string | null;
+  subcategoryId: string | null;
+  type: "all" | "essay" | "flash";
+  frequencyTag: "all" | "često" | "rijetko" | "nikad";
+  sortMode: "order" | "weakest";
+}
+
 export interface LearnSessionProps {
   cards: Card[];
   categories: string[];
@@ -50,4 +59,5 @@ export interface LearnSessionProps {
   onAddKeyPart?: (cardId: string, text: string) => void;
   dueCount?: number;
   reviewLog?: ReviewLogEntry[];
+  initialFilters?: InitialFilters;
 }
