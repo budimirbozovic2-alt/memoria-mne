@@ -75,6 +75,7 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
     if (filterExamFrequent) filtered = filtered.filter(c => c.tags?.includes("često-na-ispitu"));
     if (filterType === "essay") filtered = filtered.filter(c => c.type === "essay");
     else if (filterType === "flash") filtered = filtered.filter(c => c.type === "flash");
+    if (frequencyFilter !== "all") filtered = filtered.filter(c => c.frequencyTag === frequencyFilter);
     if (learnMode === "chain") filtered = filtered.filter(c => c.type === "essay" && c.sections.length >= 3);
     switch (sortMode) {
       case "weakest": return filtered.sort((a, b) => getCardScore(a) - getCardScore(b));
@@ -89,7 +90,7 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
         );
       }
     }
-  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent, filterType, positionMaps]);
+  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent, filterType, frequencyFilter, positionMaps]);
 
   const card = sortedCards[currentIndex];
 
