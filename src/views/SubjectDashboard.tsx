@@ -274,23 +274,36 @@ export default function SubjectDashboard() {
           Alati za učenje
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {coreActions.map(({ to, icon: Icon, title, desc }) => (
-            <Link
-              key={title}
-              to={to}
-              className="glass-card rounded-xl p-6 flex items-start gap-4 hover:border-primary/40 transition-all group border-primary/20"
-            >
-              <div className="p-3 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
-                <Icon className="h-6 w-6" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-base text-foreground">{title}</p>
-                <p className="text-xs text-muted-foreground mt-1">{desc}</p>
-              </div>
-            </Link>
-          ))}
+          {coreActions.map(({ to, onClick, icon: Icon, title, desc }) => {
+            const inner = (
+              <>
+                <div className="p-3 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
+                  <Icon className="h-6 w-6" />
+                </div>
+                <div className="min-w-0 text-left">
+                  <p className="font-bold text-base text-foreground">{title}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+                </div>
+              </>
+            );
+            const className = "glass-card rounded-xl p-6 flex items-start gap-4 hover:border-primary/40 transition-all group border-primary/20";
+            return onClick ? (
+              <button key={title} type="button" onClick={onClick} className={className}>{inner}</button>
+            ) : (
+              <Link key={title} to={to!} className={className}>{inner}</Link>
+            );
+          })}
         </div>
       </section>
+
+      <MatrixFilterDialog
+        open={matrixOpen}
+        onOpenChange={setMatrixOpen}
+        categoryName={categoryName}
+        cards={subjectCards}
+        subcategories={subjectSubcategories}
+        onStart={handleMatrixStart}
+      />
     </div>
   );
 }
