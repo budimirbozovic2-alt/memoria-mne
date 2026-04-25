@@ -11,16 +11,18 @@ const StudyModeFree = lazy(() => import("./learn/StudyModeFree"));
 const StudyModeRecall = lazy(() => import("./learn/StudyModeRecall"));
 const StudyModeChain = lazy(() => import("./learn/StudyModeChain"));
 
-export default function LearnSession({ cards, categories, categoryRecords, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0, reviewLog: reviewLogProp = [] }: LearnSessionProps) {
+export default function LearnSession({ cards, categories, categoryRecords, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0, reviewLog: reviewLogProp = [], initialFilters }: LearnSessionProps) {
+  const isStrictRecall = initialFilters?.mode === "strict-recall";
   const [setupStep, setSetupStep] = useState<"mode" | "filter" | "ready">("mode");
-  const [learnMode, setLearnMode] = useState<LearnMode>("free");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [learnMode, setLearnMode] = useState<LearnMode>(isStrictRecall ? "active-recall" : "free");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialFilters?.categoryId ?? null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(initialFilters?.subcategoryId ?? null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">("order");
+  const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">(initialFilters?.sortMode ?? "order");
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
-  const [started, setStarted] = useState(false);
+  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">(initialFilters?.type ?? "all");
+  const [frequencyFilter, setFrequencyFilter] = useState<"all" | "često" | "rijetko" | "nikad">(initialFilters?.frequencyTag ?? "all");
+  const [started, setStarted] = useState(isStrictRecall);
 
   const [currentIndex, setCurrentIndex] = useState(() => {
     const saved = sessionStorage.getItem("sr-learn-current-index");
@@ -73,6 +75,7 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
     if (filterExamFrequent) filtered = filtered.filter(c => c.tags?.includes("često-na-ispitu"));
     if (filterType === "essay") filtered = filtered.filter(c => c.type === "essay");
     else if (filterType === "flash") filtered = filtered.filter(c => c.type === "flash");
+    if (frequencyFilter !== "all") filtered = filtered.filter(c => c.frequencyTag === frequencyFilter);
     if (learnMode === "chain") filtered = filtered.filter(c => c.type === "essay" && c.sections.length >= 3);
     switch (sortMode) {
       case "weakest": return filtered.sort((a, b) => getCardScore(a) - getCardScore(b));
@@ -87,7 +90,7 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
         );
       }
     }
-  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent, filterType, positionMaps]);
+  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, learnMode, filterExamFrequent, filterType, frequencyFilter, positionMaps]);
 
   const card = sortedCards[currentIndex];
 
@@ -235,9 +238,10 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
           viewWidth={viewWidth} setViewWidth={setViewWidth}
           readCards={readCards} completedCards={completedCards} chainCompletedCards={chainCompletedCards}
           onMarkRead={handleMarkRead} onReviewSection={onReviewSection} onAddKeyPart={onAddKeyPart}
-          goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={() => setStarted(false)}
+          goToCard={goToCard} goNext={goNext} goPrev={goPrev} onBack={isStrictRecall ? onBack : () => setStarted(false)}
           setCompletedCards={setCompletedCards} setTotalGrades={setTotalGrades}
           setModulesCompleted={setModulesCompleted} updateProgress={updateProgress}
+          strictRecall={isStrictRecall}
         />
       </Suspense>
     );

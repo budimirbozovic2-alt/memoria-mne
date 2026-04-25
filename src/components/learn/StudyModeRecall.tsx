@@ -30,6 +30,7 @@ interface Props {
   setTotalGrades: React.Dispatch<React.SetStateAction<number[]>>;
   setModulesCompleted: React.Dispatch<React.SetStateAction<number>>;
   updateProgress: (cardId: string, update: Partial<LearnCardProgress>) => void;
+  strictRecall?: boolean;
 }
 
 export default function StudyModeRecall({
@@ -38,8 +39,9 @@ export default function StudyModeRecall({
   onMarkRead, onReviewSection, onAddKeyPart,
   goToCard, goNext, goPrev, onBack,
   setCompletedCards, setTotalGrades, setModulesCompleted, updateProgress,
+  strictRecall = false,
 }: Props) {
-  const [arPhase, setArPhase] = useState<"preview" | "drill">("preview");
+  const [arPhase, setArPhase] = useState<"preview" | "drill">(strictRecall ? "drill" : "preview");
   const [drillIndex, setDrillIndex] = useState(0);
   const [drillRevealed, setDrillRevealed] = useState(false);
 
@@ -48,10 +50,11 @@ export default function StudyModeRecall({
 
   // Reset state when card changes
   useEffect(() => {
-    setArPhase("preview");
+    setArPhase(strictRecall ? "drill" : "preview");
     setDrillIndex(0);
     setDrillRevealed(false);
-  }, [card.id]);
+    if (strictRecall) onMarkRead(card.id);
+  }, [card.id, strictRecall, onMarkRead]);
 
   const handleArGrade = useCallback((grade: number) => {
     const section = sections[drillIndex];
@@ -124,7 +127,7 @@ export default function StudyModeRecall({
                   <div className="space-y-3">
                     <p className="text-sm text-center text-primary/80 italic py-4">🎙️ Pokušaj ponoviti pitanje na glas</p>
                     <Button onClick={() => setDrillRevealed(true)} variant="outline" className="w-full">
-                      <Eye className="h-4 w-4 mr-2" /> Otkrij odgovor
+                      <Eye className="h-4 w-4 mr-2" /> Prikaži odgovor
                     </Button>
                   </div>
                 ) : (
@@ -132,7 +135,13 @@ export default function StudyModeRecall({
                     <div className="rounded-lg bg-secondary/50 p-4">
                       <HighlightedSection content={sections[drillIndex].content} keyParts={card.keyParts} className="text-sm leading-relaxed whitespace-pre-wrap prose prose-sm max-w-none card-prose" />
                     </div>
-                    <GradeButtons onGrade={handleArGrade} hint="Ocijeni svoje znanje (samo 4 = napredak)" />
+                    {strictRecall ? (
+                      <Button onClick={() => handleArGrade(4)} className="w-full py-5">
+                        <Check className="h-4 w-4 mr-2" /> Potvrdi
+                      </Button>
+                    ) : (
+                      <GradeButtons onGrade={handleArGrade} hint="Ocijeni svoje znanje (samo 4 = napredak)" />
+                    )}
                   </div>
                 )}
               </div>
