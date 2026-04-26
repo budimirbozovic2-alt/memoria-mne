@@ -50,7 +50,14 @@ const MNEMO_SLIDES: OnboardingSlide[] = [
   },
 ];
 
-export default function MnemonicModule() {
+interface Props {
+  /** When true, hides the global header/onboarding chrome (used inside subject tabs). */
+  embedded?: boolean;
+  /** When set, restricts cards & stats to a single subject. */
+  categoryFilter?: string;
+}
+
+export default function MnemonicModule({ embedded = false, categoryFilter }: Props = {}) {
   const { patchCard } = useCardActions();
   const { categoryRecords } = useCategoryData();
   const [cards, setCardsState] = useState<MnemonicCard[]>([]);
@@ -58,7 +65,7 @@ export default function MnemonicModule() {
   const [subView, setSubView] = useState<"menu" | "workshop" | "test">("menu");
   const [majorOpen, setMajorOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(
-    () => !hasSeenOnboarding(MNEMO_ONBOARDING_KEY)
+    () => !embedded && !hasSeenOnboarding(MNEMO_ONBOARDING_KEY)
   );
 
   // Load on mount + subscribe to event bus for cross-component refresh
@@ -111,18 +118,23 @@ export default function MnemonicModule() {
     await addMnemonicTestEntry({ timestamp: Date.now(), cardId, success });
   }, [setCards]);
 
-  const stats = useMemo(() => getMnemonicStats(cards), [cards]);
+  const visibleCards = useMemo(
+    () => categoryFilter ? cards.filter(c => c.categoryId === categoryFilter) : cards,
+    [cards, categoryFilter],
+  );
+
+  const stats = useMemo(() => getMnemonicStats(visibleCards), [visibleCards]);
 
   if (subView === "workshop") {
-    return <MnemonicWorkshop cards={cards} onUpdateCard={updateCard} onDeleteCard={deleteCard} categoryRecords={categoryRecords} />;
+    return <MnemonicWorkshop cards={visibleCards} onUpdateCard={updateCard} onDeleteCard={deleteCard} categoryRecords={categoryRecords} />;
   }
 
   if (subView === "test") {
-    return <MnemonicTest cards={cards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
+    return <MnemonicTest cards={visibleCards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className={embedded ? "space-y-6" : "max-w-2xl mx-auto space-y-8"}>
       <AnimatePresence>
         {showOnboarding && (
           <OnboardingModal
@@ -134,30 +146,32 @@ export default function MnemonicModule() {
         )}
       </AnimatePresence>
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Brain className="h-6 w-6 text-primary" /> Memorizacija
-          </h2>
-          <p className="text-muted-foreground mt-2">Izolovani sistem za kreiranje i testiranje mentalnih kuka.</p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Brain className="h-6 w-6 text-primary" /> Memorizacija
+            </h2>
+            <p className="text-muted-foreground mt-2">Izolovani sistem za kreiranje i testiranje mentalnih kuka.</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <InfoPanel title="Memorizacija">
+              <p><strong>Mentalni video</strong> — živopisna vizuelna scena povezana sa gradivom. Što bizarnije, to bolje.</p>
+              <p><strong>Akronim</strong> — za nabrajanja, sistem sugeriše prva slova stavki za brzo prisjećanje.</p>
+              <p><strong>Major sistem</strong> — brojevi se pretvaraju u riječi pomoću fonetskog koda.</p>
+              <p>Označi kartice tagom „Memorizacija" (ikona mozga) da ih dodaš ovdje.</p>
+            </InfoPanel>
+            <button
+              onClick={() => setShowOnboarding(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary"
+              title="Vodič kroz memorizaciju"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Onboarding</span>
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <InfoPanel title="Memorizacija">
-            <p><strong>Mentalni video</strong> — živopisna vizuelna scena povezana sa gradivom. Što bizarnije, to bolje.</p>
-            <p><strong>Akronim</strong> — za nabrajanja, sistem sugeriše prva slova stavki za brzo prisjećanje.</p>
-            <p><strong>Major sistem</strong> — brojevi se pretvaraju u riječi pomoću fonetskog koda.</p>
-            <p>Označi kartice tagom „Memorizacija" (ikona mozga) da ih dodaš ovdje.</p>
-          </InfoPanel>
-          <button
-            onClick={() => setShowOnboarding(true)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-secondary"
-            title="Vodič kroz memorizaciju"
-          >
-            <HelpCircle className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Onboarding</span>
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -230,7 +244,7 @@ export default function MnemonicModule() {
         </motion.button>
       </div>
 
-      {cards.length === 0 && (
+      {visibleCards.length === 0 && (
         <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
           <Brain className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Još nema kartica za memorizaciju.</p>

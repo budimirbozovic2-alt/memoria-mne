@@ -100,7 +100,7 @@ export default function SubjectDashboard() {
       desc: "Zakoni, skripte i fokusirano čitanje",
     },
     {
-      to: "#",
+      to: `/subject/${categoryId}/cards`,
       icon: Layers,
       title: "Kartice",
       desc: "Upravljanje karticama, struktura i mnemonika",
