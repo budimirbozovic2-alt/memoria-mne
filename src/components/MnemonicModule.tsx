@@ -244,7 +244,7 @@ export default function MnemonicModule({ embedded = false, categoryFilter }: Pro
         </motion.button>
       </div>
 
-      {cards.length === 0 && (
+      {visibleCards.length === 0 && (
         <div className="rounded-xl border border-dashed p-6 text-center text-muted-foreground">
           <Brain className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="text-sm">Još nema kartica za memorizaciju.</p>
