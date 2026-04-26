@@ -111,6 +111,17 @@ export interface MindMapDoc {
   updatedAt: number;
 }
 
+export interface KnowledgeBaseArticle {
+  id: string;
+  subjectId: string;          // === categoryId
+  title: string;
+  content: string;            // markdown
+  linkedSourceIds: string[];
+  rootSubcategoryId?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 // ─── Module-level blocked handler (registered once, no accumulation) ──
 let _blockedReject: ((err: Error) => void) | null = null;
 
@@ -131,6 +142,7 @@ class MemoriaDB extends Dexie {
   mnemonics!: Table<MnemonicCard, string>;
   majorSystem!: Table<{ id: number; peg: string }, number>;
   mnemonicTestLog!: Table<MnemonicTestLogEntry & { id?: number }, number>;
+  knowledgeBaseArticles!: Table<KnowledgeBaseArticle, string>;
 
   constructor() {
     super("MemoriaDB");
@@ -176,6 +188,11 @@ class MemoriaDB extends Dexie {
     // v13 marker: examinerProfile added as embedded optional field on CategoryRecord (no index change)
     this.version(13).stores({
       categories: "id, name, sortOrder",
+    });
+
+    // v14: Zettelkasten knowledge base articles per subject
+    this.version(14).stores({
+      knowledgeBaseArticles: "id, subjectId, title, updatedAt, [subjectId+title]",
     });
   }
 }
