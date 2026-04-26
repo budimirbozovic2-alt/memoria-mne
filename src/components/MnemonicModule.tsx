@@ -118,18 +118,23 @@ export default function MnemonicModule({ embedded = false, categoryFilter }: Pro
     await addMnemonicTestEntry({ timestamp: Date.now(), cardId, success });
   }, [setCards]);
 
-  const stats = useMemo(() => getMnemonicStats(cards), [cards]);
+  const visibleCards = useMemo(
+    () => categoryFilter ? cards.filter(c => c.categoryId === categoryFilter) : cards,
+    [cards, categoryFilter],
+  );
+
+  const stats = useMemo(() => getMnemonicStats(visibleCards), [visibleCards]);
 
   if (subView === "workshop") {
-    return <MnemonicWorkshop cards={cards} onUpdateCard={updateCard} onDeleteCard={deleteCard} categoryRecords={categoryRecords} />;
+    return <MnemonicWorkshop cards={visibleCards} onUpdateCard={updateCard} onDeleteCard={deleteCard} categoryRecords={categoryRecords} />;
   }
 
   if (subView === "test") {
-    return <MnemonicTest cards={cards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
+    return <MnemonicTest cards={visibleCards} onRecordResult={recordResult} onBack={() => setSubView("menu")} />;
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className={embedded ? "space-y-6" : "max-w-2xl mx-auto space-y-8"}>
       <AnimatePresence>
         {showOnboarding && (
           <OnboardingModal
