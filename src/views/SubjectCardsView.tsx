@@ -236,7 +236,7 @@ export default function SubjectCardsView() {
                 aria-pressed={manageMode === "structure"}
               >
                 <Network className="h-3.5 w-3.5" />
-                Struktura i raspored
+                Org — struktura i raspored
               </button>
             </div>
 
