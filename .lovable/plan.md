@@ -1,99 +1,124 @@
-## Goal
+# Wiki-Link Knowledge Web — Auto-Create + Visual Distinction
 
-Restructure `SubjectCardsView` from a flat 4-tab strip into a clear 2-group hierarchy, drop the Mnemonics section entirely, and upgrade `PassiveReader` into a richer reading workspace with FSRS stats, a parallel Source/Mind-map side panel, and a quick "Edit" shortcut.
+Make `[[Wiki Links]]` first-class: typing one creates a placeholder, populated vs empty articles are visually distinct everywhere, and clicking a draft link opens it straight in Edit Mode.
 
----
+## 1. Define "empty" centrally
 
-### 1. SubjectCardsView reorganization
-
-Replace the single `Tabs` + 4-trigger `TabsList` with two visually grouped sections rendered above the content area:
-
-```text
-┌─ UPRAVLJANJE ────────────────────────────────────────────┐
-│  [✏ Uređivanje i dodavanje kartica]  [⛓ Struktura i raspored kartica] │
-└──────────────────────────────────────────────────────────┘
-
-┌─ UČENJE ─────────────────────────────────────────────────┐
-│  [📖 Pasivno čitanje]                                     │
-└──────────────────────────────────────────────────────────┘
-
-[ active section content here ]
-```
-
-Implementation details:
-
-- Keep the `Tabs` primitive but split its `TabsList` into two labelled `<div>` groups separated by a faint divider/header (small uppercase "UPRAVLJANJE" / "UČENJE" labels in `text-muted-foreground`). The active trigger keeps the same primary highlight as today.
-- Tab values: `manage`, `structure`, `read`. Drop `mnemonics`.
-- Rename triggers:
-  - `manage` → "Uređivanje i dodavanje kartica" (icon `Pencil`)
-  - `structure` → "Struktura i raspored kartica" (icon `Network`/`ListOrdered`)
-  - `read` → "Pasivno čitanje" (icon `BookOpen`)
-- Header subtitle updated to "Kartice — uređivanje, struktura i pasivno čitanje" (drops "mnemonika").
-- Remove imports of `MnemonicModule` and `Brain`. Remove the `<TabsContent value="mnemonics">` block.
-
-The content of each tab (`CardViewMode` + filter bar, `CardOrgMode` + structure dialog button, `PassiveReader`) stays as-is wiring-wise; only the trigger UI changes.
-
-### 2. Upgraded PassiveReader
-
-Rewrite `src/components/subject-cards/PassiveReader.tsx` into a richer workspace.
-
-**Header (next to question title)** — small inline FSRS stat chips computed from `card.sections`:
-
-- Reviews count: sum of `(section.state !== New ? 1 : 0) * max(reps,1)` … since we don't track explicit reps, use `card.readCount ?? 0` which is already on the Card.
-- Lapses: sum of `section.lapses` across sections.
-- Avg stability (days): mean of `section.stability` over reviewed sections, displayed as `~Xd` (helper "snaga"/strength).
-- Retention now: `getCardRetrievability(card)` from `@/lib/spaced-repetition`, displayed as `XX%` with semantic color (green ≥80, amber ≥50, red <50).
-- "New" badge if all sections are `SectionState.New`.
-
-Render as small `Tooltip`-wrapped chips in a row beneath the question; chip primitives are plain `<span>` with `bg-muted/40` rounded.
-
-**Quick Edit shortcut** — top-right `Button` "✎ Uredi karticu" that calls the same edit flow used by the Pregled tab:
+In `ZettelkastenView.tsx`, derive a memoized set alongside `existingTitleSet`:
 
 ```ts
-sessionStorage.setItem("sr-edit-return-view", "subject-cards:" + categoryId);
-setEditingCard(current);
-navigate("/edit");
+const emptyArticleIds = useMemo(
+  () => new Set(articles.filter(a => a.content.trim().length === 0).map(a => a.id)),
+  [articles],
+);
+const emptyTitleSet = useMemo(
+  () => new Set(articles.filter(a => a.content.trim().length === 0)
+                        .map(a => a.title.trim().toLowerCase())),
+  [articles],
+);
 ```
 
-To keep `PassiveReader` decoupled, accept a callback prop `onEditCard?: (card: Card) => void` and wire it from `SubjectCardsView` (which already imports `setEditingCard` and `useNavigate`).
+Pass `emptyTitleSet` down to `ZettelPreview` (next to `existingTitles`).
 
-**Parallel Source/Mind-map side panel**:
+## 2. Three-state wiki-link rendering (Read Mode)
 
-- New local state `const [sidePanel, setSidePanel] = useState<"source" | "mindmap" | null>(null);`. Reset to `null` whenever `current.id` changes (effect on `current?.id`).
-- Toolbar above the card has two toggle buttons:
-  - "📑 Izvor" — disabled if `!current.sourceId`. Toggles `sidePanel` between `"source"` and `null`.
-  - "🗺️ Mapa uma" — always enabled per subject (mind maps are subject-scoped), toggles `"mindmap"` / `null`.
-- When a side panel is active the workspace becomes a 2-column grid (`lg:grid-cols-2`); otherwise single column (full width as today).
-- **Source panel**: load the card's source on demand via `getSource(current.sourceId)` (already exported from `src/lib/sources-storage.ts`). Render a header (title + "Pun prikaz" button that uses the existing `sessionStorage["sr-open-source-id"]` + `navigate('/category/${categoryId}')` pattern from `SourceSidePanel`) and a sanitized scrollable HTML body. To avoid duplicating that component, **reuse `<SourceSidePanel>`** from `src/components/zettelkasten/SourceSidePanel.tsx` (it already accepts `{source, categoryId, onClose}`). Pass `categoryId` from props.
-- **Mind-map panel**: lightweight inline picker — `loadMindMaps()` filtered to `categoryId`, list as buttons. When the user picks one, render `<MindMapViewer>` (lazy) inside a fixed-height (e.g. `min-h-[420px] flex-1`) bordered box. New tiny component `src/components/subject-cards/MindMapSidePanel.tsx` with header (title + close + "Otvori sve mape" link to `/subject/${categoryId}/mind-maps`), back button to picker, and lazy `MindMapViewer`.
-- The PassiveReader receives `categoryId` as a new prop so both panels can route correctly.
+Update `ZettelPreview.tsx > inline()` to branch on three cases:
 
-**Layout**:
+| State | Detection | Style |
+|---|---|---|
+| Populated | exists && !empty | `text-primary underline decoration-solid` (clear blue link) |
+| Empty/draft | exists && empty | `text-muted-foreground italic underline decoration-dashed decoration-muted-foreground/60` |
+| Missing | !exists | `text-amber-600 dark:text-amber-400 underline decoration-dotted` (existing behavior) |
 
-```text
-┌───────────── card column ───────────────┐ ┌── side panel ──┐
-│ filters · pager                          │ │ Source / Map   │
-│ [Izvor] [Mapa uma]   ····  [Uredi]       │ │                │
-│ ┌─ Article ─────────────────────────┐    │ │                │
-│ │ "Pasivno čitanje"                 │    │ │                │
-│ │ Q: ...                            │    │ │                │
-│ │ chips: reviews · lapses · ret%    │    │ │                │
-│ │ sections...                       │    │ │                │
-│ └───────────────────────────────────┘    │ │                │
-│ [← prev]  ←/→  [next →]                  │ │                │
-└──────────────────────────────────────────┘ └────────────────┘
+Add `emptyTitles: Set<string>` prop; keep click handler unchanged — `handleWikiLink` already routes correctly.
+
+## 3. Auto-create placeholders while typing (Edit Mode)
+
+In `ZettelkastenView.tsx`, add a debounced scanner that runs whenever `draft.content` changes in edit mode:
+
+```ts
+useEffect(() => {
+  if (!isEditing || !draft || !categoryId) return;
+  const id = setTimeout(async () => {
+    const titles = Array.from(draft.content.matchAll(/\[\[([^\]]+)\]\]/g))
+      .map(m => m[1].trim()).filter(Boolean);
+    const unique = Array.from(new Set(titles.map(t => t.toLowerCase())))
+      .filter(low => !existingTitleSet.has(low));
+    if (unique.length === 0) return;
+    const created: KnowledgeBaseArticle[] = [];
+    for (const low of unique) {
+      const original = titles.find(t => t.toLowerCase() === low)!;
+      // double-check via storage to avoid race with another article in same subject
+      const dup = await findArticleByTitle(categoryId, original);
+      if (dup) continue;
+      const a = newArticle(categoryId, original, activeArticle?.rootSubcategoryId);
+      await saveArticle(a);
+      created.push(a);
+    }
+    if (created.length > 0) {
+      setArticles(prev => [...created, ...prev]);
+      toast.success(`Kreirano ${created.length} novih placeholder članaka`);
+    }
+  }, 800);
+  return () => clearTimeout(id);
+}, [draft?.content, isEditing, categoryId, existingTitleSet, activeArticle]);
 ```
 
-### 3. Files
+Notes:
+- 800 ms debounce avoids spam mid-typing.
+- Created articles immediately appear in `existingTitleSet` (re-render), so the next pass skips them.
+- They have `content: ""`, so they show up as drafts in the new styling.
 
-| File | Change |
-|---|---|
-| `src/views/SubjectCardsView.tsx` | Split tab triggers into two grouped sections; rename labels; remove `mnemonics` tab + `MnemonicModule` import; pass `categoryId` and `onEditCard` to `PassiveReader`. |
-| `src/components/subject-cards/PassiveReader.tsx` | New props `categoryId`, `onEditCard`. Add FSRS stat chips, source/mindmap toggle toolbar, side-panel grid, on-demand source load via `getSource`, lazy mind-map panel, quick Edit button. |
-| `src/components/subject-cards/MindMapSidePanel.tsx` (new) | Picker → lazy `MindMapViewer` with header. Reuses `loadMindMaps` filtered by `categoryId`. |
+## 4. Open empty articles in Edit Mode
 
-### 4. Out of scope
+In `handleWikiLink` and `handleOpen`, when navigating to an article whose `content.trim() === ""`, automatically enter Edit Mode:
 
-- No data-model changes (cards still don't have a direct mind-map FK; we offer a subject-scoped picker instead, which is honest).
-- The mnemonics module is reachable globally from the sidebar (`/mnemonics`) and from the embedded picker in CardEditor — removing the tab does not orphan it.
-- `CardViewMode`, `CardOrgMode`, `StructureManagerDialog`: untouched.
+```ts
+const handleOpenArticle = useCallback((art: KnowledgeBaseArticle) => {
+  setActiveId(art.id);
+  setReadingSourceId(null);
+  if (art.content.trim().length === 0) {
+    setDraft({ title: art.title, content: art.content,
+               linkedSourceIds: art.linkedSourceIds ?? [] });
+    setIsEditing(true);
+  } else {
+    setIsEditing(false);
+    setDraft(null);
+  }
+}, []);
+```
+
+Update `handleWikiLink` to use it (after fetching/creating the article), and switch sidebar list `onClick={() => handleOpen(a.id)}` to `handleOpenArticle(a)`.
+
+## 5. Sidebar list visual distinction
+
+In the article list (lines ~474-497), add a draft indicator:
+
+```tsx
+const isDraft = a.content.trim().length === 0;
+// title color
+className={`font-semibold text-sm truncate ${
+  isDraft ? "text-muted-foreground italic" : "text-foreground"
+}`}
+// add a small "Draft" pill next to the subcategory chip when isDraft
+{isDraft && (
+  <span className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400
+                   border border-amber-500/40 px-1.5 py-0.5 rounded shrink-0">
+    Draft
+  </span>
+)}
+```
+
+Preview text already hides when empty (`preview` is empty string), so no change needed there.
+
+## 6. Memory update
+
+Append to `mem://features/zettelkasten-notion-ux`: "Wiki-links auto-create placeholders on 800 ms debounce while editing. Three link states: populated (primary solid), draft (muted dashed), missing (amber dotted). Opening a draft article auto-enters Edit Mode."
+
+## Files touched
+
+- `src/views/ZettelkastenView.tsx` — derive empty sets, debounced auto-create effect, `handleOpenArticle`, sidebar styling.
+- `src/components/zettelkasten/ZettelPreview.tsx` — new `emptyTitles` prop, three-state link styling.
+- `mem://features/zettelkasten-notion-ux` — document the new behavior.
+
+No changes to storage (`zettelkasten-storage.ts` already exposes `findArticleByTitle` + `newArticle`) or to the editor component.
