@@ -201,6 +201,7 @@ export default function SubjectCardsView() {
             addFlashCard={addFlashCard}
             onDelete={deleteCard}
             onEdit={handleEdit}
+            onPassiveRead={handlePassiveRead}
             externalQuery={searchQuery}
             externalSourceId={sourceFilter}
           />
