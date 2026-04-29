@@ -40,25 +40,30 @@ function retentionColor(pct: number): string {
 
 const FILTER_STORAGE_PREFIX = "passive-reader-filters:";
 
+type TypeFilter = "all" | "essay" | "flash";
+
 interface PersistedFilters {
   subFilter: string;
   chapterFilter: string;
+  typeFilter: TypeFilter;
 }
 
 function loadPersistedFilters(categoryId: string): PersistedFilters {
   if (typeof window === "undefined" || !categoryId) {
-    return { subFilter: "all", chapterFilter: "all" };
+    return { subFilter: "all", chapterFilter: "all", typeFilter: "all" };
   }
   try {
     const raw = window.localStorage.getItem(FILTER_STORAGE_PREFIX + categoryId);
-    if (!raw) return { subFilter: "all", chapterFilter: "all" };
+    if (!raw) return { subFilter: "all", chapterFilter: "all", typeFilter: "all" };
     const parsed = JSON.parse(raw) as Partial<PersistedFilters>;
+    const tf = parsed.typeFilter;
     return {
       subFilter: typeof parsed.subFilter === "string" ? parsed.subFilter : "all",
       chapterFilter: typeof parsed.chapterFilter === "string" ? parsed.chapterFilter : "all",
+      typeFilter: tf === "essay" || tf === "flash" ? tf : "all",
     };
   } catch {
-    return { subFilter: "all", chapterFilter: "all" };
+    return { subFilter: "all", chapterFilter: "all", typeFilter: "all" };
   }
 }
 
@@ -66,6 +71,7 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
   // Lazy init from localStorage so previously selected filters return on mount.
   const [subFilter, setSubFilter] = useState<string>(() => loadPersistedFilters(categoryId).subFilter);
   const [chapterFilter, setChapterFilter] = useState<string>(() => loadPersistedFilters(categoryId).chapterFilter);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>(() => loadPersistedFilters(categoryId).typeFilter);
   const [index, setIndex] = useState(0);
   const [sidePanel, setSidePanel] = useState<SidePanel>(null);
   const [linkedSource, setLinkedSource] = useState<Source | null>(null);
@@ -91,12 +97,12 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
     try {
       window.localStorage.setItem(
         FILTER_STORAGE_PREFIX + categoryId,
-        JSON.stringify({ subFilter, chapterFilter }),
+        JSON.stringify({ subFilter, chapterFilter, typeFilter }),
       );
     } catch {
       /* quota or privacy mode — ignore */
     }
-  }, [categoryId, subFilter, chapterFilter]);
+  }, [categoryId, subFilter, chapterFilter, typeFilter]);
 
   const chapters = useMemo(() => {
     if (subFilter === "all") return [];
@@ -108,11 +114,12 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
     let list = cards.slice();
     if (subFilter !== "all") list = list.filter(c => c.subcategoryId === subFilter);
     if (chapterFilter !== "all") list = list.filter(c => c.chapterId === chapterFilter);
+    if (typeFilter !== "all") list = list.filter(c => c.type === typeFilter);
     return list.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
-  }, [cards, subFilter, chapterFilter]);
+  }, [cards, subFilter, chapterFilter, typeFilter]);
 
   // Reset index when filters change
-  useEffect(() => { setIndex(0); }, [subFilter, chapterFilter]);
+  useEffect(() => { setIndex(0); }, [subFilter, chapterFilter, typeFilter]);
   // Clamp index if list shrinks
   useEffect(() => {
     if (index > 0 && index >= filtered.length) setIndex(Math.max(0, filtered.length - 1));
@@ -136,12 +143,13 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
       // Filters are hiding it — clear them and retry on next render.
       if (subFilter !== "all") setSubFilter("all");
       if (chapterFilter !== "all") setChapterFilter("all");
+      if (typeFilter !== "all") setTypeFilter("all");
       return;
     }
     setIndex(idx);
     consumedInitialRef.current = initialCardId;
     onInitialConsumed?.();
-  }, [initialCardId, cards, filtered, subFilter, chapterFilter, onInitialConsumed]);
+  }, [initialCardId, cards, filtered, subFilter, chapterFilter, typeFilter, onInitialConsumed]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -231,6 +239,17 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
             </SelectContent>
           </Select>
         )}
+
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
+          <SelectTrigger className="h-9 w-[160px]">
+            <SelectValue placeholder="Tip" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Svi tipovi</SelectItem>
+            <SelectItem value="essay">Esejska</SelectItem>
+            <SelectItem value="flash">Blic</SelectItem>
+          </SelectContent>
+        </Select>
 
         <div className="ml-auto text-xs text-muted-foreground">
           {filtered.length === 0 ? "Nema kartica" : `${index + 1} / ${filtered.length}`}
