@@ -17,6 +17,7 @@ import SubjectsTab from "@/components/settings/SubjectsTab";
 import SystemTab from "@/components/settings/SystemTab";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { getParam } from "@/lib/url-params";
 
 interface Props {
   settings: SRSettings;
