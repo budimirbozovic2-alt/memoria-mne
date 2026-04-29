@@ -26,17 +26,6 @@ const TOOLS_NAV = [
   { path: "/mind-map", icon: Map, label: "Mentalne mape" },
 ];
 
-function scoreColor(score: number): string {
-  if (score > 70) return "hsl(var(--success))";
-  if (score > 40) return "hsl(var(--warning))";
-  return "hsl(var(--destructive))";
-}
-
-function scoreBg(score: number): string {
-  if (score > 70) return "hsl(var(--success) / 0.25)";
-  if (score > 40) return "hsl(var(--warning) / 0.25)";
-  return "hsl(var(--destructive) / 0.25)";
-}
 
 export default function AppSidebar() {
   const { state } = useSidebar();
@@ -92,41 +81,26 @@ export default function AppSidebar() {
 
               {categoryRecords.map((cat) => {
                 const st = categoryStats[cat.id];
-                const score = st?.score ?? 0;
                 const due = st?.due ?? 0;
-                const color = scoreColor(score);
 
                 return (
                   <SidebarMenuItem key={cat.id}>
-                    <SidebarMenuButton asChild tooltip={`${cat.name} — ${score}%`}>
+                    <SidebarMenuButton asChild tooltip={cat.name}>
                       <NavLink
                         to={`/subject/${cat.id}`}
                         className="hover:bg-sidebar-accent/50"
                         activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
                       >
-                        <div className="relative shrink-0">
-                          <Scale className="h-4 w-4" />
-                          {collapsed && (
-                            <span
-                              className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full border border-sidebar"
-                              style={{ backgroundColor: color }}
-                            />
-                          )}
-                        </div>
+                        <Scale className="h-4 w-4 shrink-0" />
                         {!collapsed && (
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1">
                               <span className="truncate text-[13px]">{cat.name}</span>
-                              <span className="ml-auto flex items-center gap-1 shrink-0">
-                                <span className="text-[9px] font-semibold px-1 py-0.5 rounded" style={{ color: color, backgroundColor: scoreBg(score) }}>
-                                  {score}%
-                                </span>
-                                {due > 0 && (
-                                  <Badge variant="destructive" className="text-[9px] h-4 min-w-[16px] px-1">
-                                    {due}
-                                  </Badge>
-                                )}
-                              </span>
+                              {due > 0 && (
+                                <Badge variant="destructive" className="ml-auto text-[9px] h-4 min-w-[16px] px-1 shrink-0">
+                                  {due}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         )}
