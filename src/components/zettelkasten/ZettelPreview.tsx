@@ -133,11 +133,13 @@ export default function ZettelPreview({
   markdown,
   onWikiLink,
   existingTitles,
+  emptyTitles,
   linkedSources,
   onSourceClick,
   categoryId,
 }: Props) {
   const segments = useMemo(() => splitSegments(markdown), [markdown]);
+  const emptySet = emptyTitles ?? new Set<string>();
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const t = e.target as HTMLElement;
