@@ -57,14 +57,31 @@ export default function SubjectCardsView() {
     );
   }, [category?.subcategories]);
 
-  const [tab, setTab] = useState<"manage" | "read">("manage");
+  /**
+   * Consume the return snapshot exactly once at first render. Lazy initial
+   * state reads from sessionStorage synchronously, so we avoid a flash of the
+   * default tab/sub-mode before a follow-up effect could restore it. We only
+   * grab the snapshot once via a module-scoped ref-equivalent (the IIFE).
+   */
+  const initialSnapshot = useMemo<EditReturnSnapshot | null>(() => consumeEditReturnState<EditReturnSnapshot>(), []);
+
+  const [tab, setTab] = useState<"manage" | "read">(initialSnapshot?.tab ?? "manage");
   /** Sub-mode within "manage" tab: list editor vs structural arrangement. */
-  const [manageMode, setManageMode] = useState<"edit" | "structure">("edit");
+  const [manageMode, setManageMode] = useState<"edit" | "structure">(initialSnapshot?.manageMode ?? "edit");
   const [structureOpen, setStructureOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sourceFilter, setSourceFilter] = useState<string>("__all__");
+  const [searchQuery, setSearchQuery] = useState(initialSnapshot?.searchQuery ?? "");
+  const [sourceFilter, setSourceFilter] = useState<string>(initialSnapshot?.sourceFilter ?? "__all__");
   const [sources, setSources] = useState<Source[]>([]);
   const [pendingPassiveCardId, setPendingPassiveCardId] = useState<string | null>(null);
+
+  // Restore window scroll once after layout. Defer to next frame so the
+  // virtualized card list (or PassiveReader) has measured its content.
+  useEffect(() => {
+    if (typeof initialSnapshot?.scrollY !== "number") return;
+    const y = initialSnapshot.scrollY;
+    const id = requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
+    return () => cancelAnimationFrame(id);
+  }, [initialSnapshot]);
 
   useEffect(() => {
     if (!categoryId) return;
