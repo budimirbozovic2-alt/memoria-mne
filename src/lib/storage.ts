@@ -27,8 +27,10 @@ export interface LearnCardProgress {
   currentModule: number;
   completedModules: number[];
   chainPosition: number;
-  phase: "preview" | "drill" | "learn" | "chainReview";
+  phase: "preview" | "drill" | "learn" | "chainReview" | "open" | "recall" | "reveal";
   completed: boolean;
+  leech?: boolean;
+  failedAttempts?: number;
 }
 
 // ─── Generic localStorage helpers ────────────────────────
