@@ -102,7 +102,16 @@ export default function SubjectCardsView() {
   );
 
   const handleEdit = (card: Card) => {
-    sessionStorage.setItem("sr-edit-return-view", "subject-cards:" + categoryId);
+    // Stash absolute return path + UI snapshot so EditPage and this view can
+    // collaboratively restore the user's exact spot after save/cancel.
+    setEditReturn({ path: `/subject/${categoryId}/cards` });
+    stashEditReturnState<EditReturnSnapshot>({
+      tab,
+      manageMode,
+      searchQuery,
+      sourceFilter,
+      scrollY: window.scrollY,
+    });
     setEditingCard(card);
     navigate("/edit");
   };
