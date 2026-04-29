@@ -59,7 +59,7 @@ export function stashEditReturnState<T>(state: T): void {
   }
 }
 
-export function consumeEditReturnState<T = Record<string, unknown>>(): T | null {
+export function consumeEditReturnState<T = unknown>(): T | null {
   try {
     const raw = sessionStorage.getItem(STATE_KEY);
     if (!raw) return null;
