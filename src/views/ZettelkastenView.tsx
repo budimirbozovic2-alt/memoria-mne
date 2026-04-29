@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, FileText, Search, BookOpen, Compass } from "lucide-react";
 import { useCategoryData } from "@/contexts/AppContext";
 import {
@@ -10,11 +10,14 @@ import {
   newArticle,
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
+import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import ZettelEditor from "@/components/zettelkasten/ZettelEditor";
 import ZettelPreview from "@/components/zettelkasten/ZettelPreview";
+import BacklinksPanel from "@/components/zettelkasten/BacklinksPanel";
+import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
 import { toast } from "sonner";
 
 export default function ZettelkastenView() {
