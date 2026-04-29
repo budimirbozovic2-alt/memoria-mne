@@ -50,7 +50,7 @@ export function consumeEditReturn(): { path: string } | null {
   }
 }
 
-export function stashEditReturnState<T extends Record<string, unknown>>(state: T): void {
+export function stashEditReturnState<T>(state: T): void {
   try {
     const payload: StoredState<T> = { data: state, ts: Date.now() };
     sessionStorage.setItem(STATE_KEY, JSON.stringify(payload));
