@@ -1,67 +1,47 @@
-# Standardizacija pisanja query parametara (canonical writers)
+# Standardizacija naziva: "Uređivanje i raspored kartica" + "View ↔ Org"
 
-## Stanje danas
+Cilj: jedan vokabular za isti koncept svuda u aplikaciji.
 
-Iz prethodne runde čitači su već svi prešli na `getParam` (kanonski + alias fallback). Sada treba dovršiti **stranu pisanja**: svaka navigacija/Link koji ručno sklapa query string treba ići preko `buildQuery`, da pisači ostanu u sinhronu sa kanonskim imenima i da nema više ručnih `?cat=` ili copy-paste šablona.
+## Kanonski rječnik (referenca)
 
-Routing po path-segmentima (`/subject/:id`, `/category/:id`, `/subject/:id/cards`, `/subject/:id/zettelkasten`, `/subject/:id/mind-maps`) je **već kanonski** i ostaje netaknut — to nisu query parametri.
+| Koncept | Kanonski tekst |
+|---|---|
+| Top-level tab kartica | **Uređivanje i raspored kartica** |
+| Pod-mode (lista, pregled, edit) | **View — pregled i uređivanje** |
+| Pod-mode (DnD, raspored, struktura) | **Org — struktura i raspored** |
+| Sažeti opis u dashboardu/tile-u | "Uređivanje i raspored kartica" |
+| Mali pomenski tekst (legacy) | "Org — struktura i raspored" |
 
-## Šta tačno ostaje za ispraviti
+Sve postojeće varijante poput "Upravljanje karticama", "Struktura i raspored", "Struktura" (kao naziv moda) treba uskladiti sa ovim.
 
-Pretragom `URLSearchParams` + `?category=` + `&category=` u `src/`, ostala su samo dva mjesta gdje pisači još uvijek ručno sklapaju query:
+## Mjesta za izmjenu
 
-1. **`src/views/SubjectDashboard.tsx`**
-   - Linija 44–53 `handleMatrixStart`: ručno gradi `URLSearchParams` sa `category`, `subcategory`, `mode`, `type`, `freq`, `sort`.
-   - Linija 118 `coreActions`: `to: \`/review?category=${categoryId}\``.
-   - Linija 174 settings link: `to={\`/settings?tab=algorithm&category=${categoryId}\`}`.
+### 1) `src/views/SubjectDashboard.tsx` (linija 108)
+Tile "Kartice" `desc` trenutno glasi: *"Upravljanje karticama, struktura i mnemonika"*.
+- Promijeniti na: **"Uređivanje i raspored kartica"** (mnemonika je uklonjena iz hub-a — vidjeti memoriju `subject-cards-hub-v2`).
 
-Sve tri tačke prebaciti na `buildQuery` iz `src/lib/url-params.ts`.
+### 2) `src/views/SubjectCardsView.tsx`
+- Dodati `title` i `aria-label` na dva pod-mode dugmeta radi konzistentnosti i pristupačnosti:
+  - View dugme → `title="View — pregled i uređivanje kartica"`, `aria-label` isto.
+  - Org dugme → `title="Org — struktura i raspored kartica"`, `aria-label` isto.
+- (Vidljivi tekst i ikonice ostaju isti — već su kanonski.)
+- Komentar `{/* ── Group: Upravljanje ── */}` (linija 184) preimenovati u `{/* ── Group: Kartice ── */}` da ne zavarava buduće čitače koda.
+- Komentar `{/* Segmented sub-mode switch: Edit ↔ Structure */}` (linija 212) → `{/* Segmented sub-mode switch: View ↔ Org */}`.
 
-## Plan izmjena
+### 3) `src/components/category/SubjectHierarchyTree.tsx` (linija 233)
+Prazan-state poruka: *"Nema potkategorija. Dodaj ih u \"Struktura i raspored\"."* upućuje na nepostojeći naziv.
+- Promijeniti na: **"Nema potkategorija. Dodaj ih u \"Org — struktura i raspored\"."**
 
-### 1) `src/views/SubjectDashboard.tsx`
-
-- Importovati `buildQuery` iz `@/lib/url-params`.
-- `handleMatrixStart` zamijeniti sa:
-  ```ts
-  const qs = buildQuery({
-    category: categoryId,
-    mode: "strict-recall",
-    subcategory: f.subcategoryId,
-    type: f.type,
-    freq: f.frequencyTag,
-    sort: f.sortMode,
-  });
-  navigate(`/learn${qs}`);
-  ```
-- `coreActions` review entry: `to: \`/review${buildQuery({ category: categoryId })}\``.
-- Settings link: `to={\`/settings${buildQuery({ tab: "algorithm", category: categoryId })}\`}`.
-
-### 2) `src/lib/url-params.ts` (manja dopuna aliasa)
-
-Dodati ne-kategorijske, ali kanonski-važne ključeve koje pisači sada koriste, da se readeri u budućnosti mogu lako vezati na njih bez novih izmjena:
-- `tab: ["tab"]`
-- `mode: ["mode"]`
-- `type: ["type"]`
-- `freq: ["freq", "frequency"]`
-- `sort: ["sort"]`
-
-Ovo je čisto dodavanje — postojeći `getParam` pozivi nastavljaju raditi.
-
-### 3) Lint / sanity provjera
-
-Nakon izmjena u dashboardu, preko `rg` se potvrđuje da u `src/` više nema:
-- ručnog `new URLSearchParams()` osim u `url-params.ts`,
-- ni jednog hard-coded `?category=` / `&category=` izvan `url-params.ts` testova.
-
-Čitači (`LearnPage`, `ReviewPage`, `SRSettingsPanel`) ostaju netaknuti — već koriste `getParam`.
+### 4) `src/components/card-form/MetadataSection.tsx` (linija 117)
+Hint: *"Koristite \"Struktura\" dugme u prikazu kategorije za dodavanje glava."*
+- Promijeniti na: **"Koristite \"Org — struktura i raspored\" u prikazu kartica za dodavanje glava."**
 
 ## Šta se NE dira
 
-- Path-segment rute (`/subject/:id/...`, `/category/:id`) — to nisu query params i već su kanonske.
-- Backward-compat aliasi (`cat`, `sub`, `subject`) ostaju u `ALIASES` da stari bookmarkovi rade zauvijek.
-- Logika `EditReturnSnapshot`, `LearnSession`, `ReviewSession` — bez promjena.
+- Interni state ključevi `manageMode: "edit" | "structure"`, ruta `/edit`, `EditPage`, `Breadcrumbs["/edit"] = "Uređivanje"`, `setEditMode` u source readeru, `editMode` u `WorkshopCardItem`, `useCardOrgDnd` — to su tehnički/UI-nezavisni identifikatori.
+- `StructureManagerDialog` naslov "Struktura — {categoryName}" — dijalog je posebna komponenta za uređivanje hijerarhije, ne odnosi se na pod-mode.
+- `localStorage` ključevi i `EditReturnSnapshot` logika.
 
 ## Rezultat
 
-Svi novi linkovi/redirekcije u aplikaciji idu kroz jedan helper (`buildQuery`) i koriste isključivo kanonska imena (`category`, `subcategory`, `tab`, `mode`, `type`, `freq`, `sort`). Eventualno buduće preimenovanje aliasa svodi se na izmjenu jedne mape u `url-params.ts`.
+Korisnik svuda u UI-u vidi isti rječnik: "Uređivanje i raspored kartica" kao top-level i "View — pregled i uređivanje" / "Org — struktura i raspored" kao pod-modovi. Sve poruke koje upućuju korisnika na neki od ovih ekrana koriste tačan naziv tog ekrana.

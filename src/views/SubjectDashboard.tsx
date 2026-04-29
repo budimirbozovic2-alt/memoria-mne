@@ -105,7 +105,7 @@ export default function SubjectDashboard() {
       to: `/subject/${categoryId}/cards`,
       icon: Layers,
       title: "Kartice",
-      desc: "Upravljanje karticama, struktura i mnemonika",
+      desc: "Uređivanje i raspored kartica",
     },
   ], [categoryId]);
 

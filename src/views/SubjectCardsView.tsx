@@ -181,7 +181,7 @@ export default function SubjectCardsView() {
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as "manage" | "read")} className="w-full space-y-4">
-        {/* ── Group: Upravljanje ── */}
+        {/* ── Group: Kartice ── */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
             Kartice
@@ -209,12 +209,14 @@ export default function SubjectCardsView() {
         </div>
 
         <TabsContent value="manage" className="pt-2 space-y-3">
-          {/* Segmented sub-mode switch: Edit ↔ Structure */}
+          {/* Segmented sub-mode switch: View ↔ Org */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="inline-flex rounded-lg border bg-card p-0.5">
               <button
                 type="button"
                 onClick={() => setManageMode("edit")}
+                title="View — pregled i uređivanje kartica"
+                aria-label="View — pregled i uređivanje kartica"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   manageMode === "edit"
                     ? "bg-primary text-primary-foreground"
@@ -228,6 +230,8 @@ export default function SubjectCardsView() {
               <button
                 type="button"
                 onClick={() => setManageMode("structure")}
+                title="Org — struktura i raspored kartica"
+                aria-label="Org — struktura i raspored kartica"
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   manageMode === "structure"
                     ? "bg-primary text-primary-foreground"
