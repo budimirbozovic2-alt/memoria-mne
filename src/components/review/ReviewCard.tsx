@@ -93,7 +93,7 @@ export default function ReviewCard({
 
       if (showAnswer && ["1", "2", "3", "4"].includes(e.key)) {
         const grade = parseInt(e.key);
-        if (grade === 4 && !canGradeEasy) return;
+        // Cooldown removed for parity with Active Recall.
         e.preventDefault();
         lastGradeRef.current = { cardId: card.id, sectionId: section.id, grade };
         handleGradeWithCalibration(grade);
