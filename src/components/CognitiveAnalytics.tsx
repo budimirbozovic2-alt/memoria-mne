@@ -1,7 +1,4 @@
-
-
-
-import { AlertTriangle, Shield, Zap, ArrowRightLeft, HeartPulse, Brain, TrendingUp, Eye, Wrench } from "lucide-react";
+import { AlertTriangle, Shield, Zap, ArrowRightLeft, HeartPulse, Eye, Wrench } from "lucide-react";
 import { Card } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { Progress } from "@/components/ui/progress";
@@ -16,14 +13,18 @@ import {
 } from "@/lib/cognitive-analytics";
 import { loadPlanner } from "@/lib/planner-storage";
 import LazyChart from "@/components/LazyChart";
+
 interface Props {
   cards: Card[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
   catNameMap: Record<string, string>;
+  /** When set, restricts to a single subject and hides cross-category sections (friction, recovery, weak hooks). */
+  categoryId?: string;
 }
 
-export default function CognitiveAnalytics({ cards, categories, reviewLog, catNameMap }: Props) {
+export default function CognitiveAnalytics({ cards, categories, reviewLog, catNameMap, categoryId }: Props) {
+  const isScoped = !!categoryId;
   return (
     <div className="space-y-6">
       {/* 1. Interference Index */}
@@ -79,7 +80,7 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
           <p className="text-sm text-muted-foreground text-center py-4">Nedovoljno podataka.</p>
         ) : (
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Procijenjeno vrijeme do zaborava po kategoriji.</p>
+            <p className="text-xs text-muted-foreground">{isScoped ? "Procijenjeno vrijeme do zaborava za ovaj predmet." : "Procijenjeno vrijeme do zaborava po kategoriji."}</p>
             {stabilityData.sort((a, b) => a.avgStability - b.avgStability).map(cat => {
               const retPct = Math.round(cat.avgRetrievability * 100);
               const stabDays = Math.round(cat.avgStability * 10) / 10;
@@ -143,81 +144,88 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
         )}
       </LazyChart>
 
-      {/* 4. Friction Analysis */}
-      <LazyChart
-        label="Analiza frikcije"
-        icon={<ArrowRightLeft className="h-4 w-4 text-primary" />}
-        compute={() => calcFrictionAnalysis(reviewLog)}
-        delay={3}
-      >
-        {(friction) => friction.transitions.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nedovoljno podataka.</p>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Vrijeme tranzicije između predmeta.</p>
-            {friction.transitions.slice(0, 6).map((t, i) => (
-              <div key={i} className={`flex items-center justify-between p-2.5 rounded-lg text-sm ${t.isSlow ? "border border-warning/20 bg-warning/5" : "bg-secondary/30"}`}>
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="truncate text-xs font-medium">{catNameMap[t.fromCategory] || t.fromCategory}</span>
-                  <span className="text-muted-foreground text-xs">→</span>
-                  <span className="truncate text-xs font-medium">{catNameMap[t.toCategory] || t.toCategory}</span>
+      {/* 4. Friction Analysis — only in global view */}
+      {!isScoped && (
+        <LazyChart
+          label="Analiza frikcije"
+          icon={<ArrowRightLeft className="h-4 w-4 text-primary" />}
+          compute={() => calcFrictionAnalysis(reviewLog)}
+          delay={3}
+        >
+          {(friction) => friction.transitions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nedovoljno podataka.</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Vrijeme tranzicije između predmeta.</p>
+              {friction.transitions.slice(0, 6).map((t, i) => (
+                <div key={i} className={`flex items-center justify-between p-2.5 rounded-lg text-sm ${t.isSlow ? "border border-warning/20 bg-warning/5" : "bg-secondary/30"}`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="truncate text-xs font-medium">{catNameMap[t.fromCategory] || t.fromCategory}</span>
+                    <span className="text-muted-foreground text-xs">→</span>
+                    <span className="truncate text-xs font-medium">{catNameMap[t.toCategory] || t.toCategory}</span>
+                  </div>
+                  <span className={`text-xs tabular-nums font-medium ${t.isSlow ? "text-warning" : "text-muted-foreground"}`}>
+                    {t.avgTransitionMinutes} min
+                  </span>
                 </div>
-                <span className={`text-xs tabular-nums font-medium ${t.isSlow ? "text-warning" : "text-muted-foreground"}`}>
-                  {t.avgTransitionMinutes} min
-                </span>
-              </div>
-            ))}
-            {friction.suggestion && (
-              <div className="p-3 rounded-lg border border-primary/20 bg-primary/5">
-                <p className="text-xs text-muted-foreground">💡 {friction.suggestion}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </LazyChart>
-
-      {/* 5. Recovery Rate */}
-      <LazyChart
-        label="Indeks oporavka"
-        icon={<HeartPulse className="h-4 w-4 text-primary" />}
-        compute={() => calcRecoveryRate()}
-        delay={4}
-      >
-        {(recovery) => !recovery ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nedovoljno podataka.</p>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Koliko brzo se vraćaš na "Vrijedan" nakon "Lijen" dana.</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3 rounded-lg bg-secondary/50 text-center">
-                <p className={`text-2xl tabular-nums ${recovery.recoveryIndex >= 70 ? "text-success" : recovery.recoveryIndex >= 40 ? "text-warning" : "text-destructive"}`}>
-                  {recovery.recoveryIndex}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Indeks</p>
-              </div>
-              <div className="p-3 rounded-lg bg-secondary/50 text-center">
-                <p className="text-2xl tabular-nums">{recovery.avgRecoveryDays}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Prosjek dana</p>
-              </div>
-              <div className="p-3 rounded-lg bg-secondary/50 text-center">
-                <p className="text-2xl tabular-nums text-success">{recovery.fastRecoveries}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Brzi (≤1d)</p>
-              </div>
-              <div className="p-3 rounded-lg bg-secondary/50 text-center">
-                <p className="text-2xl tabular-nums text-destructive">{recovery.slowRecoveries}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Spori (≥3d)</p>
-              </div>
+              ))}
+              {friction.suggestion && (
+                <div className="p-3 rounded-lg border border-primary/20 bg-primary/5">
+                  <p className="text-xs text-muted-foreground">💡 {friction.suggestion}</p>
+                </div>
+              )}
             </div>
-            <Progress value={recovery.recoveryIndex} className="h-2" />
-          </div>
-        )}
-      </LazyChart>
+          )}
+        </LazyChart>
+      )}
+
+      {/* 5. Recovery Rate — only in global view */}
+      {!isScoped && (
+        <LazyChart
+          label="Indeks oporavka"
+          icon={<HeartPulse className="h-4 w-4 text-primary" />}
+          compute={() => calcRecoveryRate()}
+          delay={4}
+        >
+          {(recovery) => !recovery ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nedovoljno podataka.</p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Koliko brzo se vraćaš na "Vrijedan" nakon "Lijen" dana.</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                  <p className={`text-2xl tabular-nums ${recovery.recoveryIndex >= 70 ? "text-success" : recovery.recoveryIndex >= 40 ? "text-warning" : "text-destructive"}`}>
+                    {recovery.recoveryIndex}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Indeks</p>
+                </div>
+                <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                  <p className="text-2xl tabular-nums">{recovery.avgRecoveryDays}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Prosjek dana</p>
+                </div>
+                <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                  <p className="text-2xl tabular-nums text-success">{recovery.fastRecoveries}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Brzi (≤1d)</p>
+                </div>
+                <div className="p-3 rounded-lg bg-secondary/50 text-center">
+                  <p className="text-2xl tabular-nums text-destructive">{recovery.slowRecoveries}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Spori (≥3d)</p>
+                </div>
+              </div>
+              <Progress value={recovery.recoveryIndex} className="h-2" />
+            </div>
+          )}
+        </LazyChart>
+      )}
 
       {/* 6. Blind Spots */}
       <LazyChart
         label="Slijepe tačke"
         icon={<Eye className="h-4 w-4 text-destructive" />}
-        compute={() => calcBlindSpots(cards)}
+        compute={() => {
+          const spots = calcBlindSpots(cards);
+          return categoryId ? spots.filter(s => s.category === categoryId) : spots;
+        }}
         delay={5}
       >
         {(blindSpots) => blindSpots.length === 0 ? (
@@ -242,29 +250,31 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
         )}
       </LazyChart>
 
-      {/* 7. Weak Hooks */}
-      <LazyChart
-        label="Slabe kuke"
-        icon={<Wrench className="h-4 w-4 text-warning" />}
-        compute={() => calcWeakHooks()}
-        delay={6}
-      >
-        {(weakHooks) => weakHooks.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nema slabih kuka.</p>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-foreground">Kartice sa kukama, ali sporim prisjećanjem (&gt;3s).</p>
-            {weakHooks.map((hook, i) => (
-              <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning/5">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{hook.question}</p>
-                  <p className="text-[10px] text-muted-foreground">{catNameMap[hook.category] || hook.category} • {(hook.avgLatencyMs / 1000).toFixed(1)}s prosjek</p>
+      {/* 7. Weak Hooks — only in global view */}
+      {!isScoped && (
+        <LazyChart
+          label="Slabe kuke"
+          icon={<Wrench className="h-4 w-4 text-warning" />}
+          compute={() => calcWeakHooks()}
+          delay={6}
+        >
+          {(weakHooks) => weakHooks.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nema slabih kuka.</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">Kartice sa kukama, ali sporim prisjećanjem (&gt;3s).</p>
+              {weakHooks.map((hook, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-warning/20 bg-warning/5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium truncate">{hook.question}</p>
+                    <p className="text-[10px] text-muted-foreground">{catNameMap[hook.category] || hook.category} • {(hook.avgLatencyMs / 1000).toFixed(1)}s prosjek</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </LazyChart>
+              ))}
+            </div>
+          )}
+        </LazyChart>
+      )}
     </div>
   );
 }

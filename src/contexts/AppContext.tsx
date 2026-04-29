@@ -11,14 +11,12 @@ import { buildCardBuckets, EMPTY_BUCKETS, type CardBuckets } from "@/lib/card-bu
 const LazyDatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
 
 // ─── Types ──────────────────────────────────────────────
-export type View = "dashboard" | "create" | "edit" | "review" | "categories" | "learn" | "settings" | "frequent-errors" | "mnemonic" | "metacognitive" | "stats" | "planner" | "speed-reader";
+export type View = "dashboard" | "create" | "edit" | "review" | "categories" | "learn" | "settings" | "mnemonic" | "stats" | "planner" | "speed-reader";
 
 const VIEW_TO_PATH: Record<View, string> = {
   dashboard: "/", create: "/create", edit: "/edit", review: "/review",
   categories: "/categories", learn: "/learn", settings: "/settings",
-  "frequent-errors": "/frequent-errors",
-  mnemonic: "/mnemonics",
-  metacognitive: "/metacognitive", stats: "/stats", planner: "/planner",
+  mnemonic: "/mnemonics", stats: "/stats", planner: "/planner",
   "speed-reader": "/speed-reader",
 };
 
@@ -33,7 +31,7 @@ export function useCurrentView(): View {
 const VIEW_ACTIVITY_MAP: Partial<Record<View, ActivityType>> = {
   review: "review", learn: "learn-active", mnemonic: "mnemonic-workshop",
   create: "admin", edit: "admin", categories: "admin",
-  stats: "analysis", metacognitive: "analysis", planner: "analysis",
+  stats: "analysis", planner: "analysis",
 };
 
 // ─── Pomodoro types ─────────────────────────────────────
