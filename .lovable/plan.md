@@ -1,84 +1,55 @@
-## Dijagnoza
+## Cilj
 
-Tekst u karticama se ponekad prikazuje izrazito blijedo zbog **kompozicije više slojeva providnosti** koja se akumulira:
+Garantovati da se `::mindmap[id]` direktiva **uvijek** ubacuje na početku nove linije (i završava praznom linijom), bez obzira gdje se nalazi kursor — radi pouzdanog rendera u `ZettelPreview`-u (markdown direktiva mora biti samostalan blok).
 
-1. **`CardViewTable.tsx:166`** — kontejner za section.content kombinuje `text-foreground/70` + `prose` + `dark:prose-invert` + `card-prose`. U dark modu prose body već koristi `hsl(var(--foreground) / 0.9)` (`index.css:619`), pa goli tekst trpi 0.7 × 0.9 ≈ 63% opaciteta. Dijelovi unutar `<p>` dobijaju 0.9, a dijelovi van njega 0.7 — odatle **nejednako blijed tekst unutar iste kartice**.
+## Trenutno ponašanje
 
-2. **Inline color stilovi iz importovanog HTML-a** (Mammoth/DOCX, copy-paste iz Worda). Override `color !important` na `index.css:638-649` postoji **samo za `.dark .prose`**. U light modu ostaje siva boja iz dokumenta; van klase `.prose` override se uopšte ne primjenjuje.
-
-3. **`--tw-prose-body` u light modu nije eksplicitno postavljen** — default Tailwind Typography vrijednost (`#374151`) ne dolazi iz dizajn-tokena, pa može vizuelno odudarati od ostatka teksta koji koristi `--foreground`.
-
-## Izmjene
-
-### `src/components/category/CardViewTable.tsx` (1 linija)
-Ukloniti `text-foreground/70` sa kontejnera. Boja teksta treba da dolazi isključivo iz `prose` varijabli koje su već pravilno definisane u `index.css`. Ovo eliminiše dvostruki opacity i nejednakost između `<p>` i ostalog sadržaja.
-
-```tsx
-// prije:
-className="text-xs text-foreground/70 prose prose-xs dark:prose-invert max-w-none line-clamp-4 card-prose"
-// poslije:
-className="text-xs prose prose-xs dark:prose-invert max-w-none line-clamp-4 card-prose"
+`src/views/ZettelkastenView.tsx:279`:
+```ts
+editorRef.current?.insertText(`\n\n::mindmap[${mmId}]\n\n`);
 ```
 
-### `src/index.css` — dodati light-mode prose blok i light-mode override za inline boje
+`insertText` (u `ZettelEditor.tsx:54`) ubacuje doslovno na poziciji kursora. Problemi:
+- Kursor na početku praznog dokumenta → vodeće `\n\n` stvara dvije prazne linije iznad.
+- Kursor već na početku linije (poslije `\n`) → ponovo višak praznih redova.
+- Kursor odmah poslije već postojeće `\n\n` → trostruka praznina.
+- Trailing `\n\n` na kraju dokumenta ostavlja prazne linije.
 
-Dodati prije postojećeg `.dark .prose` bloka (oko linije 617):
+## Rješenje
 
-```css
-/* ─── Prose light mode: anchor body text to design tokens ─── */
-.prose {
-  --tw-prose-body: hsl(var(--foreground));
-  --tw-prose-headings: hsl(var(--foreground));
-  --tw-prose-bold: hsl(var(--foreground));
-  --tw-prose-links: hsl(var(--primary));
-  --tw-prose-quotes: hsl(var(--foreground));
-  --tw-prose-code: hsl(var(--foreground));
-}
+Dodati novu metodu `insertBlock(text: string)` u `ZettelEditor` koja **normalizuje okruženje**:
 
-/* Force override inline color styles in light mode too (Mammoth/DOCX import) */
-.prose [style*="color"],
-.prose span[style],
-.prose p[style],
-.prose div[style],
-.prose td[style],
-.prose th[style],
-.whitespace-pre-wrap [style*="color"],
-.whitespace-pre-wrap span[style],
-.whitespace-pre-wrap p[style] {
-  color: hsl(var(--foreground)) !important;
-}
+1. Ako tekst prije kursora ne završava sa `\n\n` (i nije početak dokumenta) → prepend `\n` ili `\n\n` koliko nedostaje da se garantuje prazna linija iznad.
+2. Ako je kursor na početku dokumenta → ne dodaje vodeće newline-e.
+3. Umetne sam blok (npr. `::mindmap[id]`).
+4. Ako tekst poslije kursora ne počinje sa `\n\n` (i nije kraj dokumenta) → append `\n` ili `\n\n` koliko fali.
+5. Ako je kraj dokumenta → samo jedan trailing `\n`.
+6. Postavi kursor odmah poslije ubačenog bloka (na kraj prvog newline-a iza, da korisnik može odmah kucati na novom redu).
 
-.prose [style*="background-color"],
-.whitespace-pre-wrap [style*="background-color"] {
-  background-color: transparent !important;
-}
-```
+### Izmjene
 
-I dodatno ojačati dark blok da bude **puno opaciteta** umjesto 0.9 (na liniji 619, 621, 627, 631):
-```css
---tw-prose-body: hsl(var(--foreground));
---tw-prose-lead: hsl(var(--foreground) / 0.85);
---tw-prose-quotes: hsl(var(--foreground));
---tw-prose-pre-code: hsl(var(--foreground));
-```
+**1. `src/components/zettelkasten/ZettelEditor.tsx`**
+- Dodati `insertBlock(text: string)` u `ZettelEditorHandle` interface.
+- Implementirati helper koji računa potreban prefix/suffix newline padding na osnovu `value.slice(0, start)` i `value.slice(end)`.
+- Izložiti kroz `useImperativeHandle`.
 
-Razlog: `--foreground` je već dizajniran sa pravim kontrastom za pozadinu — dodatni opacity samo razbija WCAG kontrast koji je dizajn token već garantovao.
+**2. `src/views/ZettelkastenView.tsx`**
+- Linija 279: zamijeniti `insertText(\`\\n\\n::mindmap[${mmId}]\\n\\n\`)` sa `insertBlock(\`::mindmap[${mmId}]\`)`.
 
-## Šta NE diramo
+## Edge cases pokrivene
 
-- `text-muted-foreground` ostaje gdje je namjerno korišten (timestamps, sekundarne labele, prazno-state poruke). To je legitimna sekundarna hijerarhija.
-- `text-foreground/70` u svrhu hover/disabled stanja na ikonama ostaje.
-- `card-prose` selektor (paragraph spacing) — nema veze sa bojom.
+| Pozicija kursora | Prefix | Suffix |
+|---|---|---|
+| Početak praznog dokumenta | (nema) | `\n` |
+| Početak dokumenta sa sadržajem | (nema) | `\n\n` |
+| Sredina paragrafa (`abc\|def`) | `\n\n` | `\n\n` |
+| Odmah iza `\n` (početak linije) | `\n` | `\n\n` |
+| Odmah iza `\n\n` | (nema) | `\n\n` |
+| Kraj dokumenta | `\n\n` | `\n` |
+| Kraj dokumenta poslije već `\n\n` | (nema) | `\n` |
 
-## Verifikacija nakon implementacije
+## Što ostaje van skopa
 
-1. Otvoriti `/subject/:id/cards` → "Pregled" → expand-ovati nekoliko kartica:
-   - Dark mode: tekst u expanded prikazu mora imati istu intenzivnost u svakom redu, jednak i `<p>` i goli tekstualni dijelovi.
-   - Light mode: importovani DOCX kartice ne smiju prikazivati sivu boju iz originalnog dokumenta.
-2. PassiveReader (`subject-cards/PassiveReader.tsx:378`) i dalje koristi `prose dark:prose-invert card-prose` — tu boja sada dolazi iz tokena u oba moda.
-3. Pokrenuti postojeće Vitest testove da se ne razbije ništa drugo.
-
-## Datoteke koje se mijenjaju
-
-- `src/components/category/CardViewTable.tsx` (uklanjanje `text-foreground/70` na liniji 166)
-- `src/index.css` (novi light-mode prose blok + jačanje dark-mode kontrasta)
+- `insertText` ostaje kao niskonivovska metoda (koristi je možda i drugi kod u budućnosti za inline ubacivanje).
+- Drugi block-level umetci (heading, list) već koriste `insertAtLineStart` koji garantuje line-start za njih.
+- Bez izmjene render pipeline-a ili markdown parsera.
