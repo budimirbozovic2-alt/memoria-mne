@@ -217,7 +217,7 @@ export function loadSlippageLog(): SlippageEntry[] {
 
 // ─── Activity Time Tracking ─────────────────────────────
 
-export type ActivityType = "review" | "learn-active" | "learn-free" | "learn-chain" | "mnemonic-test" | "mnemonic-workshop" | "admin" | "analysis";
+export type ActivityType = "review" | "learn-active" | "mnemonic-test" | "mnemonic-workshop" | "admin" | "analysis"; | "analysis";
 
 export interface ActivityEntry {
   timestamp: number;
