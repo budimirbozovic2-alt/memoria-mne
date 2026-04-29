@@ -96,7 +96,7 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
         </div>
 
         <div className="flex items-center gap-0.5 flex-1 min-w-0">
-          {PRIMARY_NAV.map(({ path, icon: Icon, label, badge }) => (
+          {PRIMARY_NAV.map(({ path, icon: Icon, label }) => (
             <NavLink
               key={path}
               to={path}
@@ -106,11 +106,6 @@ export default function TopNav({ onToggleZen, zenActive, onOpenOnboarding }: Pro
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
               <span>{label}</span>
-              {badge && stats.due > 0 && (
-                <Badge variant="destructive" className="ml-0.5 text-[9px] h-4 min-w-[16px] px-1 flex items-center justify-center">
-                  {stats.due}
-                </Badge>
-              )}
             </NavLink>
           ))}
 
