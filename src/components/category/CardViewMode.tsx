@@ -90,77 +90,99 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
   }
 
   return (
-    <div className="space-y-3">
-      <CardViewFilterBar
-        filterSubcategory={filters.filterSubcategory}
-        onChangeSubcategory={filters.changeSubcategory}
-        filterChapter={filters.filterChapter}
-        onChangeChapter={filters.setFilterChapter}
-        filterType={filters.filterType}
-        onChangeType={filters.setFilterType}
-        filterTag={filters.filterTag}
-        onChangeTag={filters.setFilterTag}
-        masteryFilter={masteryFilter}
-        onClearMasteryFilter={onClearMasteryFilter}
-        hasActiveFilters={filters.hasActiveFilters}
-        onResetFilters={filters.resetFilters}
-        uniqueSubcategories={filters.uniqueSubcategories}
-        subcategoryCounts={filters.subcategoryCounts}
-        uniqueChapters={filters.uniqueChapters}
-        chapterCounts={filters.chapterCounts}
-        nameMap={filters.nameMap}
-        filteredCount={filters.filteredCards.length}
-        totalCount={cards.length}
-        selectionMode={selectionMode}
-        onToggleSelectionMode={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
-        onBulkImport={() => setBulkImportOpen(true)}
-        onAddCard={() => setAddDialogOpen(true)}
-        onDelete={onDelete}
-      />
+    <div className="grid gap-3 lg:grid-cols-[260px_1fr]">
+      <aside className="lg:sticky lg:top-4 lg:self-start min-w-0">
+        <SubjectHierarchyTree
+          subcategoryNodes={subcategoryNodes}
+          totalCount={cards.length}
+          subcategoryCounts={filters.subcategoryCounts}
+          chapterCounts={filters.chapterCounts}
+          selectedSubcategoryId={filters.filterSubcategory}
+          selectedChapterId={filters.filterChapter}
+          onSelectAll={() => filters.changeSubcategory("__all__")}
+          onSelectSubcategory={(id) => {
+            filters.changeSubcategory(id);
+          }}
+          onSelectChapter={(subId, chId) => {
+            filters.changeSubcategory(subId);
+            filters.setFilterChapter(chId);
+          }}
+          storageKey={`subj-tree-expanded:${categoryId}`}
+        />
+      </aside>
 
-      {selectionMode && (
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/50 p-2.5">
-          <span className="text-xs font-medium text-foreground">{selectedIds.size} izabrano</span>
-          <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set(filters.filteredCards.map(c => c.id)))} className="h-7 gap-1.5 text-xs">
-            Označi sve ({filters.filteredCards.length})
-          </Button>
-          {selectedIds.size > 0 && (
-            <Button variant="destructive" size="sm" onClick={handleBatchDelete} className="h-7 gap-1.5 text-xs">
-              <Trash2 className="h-3.5 w-3.5" /> Obriši izabrane
+      <div className="space-y-3 min-w-0">
+        <CardViewFilterBar
+          filterSubcategory={filters.filterSubcategory}
+          onChangeSubcategory={filters.changeSubcategory}
+          filterChapter={filters.filterChapter}
+          onChangeChapter={filters.setFilterChapter}
+          filterType={filters.filterType}
+          onChangeType={filters.setFilterType}
+          filterTag={filters.filterTag}
+          onChangeTag={filters.setFilterTag}
+          masteryFilter={masteryFilter}
+          onClearMasteryFilter={onClearMasteryFilter}
+          hasActiveFilters={filters.hasActiveFilters}
+          onResetFilters={filters.resetFilters}
+          uniqueSubcategories={filters.uniqueSubcategories}
+          subcategoryCounts={filters.subcategoryCounts}
+          uniqueChapters={filters.uniqueChapters}
+          chapterCounts={filters.chapterCounts}
+          nameMap={filters.nameMap}
+          filteredCount={filters.filteredCards.length}
+          totalCount={cards.length}
+          selectionMode={selectionMode}
+          onToggleSelectionMode={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
+          onBulkImport={() => setBulkImportOpen(true)}
+          onAddCard={() => setAddDialogOpen(true)}
+          onDelete={onDelete}
+        />
+
+        {selectionMode && (
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/50 p-2.5">
+            <span className="text-xs font-medium text-foreground">{selectedIds.size} izabrano</span>
+            <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set(filters.filteredCards.map(c => c.id)))} className="h-7 gap-1.5 text-xs">
+              Označi sve ({filters.filteredCards.length})
             </Button>
-          )}
-          <Button variant="ghost" size="sm" onClick={exitSelectionMode} className="h-7 text-xs">
-            Otkaži
-          </Button>
-        </div>
-      )}
+            {selectedIds.size > 0 && (
+              <Button variant="destructive" size="sm" onClick={handleBatchDelete} className="h-7 gap-1.5 text-xs">
+                <Trash2 className="h-3.5 w-3.5" /> Obriši izabrane
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={exitSelectionMode} className="h-7 text-xs">
+              Otkaži
+            </Button>
+          </div>
+        )}
 
-      <CardViewTable
-        filteredCards={filters.filteredCards}
-        allCategories={allCategories}
-        expandedId={expandedId}
-        onToggle={toggle}
-        selectionMode={selectionMode}
-        selectedIds={selectedIds}
-        onToggleSelection={toggleSelection}
-        toggleTag={toggleTag}
-        onEdit={onEdit}
-        onPassiveRead={onPassiveRead}
-        onDelete={onDelete}
-        onOpenMoveModal={(cardId) => { setMoveCardId(cardId); setMoveModalOpen(true); }}
-        hasActiveFilters={filters.hasActiveFilters}
-        totalCount={cards.length}
-        onResetFilters={filters.resetFilters}
-      />
+        <CardViewTable
+          filteredCards={filters.filteredCards}
+          allCategories={allCategories}
+          expandedId={expandedId}
+          onToggle={toggle}
+          selectionMode={selectionMode}
+          selectedIds={selectedIds}
+          onToggleSelection={toggleSelection}
+          toggleTag={toggleTag}
+          onEdit={onEdit}
+          onPassiveRead={onPassiveRead}
+          onDelete={onDelete}
+          onOpenMoveModal={(cardId) => { setMoveCardId(cardId); setMoveModalOpen(true); }}
+          hasActiveFilters={filters.hasActiveFilters}
+          totalCount={cards.length}
+          onResetFilters={filters.resetFilters}
+        />
 
-      <MoveCardDialog
-        open={moveModalOpen}
-        onOpenChange={setMoveModalOpen}
-        otherCategories={otherCategories}
-        onConfirm={confirmMove}
-      />
-      <AddCardDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} categoryId={categoryId} addCard={addCard} addFlashCard={addFlashCard} />
-      <BulkImportWrapper open={bulkImportOpen} onOpenChange={setBulkImportOpen} categoryId={categoryId} addFlashCard={addFlashCard} />
+        <MoveCardDialog
+          open={moveModalOpen}
+          onOpenChange={setMoveModalOpen}
+          otherCategories={otherCategories}
+          onConfirm={confirmMove}
+        />
+        <AddCardDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} categoryId={categoryId} addCard={addCard} addFlashCard={addFlashCard} />
+        <BulkImportWrapper open={bulkImportOpen} onOpenChange={setBulkImportOpen} categoryId={categoryId} addFlashCard={addFlashCard} />
+      </div>
     </div>
   );
 }
