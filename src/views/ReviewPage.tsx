@@ -6,6 +6,7 @@ import { SectionState } from "@/lib/spaced-repetition";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ReviewSession from "@/components/ReviewSession";
 import EmptyState from "@/components/EmptyState";
+import { getParam } from "@/lib/url-params";
 
 export default function ReviewPage() {
   const { cards, dueCards, ready } = useCardData();
@@ -15,7 +16,7 @@ export default function ReviewPage() {
   const { setView } = useUIContext();
   const session = useSessionContext();
   const [searchParams] = useSearchParams();
-  const lockedCategory = searchParams.get("category") || null;
+  const lockedCategory = getParam(searchParams, "category");
 
   // When entry came from a Subject Dashboard (?category=UUID), hard-scope
   // the entire dataset before it ever reaches the session — this guarantees
