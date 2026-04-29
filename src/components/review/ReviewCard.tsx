@@ -1,6 +1,6 @@
 import { ArrowLeft, Eye, ChevronRight, AlertTriangle, Pause, Scale } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { Card, Section, GRADES, isLeech, formatInterval, previewIntervals, getCachedRetention, SRSettings } from "@/lib/spaced-repetition";
+import { Card, Section, isLeech, formatInterval, getCachedRetention, SRSettings } from "@/lib/spaced-repetition";
 import AdaptiveReasonPanel from "./AdaptiveReasonPanel";
 import { useCategoryData } from "@/contexts/AppContext";
 import { HighlightedSection } from "@/lib/highlight-key-parts";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { addCalibrationEntry, addLatencyEntry } from "@/lib/metacognitive-storage";
 import ShortcutsHint from "@/components/ShortcutsHint";
+import GradeButtons from "@/components/learn/GradeButtons";
 import { ViewWidth, viewWidthClasses, viewWidthLabels, REVIEW_SHORTCUTS } from "./review-constants";
 interface ReviewCardProps {
   card: Card;
