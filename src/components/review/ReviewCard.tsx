@@ -59,7 +59,6 @@ export default function ReviewCard({
     const latencyMs = Date.now() - questionShownAt.current;
     addLatencyEntry({ timestamp: Date.now(), cardId: card.id, sectionId: section.id, latencyMs, category: card.categoryId });
     setShowAnswer(true);
-    setAnswerRevealedAt(Date.now());
   }, [setShowAnswer, card.id, section.id, card.categoryId]);
 
   const handleGradeWithCalibration = useCallback((grade: number) => {
