@@ -164,6 +164,26 @@ export default function HealthMonitor() {
     }
   };
 
+  const handleHealStaleLinks = async () => {
+    if (staleSub.count === 0 && staleChap.count === 0) return;
+    setHealing(true);
+    try {
+      const { healCardTaxonomy } = await import("@/lib/migrations/heal-card-taxonomy");
+      const report = await healCardTaxonomy(true);
+      const total = report.staleSubcategoryReset + report.staleChapterReset + report.mismatchChapterReset;
+      toast.success(`${total} zastarjelih veza očišćeno`);
+      setStaleSub({ count: 0, cardIds: [] });
+      setStaleChap({ count: 0, cardIds: [] });
+      eventBus.emit(EVENT_TYPES.CARDS_UPDATED);
+      await refresh();
+    } catch (err) {
+      console.error("[health] heal failed", err);
+      toast.error("Greška pri čišćenju zastarjelih veza");
+    } finally {
+      setHealing(false);
+    }
+  };
+
   const handleClearCrashLog = () => {
     localStorage.removeItem("codex-crash-log");
     localStorage.removeItem("memoria-crash-log");
