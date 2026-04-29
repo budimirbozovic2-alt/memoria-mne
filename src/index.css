@@ -614,21 +614,49 @@
   }
 }
 
+/* ─── Prose light mode: anchor body text to design tokens ─── */
+.prose {
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-bold: hsl(var(--foreground));
+  --tw-prose-links: hsl(var(--primary));
+  --tw-prose-quotes: hsl(var(--foreground));
+  --tw-prose-code: hsl(var(--foreground));
+}
+
+/* Force override inline color styles in light mode (Mammoth/DOCX import etc.) */
+.prose [style*="color"],
+.prose span[style],
+.prose p[style],
+.prose div[style],
+.prose td[style],
+.prose th[style],
+.whitespace-pre-wrap [style*="color"],
+.whitespace-pre-wrap span[style],
+.whitespace-pre-wrap p[style] {
+  color: hsl(var(--foreground)) !important;
+}
+
+.prose [style*="background-color"],
+.whitespace-pre-wrap [style*="background-color"] {
+  background-color: transparent !important;
+}
+
 /* ─── Prose dark mode: force light text on dark backgrounds ─── */
 .dark .prose {
-  --tw-prose-body: hsl(var(--foreground) / 0.9);
+  --tw-prose-body: hsl(var(--foreground));
   --tw-prose-headings: hsl(var(--foreground));
-  --tw-prose-lead: hsl(var(--foreground) / 0.8);
+  --tw-prose-lead: hsl(var(--foreground) / 0.85);
   --tw-prose-links: hsl(var(--primary));
   --tw-prose-bold: hsl(var(--foreground));
   --tw-prose-counters: hsl(var(--muted-foreground));
   --tw-prose-bullets: hsl(var(--muted-foreground));
   --tw-prose-hr: hsl(var(--border));
-  --tw-prose-quotes: hsl(var(--foreground) / 0.9);
+  --tw-prose-quotes: hsl(var(--foreground));
   --tw-prose-quote-borders: hsl(var(--border));
   --tw-prose-captions: hsl(var(--muted-foreground));
   --tw-prose-code: hsl(var(--foreground));
-  --tw-prose-pre-code: hsl(var(--foreground) / 0.9);
+  --tw-prose-pre-code: hsl(var(--foreground));
   --tw-prose-pre-bg: hsl(var(--muted));
   --tw-prose-th-borders: hsl(var(--border));
   --tw-prose-td-borders: hsl(var(--border));
@@ -645,7 +673,7 @@
 .dark .whitespace-pre-wrap [style*="color"],
 .dark .whitespace-pre-wrap span[style],
 .dark .whitespace-pre-wrap p[style] {
-  color: hsl(var(--foreground) / 0.9) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 .dark .prose [style*="background-color"],
