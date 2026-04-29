@@ -57,6 +57,7 @@ export default function HealthMonitor() {
   const [cleaning, setCleaning] = useState(false);
   const [healing, setHealing] = useState(false);
   const [crashLog, setCrashLog] = useState<CrashEntry[]>(loadCrashLog());
+  const [remapOpen, setRemapOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
