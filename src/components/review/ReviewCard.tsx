@@ -200,50 +200,46 @@ export default function ReviewCard({
           transition={{ duration: 0.3 }}
           className="space-y-6"
         >
-          {/* Question header */}
-          <div className="rounded-lg bg-secondary/50 border px-5 py-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-widest text-muted-foreground">{catName}</span>
-              {card.subcategoryId && (
-                <span className="text-xs text-muted-foreground">› {subName}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-lg leading-relaxed flex-1">{card.question}</p>
+          {/* Card question header — aligned with Active Recall */}
+          <div className="rounded-xl bg-card border p-8">
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <span className="text-xs uppercase tracking-widest text-muted-foreground">{catName}</span>
+                {card.subcategoryId && (
+                  <span className="text-xs text-muted-foreground">› {subName}</span>
+                )}
+                {!isFlash && (
+                  <span className="text-xs text-primary flex items-center gap-1">
+                    <ChevronRight className="h-3 w-3" /> {section.title}
+                    {totalSectionsInCard > 1 && (
+                      <span className="text-muted-foreground">({sectionIndex + 1}/{totalSectionsInCard})</span>
+                    )}
+                  </span>
+                )}
+              </div>
               {hasSource && (
                 <button
                   onClick={() => setSnippetOpen(true)}
                   className={`p-1.5 rounded-md transition-colors shrink-0 ${card.needsReview ? "text-warning hover:bg-warning/10" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
                   title="Uporedi sa izvorom"
+                  aria-label="Uporedi sa izvorom"
                 >
                   <Scale className="h-4 w-4" />
                 </button>
               )}
             </div>
-          </div>
-
-          {/* Section info (hidden for flash cards) */}
-          {!isFlash && (
-            <div className="rounded-xl bg-card border p-5">
-              <div className="flex items-center gap-2">
-                <ChevronRight className="h-4 w-4 text-primary" />
-                <span className="font-medium text-primary">{section.title}</span>
-                {totalSectionsInCard > 1 && (
-                  <span className="text-sm text-muted-foreground">
-                    ({sectionIndex + 1}/{totalSectionsInCard} cjelina)
-                  </span>
-                )}
+            <p className="text-xl leading-relaxed">{card.question}</p>
+            {!isFlash && section.stability > 0 && (
+              <div className="mt-4 flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
+                <span className="px-2 py-0.5 rounded-md bg-secondary">Stabilnost: {section.stability.toFixed(1)}d</span>
+                <span className="px-2 py-0.5 rounded-md bg-secondary">Težina: {section.difficulty.toFixed(0)}</span>
+                <span className="px-2 py-0.5 rounded-md bg-secondary">Interval: {formatInterval(section.interval)}</span>
                 {lapses > 0 && !sectionIsLeech && (
-                  <span className="text-xs text-warning ml-auto">· {lapses} pad{lapses === 1 ? "" : "ova"}</span>
+                  <span className="px-2 py-0.5 rounded-md bg-warning/10 text-warning">{lapses} pad{lapses === 1 ? "" : "ova"}</span>
                 )}
               </div>
-              {section.stability > 0 && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Stabilnost: {section.stability.toFixed(1)}d · Težina: {section.difficulty.toFixed(0)} · Interval: {formatInterval(section.interval)}
-                </p>
-              )}
-            </div>
-          )}
+            )}
+          </div>
 
           <AdaptiveReasonPanel
             ctx={{
