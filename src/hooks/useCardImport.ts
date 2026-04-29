@@ -3,7 +3,10 @@ import { toast } from "sonner";
 import { Card, createCard, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { type CategoryRecord } from "@/lib/db";
+import { db, idbLoadCategories, idbSaveCategories, type CategoryRecord } from "@/lib/db";
+import { sanitizeHtml } from "@/lib/sanitize";
+import { resolveLegacyTaxonomyNames } from "@/lib/migrations/resolve-legacy-taxonomy";
+import { invalidateSourcesCache } from "@/lib/sources-storage";
 
 interface UseCardImportDeps {
   setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
