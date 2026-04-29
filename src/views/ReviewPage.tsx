@@ -15,19 +15,33 @@ export default function ReviewPage() {
   const { setView } = useUIContext();
   const session = useSessionContext();
   const [searchParams] = useSearchParams();
-  const preSelectedCategory = searchParams.get("category") || null;
+  const lockedCategory = searchParams.get("category") || null;
+
+  // When entry came from a Subject Dashboard (?category=UUID), hard-scope
+  // the entire dataset before it ever reaches the session — this guarantees
+  // mode counters, EmptyState diagnostics, and downstream queues all reflect
+  // *only* the locked subject. Without `?category=`, behaviour is global.
+  const scopedDueCards = useMemo(
+    () => lockedCategory ? dueCards.filter(c => c.categoryId === lockedCategory) : dueCards,
+    [dueCards, lockedCategory],
+  );
+  const scopedAllCards = useMemo(
+    () => lockedCategory ? cards.filter(c => c.categoryId === lockedCategory) : cards,
+    [cards, lockedCategory],
+  );
 
   useEffect(() => {
-    if (ready) session.startSession(cards, reviewLog);
+    if (ready) session.startSession(scopedAllCards, reviewLog);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+  }, [ready, lockedCategory]);
 
-  // FSRS diagnostics for empty state
+  // FSRS diagnostics for empty state — scoped so the empty message reflects
+  // the locked subject rather than the full library.
   const diagnostics = useMemo(() => {
     let newSections = 0;
     let reviewSections = 0;
     let nextDue = Infinity;
-    for (const card of cards) {
+    for (const card of scopedAllCards) {
       for (const s of card.sections) {
         if (s.state === SectionState.New) {
           newSections++;
@@ -43,8 +57,8 @@ export default function ReviewPage() {
       const d = new Date(nextDue);
       nextDueDate = d.toLocaleDateString("sr-Latn-BA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
     }
-    return { totalCards: cards.length, newSections, reviewSections, nextDueDate };
-  }, [cards]);
+    return { totalCards: scopedAllCards.length, newSections, reviewSections, nextDueDate };
+  }, [scopedAllCards]);
 
   const handleReviewSection = useCallback((cardId: string, sectionId: string, grade: number) => {
     if (session.isSessionActive) {
@@ -82,19 +96,20 @@ export default function ReviewPage() {
 
   return (
     <ErrorBoundary label="Ponavljanje" onNavigateHome={() => setView("dashboard")}>
-      {dueCards.length === 0 ? (
+      {scopedDueCards.length === 0 ? (
         <EmptyState type="review" diagnostics={diagnostics} />
       ) : (
         <ReviewSession
-          dueCards={dueCards}
-          allCards={cards}
+          dueCards={scopedDueCards}
+          allCards={scopedAllCards}
           categoryRecords={categoryRecords}
           subcategories={subcategories}
           srSettings={srSettings}
           onReviewSection={handleReviewSection}
           onLogError={handleLogError}
           onBack={handleBack}
-          preSelectedCategory={preSelectedCategory}
+          preSelectedCategory={lockedCategory}
+          lockedCategory={lockedCategory}
         />
       )}
     </ErrorBoundary>

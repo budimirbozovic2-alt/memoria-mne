@@ -1,4 +1,4 @@
-import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw } from "lucide-react";
+import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw, Lock } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { Card, getDueSections, SRSettings, SectionState, getRetrievability, isLeech } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
@@ -21,16 +21,18 @@ interface ReviewSetupProps {
   onResumeSession: () => void;
   onClearSavedSession: () => void;
   preSelectedCategory?: string | null;
+  /** Hard scope lock: when set, category cannot be changed via UI. */
+  lockedCategory?: string | null;
 }
 
 export default function ReviewSetup({
   dueCards, allCards, categoryRecords, subcategories, srSettings,
   onSelectMode, onBack, savedSession, onResumeSession, onClearSavedSession,
-  preSelectedCategory,
+  preSelectedCategory, lockedCategory,
 }: ReviewSetupProps) {
   const [setupStep, setSetupStep] = useState<"mode" | "filter">("mode");
   const [mode, setMode] = useState<ReviewMode>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(preSelectedCategory ?? null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(lockedCategory ?? preSelectedCategory ?? null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
@@ -210,6 +212,17 @@ export default function ReviewSetup({
           </div>
         </div>
 
+        {/* Locked subject scope banner */}
+        {lockedCategory && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 border border-primary/20 text-xs">
+            <Lock className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="text-foreground">
+              Konsolidacija je ograničena na predmet:&nbsp;
+              <strong>{categoryRecords.find(r => r.id === lockedCategory)?.name ?? "—"}</strong>
+            </span>
+          </div>
+        )}
+
         {/* Resume saved session */}
         {savedSession && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-xl border-primary/30 p-4 flex items-center gap-3">
@@ -273,7 +286,16 @@ export default function ReviewSetup({
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto space-y-8 py-10">
       <div>
-        <button onClick={() => { setSetupStep("mode"); setMode(null); setSelectedCategory(null); setSelectedSubcategory(null); setSelectedChapter(null); setFilterExamFrequent(false); }} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
+        <button onClick={() => {
+          setSetupStep("mode");
+          setMode(null);
+          // Preserve the locked subject scope when navigating back to modes;
+          // only clear sub-filters that exist *within* the locked subject.
+          if (!lockedCategory) setSelectedCategory(null);
+          setSelectedSubcategory(null);
+          setSelectedChapter(null);
+          setFilterExamFrequent(false);
+        }} className="text-muted-foreground hover:text-foreground flex items-center gap-1 mb-6">
           <ArrowLeft className="h-4 w-4" /> Nazad na režime
         </button>
         <h2 className="imperial-title">{modeMeta.label}</h2>
@@ -292,7 +314,14 @@ export default function ReviewSetup({
         filterExamFrequent={filterExamFrequent}
         examFrequentCount={examFrequentCount}
         filterType={filterType}
-        onSelectCategory={(cat) => { setSelectedCategory(cat); setSelectedSubcategory(null); setSelectedChapter(null); }}
+        lockedCategory={lockedCategory}
+        onSelectCategory={(cat) => {
+          // Reject scope-broadening attempts when locked.
+          if (lockedCategory) return;
+          setSelectedCategory(cat);
+          setSelectedSubcategory(null);
+          setSelectedChapter(null);
+        }}
         onSelectSubcategory={(sub) => { setSelectedSubcategory(sub); setSelectedChapter(null); }}
         onSelectChapter={setSelectedChapter}
         onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
