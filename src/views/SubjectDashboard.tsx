@@ -3,7 +3,7 @@ import { useCardData, useCategoryData, useCardActions } from "@/contexts/AppCont
 import { useMemo, useState } from "react";
 import {
   ArrowLeft, BookMarked, Brain, RefreshCw, BarChart3,
-  Info, Settings, Network, BookOpen, Layers,
+  Info, Settings, Network, BookOpen, Layers, Sparkles,
 } from "lucide-react";
 import ExaminerProfileDialog from "@/components/ExaminerProfileDialog";
 import MatrixFilterDialog, { type MatrixFilters } from "@/components/learn/MatrixFilterDialog";
@@ -20,7 +20,7 @@ import { buildQuery } from "@/lib/url-params";
 export default function SubjectDashboard() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const { categoryRecords } = useCategoryData();
-  const { cards } = useCardData();
+  const { cards, dueCards } = useCardData();
 
   const categoryRec = useMemo(
     () => categoryRecords.find(r => r.id === categoryId),
@@ -109,20 +109,29 @@ export default function SubjectDashboard() {
     },
   ], [categoryId]);
 
+  const subjectDueCount = useMemo(
+    () => dueCards.filter(c => c.categoryId === categoryId).length,
+    [dueCards, categoryId],
+  );
+
   const coreActions = useMemo(() => [
     {
       onClick: () => setMatrixOpen(true),
       icon: Brain,
       title: "Učenje uz aktivno prisjećanje",
       desc: "Matrični filter — testiranje i učvršćivanje znanja",
+      featured: false,
+      badge: null as number | null,
     },
     {
       to: `/review${buildQuery({ category: categoryId })}`,
       icon: RefreshCw,
       title: "Konsolidacija znanja",
       desc: "Ponavljanje dospjelih kartica iz ovog predmeta",
+      featured: true,
+      badge: subjectDueCount,
     },
-  ], [categoryId]);
+  ], [categoryId, subjectDueCount]);
 
   return (
     <div className="space-y-8">
@@ -276,19 +285,44 @@ export default function SubjectDashboard() {
           Alati za učenje
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {coreActions.map(({ to, onClick, icon: Icon, title, desc }) => {
+          {coreActions.map(({ to, onClick, icon: Icon, title, desc, featured, badge }) => {
+            const hasDue = featured && (badge ?? 0) > 0;
             const inner = (
               <>
-                <div className="p-3 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
-                  <Icon className="h-6 w-6" />
+                {featured && (
+                  <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                    <Sparkles className="h-3 w-3" />
+                    Preporučeno
+                  </span>
+                )}
+                <div className={`p-3 rounded-lg shrink-0 transition-colors ${
+                  featured
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-hover:bg-primary/90"
+                    : "bg-primary/10 text-primary group-hover:bg-primary/15"
+                }`}>
+                  <Icon className={`h-6 w-6 ${hasDue ? "animate-pulse" : ""}`} />
                 </div>
-                <div className="min-w-0 text-left">
-                  <p className="font-bold text-base text-foreground">{title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+                <div className="min-w-0 text-left flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={`font-bold text-foreground ${featured ? "text-lg" : "text-base"}`}>{title}</p>
+                    {hasDue && (
+                      <span className="inline-flex items-center justify-center rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground min-w-[1.5rem]">
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {featured && hasDue
+                      ? `${badge} ${badge === 1 ? "kartica čeka" : (badge! < 5 ? "kartice čekaju" : "kartica čeka")} ponavljanje`
+                      : desc}
+                  </p>
                 </div>
               </>
             );
-            const className = "glass-card rounded-xl p-6 flex items-start gap-4 hover:border-primary/40 transition-all group border-primary/20";
+            const baseClass = "relative glass-card rounded-xl p-6 flex items-start gap-4 transition-all group";
+            const className = featured
+              ? `${baseClass} border-2 border-primary/50 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 hover:border-primary hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-0.5`
+              : `${baseClass} border-primary/20 hover:border-primary/40`;
             return onClick ? (
               <button key={title} type="button" onClick={onClick} className={className}>{inner}</button>
             ) : (
