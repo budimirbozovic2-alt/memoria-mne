@@ -24,6 +24,10 @@ interface Props {
   subcategoryNodes: SubcategoryNode[];
   categoryId: string;
   onEditCard?: (card: Card) => void;
+  /** When set, the reader will clear filters (if needed) and jump to this card. */
+  initialCardId?: string | null;
+  /** Called once the initialCardId has been honored, so the parent can clear it. */
+  onInitialConsumed?: () => void;
 }
 
 type SidePanel = "source" | "mindmap" | null;
