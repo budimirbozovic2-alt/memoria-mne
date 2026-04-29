@@ -120,7 +120,7 @@ export default function SubjectDashboard() {
       icon: Brain,
       title: "Učenje uz aktivno prisjećanje",
       desc: "Matrični filter — testiranje i učvršćivanje znanja",
-      featured: false,
+      featured: true,
       badge: null as number | null,
     },
     {

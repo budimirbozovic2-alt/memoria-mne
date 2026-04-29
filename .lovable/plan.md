@@ -1,65 +1,71 @@
 ## Cilj
 
-Razdvojiti **internu logiku** preklopnika unutar taba "Uređivanje i raspored kartica" od **prikaznih labela** ("View", "Org", srpski naslovi, tooltipovi). Trenutno su interni ključevi `"edit" | "structure"` već stabilni, ali su sav UI tekst, ikone, kratke oznake i tooltipovi raštrkani inline u `SubjectCardsView.tsx`. Bilo kakva izmjena teksta zahtijeva diranje uvjeta i `aria-*` atributa, što je krhko.
+Primijeniti isti "featured" vizualni tretman koji već koristi **Konsolidacija znanja** kartica (gradient pozadina, debeli primary border, sjenka, "Preporučeno" badge sa Sparkles ikonom, krupnija ikona u solid primary kvadratu, hover lift) na još dvije akcije:
 
-Uvodimo jedan **registry** (mapa rola) kao jedinu istinu — komponenta čita konfiguraciju iz mape, nikad ne poredi po labelima.
+1. **Učenje uz aktivno prisjećanje** — `coreActions[0]` u `src/views/SubjectDashboard.tsx`
+2. **Pasivno čitanje** — `TabsTrigger value="read"` u `src/views/SubjectCardsView.tsx`
 
-## Šta se mijenja
+Cilj je da sve tri ključne akcije za učenje izgledaju jednako istaknuto i prepoznatljivo.
 
-### 1. Novi modul `src/views/subject-cards/manageModes.ts`
+## Izmjene
 
-Definira:
+### 1. `src/views/SubjectDashboard.tsx`
 
-- **Enum-like konstante** internih ID-jeva rola (stabilne, koriste se svuda u logici i `sessionStorage` snapshotu):
-  ```ts
-  export const MANAGE_MODE = {
-    Edit: "edit",
-    Structure: "structure",
-  } as const;
-  export type ManageMode = typeof MANAGE_MODE[keyof typeof MANAGE_MODE];
-  ```
-- **Registry** sa svim prikaznim podacima po roli:
-  ```ts
-  interface ManageModeDescriptor {
-    id: ManageMode;          // stabilan interni ključ
-    icon: LucideIcon;        // LayoutList | Network
-    label: string;           // "Pregled i uređivanje"
-    shortTag: string;        // "View" / "Org" — vizualni hint
-    tooltip: string;         // dugačak opis za title/aria-label
-  }
-  export const MANAGE_MODES: ManageModeDescriptor[];        // poredan niz za render
-  export const MANAGE_MODE_BY_ID: Record<ManageMode, ManageModeDescriptor>;
-  export const DEFAULT_MANAGE_MODE: ManageMode = MANAGE_MODE.Edit;
-  export function isManageMode(v: unknown): v is ManageMode;  // type-guard za snapshot restore
-  ```
+Trivijalno: u `coreActions` memo-u (linija 117–134) postaviti `featured: true` na "Aktivno prisjećanje".
 
-### 2. Refaktor `src/views/SubjectCardsView.tsx`
+```diff
+   {
+     onClick: () => setMatrixOpen(true),
+     icon: Brain,
+     title: "Učenje uz aktivno prisjećanje",
+     desc: "Matrični filter — testiranje i učvršćivanje znanja",
+-    featured: false,
++    featured: true,
+     badge: null as number | null,
+   },
+```
 
-- Tip `EditReturnSnapshot.manageMode` postaje `ManageMode` (umjesto inline union).
-- Početna vrijednost: `useState<ManageMode>(isManageMode(initialSnapshot?.manageMode) ? initialSnapshot.manageMode : DEFAULT_MANAGE_MODE)` — robusno na promjene snapshot formata.
-- Dva `<button>` ručno ispisana bloka zamjenjujemo `MANAGE_MODES.map(...)` petljom; sve klase ostaju iste (aktivno = `bg-primary text-primary-foreground`), samo ikona/labela/tooltip dolaze iz deskriptora.
-- Conditional render: `manageMode === MANAGE_MODE.Structure` umjesto string literal `"structure"`.
-- Render grane ispod (`CardViewMode` vs `CardOrgMode`): isti switch po `MANAGE_MODE.Edit` / `Structure`.
+Postojeća render logika (linije 287–331) već crta featured stil kad je `featured: true`. Pošto `badge === null`, neće se prikazati brojač ni `animate-pulse` na ikoni — samo "Preporučeno" pill, gradient, border-2, krupna solid ikona i hover lift. Opis ostaje statičan jer `hasDue === false`.
 
-### 3. Ostali pozivni dijelovi
+**Posljedica vizualnog balansa:** obje kartice u toj 2-kolonskoj sekciji "Alati za učenje" sad su featured. To je željeno — obje su primarne radnje učenja, dok su "Baza i Izvori znanja" (3-kolonska sekcija iznad) namjerno neutralne.
 
-`rg "manageMode"` pokazuje da se polje koristi samo unutar `SubjectCardsView.tsx` i `EditReturnSnapshot` tipa — nema drugih konzumenata. Interni ključevi `"edit"` i `"structure"` ostaju identični kao stringovi, pa **postojeći `sessionStorage` snapshoti i dalje rade** (nema migracije).
+### 2. `src/views/SubjectCardsView.tsx`
 
-## Šta NE mijenjamo
+Trenutni "Pasivno čitanje" je samo `TabsTrigger` u 1-itemskoj `TabsList` (linije 178–189). Da bismo dobili identičan featured look kao na dashboardu, ali zadržali integraciju sa `Tabs` (jer klik mora prebaciti `value` na `"read"`), refaktorišemo grupu "Učenje":
 
-- Vidljive srpske labele i `(View)`/`(Org)` tagove — ostaju isti tekstualno, samo se sad čitaju iz registry-a.
-- `sessionStorage` ključeve i format (`useEditReturn` ostaje netaknut).
-- `CardViewMode` / `CardOrgMode` API — komponente ne znaju za rolu, samo se mountaju po grani.
-- Tabs (manage/read) — to je viši nivo, izvan ovog scope-a.
+- Zadržavamo `TabsTrigger` kao bazu (Radix UI hendla aria-selected/keyboard nav).
+- Override-ujemo izgled kroz `className`-ove tako da imitiramo featured kartice iz dashboarda: `relative rounded-xl p-5 border-2 border-primary/50 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 hover:border-primary hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-0.5 transition-all w-full justify-start text-left h-auto`.
+- Dodajemo apsolutno pozicionirani **"Preporučeno"** pill sa `Sparkles` ikonom (gornji desni ugao).
+- Solid primary kvadrat sa krupnom (`h-6 w-6`) `BookOpen` ikonom lijevo + naslov (`font-bold text-base`) i kratak opis (`text-xs text-muted-foreground`) desno.
+- Aktivno stanje (kad je tab izabran) dodatno pojačavamo `data-[state=active]:border-primary data-[state=active]:shadow-xl data-[state=active]:shadow-primary/20` — Radix već postavlja `data-state="active"` na trigger.
 
-## Korist
+**`TabsList` izmjene:** uklanjamo `border bg-card p-1 overflow-x-auto flex-nowrap` jer featured kartica nosi vlastiti chrome; ostavljamo `w-full` da popuni red.
 
-- Promjena teksta "View" → "List" (ili lokalizacija) = jedan red u registry-u, nula `if`-ova.
-- Dodavanje treće rele (npr. "Preview") = jedan novi descriptor + grana u JSX switchu.
-- `aria-pressed`, `title`, `aria-label`, ikona i labela su uvijek u sinhronizaciji jer dolaze iz iste strukture — nemoguće ih razdvojiti.
-- Type-guard `isManageMode` štiti od korumpiranog snapshota.
+**Importi:** dodati `Sparkles` u `lucide-react` import (red 4–5).
+
+**Šta NE diramo:**
+- Tab "Uređivanje i raspored kartica" (manage) — ostaje obični kompaktan trigger; dvije akcije imaju različitu vizualnu težinu i to je u redu jer je manage tehnički/uređivački, a pasivno čitanje promovirana metoda učenja.
+- Internu logiku, snapshot, `value="read"`, `onValueChange` — sve nepromijenjeno.
+- `MANAGE_MODES` registry iz prethodnog koraka.
+
+### Skica novog "Pasivno čitanje" trigera
+
+```text
+┌──────────────────────────────────────────── Preporučeno ✦ ┐
+│ ┌─────┐                                                    │
+│ │ 📖  │  Pasivno čitanje                                    │
+│ │     │  Slušanje i čitanje sadržaja kartica bez ocjenjivanja│
+│ └─────┘                                                    │
+└────────────────────────────────────────────────────────────┘
+```
+
+## Provjera
+
+- Build mora ostati zelen (samo dodavanje `Sparkles` importa + className izmjene).
+- Klik i tipkovnička navigacija na "Pasivno čitanje" tab i dalje rade (Radix `TabsTrigger` semantika netaknuta).
+- Snapshot/restore ponašanje (`useEditReturn`) nije pogođeno.
 
 ## Fajlovi
 
-- **Novo:** `src/views/subject-cards/manageModes.ts` (~40 linija).
-- **Izmjena:** `src/views/SubjectCardsView.tsx` — import registry-a, refactor `EditReturnSnapshot`, `useState` init, segmented switch render (~30 linija manje boilerplate-a), use-site usporedbe.
+- `src/views/SubjectDashboard.tsx` — jedna linija (`featured: true` za prvu akciju).
+- `src/views/SubjectCardsView.tsx` — restil `TabsTrigger value="read"` + dodavanje `Sparkles` u import; cca 15 linija JSX-a.
