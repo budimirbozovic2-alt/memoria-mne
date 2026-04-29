@@ -11,6 +11,7 @@ import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
 import { toast } from "sonner";
 import { Moon, Sun, Search, Focus, HelpCircle } from "lucide-react";
 import { setDarkMode } from "@/lib/app-settings";
+import { setEditReturn } from "@/lib/edit-return";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
@@ -88,6 +89,11 @@ const GlobalSearchWrapper = memo(function GlobalSearchWrapper({
         open={open}
         onClose={onClose}
         onNavigateToCard={(card) => {
+          // Stash the current route (incl. query string) so EditPage can
+          // return the user to wherever they invoked Ctrl+K from.
+          setEditReturn({
+            path: window.location.pathname + window.location.search,
+          });
           setEditingCard(card);
           setView("edit");
         }}
