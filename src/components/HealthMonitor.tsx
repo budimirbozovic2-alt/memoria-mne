@@ -1,5 +1,6 @@
-import { Activity, Database, HardDrive, RefreshCw, FileText, Brain, Clock, BookOpen, MapPin, Layers, AlertTriangle, Trash2, ShieldCheck } from "lucide-react";
+import { Activity, Database, HardDrive, RefreshCw, FileText, Brain, Clock, BookOpen, MapPin, Layers, AlertTriangle, Trash2, ShieldCheck, Wand2 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
+import RemapFromBackupDialog from "@/components/RemapFromBackupDialog";
 import { db } from "@/lib/db";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { getStorageUsage } from "@/lib/storage";
@@ -56,6 +57,7 @@ export default function HealthMonitor() {
   const [cleaning, setCleaning] = useState(false);
   const [healing, setHealing] = useState(false);
   const [crashLog, setCrashLog] = useState<CrashEntry[]>(loadCrashLog());
+  const [remapOpen, setRemapOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -194,6 +196,7 @@ export default function HealthMonitor() {
   const totalRecords = tableStats.reduce((s, t) => s + t.count, 0);
 
   return (
+    <>
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
@@ -261,16 +264,28 @@ export default function HealthMonitor() {
                   Nakon čišćenja, ove kartice ostaju u svojoj kategoriji ali postaju "Neraspoređene"
                   — možeš ih premjestiti drag & drop-om u Org modu.
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 gap-1.5"
-                  onClick={handleHealStaleLinks}
-                  disabled={healing}
-                >
-                  <Trash2 className="h-3 w-3" />
-                  {healing ? "Čišćenje…" : "Očisti zastarjele veze"}
-                </Button>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setRemapOpen(true)}
+                    disabled={healing}
+                  >
+                    <Wand2 className="h-3 w-3" />
+                    Remap iz backupa
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={handleHealStaleLinks}
+                    disabled={healing}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    {healing ? "Čišćenje…" : "Očisti zastarjele veze"}
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -366,5 +381,11 @@ export default function HealthMonitor() {
         </div>
       </CardContent>
     </Card>
+    <RemapFromBackupDialog
+      open={remapOpen}
+      onOpenChange={setRemapOpen}
+      onApplied={() => { void refresh(); }}
+    />
+    </>
   );
 }

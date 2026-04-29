@@ -1,74 +1,123 @@
-## Dijagnoza
+## Cilj
 
-Korisnik vidi sirove "stringove brojeva i slova" (UUID-ove) umjesto imena podkategorija/glava jer trenutni render fallback je `card.subcategoryId` ili `card.chapterId` kad se taj UUID **ne pronađe** u trenutnoj `category.subcategories`.
+Dodati **JSON-backup-driven remap** za `card.subcategoryId` i `card.chapterId`. Korisnik upload-uje stari backup → izgradi se mapa `(stari_UUID → ime → novi_UUID)` po imenu unutar iste kategorije → kartice u IDB se ažuriraju da gađaju trenutne, validne UUID-ove.
 
-Glavni izvor problema:
+Fallback: kartice za koje match ne uspije ostaju "neraspoređene" (postojeće ponašanje već popraveno u prethodnom koraku).
 
-- `src/components/category/org-mode/org-mode-utils.ts` (`buildTree`) — kartice se grupiraju po `card.subcategoryId`. Ako taj UUID nije u `nodeMap` (jer pripada obrisanoj/zamijenjenoj subkategoriji), kreira se "fantomski" node sa subcategorijom = sirovi UUID.
-- `src/components/category/CardViewTable.tsx:114-115` — fallback `?? card.subcategoryId` i `?? card.chapterId`.
-- HealthMonitor (`src/components/HealthMonitor.tsx:98-100`) detektuje samo orphan kategorije — nema detekcije za stale `subcategoryId` / `chapterId` (drift nakon restore-a, importa, ili rebuild-a strukture).
+## Format backupa (potvrđeno iz `useCardExport.ts`)
 
-Posljedica: kartice koje imaju validan `categoryId`, ali stale `subcategoryId`/`chapterId`, **prikazuju se kao "neraspoređene"** u Org modu i u listi pokazuju goli UUID umjesto naziva.
+```json
+{
+  "version": 5, "type": "full",
+  "cards": [{ "id", "subcategoryId", "chapterId", "categoryId", ... }],
+  "categories": [
+    { "id": "<uuid>", "name": "Krivično pravo",
+      "subcategories": [
+        { "id": "<old-uuid>", "name": "Opći dio",
+          "chapters": [{ "id": "<old-uuid>", "name": "Glava 1" }, ...] }
+      ]
+    }
+  ]
+}
+```
 
-## Plan ispravke (3 sloja)
+Kategorije i podkategorije/glave se exportuju **sa starim UUID-jevima i imenima**. Ovo je cijela osnova za remap.
 
-### 1. Auto-resolve sloj — fallback po imenu (nedestruktivno)
+## Algoritam remapa
 
-U `buildTree` i `CardViewTable`, kad UUID ne match-uje, **pokušaj naći node po `name`** (pogodi cross-rebuild slučajeve gdje je ime ostalo isto). Ovo NE mijenja podatke, samo poboljšava prikaz — ali zahtijeva da kartica negdje nosi i staro ime. Trenutno ne nosi → ovaj sloj ne pomaže direktno.
+Za svaki `oldCard` u backupu koji ima `subcategoryId` ili `chapterId`:
 
-Umjesto toga, za prikaz: kad nema match-a, **prikaži `(Nepoznata podkategorija)` umjesto golog UUID-a** i grupiraj sve takve kartice u poseban "Neraspoređeno (zastarjele veze)" čvor sa akcijom "Premjesti".
+1. Iz **backup categories** izvuci: `oldCat = categoryId`, `oldSubName = name(oldSubId)`, `oldChapName = name(oldChapId)`.
+2. U **trenutnoj IDB strukturi** nađi `currentCat` po istom `categoryId` (kategorije su ranije bile stabilne); ako fail → match po `name`.
+3. U `currentCat.subcategories` nađi `newSub` po `name === oldSubName` (case-insensitive trim). Isto za `newChap` u `newSub.chapters`.
+4. Ako `newSub` postoji → pripremi update: trenutna kartica sa `id === oldCard.id` dobija `subcategoryId: newSub.id` (i `chapterId: newChap?.id ?? ""`).
 
-### 2. Health Monitor — proširena orphan detekcija
+Ključno: match radimo **po `card.id`** (Card UUID je stabilan kroz exporte), tako da preciznost remapa zavisi samo od toga je li ta kartica bila u backupu.
 
-`src/components/HealthMonitor.tsx`:
+Kartice koje:
+- nisu u backupu → ostaju kakve jesu (mogu se kasnije očistiti Health Monitor-om)
+- imaju oldSubName ali ime više ne postoji u trenutnoj strukturi → reset (`""`)
 
-- Sastavi `validSubIds = Set(svi node.id iz svih kategorija)` i `validChapIds = Set(svi chapter.id)`.
-- `staleSubcat = cards.filter(c => c.subcategoryId && !validSubIds.has(c.subcategoryId))` — kartica ima sub UUID koji ne postoji.
-- `staleChap = cards.filter(c => c.chapterId && !validChapIds.has(c.chapterId))` — kartica ima chapter UUID koji ne postoji.
-- Cross-check: kartice gdje `chapterId` postoji ali pripada **drugoj** podkategoriji od njene `subcategoryId` (mismatch).
-- Prikaži dvije nove statističke linije ("Stare veze sa podkategorijama: N", "Stare veze sa glavama: M") + dva dugmeta za čišćenje:
-  - **"Resetuj zastarjele subcategoryId"** → `db.cards.update(id, { subcategoryId: "", chapterId: "" })` (chapter se mora isprazniti jer pripada subu).
-  - **"Resetuj zastarjele chapterId"** → samo `chapterId: ""`.
-- Nakon čišćenja: `eventBus.emit(EVENT_TYPES.CARDS_UPDATED)`.
+## Implementacija
 
-### 3. Auto-heal pri boot-u (jednokratna migracija)
+### 1. Novi modul `src/lib/migrations/remap-from-backup.ts`
 
-Nova lightweight migracija u `src/lib/db-seed.ts` (ili novi fajl `src/lib/migrations/heal-card-taxonomy.ts`) koja se okida samo ako flag `localStorage["taxonomy-healed-v1"]` ne postoji:
+```ts
+export interface BackupRemapReport {
+  cardsInBackup: number;
+  matchedCards: number;          // u IDB-u nađene po id
+  remappedSubcategory: number;
+  remappedChapter: number;
+  resetSubcategory: number;      // ime nije nađeno u trenutnoj strukturi
+  resetChapter: number;
+  skippedSameId: number;         // već gađa pravu strukturu
+  errors: string[];
+}
 
-1. Učitaj sve kategorije i sve kartice.
-2. Sastavi `subUuidSet` i `chapUuidSet`.
-3. Za svaku karticu sa stale `subcategoryId` ili `chapterId`:
-   - **Pokušaj remap po imenu**: ako je negdje (npr. u dnevniku, sourcetag-u, ili kroz `card.tags`) sačuvano ime stare podkategorije, traži match. Ako nema — postavi na `""`.
-   - Konzervativno: ako match po imenu uspije unutar **iste** `categoryId`, dodijeli novi UUID.
-4. Setuj flag i emituj `CARDS_UPDATED`.
+export async function remapFromBackup(
+  backupJson: unknown,
+  options?: { dryRun?: boolean }
+): Promise<BackupRemapReport>;
+```
 
-Pošto većina karticama nema sačuvano staro ime, fokus je na **čistom resetu** (varijanta b) — kartice ostaju u kategoriji, ali se "vraćaju" u "Neraspoređeno" gdje ih korisnik može drag-drop-om dodijeliti tačnim podkategorijama (već postoji UI u CardOrgMode).
+Logika:
 
-### 4. Vizualna jasnoća u Org modu
+- Parsira backup, validira `type === "full" || "template"`, validira shape.
+- Gradi `oldSubIdToInfo: Map<string, {catId, subName, chapters: Map<chapId, chapName>}>` iz `backup.categories`.
+- Učita `db.categories.toArray()` i `db.cards.toArray()`.
+- Gradi `currentSubByName: Map<categoryId, Map<subNameNormalized, subId>>` i isto za chapters (po sub).
+- Iterira **kartice iz backupa**, za svaku traži trenutnu po `id`. Kalkuliše patch.
+- Ako ne `dryRun`: bulk `db.cards.update(...)` u jednoj transakciji `db.transaction("rw", db.cards, ...)`.
+- Vraća detaljan izvještaj.
 
-`org-mode-utils.ts` `buildTree`:
+### 2. UI dialog `src/components/RemapFromBackupDialog.tsx`
 
-- Umjesto da kreira fantomski node sa golim UUID-om kao `subcategory` imenom, **sve kartice sa nevažećim `subcategoryId` smjesti u UNCAT bucket** (kao da je `subcategoryId` prazan), ali ih **vizualno označi** flag-om `staleLink: true` na nivou kartice — Org panel pokazuje narandžasti badge "veza istekla" pored takvih kartica i hint za premjestiti ih.
-- Dodatno polje `TreeNode.staleSubcategoryUuids: string[]` ili jednostavno još jedan bucket "Zastarjele veze ({N})" koji se eksplicitno renderuje na vrhu tek ako ima članova, sa tooltipom: "Ove kartice su pripadale podkategorijama koje više ne postoje. Premjesti ih ili pokreni Health Monitor čišćenje."
+Mali, fokusiran modal:
 
-### 5. CardViewTable cleanup
+- File input (`.json` / `.zip`). Za zip: koristi postojeći `@/lib/zip-service` ili `JSZip` (provjerit ću je li već zavisnost) da raspakuje prvi `.json`.
+- **Korak 1 — Analiza (dry run)**: parsiraj + pokreni `remapFromBackup({ dryRun: true })`. Pokaži tabelu izvještaja: "X kartica u backupu, Y match-ovano u tvojoj bazi, Z će dobiti nove subcategoryId, W chapterId, R neće naći match → reset".
+- **Korak 2 — Potvrda**: dugme "Primijeni remap" → poziva bez `dryRun`. Toast sa rezultatom. Emituje `eventBus.emit(EVENT_TYPES.CARDS_UPDATED)`.
+- Cancel u svakom trenutku. Greške parsiranja prikažu se inline.
 
-`src/components/category/CardViewTable.tsx:112-138`:
+### 3. Integracija u `HealthMonitor.tsx`
 
-- Zamijeni `?? card.subcategoryId` sa `?? "(Nepoznato)"` i obojii badge u `bg-warning/15 text-warning`.
-- Isto za `chapterId`.
+U postojećoj sekciji "Zastarjele veze sa strukturom" (Alert) dodati **drugo dugme** pored "Očisti zastarjele veze":
+
+```
+[ Remap iz backupa ]   [ Očisti zastarjele veze ]
+```
+
+"Remap iz backupa" otvara `RemapFromBackupDialog`. Po završetku → `refresh()` Health Monitor-a.
+
+### 4. Tipovi i validacija
+
+`src/lib/migrations/backup-schema.ts` (mali, samo za remap):
+
+```ts
+interface BackupCategory { id: string; name: string; subcategories?: BackupSub[]; }
+interface BackupSub { id: string; name: string; chapters?: BackupChap[]; }
+interface BackupChap { id: string; name: string; }
+interface BackupCard { id: string; categoryId?: string; subcategoryId?: string; chapterId?: string; }
+interface MinimalBackup { categories: BackupCategory[]; cards: BackupCard[]; }
+```
+
+Type-guard `isMinimalBackup(json): json is MinimalBackup` koji odbacuje sve što nema oba polja kao nizove.
+
+### 5. ZIP support
+
+Provjerit ću `package.json`: ako `jszip` već postoji (vjerovatno da, jer `zip-service` ga koristi za export) → reuse. Inače čisti `.json` only u prvoj iteraciji.
 
 ## Fajlovi
 
-- **Izmjena:** `src/components/category/org-mode/org-mode-utils.ts` — UNCAT konsolidacija, novi bucket "stale", remap stale → unassigned.
-- **Izmjena:** `src/components/category/CardViewTable.tsx` — humanizirani fallback labeli sa upozoravajućim badge-om.
-- **Izmjena:** `src/components/HealthMonitor.tsx` — dvije nove orphan kategorije + cleanup dugmad.
-- **Novo:** `src/lib/migrations/heal-card-taxonomy.ts` — boot-time migracija (resetuje stale veze) sa `localStorage` flagom.
-- **Izmjena:** `src/lib/db-seed.ts` (ili `src/AppContext`) — pozvati migraciju pri boot-u nakon učitavanja kategorija.
+- **Novo:** `src/lib/migrations/backup-schema.ts` (~30 linija) — tipovi + type-guard.
+- **Novo:** `src/lib/migrations/remap-from-backup.ts` (~120 linija) — core algoritam.
+- **Novo:** `src/components/RemapFromBackupDialog.tsx` (~200 linija) — file input, dry-run analiza, apply, izvještaj.
+- **Izmjena:** `src/components/HealthMonitor.tsx` — dodati "Remap iz backupa" dugme u već postojeći "Zastarjele veze" Alert + state za otvaranje dialoga.
 
 ## Garancije
 
-- Migracija je **konzervativna**: nikad ne izmišlja UUID-ove, samo prazni stale reference. Kartice ostaju u svojoj kategoriji.
-- Korisnik dobiva jasnu vizualnu indikaciju + dva alata za čišćenje (auto pri boot-u + ručno preko Health Monitor-a).
-- Drag & Drop u Org modu već radi — korisnik premješta kartice u prave podkategorije nakon čišćenja.
-- Bez gubitka podataka (`question`, `sections`, `categoryId`, FSRS state) — ostaju netaknuti.
+- **Idempotentno**: ponovno pokretanje sa istim backupom ne radi ništa novo (već bi `current.sub === backup.sub` po imenu).
+- **Bezbijedno**: nikad ne mijenja `categoryId`, `question`, `sections`, FSRS state. Samo `subcategoryId` i `chapterId`.
+- **Transparentno**: dry-run pokazuje tačno šta će se promijeniti **prije** apply.
+- **Ne briše**: kartice koje nisu u backupu ostaju netaknute.
+- **Bez gubitka podataka**: ako match po imenu ne uspije, kartica završi u "Neraspoređeno" — ista kao trenutno stanje, ne gore.
