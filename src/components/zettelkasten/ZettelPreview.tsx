@@ -143,11 +143,17 @@ export default function ZettelPreview({
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const t = e.target as HTMLElement;
-    const btn = t.closest("button[data-wiki]") as HTMLButtonElement | null;
-    if (btn) {
+    const a = t.closest("a.zettel-wikilink") as HTMLAnchorElement | null;
+    if (a) {
       e.preventDefault();
-      const title = btn.getAttribute("data-wiki") ?? "";
-      if (title) onWikiLink(title);
+      const enc = a.id.replace(/^wl-/, "");
+      try {
+        const padded = enc + "=".repeat((4 - (enc.length % 4)) % 4);
+        const title = decodeURIComponent(escape(atob(padded)));
+        if (title) onWikiLink(title);
+      } catch {
+        // Malformed id — ignore
+      }
     }
   };
 
