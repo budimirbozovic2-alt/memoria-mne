@@ -48,6 +48,28 @@ export default function SubjectCardsView() {
 
   const [tab, setTab] = useState("manage");
   const [structureOpen, setStructureOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<string>("__all__");
+  const [sources, setSources] = useState<Source[]>([]);
+
+  useEffect(() => {
+    if (!categoryId) return;
+    let cancelled = false;
+    loadSourcesByCategory(categoryId).then(s => { if (!cancelled) setSources(s); });
+    return () => { cancelled = true; };
+  }, [categoryId]);
+
+  // Build allowed source IDs: those used by any card in this subject (avoid noisy options)
+  const usedSourceIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of cards) if (c.sourceId) set.add(c.sourceId);
+    return set;
+  }, [cards]);
+
+  const sourceOptions = useMemo(
+    () => sources.filter(s => usedSourceIds.has(s.id)),
+    [sources, usedSourceIds],
+  );
 
   if (!ready) {
     return (
