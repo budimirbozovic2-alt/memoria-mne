@@ -143,6 +143,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
         onToggleSelection={toggleSelection}
         toggleTag={toggleTag}
         onEdit={onEdit}
+        onPassiveRead={onPassiveRead}
         onDelete={onDelete}
         onOpenMoveModal={(cardId) => { setMoveCardId(cardId); setMoveModalOpen(true); }}
         hasActiveFilters={filters.hasActiveFilters}
