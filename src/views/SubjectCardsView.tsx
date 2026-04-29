@@ -79,6 +79,11 @@ export default function SubjectCardsView() {
     navigate("/edit");
   };
 
+  const handlePassiveRead = (card: Card) => {
+    setPendingPassiveCardId(card.id);
+    setTab("read");
+  };
+
   if (!ready) {
     return (
       <div className="flex items-center justify-center py-20">
