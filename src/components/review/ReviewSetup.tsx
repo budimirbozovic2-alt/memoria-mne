@@ -212,6 +212,17 @@ export default function ReviewSetup({
           </div>
         </div>
 
+        {/* Locked subject scope banner */}
+        {lockedCategory && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 border border-primary/20 text-xs">
+            <Lock className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="text-foreground">
+              Konsolidacija je ograničena na predmet:&nbsp;
+              <strong>{categoryRecords.find(r => r.id === lockedCategory)?.name ?? "—"}</strong>
+            </span>
+          </div>
+        )}
+
         {/* Resume saved session */}
         {savedSession && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-xl border-primary/30 p-4 flex items-center gap-3">
