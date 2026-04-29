@@ -60,7 +60,7 @@ export default function LearnPage() {
   }, [session, setView]);
 
   const handleEdit = useCallback((card: Card) => {
-    sessionStorage.setItem("sr-edit-return-view", "learn");
+    setEditReturn({ path: "/learn" });
     setEditingCard(card);
     setView("edit");
   }, [setEditingCard, setView]);
