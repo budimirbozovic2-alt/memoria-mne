@@ -1,6 +1,6 @@
 import { ArrowLeft, Eye, ChevronRight, AlertTriangle, Pause, Scale } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { Card, Section, GRADES, isLeech, formatInterval, previewIntervals, getCachedRetention, SRSettings } from "@/lib/spaced-repetition";
+import { Card, Section, isLeech, formatInterval, getCachedRetention, SRSettings } from "@/lib/spaced-repetition";
 import AdaptiveReasonPanel from "./AdaptiveReasonPanel";
 import { useCategoryData } from "@/contexts/AppContext";
 import { HighlightedSection } from "@/lib/highlight-key-parts";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { addCalibrationEntry, addLatencyEntry } from "@/lib/metacognitive-storage";
 import ShortcutsHint from "@/components/ShortcutsHint";
+import GradeButtons from "@/components/learn/GradeButtons";
 import { ViewWidth, viewWidthClasses, viewWidthLabels, REVIEW_SHORTCUTS } from "./review-constants";
 interface ReviewCardProps {
   card: Card;
@@ -39,36 +40,25 @@ export default function ReviewCard({
   const catName = catRecord?.name ?? card.categoryId;
   const subName = catRecord?.subcategories?.find(s => s.id === card.subcategoryId)?.name ?? card.subcategoryId;
   const lastGradeRef = useRef<{ cardId: string; sectionId: string; grade: number } | null>(null);
-  const [answerRevealedAt, setAnswerRevealedAt] = useState<number | null>(null);
-  const [canGradeEasy, setCanGradeEasy] = useState(false);
   const [confidence, setConfidence] = useState<number | null>(null);
   const [snippetOpen, setSnippetOpen] = useState(false);
   const questionShownAt = useRef<number>(Date.now());
   const hasSource = !!card.sourceId && !!card.originalSourceSnippet;
   const SourceSnippetDialog = useMemo(() => hasSource ? lazy(() => import("@/components/SourceSnippetDialog")) : null, [hasSource]);
 
-  // Reset timer when card/section changes or answer is hidden
+  // Reset per-card UI state when card/section changes or answer is hidden
   useEffect(() => {
     if (!showAnswer) {
-      setAnswerRevealedAt(null);
-      setCanGradeEasy(false);
       setConfidence(null);
       questionShownAt.current = Date.now();
     }
   }, [showAnswer, card.id, section.id]);
 
-  // 3-second timer for grade 4
-  useEffect(() => {
-    if (answerRevealedAt === null) return;
-    const timer = setTimeout(() => setCanGradeEasy(true), 3000);
-    return () => clearTimeout(timer);
-  }, [answerRevealedAt]);
 
   const handleRevealAnswer = useCallback(() => {
     const latencyMs = Date.now() - questionShownAt.current;
     addLatencyEntry({ timestamp: Date.now(), cardId: card.id, sectionId: section.id, latencyMs, category: card.categoryId });
     setShowAnswer(true);
-    setAnswerRevealedAt(Date.now());
   }, [setShowAnswer, card.id, section.id, card.categoryId]);
 
   const handleGradeWithCalibration = useCallback((grade: number) => {
@@ -92,7 +82,7 @@ export default function ReviewCard({
 
       if (showAnswer && ["1", "2", "3", "4"].includes(e.key)) {
         const grade = parseInt(e.key);
-        if (grade === 4 && !canGradeEasy) return;
+        // Cooldown removed for parity with Active Recall.
         e.preventDefault();
         lastGradeRef.current = { cardId: card.id, sectionId: section.id, grade };
         handleGradeWithCalibration(grade);
@@ -108,23 +98,11 @@ export default function ReviewCard({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showAnswer, card.id, section.id, handleGradeWithCalibration, onLogError, toast, handleRevealAnswer, canGradeEasy]);
-
-  const gradeColorMap: Record<string, string> = {
-    destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-    warning: "bg-warning text-warning-foreground hover:bg-warning/90",
-    primary: "bg-primary text-primary-foreground hover:bg-primary/90",
-    success: "bg-success text-success-foreground hover:bg-success/90",
-  };
+  }, [showAnswer, card.id, section.id, handleGradeWithCalibration, onLogError, handleRevealAnswer]);
 
   const sectionIsLeech = isLeech(section, srSettings);
   const lapses = section.lapses || 0;
   const isFlash = card.type === "flash";
-  const intervals = previewIntervals(section, {
-    frequencyTag: card.frequencyTag,
-    sourceType: card.sourceType,
-    examinerProfile: catRecord?.examinerProfile,
-  });
 
   return (
     <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
@@ -298,28 +276,11 @@ export default function ReviewCard({
                 </p>
               </div>
 
-              <div>
-                <p className="text-sm text-muted-foreground mb-3">Ocijeni kvalitet prisjećanja:</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {GRADES.map((g) => {
-                    const isEasy = g.value === 4;
-                    const disabled = isEasy && !canGradeEasy;
-                    return (
-                      <button
-                        key={g.value}
-                        onClick={() => !disabled && handleGradeWithCalibration(g.value)}
-                        disabled={disabled}
-                        className={`rounded-xl px-3 py-4 text-sm font-medium transition-all ${gradeColorMap[g.color]} ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
-                        title={disabled ? "Pričekajte bar 3 sekunde" : undefined}
-                      >
-                        <span className="block text-sm font-bold">{g.label}</span>
-                        <span className="block text-xs mt-1 opacity-80">{g.description}</span>
-                        <span className="block text-xs mt-1.5 font-mono opacity-70">{intervals[g.value]}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <GradeButtons
+                onGrade={handleGradeWithCalibration}
+                hint="Ocijeni kvalitet prisjećanja (4 = bez oklijevanja)"
+              />
+
             </motion.div>
           )}
         </motion.div>

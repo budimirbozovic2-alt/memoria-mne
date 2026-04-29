@@ -1,5 +1,5 @@
-import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw, Lock, ChevronDown, SlidersHorizontal } from "lucide-react";
-import { useState, useMemo, useCallback } from "react";
+import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw, Lock, ChevronDown, SlidersHorizontal, Info } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Card, getDueSections, SRSettings, SectionState, getRetrievability, isLeech } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import SessionFilters from "@/components/SessionFilters";
@@ -105,6 +105,15 @@ export default function ReviewSetup({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding(REVIEW_ONBOARDING_KEY));
 
+  // Stabilization is FSRS-driven: sub/chapter narrowing would compromise the
+  // due-priority selection, so we proactively clear them when entering this mode.
+  useEffect(() => {
+    if (mode === "stabilization") {
+      if (selectedSubcategory !== null) setSelectedSubcategory(null);
+      if (selectedChapter !== null) setSelectedChapter(null);
+    }
+  }, [mode, selectedSubcategory, selectedChapter]);
+
   const dueCategories = useMemo(() => {
     const cats = new Set(dueCards.map((c) => c.categoryId));
     return Array.from(cats).sort();
@@ -132,9 +141,22 @@ export default function ReviewSetup({
     return filtered;
   }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType]);
 
+  // Stabilization MUST follow FSRS-due ordering across the full (locked) scope.
+  // It intentionally ignores subcategory / chapter filters so the mechanism
+  // is not undermined by manual scope narrowing. Type + exam-frequent honored.
+  const stabilizationSourceCards = useMemo(() => {
+    let filtered = dueCards;
+    if (lockedCategory) filtered = filtered.filter((c) => c.categoryId === lockedCategory);
+    else if (selectedCategory) filtered = filtered.filter((c) => c.categoryId === selectedCategory);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (filterType === "essay") filtered = filtered.filter((c) => c.type === "essay");
+    else if (filterType === "flash") filtered = filtered.filter((c) => c.type === "flash");
+    return filtered;
+  }, [dueCards, lockedCategory, selectedCategory, filterExamFrequent, filterType]);
+
   const stabilizationItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
-    filteredDueCards.forEach((card) => {
+    stabilizationSourceCards.forEach((card) => {
       getDueSections(card).forEach((section) => {
         if (
           (section.state === SectionState.Learning || section.state === SectionState.Relearning) &&
@@ -146,7 +168,7 @@ export default function ReviewSetup({
     });
     items.sort((a, b) => a.section.stability - b.section.stability);
     return items;
-  }, [filteredDueCards]);
+  }, [stabilizationSourceCards]);
 
   const criticalItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
@@ -376,6 +398,17 @@ export default function ReviewSetup({
           );
         })}
       </div>
+
+      {/* FSRS scope notice for stabilization */}
+      {mode === "stabilization" && (
+        <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-muted/50 border text-xs text-muted-foreground">
+          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
+          <span>
+            FSRS bira sekcije po prioritetu zaborava — sub-kategorija i poglavlje se
+            zanemaruju u ovom režimu. Filter po tipu pitanja i „često na ispitu" ostaju aktivni.
+          </span>
+        </div>
+      )}
 
       {/* Filters (collapsible) */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
