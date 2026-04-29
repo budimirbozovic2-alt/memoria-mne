@@ -1,55 +1,38 @@
-## Problem
+## Cilj
 
-Wiki linkovi (`[[Naslov]]`) u Zettelkastenu se prikazuju ali se **ne mogu kliknuti**. Uzrok je u sigurnosnom sloju:
+Dodati automatizovan test koji garantuje da `src/views/CategoryView.tsx` renderuje **isključivo** `SourcesTab`, i da se "Mapa znanja" (MindMap*) i "Struktura" (MentalSkeleton / StructureManager) više nikad ne pojave u ovoj view — u skladu sa odlukom iz `mem://architecture/knowledge-map-restructuring`.
 
-`ZettelPreview` generiše svaki link kao `<button type="button" data-wiki="...">`, a zatim taj HTML prolazi kroz globalni `sanitizeHtml()` (`src/lib/sanitize.ts`) prije nego što se umetne u DOM. Globalni sanitizer ima striktnu allow-listu koja:
+## Pristup
 
-1. **NE dozvoljava `<button>` tag** — DOMPurify ga potpuno briše, ostaje samo tekst naslova bez klikabilnog elementa.
-2. **NE dozvoljava `data-*` atribute** (`ALLOW_DATA_ATTR: false`) — pa i da je button ostao, `data-wiki` bi bio strippovan i handler u `handleClick` ne bi imao kako da pročita naslov.
+Umjesto klasičnog mount/render testa preko `@testing-library/react` (koji bi povukao Dexie, AppContext, react-router i mock-ove za sve njih), pišem **statički contract test** nad izvornim kodom datoteke. Razlozi:
 
-Rezultat: tekst je samo običan stilizovani span bez ikakvog event targeta, klik ne radi ništa.
+- Brži, deterministički, bez mockovanja IDB-a.
+- Hvata regresiju tačno na sloju gdje bi se desila: `import` ili JSX tag.
+- Otporan na refaktor unutrašnjosti komponente.
 
-## Rješenje
+Postojeći test setup (`vitest`, `src/test/setup.ts`) je već prisutan — nema novih zavisnosti.
 
-Generisati linkove kao `<a>` tagove (koji **jesu** na allow-listi) i naslov prenijeti kroz `id` atribut (također dozvoljen), a ne kroz `data-*`. Naslov se base64-enkoduje u `id` da bude atributno bezbjedan (podržava ćirilicu, razmake, znakove interpunkcije), i dekoduje pri kliku.
+## Datoteka
 
-Ne mijenjamo globalni `sanitize.ts` — XSS politika ostaje stroga svuda drugdje.
+**Nova: `src/test/category-view-contract.test.ts`**
 
-## Izmjene
+Test čita `CategoryView.tsx` kao tekst, skida komentare (da prose poput "Mapa znanja & Struktura moved to ..." ne pravi false-positive), i provjerava 5 invarijanti:
 
-**`src/components/zettelkasten/ZettelPreview.tsx`** — jedina datoteka koja se mijenja:
-
-1. U `inline()` regex zamjeni za `[[...]]`:
-   - Promijeniti emit sa `<button type="button" data-wiki="X" class="...">` na `<a id="wl-<base64(title)>" class="zettel-wikilink ...">`.
-   - Zadržati postojeće tri varijante stila (populated / draft / missing) i dodati `cursor-pointer` jer `<a>` bez `href` po defaultu nema pointer cursor.
-
-2. U `handleClick`:
-   - Promijeniti selektor sa `button[data-wiki]` na `a.zettel-wikilink`.
-   - Naslov dekodirati iz `id` atributa (skinuti prefix `wl-`, base64-decode).
-
-3. Bez ikakvih izmjena u `ZettelkastenView.tsx`, `sanitize.ts`, niti u storage / wiki-link auto-create logici.
+1. **Pozitivna**: postoji `import SourcesTab from "@/components/category/SourcesTab"`.
+2. **Pozitivna**: u JSX-u se pojavljuje `<SourcesTab ...>`.
+3. **Negativna (import sloj)**: ni jedan `import` ne sadrži `MindMap`, `MentalSkeleton`, `StructureManager`, `StructureTab`, `KnowledgeMap`, `MapaZnanja`. Provjera se vrši samo nad `import` linijama (da se ne pomiješa sa stringovima drugdje).
+4. **Negativna (JSX sloj)**: nigdje u datoteci nema `<MindMap*`, `<MentalSkeleton*`, `<Structure*`, `<KnowledgeMap*` — defence-in-depth ako neko aliasira import.
+5. **Strukturna**: postoji tačno jedan `*Tab` JSX element u cijeloj datoteci, i to je `SourcesTab`. Ovo automatski hvata bilo koji budući `MindMapTab`, `StructureTab`, `MentalMapTab` itd. čak i ako mu ime ne pogađa eksplicitnu listu.
 
 ## Tehnički detalji
 
-```ts
-// Encoding (UTF-8 safe za ćirilicu/dijakritike):
-const encoded = `wl-${btoa(unescape(encodeURIComponent(title))).replace(/=+$/, "")}`;
-return `<a id="${encoded}" class="${cls}">${escapeHtml(title)}</a>`;
+- `readFileSync(resolve(__dirname, "../views/CategoryView.tsx"), "utf8")` — direktan pristup izvoru.
+- Skidanje komentara: dva regexa za blok i line komentare.
+- `it.each(...)` za parametrizovane assertione po svakoj zabranjenoj riječi i JSX patternu.
+- Bez novih dev-dependencies, bez izmjene `vitest.config.ts`, bez novih test setup hookova.
 
-// Click handler:
-const a = (e.target as HTMLElement).closest("a.zettel-wikilink") as HTMLAnchorElement | null;
-if (a) {
-  e.preventDefault();
-  const enc = a.id.replace(/^wl-/, "");
-  // base64 → utf-8
-  const title = decodeURIComponent(escape(atob(enc + "=".repeat((4 - enc.length % 4) % 4))));
-  if (title) onWikiLink(title);
-}
-```
+## Verifikacija
 
-## Verifikacija nakon implementacije
+Nakon kreiranja, test se pokreće kroz postojeći Vitest setup (`bunx vitest run src/test/category-view-contract.test.ts`). Očekivano: svih 5 grupa assertiona prolazi za trenutni `CategoryView.tsx`.
 
-- Klik na plavi (postojeći) link otvara članak.
-- Klik na sivi italic (draft placeholder) otvara članak u edit modu.
-- Klik na amber (missing) link kreira novi placeholder i otvara ga.
-- Linkovi sa ćiriličnim naslovima i razmacima rade ispravno.
+Ručno verifikujem da test **fail-uje** ako neko u budućnosti doda npr. `import MindMapTab from "..."` ili `<MentalSkeletonTab />`.
