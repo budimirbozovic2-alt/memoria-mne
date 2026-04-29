@@ -1,35 +1,114 @@
 ## Cilj
-Proširiti fix za blijed tekst (uklanjanje `dark:prose-invert` koji prebrisava globalna `.dark .prose` pravila iz `index.css`) na preostala 4 mjesta gdje se prikazuje sadržaj sekcija/kartica.
+Standardizovati nazive query parametara koji označavaju **isti pojam** kroz cijelu aplikaciju, uz fallback čitanje starih naziva da postojeći bookmarkovi i otvoreni tabovi nastave da rade.
 
-## Izmjene (jedan jednolinijski class fix po fajlu)
+## Trenutno stanje (rezultat audita)
 
-### 1. `src/components/subject-cards/PassiveReader.tsx` — linija 397
-```diff
-- className="prose prose-sm max-w-none dark:prose-invert card-prose"
-+ className="prose prose-sm max-w-none card-prose"
+Tri različita naziva za **categoryId**:
+- `?category=` — `/review` (ReviewPage čita, SubjectDashboard šalje) ✅
+- `?subject=` — `/settings` (SRSettingsPanel čita, SubjectDashboard šalje) ❌ drugo ime
+- `?cat=` — `/learn` (LearnPage čita, SubjectDashboard šalje) ❌ skraćenica
+
+Dva različita naziva za **subcategoryId**:
+- `?sub=` — `/learn` ❌ skraćenica
+- (nema kanonskog drugdje)
+
+Ostali parametri (`?tab=`, `?mode=`, `?freq=`, `?sort=`, `?type=`) su već konzistentni.
+
+## Standard
+
+| Pojam | Kanonski naziv | Stari nazivi (fallback) |
+|---|---|---|
+| categoryId | `?category=` | `?cat=`, `?subject=` |
+| subcategoryId | `?subcategory=` | `?sub=` |
+| chapterId | `?chapter=` | — |
+| sourceId | `?source=` | — |
+| cardId | `?card=` | — |
+
+`?category=` je već najčešće korišten i semantički najjasniji — biramo ga kao kanonski.
+
+## Implementacija
+
+### 1. Novi helper `src/lib/url-params.ts`
+Centralizovan reader sa fallback logikom — jedino mjesto gdje se znaju aliasi:
+
+```ts
+import type { URLSearchParams as USP } from "url";
+
+const ALIASES: Record<string, string[]> = {
+  category: ["category", "cat", "subject"],
+  subcategory: ["subcategory", "sub"],
+};
+
+export function getParam(sp: URLSearchParams, key: string): string | null {
+  const aliases = ALIASES[key] ?? [key];
+  for (const k of aliases) {
+    const v = sp.get(k);
+    if (v) return v;
+  }
+  return null;
+}
+
+/** Setteri uvijek pišu KANONSKI naziv. */
+export function buildQuery(params: Record<string, string | null | undefined>): string {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v) sp.set(k, v);
+  }
+  const s = sp.toString();
+  return s ? `?${s}` : "";
+}
 ```
 
-### 2. `src/components/LinkToExistingCardModal.tsx` — linija 86
-```diff
-- className="text-xs prose prose-xs dark:prose-invert max-w-none card-prose line-clamp-4"
-+ className="text-xs prose prose-xs max-w-none card-prose line-clamp-4"
-```
+### 2. Update mjesta koja **čitaju** parametre
 
-### 3. `src/components/workshop/WorkshopCardItem.tsx` — linija 192
-```diff
-- <div className="text-sm prose prose-sm max-w-none dark:prose-invert card-prose" ... />
-+ <div className="text-sm prose prose-sm max-w-none card-prose" ... />
-```
+- **`src/views/ReviewPage.tsx` (l. 18)**
+  ```diff
+  - const lockedCategory = searchParams.get("category") || null;
+  + const lockedCategory = getParam(searchParams, "category");
+  ```
 
-### 4. `src/components/source-reader/EssayCreationDialog.tsx` — linija 42
-```diff
-- className="text-sm prose prose-sm dark:prose-invert max-w-none card-prose"
-+ className="text-sm prose prose-sm max-w-none card-prose"
-```
+- **`src/components/SRSettingsPanel.tsx` (l. 28)**
+  ```diff
+  - const subjectId = searchParams.get("subject");
+  + const subjectId = getParam(searchParams, "category");
+  ```
+  (`tab` ostaje `searchParams.get("tab")` — već je standard.)
 
-## Razlog
-Globalna `.dark .prose` pravila u `index.css` već postavljaju `--tw-prose-body` na `hsl(var(--foreground))` pri punoj neprozirnosti. Dodavanje `dark:prose-invert` resetuje tu palatu na podrazumijevani `prose-invert` sivi ton (`#d1d5db`), što proizvodi efekat "duple opacity" i blijed tekst. Memorija (`mem://ui/styling-prose-fixes-v3`) već nalaže da prose body ostaje na `--foreground` pri punoj neprozirnosti u oba režima.
+- **`src/views/LearnPage.tsx` (l. 21–29)**
+  ```diff
+  - categoryId: params.get("cat"),
+  - subcategoryId: params.get("sub"),
+  + categoryId: getParam(params, "category"),
+  + subcategoryId: getParam(params, "subcategory"),
+  ```
+
+### 3. Update mjesta koja **grade linkove**
+
+- **`src/views/SubjectDashboard.tsx`**
+  - l. 46–48 (`handleMatrixStart`):
+    ```diff
+    - if (categoryId) params.set("cat", categoryId);
+    + if (categoryId) params.set("category", categoryId);
+    ...
+    - if (f.subcategoryId) params.set("sub", f.subcategoryId);
+    + if (f.subcategoryId) params.set("subcategory", f.subcategoryId);
+    ```
+  - l. 174:
+    ```diff
+    - <Link to={`/settings?tab=algorithm&subject=${categoryId}`}>
+    + <Link to={`/settings?tab=algorithm&category=${categoryId}`}>
+    ```
+  - l. 118 (`/review?category=...`) — već kanonski, bez promjene.
+
+### 4. Backward compatibility
+`getParam` automatski prepoznaje stare aliase (`cat`, `sub`, `subject`), pa svi postojeći bookmarkovi (`/learn?cat=…&sub=…`, `/settings?subject=…`) nastavljaju da rade bez ikakve dodatne logike. Samo novi linkovi pišu kanonske nazive.
+
+## Fajlovi
+- **Novo:** `src/lib/url-params.ts`
+- **Izmijenjeno:** `src/views/ReviewPage.tsx`, `src/components/SRSettingsPanel.tsx`, `src/views/LearnPage.tsx`, `src/views/SubjectDashboard.tsx`
 
 ## Van opsega
-- Promjene `index.css` — globalna pravila su već ispravna.
-- Druge komponente koje ne koriste `dark:prose-invert`.
+- Promjene route definicija u `App.tsx` (rute ostaju iste, samo se mijenjaju imena query parametara).
+- `?tab=`, `?mode=`, `?freq=`, `?sort=`, `?type=` — već su konzistentni i jasni.
+- Hash dijelovi URL-a, `state` u `navigate()`, in-memory tab state — nisu URL parametri.
+- Memorija (`mem://technical-choices/domain-scoping-integrity`) — fallback ne narušava scoping; samo standardizuje ime parametra.
