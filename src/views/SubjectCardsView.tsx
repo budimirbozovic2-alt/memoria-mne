@@ -233,6 +233,8 @@ export default function SubjectCardsView() {
             subcategoryNodes={subcategoryNodes}
             categoryId={categoryId!}
             onEditCard={handleEdit}
+            initialCardId={pendingPassiveCardId}
+            onInitialConsumed={() => setPendingPassiveCardId(null)}
           />
         </TabsContent>
       </Tabs>
