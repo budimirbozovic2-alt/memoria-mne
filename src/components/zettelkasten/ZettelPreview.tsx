@@ -9,6 +9,8 @@ interface Props {
   onWikiLink: (title: string) => void;
   /** Set of normalized (lowercase, trimmed) titles that already exist — used for styling. */
   existingTitles: Set<string>;
+  /** Subset of existingTitles whose article body is empty (draft placeholders). */
+  emptyTitles?: Set<string>;
   /** Linked sources rendered as a footer block. */
   linkedSources?: { id: string; title: string }[];
   /** Optional click handler when user activates a linked source chip. */
