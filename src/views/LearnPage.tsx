@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import LearnSession from "@/components/LearnSession";
 import { Card } from "@/lib/spaced-repetition";
 import type { InitialFilters } from "@/components/learn/types";
+import { setEditReturn } from "@/lib/edit-return";
 
 export default function LearnPage() {
   const { cards, stats, ready } = useCardData();
