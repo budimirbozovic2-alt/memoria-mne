@@ -351,6 +351,12 @@ function CardProvider({ children }: { children: ReactNode }) {
     subcategories: h.subcategories, categoryStats: h.categoryStats,
   }), [h.categories, h.categoryRecords, h.subcategories, h.categoryStats]);
 
+  // Sync-prime the examiner-profile cache so calculateNextReview never
+  // sees `undefined` on the first review of a session.
+  useEffect(() => {
+    primeExaminerProfilesFromRecords(h.categoryRecords);
+  }, [h.categoryRecords]);
+
   const reviewState = useMemo<ReviewStateContextValue>(() => ({
     reviewLog: h.reviewLog, srSettings: h.srSettings,
   }), [h.reviewLog, h.srSettings]);
