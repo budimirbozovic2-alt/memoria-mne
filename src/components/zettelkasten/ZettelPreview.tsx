@@ -166,7 +166,7 @@ export default function ZettelPreview({
               <EmbeddedMindMap key={`mm-${i}-${seg.payload}`} mindMapId={seg.payload} categoryId={categoryId} />
             );
           }
-          const html = sanitizeHtml(renderMarkdown(seg.payload, existingTitles));
+          const html = sanitizeHtml(renderMarkdown(seg.payload, existingTitles, emptySet));
           return (
             <Fragment key={`md-${i}`}>
               {/* eslint-disable-next-line react/no-danger */}
