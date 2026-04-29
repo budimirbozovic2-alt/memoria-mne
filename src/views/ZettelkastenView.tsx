@@ -88,6 +88,15 @@ export default function ZettelkastenView() {
     [articles],
   );
 
+  const emptyTitleSet = useMemo(
+    () => new Set(
+      articles
+        .filter(a => a.content.trim().length === 0)
+        .map(a => a.title.trim().toLowerCase()),
+    ),
+    [articles],
+  );
+
   const articleCountByRoot = useMemo(() => {
     const map = new Map<string, number>();
     for (const a of articles) {
@@ -142,6 +151,45 @@ export default function ZettelkastenView() {
     };
   }, [activeId]);
 
+  // ── Auto-create placeholder articles for new [[Wiki Links]] while editing ──
+  // Debounced 800ms to avoid spamming IDB mid-typing.
+  useEffect(() => {
+    if (!isEditing || !draft || !categoryId) return;
+    const content = draft.content;
+    const rootSubId = activeArticle?.rootSubcategoryId;
+    const handle = setTimeout(async () => {
+      const matches = Array.from(content.matchAll(/\[\[([^\]]+)\]\]/g))
+        .map(m => m[1].trim())
+        .filter(Boolean);
+      if (matches.length === 0) return;
+      // De-dup case-insensitively, keep original casing of first occurrence.
+      const seen = new Map<string, string>();
+      for (const t of matches) {
+        const low = t.toLowerCase();
+        if (!seen.has(low)) seen.set(low, t);
+      }
+      const toCreate: KnowledgeBaseArticle[] = [];
+      for (const [low, original] of seen) {
+        if (existingTitleSet.has(low)) continue;
+        // Storage-level double-check guards against races (e.g. another debounce tick).
+        const dup = await findArticleByTitle(categoryId, original);
+        if (dup) continue;
+        const a = newArticle(categoryId, original, rootSubId);
+        await saveArticle(a);
+        toCreate.push(a);
+      }
+      if (toCreate.length > 0) {
+        setArticles(prev => [...toCreate, ...prev]);
+        toast.success(
+          toCreate.length === 1
+            ? `Kreiran placeholder članak "${toCreate[0].title}"`
+            : `Kreirano ${toCreate.length} placeholder članaka`,
+        );
+      }
+    }, 800);
+    return () => clearTimeout(handle);
+  }, [draft?.content, isEditing, categoryId, existingTitleSet, activeArticle]);
+
   // ── Mutations ──────────────────────────────────
   const handleCreate = useCallback(async (title?: string, rootSubId?: string) => {
     if (!categoryId) return;
@@ -157,11 +205,22 @@ export default function ZettelkastenView() {
   }, [categoryId, selectedSubId]);
 
   const handleOpen = useCallback((id: string) => {
-    setActiveId(id);
-    setIsEditing(false);
-    setDraft(null);
     setReadingSourceId(null);
-  }, []);
+    setActiveId(id);
+    // Auto-enter edit mode for empty drafts so the user can start writing immediately.
+    const target = articles.find(a => a.id === id);
+    if (target && target.content.trim().length === 0) {
+      setDraft({
+        title: target.title,
+        content: target.content,
+        linkedSourceIds: target.linkedSourceIds ?? [],
+      });
+      setIsEditing(true);
+    } else {
+      setIsEditing(false);
+      setDraft(null);
+    }
+  }, [articles]);
 
   const handleBackToList = useCallback(async () => {
     await flushRef.current();
@@ -347,6 +406,7 @@ export default function ZettelkastenView() {
                   markdown={displayContent}
                   onWikiLink={handleWikiLink}
                   existingTitles={existingTitleSet}
+                  emptyTitles={emptyTitleSet}
                   linkedSources={linkedSourceObjs}
                   onSourceClick={(sid) => setReadingSourceId(sid)}
                   categoryId={categoryId!}
@@ -474,6 +534,7 @@ export default function ZettelkastenView() {
             {filteredArticles.map(a => {
               const sub = rootSubs.find(s => s.id === a.rootSubcategoryId);
               const preview = a.content.replace(/[#*`[\]]/g, "").trim().slice(0, 140);
+              const isDraft = a.content.trim().length === 0;
               return (
                 <button
                   key={a.id}
@@ -482,12 +543,23 @@ export default function ZettelkastenView() {
                   className="text-left p-3 rounded-md border border-border hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex items-center justify-between gap-3 mb-1">
-                    <div className="font-semibold text-sm truncate">{a.title}</div>
-                    {sub && (
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                        {sub.name}
-                      </span>
-                    )}
+                    <div className={`font-semibold text-sm truncate ${
+                      isDraft ? "text-muted-foreground italic" : "text-foreground"
+                    }`}>
+                      {a.title}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isDraft && (
+                        <span className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded">
+                          Draft
+                        </span>
+                      )}
+                      {sub && (
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                          {sub.name}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {preview && (
                     <div className="text-xs text-muted-foreground line-clamp-2">{preview}</div>
