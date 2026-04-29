@@ -11,8 +11,7 @@ import { buildCardBuckets, EMPTY_BUCKETS, type CardBuckets } from "@/lib/card-bu
 const LazyDatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
 
 // ─── Types ──────────────────────────────────────────────
-export type View = "dashboard" | "create" | "edit" | "review" |
-
+export type View = "dashboard" | "create" | "edit" | "review" | "categories" | "learn" | "settings" | "mnemonic" | "stats" | "planner"
 // ─── Pomodoro types ─────────────────────────────────────
 export interface PomodoroState {
   mode: "work" | "break" | "longBreak";
