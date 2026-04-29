@@ -196,6 +196,7 @@ export default function HealthMonitor() {
   const totalRecords = tableStats.reduce((s, t) => s + t.count, 0);
 
   return (
+    <>
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
