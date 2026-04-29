@@ -34,6 +34,13 @@ export interface ReviewSessionProps {
   onLogError: (cardId: string, text: string, sectionId?: string) => void;
   onBack: () => void;
   preSelectedCategory?: string | null;
+  /**
+   * When set, the review session is hard-scoped to this category UUID.
+   * UI must hide / disable any control that would broaden the scope
+   * (category pills, "all" reset on back-to-modes, etc.).
+   * Pass through unchanged from `ReviewPage` → `ReviewSession` → `ReviewSetup`.
+   */
+  lockedCategory?: string | null;
 }
 
 export const REVIEW_ONBOARDING_KEY = "sr-review-onboarding-seen";
