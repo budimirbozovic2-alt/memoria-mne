@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Layers, BookOpen, Network, Settings, Search, X, Pencil,
+  ArrowLeft, Layers, BookOpen, Network, Settings, Search, X, Pencil, LayoutList,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +48,9 @@ export default function SubjectCardsView() {
     );
   }, [category?.subcategories]);
 
-  const [tab, setTab] = useState("manage");
+  const [tab, setTab] = useState<"manage" | "read">("manage");
+  /** Sub-mode within "manage" tab: list editor vs structural arrangement. */
+  const [manageMode, setManageMode] = useState<"edit" | "structure">("edit");
   const [structureOpen, setStructureOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("__all__");
@@ -122,7 +124,7 @@ export default function SubjectCardsView() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="w-full space-y-4">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "manage" | "read")} className="w-full space-y-4">
         {/* ── Group: Upravljanje ── */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
@@ -131,12 +133,8 @@ export default function SubjectCardsView() {
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1">
             <TabsTrigger value="manage" className="gap-1.5">
               <Pencil className="h-4 w-4" />
-              <span>Uređivanje i dodavanje kartica</span>
+              <span>Upravljanje karticama</span>
               <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{cards.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="structure" className="gap-1.5">
-              <Network className="h-4 w-4" />
-              <span>Struktura i raspored kartica</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -155,76 +153,111 @@ export default function SubjectCardsView() {
         </div>
 
         <TabsContent value="manage" className="pt-2 space-y-3">
-          <div className="flex items-center gap-2 flex-wrap rounded-lg border bg-card p-2.5">
-            <div className="relative flex-1 min-w-[200px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Pretraži pitanja, odgovore, tagove..."
-                className="h-8 pl-8 text-xs"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
-                  aria-label="Obriši pretragu"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
+          {/* Segmented sub-mode switch: Edit ↔ Structure */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="inline-flex rounded-lg border bg-card p-0.5">
+              <button
+                type="button"
+                onClick={() => setManageMode("edit")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  manageMode === "edit"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+                aria-pressed={manageMode === "edit"}
+              >
+                <LayoutList className="h-3.5 w-3.5" />
+                Uređivanje i dodavanje
+              </button>
+              <button
+                type="button"
+                onClick={() => setManageMode("structure")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  manageMode === "structure"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+                aria-pressed={manageMode === "structure"}
+              >
+                <Network className="h-3.5 w-3.5" />
+                Struktura i raspored
+              </button>
             </div>
-            <Select value={sourceFilter} onValueChange={setSourceFilter}>
-              <SelectTrigger className="h-8 w-auto min-w-[150px] text-xs">
-                <SelectValue placeholder="Izvor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">Svi izvori</SelectItem>
-                {sourceOptions.length === 0 ? (
-                  <SelectItem value="__none__" disabled>Nema vezanih izvora</SelectItem>
-                ) : (
-                  sourceOptions.map(s => (
-                    <SelectItem key={s.id} value={s.id} className="text-xs">{s.title}</SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <CardViewMode
-            cards={cards}
-            categoryId={categoryId!}
-            allCategories={categoryRecords}
-            patchCard={patchCard}
-            toggleTag={toggleTag}
-            addCard={addCard}
-            addFlashCard={addFlashCard}
-            onDelete={deleteCard}
-            onEdit={handleEdit}
-            onPassiveRead={handlePassiveRead}
-            externalQuery={searchQuery}
-            externalSourceId={sourceFilter}
-          />
-        </TabsContent>
 
-        <TabsContent value="structure" className="pt-2 space-y-3">
-          <div className="flex items-center justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 h-8 text-xs"
-              onClick={() => setStructureOpen(true)}
-            >
-              <Settings className="h-3.5 w-3.5" />
-              Uredi potkategorije i glave
-            </Button>
+            {manageMode === "structure" && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                onClick={() => setStructureOpen(true)}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Uredi potkategorije i glave
+              </Button>
+            )}
           </div>
-          <CardOrgMode
-            cards={cards}
-            categoryId={categoryId!}
-            subcategoryNodes={subcategoryNodes}
-            patchCard={patchCard}
-          />
+
+          {manageMode === "edit" ? (
+            <>
+              <div className="flex items-center gap-2 flex-wrap rounded-lg border bg-card p-2.5">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Pretraži pitanja, odgovore, tagove..."
+                    className="h-8 pl-8 text-xs"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
+                      aria-label="Obriši pretragu"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <SelectTrigger className="h-8 w-auto min-w-[150px] text-xs">
+                    <SelectValue placeholder="Izvor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">Svi izvori</SelectItem>
+                    {sourceOptions.length === 0 ? (
+                      <SelectItem value="__none__" disabled>Nema vezanih izvora</SelectItem>
+                    ) : (
+                      sourceOptions.map(s => (
+                        <SelectItem key={s.id} value={s.id} className="text-xs">{s.title}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <CardViewMode
+                cards={cards}
+                categoryId={categoryId!}
+                allCategories={categoryRecords}
+                patchCard={patchCard}
+                toggleTag={toggleTag}
+                addCard={addCard}
+                addFlashCard={addFlashCard}
+                onDelete={deleteCard}
+                onEdit={handleEdit}
+                onPassiveRead={handlePassiveRead}
+                externalQuery={searchQuery}
+                externalSourceId={sourceFilter}
+              />
+            </>
+          ) : (
+            <CardOrgMode
+              cards={cards}
+              categoryId={categoryId!}
+              subcategoryNodes={subcategoryNodes}
+              patchCard={patchCard}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="read" className="pt-2">

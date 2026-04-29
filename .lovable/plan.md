@@ -1,55 +1,45 @@
 ## Cilj
 
-Garantovati da se `::mindmap[id]` direktiva **uvijek** ubacuje na početku nove linije (i završava praznom linijom), bez obzira gdje se nalazi kursor — radi pouzdanog rendera u `ZettelPreview`-u (markdown direktiva mora biti samostalan blok).
+Reorganizovati `SubjectCardsView` u dvije čiste hijerarhijske sekcije sa pravim spajanjem srodnih operacija:
 
-## Trenutno ponašanje
+1. **Upravljanje karticama** (jedan tab) — interno prebacivanje između:
+   - Uređivanje i dodavanje kartica (lista, pretraga, edit)
+   - Struktura i raspored kartica (drag&drop u potkategorije/glave)
+2. **Pasivno čitanje** (zaseban tab pod grupom "Učenje")
 
-`src/views/ZettelkastenView.tsx:279`:
-```ts
-editorRef.current?.insertText(`\n\n::mindmap[${mmId}]\n\n`);
-```
+Mnemonička radionica je već uklonjena — ostaje uklonjena.
 
-`insertText` (u `ZettelEditor.tsx:54`) ubacuje doslovno na poziciji kursora. Problemi:
-- Kursor na početku praznog dokumenta → vodeće `\n\n` stvara dvije prazne linije iznad.
-- Kursor već na početku linije (poslije `\n`) → ponovo višak praznih redova.
-- Kursor odmah poslije već postojeće `\n\n` → trostruka praznina.
-- Trailing `\n\n` na kraju dokumenta ostavlja prazne linije.
+## Zatečeno stanje
 
-## Rješenje
+`src/views/SubjectCardsView.tsx` već ima dvije grupe (Upravljanje, Učenje), ali pod "Upravljanje" stoje **dva odvojena taba** (`manage` i `structure`). Korisnik traži **spajanje u jedan tab** — jer su oba operacije nad istim entitetom (karticama + njihovom hijerarhijom).
 
-Dodati novu metodu `insertBlock(text: string)` u `ZettelEditor` koja **normalizuje okruženje**:
+## Izmjene
 
-1. Ako tekst prije kursora ne završava sa `\n\n` (i nije početak dokumenta) → prepend `\n` ili `\n\n` koliko nedostaje da se garantuje prazna linija iznad.
-2. Ako je kursor na početku dokumenta → ne dodaje vodeće newline-e.
-3. Umetne sam blok (npr. `::mindmap[id]`).
-4. Ako tekst poslije kursora ne počinje sa `\n\n` (i nije kraj dokumenta) → append `\n` ili `\n\n` koliko fali.
-5. Ako je kraj dokumenta → samo jedan trailing `\n`.
-6. Postavi kursor odmah poslije ubačenog bloka (na kraj prvog newline-a iza, da korisnik može odmah kucati na novom redu).
+**`src/views/SubjectCardsView.tsx`**
 
-### Izmjene
+1. State:
+   - `tab` postaje `"manage" | "read"` (umjesto string).
+   - Dodaje se `manageMode: "edit" | "structure"` kao internal sub-mode unutar "Upravljanje" taba.
+   - `handlePassiveRead` ostaje (postavlja `tab="read"`).
 
-**1. `src/components/zettelkasten/ZettelEditor.tsx`**
-- Dodati `insertBlock(text: string)` u `ZettelEditorHandle` interface.
-- Implementirati helper koji računa potreban prefix/suffix newline padding na osnovu `value.slice(0, start)` i `value.slice(end)`.
-- Izložiti kroz `useImperativeHandle`.
+2. TabsList:
+   - Grupa **Upravljanje** dobiva **jedan** trigger: `value="manage"` → `Pencil` ikona, label "Upravljanje karticama", badge sa `cards.length`.
+   - Grupa **Učenje** ostaje sa jednim triggerom: `value="read"` → "Pasivno čitanje".
+   - Ukupno 2 taba (umjesto 3).
 
-**2. `src/views/ZettelkastenView.tsx`**
-- Linija 279: zamijeniti `insertText(\`\\n\\n::mindmap[${mmId}]\\n\\n\`)` sa `insertBlock(\`::mindmap[${mmId}]\`)`.
+3. `TabsContent value="manage"`:
+   - Na vrhu: kompaktan **segmented switch** (dva dugmeta — "Uređivanje i dodavanje" / "Struktura i raspored") koji mijenja `manageMode`.
+   - Pretraga + source filter prikazani **samo** kad je `manageMode === "edit"` (nemaju smisla u struct grid pogledu).
+   - "Uredi potkategorije i glave" dugme prikazano **samo** kad je `manageMode === "structure"`.
+   - Conditional render: `manageMode === "edit"` → `<CardViewMode .../>`; `manageMode === "structure"` → `<CardOrgMode .../>`.
 
-## Edge cases pokrivene
+4. `TabsContent value="read"` ostaje neizmijenjen (`PassiveReader`).
 
-| Pozicija kursora | Prefix | Suffix |
-|---|---|---|
-| Početak praznog dokumenta | (nema) | `\n` |
-| Početak dokumenta sa sadržajem | (nema) | `\n\n` |
-| Sredina paragrafa (`abc\|def`) | `\n\n` | `\n\n` |
-| Odmah iza `\n` (početak linije) | `\n` | `\n\n` |
-| Odmah iza `\n\n` | (nema) | `\n\n` |
-| Kraj dokumenta | `\n\n` | `\n` |
-| Kraj dokumenta poslije već `\n\n` | (nema) | `\n` |
+5. Header subtitle ostaje: "Kartice — uređivanje, struktura i pasivno čitanje".
 
 ## Što ostaje van skopa
 
-- `insertText` ostaje kao niskonivovska metoda (koristi je možda i drugi kod u budućnosti za inline ubacivanje).
-- Drugi block-level umetci (heading, list) već koriste `insertAtLineStart` koji garantuje line-start za njih.
-- Bez izmjene render pipeline-a ili markdown parsera.
+- Bez izmjena u `CardViewMode`, `CardOrgMode`, `PassiveReader`, `StructureManagerDialog`.
+- Bez izmjena ruta (URL i dalje `subject-cards/:categoryId`).
+- Bez perzistencije `manageMode` — resetuje se na `"edit"` pri remount-u (komponenta se već remount-uje preko `key={categoryId}` u parentu).
+- Memorija `mem://features/subject-cards-hub-v2` će se ažurirati u istom prolazu da odražava novu strukturu (1 manage tab + segmented switch + 1 read tab).
