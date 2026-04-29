@@ -1,76 +1,53 @@
 ## Problem
 
-U `Pregled i Uređivanje` (CardViewMode) kartice se sortiraju **isključivo po `card.sortOrder`** — flat broju koji `CardOrgMode` (Struktura) postavlja **per-poglavlje** (resetuje na 0..N unutar svake glave). Posljedica:
+`src/main.tsx` quit-backup handler trenutno radi:
+1. `buildBackupData()` čita IDB direktno (`db.cards.toArray()`, itd.)
+2. Šalje JSON u `requestBackup`
+3. `notifyQuitBackupDone()`
 
-- Kartica iz Glave-A (`sortOrder=0`) i kartica iz Glave-B (`sortOrder=0`) imaju isti ključ → redoslijed između njih je nedeterministički (po `createdAt`/`id`).
-- Kartice iz dvije različite glave/potkategorije se **isprepliću** umjesto da budu grupisane redom: cijela Potkategorija 1 → Glava 1.1 → Glava 1.2 → cijela Potkategorija 2 → ...
+**Bug:** Persist queue (`src/lib/persist-queue.ts`) bafera akcije kroz 16ms `setTimeout` prije pisanja u IDB. Ako korisnik zatvori aplikaciju u tom prozoru, akcije ostaju u memoriji — `buildBackupData()` ih ne vidi i backup je nepotpun.
 
-Trenutno problematični fajlovi:
-- `src/hooks/useCardViewFilters.ts` (linije 92–101) — sort samo po `sortOrder`.
-- `src/hooks/useCardListFilters.ts` (linije 38–44) — isti pattern, ista greška.
+`useCards` već flush-uje queue za **svoj** `onQuitBackupRequested` listener (`persistQueue.cleanup()` u `src/hooks/useCards.ts`), ali oba listenera se izvršavaju paralelno — handler u `main.tsx` može pročitati IDB **prije** nego `useCards` završi cleanup.
 
-## Cilj
+## Fix
 
-Sortirati liste tako da prate **hijerarhijski raspored Strukture**:
-
-```text
-[ subcat.sortOrder, chapter.sortOrder, card.sortOrder, createdAt, id ]
-```
-
-Kartice bez subcategoryId/chapterId idu na kraj odgovarajuće grupe (kao "Bez potkategorije" / "Bez glave"), redoslijedom po `sortOrder`/`createdAt`.
-
-## Plan izmjena
-
-### 1. Novi helper: `src/lib/card-ordering.ts`
-
-Centralizovana funkcija koja kompozituje hijerarhijski sort key — koristi je svaki view koji prikazuje liste kartica, da nema dvije implementacije sa različitim ponašanjem.
+U `src/main.tsx` (linije 157–171) pozvati `await persistQueue.flush()` **prije** `buildBackupData()`, sve unutar iste 5s race granice, a `notifyQuitBackupDone()` ostaje u `finally` (bezuslovno otpušta lock i kad istekne timeout).
 
 ```ts
-export interface HierarchyOrder {
-  /** subId → sortOrder (or large fallback if missing) */
-  subOrder: Map<string, number>;
-  /** chapId → sortOrder (or large fallback if missing) */
-  chapterOrder: Map<string, number>;
-}
-
-export function buildHierarchyOrder(category: CategoryRecord | null): HierarchyOrder;
-
-export function compareCardsByHierarchy(
-  a: Card,
-  b: Card,
-  order: HierarchyOrder,
-): number;
+const cleanupQuit = api.onQuitBackupRequested?.(async () => {
+  try {
+    const { persistQueue } = await import("@/lib/persist-queue");
+    await Promise.race([
+      (async () => {
+        await persistQueue.flush();        // ← novo: drain queue
+        const json = await buildBackupData();
+        await window.electronAPI!.requestBackup(json);
+      })(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("quit-backup-timeout")), 5000)
+      ),
+    ]);
+  } catch (err) {
+    console.error("[quit-backup] failed, releasing lock:", err);
+  } finally {
+    api.notifyQuitBackupDone?.();
+  }
+});
 ```
 
-Logika `compare`:
-1. `subOrder.get(a.subcategoryId)` vs `b` (missing → `MAX_SAFE_INTEGER` → ide na kraj).
-2. Ako jednako → `chapterOrder.get(a.chapterId)` vs `b`.
-3. Ako jednako → `card.sortOrder` (missing → `MAX_SAFE_INTEGER`).
-4. Tie-breakeri: `createdAt`, zatim `id`.
+### Šta se mijenja
+- Lazy `import("@/lib/persist-queue")` (konzistentno sa `SessionContext.tsx:107`).
+- `buildBackupData()` se izvršava tek nakon `flush()`.
+- 5s timeout sada pokriva i flush i build i write — ako je sve troje preko granice, lock se i dalje otpušta u `finally`.
 
-### 2. `src/hooks/useCardViewFilters.ts`
-- Dodati `useMemo` koji pravi `HierarchyOrder` iz `allCategories.find(c => c.id === categoryId)`.
-- Zamijeniti postojeći sort sa `compareCardsByHierarchy(a, b, order)`.
+## Tehnički detalji
 
-### 3. `src/hooks/useCardListFilters.ts`
-- Isti pattern — primiti category record (već prima `cards` + filtere; treba dodati `categoryRecord` prop ako nije tu, ili izvući iz parametra).
-- Pogledati pozivaoce; ako bi propagacija bila preteška, fallback je da hook prima `subOrder`/`chapterOrder` mape direktno.
-
-### 4. Test (smoke)
-Brz unit test u `src/test/` koji potvrdi:
-- Dvije kartice iz različitih glava sa istim `card.sortOrder=0` se sortiraju po `chapter.sortOrder`.
-- Kartice iz Pkat-1/Glave-2 dolaze prije kartica iz Pkat-2/Glave-1.
-- Kartica bez chapterId ide na kraj grupe Pkat-1.
-
-## Tehnički detalji / rizici
-
-- **Nema schema migracije** — koristimo postojeća polja (`subcategoryId`, `chapterId`, `sortOrder` na svemu).
-- **Performanse** — `HierarchyOrder` je `useMemo` per render kategorije; `compare` je O(1) lookup. Lista do nekoliko hiljada kartica → trivijalno.
-- **CardOrgMode (Struktura)** — već renderuje grupisano, pa njegova prezentacija ostaje ista; mijenja se samo flat lista u `Pregled i Uređivanje`.
-- **Stara dugmad za sortiranje korisnika nije promijenjena** — manualni DnD i dalje radi unutar grupe, samo što sada ne "curi" preko granica grupa.
+- `persistQueue.flush()` je već javan API (`src/lib/persist-queue.ts:101`). Bezbjedno se može zvati paralelno sa `useCards` cleanup-om — interni `flush` ne drži lock, samo isprazni `pending` array; drugi paralelni poziv jednostavno vidi prazan red.
+- **Zašto `flush` a ne `cleanup`:** `cleanup` dodatno postavlja `sessionStorage["codex-flush-pending"]` flag namijenjen interrupted-flush detekciji pri sljedećem boot-u — to nam ovdje ne treba (uspješan quit-backup ne signalizuje crash).
+- **Bez race-a sa `useCards`:** oba handlera mogu drain-ovati queue; drugi vidi prazno i prođe momentalno.
 
 ## Out of scope
 
-- Ne mijenja se `CardOrgMode` UI niti DnD logika.
-- Ne mijenja se LearnSession sort (već koristi svoju logiku za sub/chap pos).
-- Ne dodajemo novo polje na karticu — koristimo postojeća.
+- Ne mijenja se `electron/backup.cjs` (main proces) — IPC kontrakt ostaje isti.
+- Ne mijenja se `useCards` listener — i dalje radi `persistQueue.cleanup()` kao safety net.
+- Ne mijenja se 5s timeout vrijednost.
