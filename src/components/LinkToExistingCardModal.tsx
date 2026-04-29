@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import type { Card } from "@/lib/spaced-repetition";
 import { useCategoryData } from "@/contexts/AppContext";
+import { sanitizeHtml } from "@/lib/sanitize";
 
 interface Props {
   open: boolean;
@@ -14,6 +15,8 @@ interface Props {
   sourceId: string;
   sourceLabel: string;
   selectedText: string;
+  /** Optional: HTML version of the selection to render with formatting in the preview. */
+  selectedHtml?: string;
   cards: Card[];
   onLink: (cardId: string, appendSnippet: boolean) => void;
 }
@@ -26,9 +29,13 @@ function SubBadge({ categoryId, subcategoryId }: { categoryId: string; subcatego
 }
 
 export default function LinkToExistingCardModal({
-  open, onOpenChange, sourceId, sourceLabel, selectedText, cards, onLink,
+  open, onOpenChange, sourceId, sourceLabel, selectedText, selectedHtml, cards, onLink,
 }: Props) {
   const [search, setSearch] = useState("");
+  const previewHtml = useMemo(
+    () => sanitizeHtml(selectedHtml || selectedText),
+    [selectedHtml, selectedText],
+  );
 
   // Pre-filter: unlinked, essay-only, same category
   // sourceLabel may be a category name or a source title (fallback for unmigrated sources)
@@ -73,9 +80,12 @@ export default function LinkToExistingCardModal({
           </div>
 
           {selectedText && (
-            <div className="rounded-md border bg-muted/50 p-2.5 max-h-20 overflow-y-auto">
+            <div className="rounded-md border bg-muted/50 p-2.5 max-h-24 overflow-y-auto">
               <p className="text-xs text-muted-foreground mb-1">Označeni tekst:</p>
-              <p className="text-xs text-foreground/80 line-clamp-3">{selectedText}</p>
+              <div
+                className="text-xs prose prose-xs dark:prose-invert max-w-none card-prose line-clamp-4"
+                dangerouslySetInnerHTML={{ __html: previewHtml }}
+              />
             </div>
           )}
 

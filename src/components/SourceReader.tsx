@@ -39,6 +39,7 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
   const autoSplitOpen = useSourceReaderStore(s => s.autoSplitOpen);
   const linkModalOpen = useSourceReaderStore(s => s.linkModalOpen);
   const linkSelectedText = useSourceReaderStore(s => s.linkSelectedText);
+  const linkSelectedHtml = useSourceReaderStore(s => s.linkSelectedHtml);
   const examQuestions = useSourceReaderStore(s => s.examQuestions);
   const setExamQuestions = useSourceReaderStore(s => s.setExamQuestions);
 
@@ -147,6 +148,7 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
             sourceId={source.id}
             sourceLabel={source.categoryId || source.title || ""}
             selectedText={linkSelectedText}
+            selectedHtml={linkSelectedHtml}
             cards={derived.cards}
             onLink={actions.handleLinkConfirm}
           />

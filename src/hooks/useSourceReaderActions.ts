@@ -42,10 +42,16 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       const range = sel.getRangeAt(0);
       const container = contentRef.current || document.querySelector("[data-coverage-container]");
       if (!container || !container.contains(range.commonAncestorContainer)) return;
+      // Extract HTML preserving formatting (bold, italic, lists, headings, paragraphs)
+      const fragment = range.cloneContents();
+      const wrapper = document.createElement("div");
+      wrapper.appendChild(fragment);
+      const html = wrapper.innerHTML;
       const rect = range.getBoundingClientRect();
       const containerRect = container.getBoundingClientRect();
       useSourceReaderStore.getState().setSelection({
         text,
+        html,
         x: rect.left + rect.width / 2 - containerRect.left,
         y: rect.top - containerRect.top - 8,
       });
@@ -64,9 +70,10 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
 
   // ─── Essay / Split ───
   const handleConvertToEssay = useCallback(() => {
-    const { selection, setSelection, setSplitResult, setSplitParentName, setSplitModules, setSplitDone, setSplitCreatedCount, setSplitSummaryOpen, setSelectedText, setEssayQuestion, setEssayDialogOpen } = useSourceReaderStore.getState();
+    const { selection, setSelection, setSplitResult, setSplitParentName, setSplitModules, setSplitDone, setSplitCreatedCount, setSplitSummaryOpen, setSelectedText, setSelectedHtml, setEssayQuestion, setEssayDialogOpen } = useSourceReaderStore.getState();
     if (!selection) return;
     const text = selection.text;
+    const html = selection.html;
     setSelection(null);
     window.getSelection()?.removeAllRanges();
     const result = splitSelection(text);
@@ -79,16 +86,19 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       setSplitSummaryOpen(true);
     } else {
       setSelectedText(text);
+      setSelectedHtml(html);
       setEssayQuestion("");
       setEssayDialogOpen(true);
     }
   }, []);
 
   const handleCreateEssay = useCallback(() => {
-    const { essayQuestion, selectedText, setEssayDialogOpen } = useSourceReaderStore.getState();
+    const { essayQuestion, selectedText, selectedHtml, setEssayDialogOpen } = useSourceReaderStore.getState();
     if (!essayQuestion.trim() || !selectedText) return;
     const anchor = createTextAnchor(selectedText);
-    addCard(essayQuestion.trim(), [{ title: "Odgovor", content: sanitizeHtml(selectedText) }], source.categoryId, undefined, undefined, {
+    // Use HTML for the rendered section (preserves formatting), keep plain for anchor & snippet (matching).
+    const sectionContent = sanitizeHtml(selectedHtml || selectedText);
+    addCard(essayQuestion.trim(), [{ title: "Odgovor", content: sectionContent }], source.categoryId, undefined, undefined, {
       sourceId: source.id, textAnchor: anchor, originalSourceSnippet: selectedText,
     });
     toast.success("Esejsko pitanje kreirano", { description: `Povezano sa izvorom "${source.title}"` });
@@ -124,16 +134,17 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
 
   // ─── Link to existing ───
   const handleLinkToExisting = useCallback(() => {
-    const { selection, setLinkSelectedText, setLinkModalOpen, setSelection } = useSourceReaderStore.getState();
+    const { selection, setLinkSelectedText, setLinkSelectedHtml, setLinkModalOpen, setSelection } = useSourceReaderStore.getState();
     if (!selection) return;
     setLinkSelectedText(selection.text);
+    setLinkSelectedHtml(selection.html);
     setLinkModalOpen(true);
     setSelection(null);
     window.getSelection()?.removeAllRanges();
   }, []);
 
   const handleLinkConfirm = useCallback((cardId: string, appendSnippet: boolean = true) => {
-    const { linkSelectedText, setLinkModalOpen, setLinkSelectedText } = useSourceReaderStore.getState();
+    const { linkSelectedText, linkSelectedHtml, setLinkModalOpen, setLinkSelectedText, setLinkSelectedHtml } = useSourceReaderStore.getState();
     patchCard(cardId, (c) => {
       const base = {
         ...c,
@@ -146,12 +157,13 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
         ...base,
         sections: [
           ...c.sections,
-          createSection("Isječak iz izvora", sanitizeHtml(linkSelectedText)),
+          createSection("Isječak iz izvora", sanitizeHtml(linkSelectedHtml || linkSelectedText)),
         ],
       };
     });
     setLinkModalOpen(false);
     setLinkSelectedText("");
+    setLinkSelectedHtml("");
     toast.success("Esej uspješno povezan!", { description: `Povezano sa izvorom "${source.title}"` });
   }, [patchCard, source.id, source.title]);
 
@@ -160,6 +172,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     const { selection, examQuestions, setSelection, setExamQuestions } = useSourceReaderStore.getState();
     if (!selection) return;
     const text = selection.text;
+    const html = selection.html;
     const question = examQuestions.find(q => q.id === questionId);
     if (!question) return;
     setSelection(null);
@@ -186,7 +199,9 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       toast.success(`Esej kreiran: ${modules.length} modula`, { description: `${result.rangeLabel} → "${question.text.slice(0, 50)}..."` });
     } else {
       const anchor = createTextAnchor(text);
-      addCard(question.text, [{ title: "Odgovor", content: sanitizeHtml(text) }], category, undefined, undefined, {
+      // Use HTML for the rendered section (preserves formatting), keep plain for anchor & snippet.
+      const sectionContent = sanitizeHtml(html || text);
+      addCard(question.text, [{ title: "Odgovor", content: sectionContent }], category, undefined, undefined, {
         sourceId: source.id, textAnchor: anchor, originalSourceSnippet: text,
       });
       setExamQuestions(prev => prev.map(q => q.id === questionId ? { ...q, done: true, moduleCount: 1 } : q));
@@ -194,7 +209,6 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       toast.success("Esej kreiran", { description: `"${question.text.slice(0, 60)}..."` });
     }
   }, [source, addCard]);
-
   // ─── Heading / formatting (edit mode) ───
   const handleSetHeading = useCallback(async (level: number | null, targetEl?: HTMLElement) => {
     const el = targetEl || useSourceReaderStore.getState().headingMenu?.element;
