@@ -62,7 +62,7 @@ function loadPersistedFilters(categoryId: string): PersistedFilters {
   }
 }
 
-export default function PassiveReader({ cards, subcategoryNodes, categoryId, onEditCard }: Props) {
+export default function PassiveReader({ cards, subcategoryNodes, categoryId, onEditCard, initialCardId, onInitialConsumed }: Props) {
   // Lazy init from localStorage so previously selected filters return on mount.
   const [subFilter, setSubFilter] = useState<string>(() => loadPersistedFilters(categoryId).subFilter);
   const [chapterFilter, setChapterFilter] = useState<string>(() => loadPersistedFilters(categoryId).chapterFilter);
