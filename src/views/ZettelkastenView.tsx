@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Plus, Trash2, FileText, Search, BookOpen, Compass,
-  Pencil, Check, BookMarked, X,
+  Pencil, Check, BookMarked,
 } from "lucide-react";
 import { useCategoryData } from "@/contexts/AppContext";
 import {
