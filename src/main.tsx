@@ -156,13 +156,19 @@ markBootStep("main:error-handlers-registered");
       const api = window.electronAPI!;
       const cleanupQuit = api.onQuitBackupRequested?.(async () => {
         try {
-          const json = await Promise.race([
-            buildBackupData(),
-            new Promise<string>((_, reject) =>
+          // Drain in-memory persist queue BEFORE snapshotting IDB so backup
+          // includes every action buffered up to the moment of quit.
+          const { persistQueue } = await import("@/lib/persist-queue");
+          await Promise.race([
+            (async () => {
+              await persistQueue.flush();
+              const json = await buildBackupData();
+              await window.electronAPI!.requestBackup(json);
+            })(),
+            new Promise<never>((_, reject) =>
               setTimeout(() => reject(new Error("quit-backup-timeout")), 5000)
             ),
           ]);
-          await window.electronAPI!.requestBackup(json);
         } catch (err) {
           console.error("[quit-backup] failed, releasing lock:", err);
         } finally {
