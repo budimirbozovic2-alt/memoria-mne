@@ -1,7 +1,7 @@
 import { GripVertical } from "lucide-react";
 import { Card } from "@/lib/spaced-repetition";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
-import { useCategoryData } from "@/contexts/AppContext";
+import { useCategoryData, useCardData } from "@/contexts/AppContext";
 import { List, type RowComponentProps } from "react-window";
 import CardRow, { type CardRowProps } from "./card-list/CardRow";
 import { useCardListFilters } from "@/hooks/useCardListFilters";
