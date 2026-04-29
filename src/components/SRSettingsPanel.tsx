@@ -26,7 +26,7 @@ interface Props {
 
 export default function SRSettingsPanel({ settings, onUpdate }: Props) {
   const [searchParams] = useSearchParams();
-  const subjectId = searchParams.get("subject");
+  const subjectId = getParam(searchParams, "category");
 
   const initialTab = useMemo(() => {
     const t = searchParams.get("tab");
