@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowLeft, Layers, BookOpen, Network, Settings, Search, X, Pencil, LayoutList,
+  ArrowLeft, Layers, BookOpen, Settings, Search, X, Pencil,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -17,10 +17,17 @@ import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
 import PassiveReader from "@/components/subject-cards/PassiveReader";
+import {
+  MANAGE_MODES,
+  MANAGE_MODE,
+  DEFAULT_MANAGE_MODE,
+  isManageMode,
+  type ManageMode,
+} from "@/views/subject-cards/manageModes";
 
 interface EditReturnSnapshot {
   tab?: "manage" | "read";
-  manageMode?: "edit" | "structure";
+  manageMode?: ManageMode;
   searchQuery?: string;
   sourceFilter?: string;
   scrollY?: number;
@@ -75,7 +82,9 @@ export default function SubjectCardsView() {
 
   const [tab, setTab] = useState<"manage" | "read">(initialSnapshot?.tab ?? "manage");
   /** Sub-mode within "manage" tab: list editor vs structural arrangement. */
-  const [manageMode, setManageMode] = useState<"edit" | "structure">(initialSnapshot?.manageMode ?? "edit");
+  const [manageMode, setManageMode] = useState<ManageMode>(
+    isManageMode(initialSnapshot?.manageMode) ? initialSnapshot.manageMode : DEFAULT_MANAGE_MODE
+  );
   const [structureOpen, setStructureOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(initialSnapshot?.searchQuery ?? "");
   const [sourceFilter, setSourceFilter] = useState<string>(initialSnapshot?.sourceFilter ?? "__all__");
@@ -180,44 +189,35 @@ export default function SubjectCardsView() {
         </div>
 
         <TabsContent value="manage" className="pt-2 space-y-3">
-          {/* Segmented sub-mode switch: View ↔ Org */}
+          {/* Segmented sub-mode switch — driven by MANAGE_MODES registry. */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="inline-flex rounded-lg border bg-card p-0.5">
-              <button
-                type="button"
-                onClick={() => setManageMode("edit")}
-                title="Pregled i uređivanje kartica — lista, pretraga, filteri"
-                aria-label="Pregled i uređivanje kartica — lista, pretraga, filteri"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  manageMode === "edit"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-                aria-pressed={manageMode === "edit"}
-              >
-                <LayoutList className="h-3.5 w-3.5" />
-                Pregled i uređivanje
-                <span className="opacity-60">(View)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setManageMode("structure")}
-                title="Struktura i raspored kartica — hijerarhija, glave, drag & drop"
-                aria-label="Struktura i raspored kartica — hijerarhija, glave, drag & drop"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  manageMode === "structure"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-                aria-pressed={manageMode === "structure"}
-              >
-                <Network className="h-3.5 w-3.5" />
-                Struktura i raspored
-                <span className="opacity-60">(Org)</span>
-              </button>
+              {MANAGE_MODES.map((mode) => {
+                const Icon = mode.icon;
+                const active = manageMode === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setManageMode(mode.id)}
+                    title={mode.tooltip}
+                    aria-label={mode.tooltip}
+                    aria-pressed={active}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                      active
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {mode.label}
+                    <span className="opacity-60">({mode.shortTag})</span>
+                  </button>
+                );
+              })}
             </div>
 
-            {manageMode === "structure" && (
+            {manageMode === MANAGE_MODE.Structure && (
               <Button
                 variant="outline"
                 size="sm"
@@ -230,7 +230,7 @@ export default function SubjectCardsView() {
             )}
           </div>
 
-          {manageMode === "edit" ? (
+          {manageMode === MANAGE_MODE.Edit ? (
             <>
               <div className="flex items-center gap-2 flex-wrap rounded-lg border bg-card p-2.5">
                 <div className="relative flex-1 min-w-[200px]">

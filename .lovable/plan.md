@@ -1,146 +1,65 @@
-# Izdvajanje scroll + UI restore logike u zajednički hook
-
-## Šta je trenutno duplirano / razbacano
-
-Trenutno se obrazac "stash UI snapshot prije navigacije, restore nakon povratka" pojavljuje na više mjesta sa različitim varijantama:
-
-1. **`src/views/SubjectCardsView.tsx`** (linije 21–138):
-   - Definiše lokalni interface `EditReturnSnapshot`.
-   - U `useMemo` lazy-čita `consumeEditReturnState`.
-   - U `useEffect` (linije 81–105) ručno radi RAF-loop restore scroll-a sa retry-em zbog virtualizovane liste.
-   - U `handleEdit` (linije 125–138) ručno gradi snapshot sa `tab/manageMode/searchQuery/sourceFilter/scrollY`, poziva `setEditReturn` + `stashEditReturnState`.
-
-2. **`src/views/LearnPage.tsx:63–67`** — `handleEdit` poziva samo `setEditReturn({ path: "/learn" })` (nema state snapshota).
-
-3. **`src/components/MainLayout.tsx:91–99`** — `onNavigateToCard` poziva samo `setEditReturn({ path: location.pathname + search })`.
-
-4. **`src/views/EditPage.tsx:15–29`** — drži lokalni `returnPathRef` i `navigateBack` koji čita `consumeEditReturn`.
-
-Restore scroll-a sa virtualizovanom listom (ono najsloženije) postoji **samo na jednom mjestu**, ali je dobar kandidat da se izdvoji jer ćemo ga sutra trebati i u ZettelkastenView i drugim listama.
-
 ## Cilj
 
-Jedan zajednički hook koji sažima cio "edit-return" obrazac na 3 linije po pozivnom mjestu, plus poseban primitivni hook za "restore scroll u rastućem dokumentu" koji se može nezavisno reuseovati.
+Razdvojiti **internu logiku** preklopnika unutar taba "Uređivanje i raspored kartica" od **prikaznih labela** ("View", "Org", srpski naslovi, tooltipovi). Trenutno su interni ključevi `"edit" | "structure"` već stabilni, ali su sav UI tekst, ikone, kratke oznake i tooltipovi raštrkani inline u `SubjectCardsView.tsx`. Bilo kakva izmjena teksta zahtijeva diranje uvjeta i `aria-*` atributa, što je krhko.
 
-## Nova javna površina
+Uvodimo jedan **registry** (mapa rola) kao jedinu istinu — komponenta čita konfiguraciju iz mape, nikad ne poredi po labelima.
 
-### 1) `src/hooks/useScrollRestore.ts` (novo)
+## Šta se mijenja
 
-Generički RAF-loop scroll restore za rastuće (virtualizovane) dokumente.
+### 1. Novi modul `src/views/subject-cards/manageModes.ts`
 
-```ts
-export function useScrollRestore(
-  targetY: number | null | undefined,
-  opts?: { maxAttempts?: number; behavior?: ScrollBehavior; element?: HTMLElement | null }
-): void;
-```
+Definira:
 
-- Aktivira se samo kad `targetY` postane broj.
-- RAF-loop sa default-om `maxAttempts=8` i `behavior="auto"`.
-- Radi na `window` ili na proslijeđenom elementu (za buduće inner-scroll listove).
-- Prekida se na unmount preko `cancelAnimationFrame`.
-
-Implementacija je 1:1 prenos postojeće logike iz `SubjectCardsView` 81–105, parametrizovana.
-
-### 2) `src/hooks/useEditReturn.ts` (novo)
-
-Visoko-nivovski hook koji enkapsulira cio life-cycle "stash → navigate to /edit → restore".
-
-```ts
-interface UseEditReturnOptions<S> {
-  /** Apsolutna ruta na koju EditPage treba da vrati korisnika. */
-  path: string;
-  /** Generator UI snapshota — pozvan u trenutku stash-a. */
-  buildSnapshot?: () => S;
-  /** Selector funkcija za scrollY iz snapshota; default: snapshot.scrollY. */
-  getScrollY?: (snapshot: S | null) => number | null | undefined;
-}
-
-interface UseEditReturnApi<S> {
-  /** Snapshot pročitan jednom na mount (consumed iz sessionStorage). */
-  initialSnapshot: S | null;
-  /** Pozovi prije navigacije na /edit; stashuje path + snapshot. */
-  stash: () => void;
-}
-
-export function useEditReturn<S = unknown>(opts: UseEditReturnOptions<S>): UseEditReturnApi<S>;
-```
-
-Interno:
-- `useMemo(() => consumeEditReturnState<S>(), [])` — lazy jednokratan read.
-- `useScrollRestore(getScrollY(initialSnapshot))` — automatski restore scroll-a.
-- `stash` callback koji poziva `setEditReturn({ path })` + (ako postoji `buildSnapshot`) `stashEditReturnState(buildSnapshot())`.
-
-### 3) (opciono, čisti EditPage) `src/hooks/useEditReturnTarget.ts`
-
-Mini hook koji enkapsulira `returnPathRef` + `navigateBack` iz `EditPage`. Nema scroll logike — samo čita `consumeEditReturn` jednom i izlaže `navigateBack()`.
-
-```ts
-export function useEditReturnTarget(): { navigateBack: () => void };
-```
-
-## Refaktor pozivnih mjesta
-
-### A) `src/views/SubjectCardsView.tsx`
-- Ukloniti lokalni `useMemo` za `initialSnapshot` i lokalni `useEffect` za scroll restore (linije 66 + 77–105).
-- Zamijeniti sa:
+- **Enum-like konstante** internih ID-jeva rola (stabilne, koriste se svuda u logici i `sessionStorage` snapshotu):
   ```ts
-  const { initialSnapshot, stash } = useEditReturn<EditReturnSnapshot>({
-    path: `/subject/${categoryId}/cards`,
-    buildSnapshot: () => ({ tab, manageMode, searchQuery, sourceFilter, scrollY: window.scrollY }),
-  });
+  export const MANAGE_MODE = {
+    Edit: "edit",
+    Structure: "structure",
+  } as const;
+  export type ManageMode = typeof MANAGE_MODE[keyof typeof MANAGE_MODE];
   ```
-- `handleEdit` postaje:
+- **Registry** sa svim prikaznim podacima po roli:
   ```ts
-  const handleEdit = (card: Card) => {
-    stash();
-    setEditingCard(card);
-    navigate("/edit");
-  };
-  ```
-- Ostalo nepromijenjeno (`initialSnapshot?.tab` itd. nastavlja da radi isto).
-
-### B) `src/views/LearnPage.tsx`
-- `handleEdit` koristi `useEditReturn({ path: "/learn" })` (bez `buildSnapshot`):
-  ```ts
-  const { stash } = useEditReturn({ path: "/learn" });
-  const handleEdit = useCallback((card: Card) => {
-    stash();
-    setEditingCard(card);
-    setView("edit");
-  }, [stash, setEditingCard, setView]);
+  interface ManageModeDescriptor {
+    id: ManageMode;          // stabilan interni ključ
+    icon: LucideIcon;        // LayoutList | Network
+    label: string;           // "Pregled i uređivanje"
+    shortTag: string;        // "View" / "Org" — vizualni hint
+    tooltip: string;         // dugačak opis za title/aria-label
+  }
+  export const MANAGE_MODES: ManageModeDescriptor[];        // poredan niz za render
+  export const MANAGE_MODE_BY_ID: Record<ManageMode, ManageModeDescriptor>;
+  export const DEFAULT_MANAGE_MODE: ManageMode = MANAGE_MODE.Edit;
+  export function isManageMode(v: unknown): v is ManageMode;  // type-guard za snapshot restore
   ```
 
-### C) `src/components/MainLayout.tsx` (GlobalSearchWrapper)
-- `path` mora biti dinamički (trenutna lokacija u trenutku klika), pa ovdje koristimo:
-  ```ts
-  const { stash } = useEditReturn({
-    path: window.location.pathname + window.location.search,
-  });
-  ```
-  Pošto se path računa na mount, moramo dozvoliti da se proslijedi i kao **funkcija**: proširiti `UseEditReturnOptions.path` na `string | (() => string)` i u `stash` ga lijeno razriješiti. To pokriva slučajeve gdje korisnik može migrirati prije nego klikne.
+### 2. Refaktor `src/views/SubjectCardsView.tsx`
 
-### D) `src/views/EditPage.tsx`
-- Zamijeniti lokalni `returnPathRef` + `useEffect` + `navigateBack` sa:
-  ```ts
-  const { navigateBack } = useEditReturnTarget();
-  ```
+- Tip `EditReturnSnapshot.manageMode` postaje `ManageMode` (umjesto inline union).
+- Početna vrijednost: `useState<ManageMode>(isManageMode(initialSnapshot?.manageMode) ? initialSnapshot.manageMode : DEFAULT_MANAGE_MODE)` — robusno na promjene snapshot formata.
+- Dva `<button>` ručno ispisana bloka zamjenjujemo `MANAGE_MODES.map(...)` petljom; sve klase ostaju iste (aktivno = `bg-primary text-primary-foreground`), samo ikona/labela/tooltip dolaze iz deskriptora.
+- Conditional render: `manageMode === MANAGE_MODE.Structure` umjesto string literal `"structure"`.
+- Render grane ispod (`CardViewMode` vs `CardOrgMode`): isti switch po `MANAGE_MODE.Edit` / `Structure`.
 
-## Zadržano ponašanje (regression-safe)
+### 3. Ostali pozivni dijelovi
 
-- `sessionStorage` ključevi i format ostaju netaknuti (`sr-edit-return-context`, `sr-edit-return-context:state`). Ovo je čisto refaktor — nema breaking promjene za bookmarkove ili poluotvorene sesije.
-- Restore-scroll RAF loop ima identične brojeve (8 attempts ≈ 130ms @ 60fps).
-- `consumeEditReturn` / `consumeEditReturnState` se i dalje pozivaju **tačno jednom po mount-u** (lazy `useMemo` + `useEffect` sa praznim deps).
-- `EditReturnSnapshot` interface ostaje u `SubjectCardsView` (specifičan za tu stranicu) — hook je generičan preko `<S>` parametra.
+`rg "manageMode"` pokazuje da se polje koristi samo unutar `SubjectCardsView.tsx` i `EditReturnSnapshot` tipa — nema drugih konzumenata. Interni ključevi `"edit"` i `"structure"` ostaju identični kao stringovi, pa **postojeći `sessionStorage` snapshoti i dalje rade** (nema migracije).
 
-## Šta se NE radi u ovom prolazu
+## Šta NE mijenjamo
 
-- Ne pomjeramo druge `scrollIntoView` pozive (`useSpeedReaderEngine`, `SourceContent`, `GlobalSearch`, `useSourceReaderActions`) — oni rade na specifičnim DOM elementima i imaju različitu semantiku (unutar containera, sa `behavior: "smooth"`); nisu duplikati ovog obrasca.
-- Ne mijenjamo `edit-return.ts` API.
+- Vidljive srpske labele i `(View)`/`(Org)` tagove — ostaju isti tekstualno, samo se sad čitaju iz registry-a.
+- `sessionStorage` ključeve i format (`useEditReturn` ostaje netaknut).
+- `CardViewMode` / `CardOrgMode` API — komponente ne znaju za rolu, samo se mountaju po grani.
+- Tabs (manage/read) — to je viši nivo, izvan ovog scope-a.
 
-## Rezultat
+## Korist
 
-- 25+ linija scroll/restore boilerplate-a u `SubjectCardsView` postaje 1 hook poziv.
-- 3 različita `setEditReturn` poziva sa raznim varijantama path-a postaju jednoobrazni.
-- `EditPage` se rješava `useRef` + `useEffect` repa.
-- Budući viewovi (npr. ZettelkastenView) mogu dobiti scroll restore u jednoj liniji.
+- Promjena teksta "View" → "List" (ili lokalizacija) = jedan red u registry-u, nula `if`-ova.
+- Dodavanje treće rele (npr. "Preview") = jedan novi descriptor + grana u JSX switchu.
+- `aria-pressed`, `title`, `aria-label`, ikona i labela su uvijek u sinhronizaciji jer dolaze iz iste strukture — nemoguće ih razdvojiti.
+- Type-guard `isManageMode` štiti od korumpiranog snapshota.
+
+## Fajlovi
+
+- **Novo:** `src/views/subject-cards/manageModes.ts` (~40 linija).
+- **Izmjena:** `src/views/SubjectCardsView.tsx` — import registry-a, refactor `EditReturnSnapshot`, `useState` init, segmented switch render (~30 linija manje boilerplate-a), use-site usporedbe.
