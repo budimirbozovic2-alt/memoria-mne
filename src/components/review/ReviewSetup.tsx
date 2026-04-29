@@ -21,12 +21,14 @@ interface ReviewSetupProps {
   onResumeSession: () => void;
   onClearSavedSession: () => void;
   preSelectedCategory?: string | null;
+  /** Hard scope lock: when set, category cannot be changed via UI. */
+  lockedCategory?: string | null;
 }
 
 export default function ReviewSetup({
   dueCards, allCards, categoryRecords, subcategories, srSettings,
   onSelectMode, onBack, savedSession, onResumeSession, onClearSavedSession,
-  preSelectedCategory,
+  preSelectedCategory, lockedCategory,
 }: ReviewSetupProps) {
   const [setupStep, setSetupStep] = useState<"mode" | "filter">("mode");
   const [mode, setMode] = useState<ReviewMode>(null);
