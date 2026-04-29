@@ -116,6 +116,23 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
     }
   }, [dueCards, allCards, srSettings]);
 
+  // Auto-start in a specific mode (e.g. global dashboard's "Globalna konsolidacija"
+  // forces `critical`). Skips ReviewSetup entirely. Runs once when autoMode is set
+  // and no mode has been chosen yet.
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (!autoMode || autoStartedRef.current || mode !== null) return;
+    autoStartedRef.current = true;
+    const computed = computeItemsForMode(autoMode);
+    setMode(autoMode);
+    setItems(computed);
+    setRandomIndex(0);
+    setShowAnswer(false);
+    setFinished(false);
+    setSavedSession(null);
+    clearSavedSession();
+  }, [autoMode, mode, computeItemsForMode, clearSavedSession]);
+
   const resumeSession = useCallback(() => {
     if (!savedSession) return;
     let resumeMode: ReviewMode = savedSession.mode;
