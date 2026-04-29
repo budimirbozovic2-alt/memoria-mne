@@ -193,6 +193,19 @@ export function useCardImport({
           }
         }
 
+        // ── Resolve legacy string-name taxonomy → UUIDs (prije persist-a) ──
+        let legacyResolveReport: { resolvedSubcategory: number; resolvedChapter: number; unresolvedSubcategory: number; unresolvedChapter: number } | null = null;
+        try {
+          const { idbLoadCategories } = await import("@/lib/db");
+          const freshRecs = await idbLoadCategories();
+          const { resolveLegacyTaxonomyNames } = await import("@/lib/migrations/resolve-legacy-taxonomy");
+          legacyResolveReport = resolveLegacyTaxonomyNames(merged, freshRecs);
+          // Sinhronizuj nextMap sa potencijalno mutiranim karticama
+          for (const c of merged) nextMap[c.id] = c;
+        } catch (resolveErr) {
+          console.warn("[useCardImport] legacy taxonomy resolve failed:", resolveErr);
+        }
+
         // ── Persist cards AFTER remap is complete ──
         if (merged.length > 0) schedulePersist({ type: "bulk", cards: merged });
         cardMapRef.current = nextMap;
