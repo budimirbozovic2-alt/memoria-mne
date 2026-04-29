@@ -109,7 +109,7 @@ export default function ReviewCard({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showAnswer, card.id, section.id, handleGradeWithCalibration, onLogError, toast, handleRevealAnswer, canGradeEasy]);
+  }, [showAnswer, card.id, section.id, handleGradeWithCalibration, onLogError, handleRevealAnswer]);
 
   const sectionIsLeech = isLeech(section, srSettings);
   const lapses = section.lapses || 0;
