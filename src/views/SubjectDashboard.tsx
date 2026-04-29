@@ -20,7 +20,7 @@ import { buildQuery } from "@/lib/url-params";
 export default function SubjectDashboard() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const { categoryRecords } = useCategoryData();
-  const { cards, dueCards, buckets } = useCardData();
+  const { dueCards, buckets } = useCardData();
 
   const categoryRec = useMemo(
     () => categoryRecords.find(r => r.id === categoryId),
