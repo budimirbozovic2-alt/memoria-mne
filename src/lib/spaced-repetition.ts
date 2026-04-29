@@ -14,9 +14,20 @@ export interface AdaptiveContext {
   examinerProfile?: ExaminerProfile;
 }
 
+export interface AdaptiveReason {
+  code:
+    | "FREQ_CESTO" | "FREQ_RIJETKO" | "FREQ_NIKAD"
+    | "EXAM_PREF_MATCH_ESEJ" | "EXAM_PREF_MATCH_DEFINICIJA" | "EXAM_PREF_MATCH_POTPITANJA"
+    | "EXAM_DIFF_TEZAK" | "EXAM_DIFF_LAK";
+  label: string;
+  retentionDelta: number;
+  intervalFactor: number;
+}
+
 export interface AdaptiveModifiers {
   retentionBoost: number;     // added to targetRetention
   intervalMultiplier: number; // multiplied with calculated interval
+  reasons: AdaptiveReason[];  // human-readable explanation of every applied rule
 }
 
 const RETENTION_MIN = 0.80;
