@@ -380,5 +380,11 @@ export default function HealthMonitor() {
         </div>
       </CardContent>
     </Card>
+    <RemapFromBackupDialog
+      open={remapOpen}
+      onOpenChange={setRemapOpen}
+      onApplied={() => { void refresh(); }}
+    />
+    </>
   );
 }
