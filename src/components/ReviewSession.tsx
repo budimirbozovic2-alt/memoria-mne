@@ -218,7 +218,7 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
       setShowAnswer={setShowAnswer}
       onGrade={handleGrade}
       onLogError={onLogError}
-      onBack={() => setMode(null)}
+      onBack={autoMode ? onBack : () => setMode(null)}
       onPause={handlePauseSession}
       progress={randomIndex}
       total={items.length}
