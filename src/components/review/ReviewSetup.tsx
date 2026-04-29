@@ -32,7 +32,7 @@ export default function ReviewSetup({
 }: ReviewSetupProps) {
   const [setupStep, setSetupStep] = useState<"mode" | "filter">("mode");
   const [mode, setMode] = useState<ReviewMode>(null);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(preSelectedCategory ?? null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(lockedCategory ?? preSelectedCategory ?? null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [filterExamFrequent, setFilterExamFrequent] = useState(false);
