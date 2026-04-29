@@ -67,10 +67,51 @@ const ZettelEditor = forwardRef<ZettelEditorHandle, Props>(function ZettelEditor
     });
   }, [value, onChange]);
 
+  const insertBlock = useCallback((text: string) => {
+    const ta = taRef.current;
+    const start = ta?.selectionStart ?? value.length;
+    const end = ta?.selectionEnd ?? value.length;
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+
+    // Compute leading newlines: want exactly `\n\n` before block (i.e. blank line),
+    // unless we're at the very start of the document (no leading newlines needed).
+    let prefix = "";
+    if (before.length > 0) {
+      if (before.endsWith("\n\n")) prefix = "";
+      else if (before.endsWith("\n")) prefix = "\n";
+      else prefix = "\n\n";
+    }
+
+    // Compute trailing newlines: want `\n\n` after block so next content is on a new paragraph,
+    // unless we're at the end of the document (single `\n` is enough to terminate the line).
+    let suffix = "";
+    if (after.length === 0) {
+      suffix = "\n";
+    } else {
+      if (after.startsWith("\n\n")) suffix = "";
+      else if (after.startsWith("\n")) suffix = "\n";
+      else suffix = "\n\n";
+    }
+
+    const insertion = prefix + text + suffix;
+    const next = before + insertion + after;
+    onChange(next);
+    requestAnimationFrame(() => {
+      if (!ta) return;
+      ta.focus();
+      // Place caret right after the block + its first trailing newline,
+      // so the user can immediately start typing on a fresh line.
+      const caret = start + prefix.length + text.length + Math.min(1, suffix.length);
+      ta.setSelectionRange(caret, caret);
+    });
+  }, [value, onChange]);
+
   useImperativeHandle(ref, () => ({
     insertText,
+    insertBlock,
     focus: () => taRef.current?.focus(),
-  }), [insertText]);
+  }), [insertText, insertBlock]);
 
   return (
     <div className="flex flex-col h-full border border-border rounded-md bg-card">
