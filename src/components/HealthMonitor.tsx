@@ -263,16 +263,28 @@ export default function HealthMonitor() {
                   Nakon čišćenja, ove kartice ostaju u svojoj kategoriji ali postaju "Neraspoređene"
                   — možeš ih premjestiti drag & drop-om u Org modu.
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 gap-1.5"
-                  onClick={handleHealStaleLinks}
-                  disabled={healing}
-                >
-                  <Trash2 className="h-3 w-3" />
-                  {healing ? "Čišćenje…" : "Očisti zastarjele veze"}
-                </Button>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setRemapOpen(true)}
+                    disabled={healing}
+                  >
+                    <Wand2 className="h-3 w-3" />
+                    Remap iz backupa
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={handleHealStaleLinks}
+                    disabled={healing}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    {healing ? "Čišćenje…" : "Očisti zastarjele veze"}
+                  </Button>
+                </div>
               </AlertDescription>
             </Alert>
           )}
