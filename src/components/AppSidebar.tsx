@@ -1,6 +1,6 @@
 import { NavLink } from "@/components/NavLink";
 import {
-  Home, Settings as SettingsIcon, RotateCcw,
+  Home, Settings as SettingsIcon,
   BarChart3, BookOpen, Gauge, Zap, Map, Scale, Brain,
 } from "lucide-react";
 import {
