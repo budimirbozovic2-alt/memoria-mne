@@ -25,20 +25,53 @@ const ZettelEditor = forwardRef<ZettelEditorHandle, Props>(function ZettelEditor
 ) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
+  /**
+   * Caret restoration is racy if done in `requestAnimationFrame` immediately after
+   * `onChange`: the textarea's `value` prop is only updated after React commits the
+   * parent's state. If we call `setSelectionRange` before that commit, the browser
+   * clamps against the *old* value and the caret jumps (often to the end).
+   *
+   * Solution: stash a pending target keyed by the *expected* `value` snapshot, then
+   * apply it from a `useLayoutEffect` that fires once `value` matches. This also
+   * makes rapid sequential inserts safe — each one targets its own snapshot.
+   */
+  const pendingCaretRef = useRef<{
+    selStart: number;
+    selEnd: number;
+    expectedValue: string;
+  } | null>(null);
+
+  useLayoutEffect(() => {
+    const pending = pendingCaretRef.current;
+    if (!pending) return;
+    if (value !== pending.expectedValue) return;
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.focus();
+    const max = ta.value.length;
+    const s = Math.min(pending.selStart, max);
+    const e = Math.min(pending.selEnd, max);
+    ta.setSelectionRange(s, e);
+    pendingCaretRef.current = null;
+  }, [value]);
+
+  const scheduleCaret = useCallback((expectedValue: string, selStart: number, selEnd: number = selStart) => {
+    pendingCaretRef.current = { selStart, selEnd, expectedValue };
+  }, []);
+
   const wrap = useCallback((before: string, after: string = before, ph = "") => {
     const ta = taRef.current;
     if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
+    const rawStart = ta.selectionStart;
+    const rawEnd = ta.selectionEnd;
+    const start = Math.min(rawStart, rawEnd);
+    const end = Math.max(rawStart, rawEnd);
     const selected = value.slice(start, end) || ph;
     const next = value.slice(0, start) + before + selected + after + value.slice(end);
     onChange(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      const cursorStart = start + before.length;
-      ta.setSelectionRange(cursorStart, cursorStart + selected.length);
-    });
-  }, [value, onChange]);
+    const cursorStart = start + before.length;
+    scheduleCaret(next, cursorStart, cursorStart + selected.length);
+  }, [value, onChange, scheduleCaret]);
 
   const insertAtLineStart = useCallback((prefix: string) => {
     const ta = taRef.current;
@@ -47,35 +80,40 @@ const ZettelEditor = forwardRef<ZettelEditorHandle, Props>(function ZettelEditor
     const lineStart = value.lastIndexOf("\n", start - 1) + 1;
     const next = value.slice(0, lineStart) + prefix + value.slice(lineStart);
     onChange(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      ta.setSelectionRange(start + prefix.length, start + prefix.length);
-    });
-  }, [value, onChange]);
+    scheduleCaret(next, start + prefix.length);
+  }, [value, onChange, scheduleCaret]);
 
   const insertText = useCallback((text: string) => {
     const ta = taRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? value.length;
+    const rawStart = ta?.selectionStart ?? value.length;
+    const rawEnd = ta?.selectionEnd ?? value.length;
+    const start = Math.min(rawStart, rawEnd);
+    const end = Math.max(rawStart, rawEnd);
     const next = value.slice(0, start) + text + value.slice(end);
     onChange(next);
-    requestAnimationFrame(() => {
-      if (!ta) return;
-      ta.focus();
-      const pos = start + text.length;
-      ta.setSelectionRange(pos, pos);
-    });
-  }, [value, onChange]);
+    scheduleCaret(next, start + text.length);
+  }, [value, onChange, scheduleCaret]);
 
+  /**
+   * Inserts `text` as a standalone block, surrounded by blank lines so it renders
+   * as its own paragraph regardless of where the caret is.
+   *
+   * Caret guarantee: lands on the **first blank writable line directly below the block**
+   * (so the user can immediately start typing a new paragraph). At end-of-document
+   * this is the new trailing line; in mid-document this is the blank line between
+   * the block and pre-existing content. Any prior selection is replaced.
+   */
   const insertBlock = useCallback((text: string) => {
     const ta = taRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? value.length;
+    const rawStart = ta?.selectionStart ?? value.length;
+    const rawEnd = ta?.selectionEnd ?? value.length;
+    const start = Math.min(rawStart, rawEnd);
+    const end = Math.max(rawStart, rawEnd);
     const before = value.slice(0, start);
     const after = value.slice(end);
 
-    // Compute leading newlines: want exactly `\n\n` before block (i.e. blank line),
-    // unless we're at the very start of the document (no leading newlines needed).
+    // Leading newlines: ensure exactly one blank line before the block,
+    // unless we're at document start (no padding needed).
     let prefix = "";
     if (before.length > 0) {
       if (before.endsWith("\n\n")) prefix = "";
@@ -83,8 +121,8 @@ const ZettelEditor = forwardRef<ZettelEditorHandle, Props>(function ZettelEditor
       else prefix = "\n\n";
     }
 
-    // Compute trailing newlines: want `\n\n` after block so next content is on a new paragraph,
-    // unless we're at the end of the document (single `\n` is enough to terminate the line).
+    // Trailing newlines: ensure exactly one blank line after the block,
+    // unless we're at document end (single \n is enough).
     let suffix = "";
     if (after.length === 0) {
       suffix = "\n";
@@ -97,21 +135,22 @@ const ZettelEditor = forwardRef<ZettelEditorHandle, Props>(function ZettelEditor
     const insertion = prefix + text + suffix;
     const next = before + insertion + after;
     onChange(next);
-    requestAnimationFrame(() => {
-      if (!ta) return;
-      ta.focus();
-      // Place caret right after the block + its first trailing newline,
-      // so the user can immediately start typing on a fresh line.
-      const caret = start + prefix.length + text.length + Math.min(1, suffix.length);
-      ta.setSelectionRange(caret, caret);
-    });
-  }, [value, onChange]);
+
+    // Caret target: just past the FIRST trailing newline. Visually this is the
+    // blank line directly under the block (mid-doc: between block and `after`;
+    // end-of-doc: the fresh trailing line). When suffix is empty we landed on
+    // an existing paragraph break — caret goes flush against the block.
+    const caretOffsetInSuffix = suffix.length === 0 ? 0 : 1;
+    const pos = start + prefix.length + text.length + caretOffsetInSuffix;
+    scheduleCaret(next, pos);
+  }, [value, onChange, scheduleCaret]);
 
   useImperativeHandle(ref, () => ({
     insertText,
     insertBlock,
     focus: () => taRef.current?.focus(),
   }), [insertText, insertBlock]);
+
 
   return (
     <div className="flex flex-col h-full border border-border rounded-md bg-card">
