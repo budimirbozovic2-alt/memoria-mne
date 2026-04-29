@@ -1,23 +1,15 @@
 import { useCallback, MutableRefObject } from "react";
-import { Card, calculateNextReview, getCachedRetention, AdaptiveContext } from "@/lib/spaced-repetition";
+import {
+  Card,
+  calculateNextReview,
+  getCachedRetention,
+  computeAdaptiveModifiers,
+  AdaptiveContext,
+} from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { idbAddReviewLogEntry, db, type ExaminerProfile } from "@/lib/db";
-
-// ─── Module-level examiner profile cache (TTL 30s) ─────────
-const EP_TTL_MS = 30_000;
-const _epCache = new Map<string, { profile: ExaminerProfile | undefined; ts: number }>();
-
-function getCachedExaminerProfile(categoryId: string): ExaminerProfile | undefined {
-  const entry = _epCache.get(categoryId);
-  const now = Date.now();
-  if (entry && now - entry.ts < EP_TTL_MS) return entry.profile;
-  // Async refresh — first call returns undefined, subsequent within TTL get cached value
-  db.categories.get(categoryId).then(rec => {
-    _epCache.set(categoryId, { profile: rec?.examinerProfile, ts: Date.now() });
-  }).catch(() => { /* ignore */ });
-  return entry?.profile;
-}
+import { idbAddReviewLogEntry } from "@/lib/db";
+import { getExaminerProfileSync } from "@/lib/examiner-profile-cache";
 
 interface UseCardAnnotationsParams {
   patchCard: (id: string, patcher: (card: Card) => Card) => void;
@@ -57,8 +49,16 @@ export function useCardAnnotations({
         const adaptiveCtx: AdaptiveContext = {
           frequencyTag: c.frequencyTag,
           sourceType: c.sourceType,
-          examinerProfile: getCachedExaminerProfile(c.categoryId),
+          examinerProfile: getExaminerProfileSync(c.categoryId),
         };
+
+        // Capture reason codes for the review log (debug / explanation panel)
+        const mods = computeAdaptiveModifiers(adaptiveCtx);
+        if (mods.reasons.length > 0) {
+          entry.reasons = mods.reasons.map(r => ({ code: r.code, label: r.label }));
+        }
+        entry.effectiveRetention = Math.max(0.80, Math.min(0.98, cachedRetention + mods.retentionBoost));
+        entry.intervalMultiplier = mods.intervalMultiplier;
 
         return {
           ...c,
