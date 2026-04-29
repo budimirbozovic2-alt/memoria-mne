@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft, ChevronRight, BookOpen, FileText, Map as MapIcon,
   Pencil, Activity, Sparkles, AlertTriangle,
@@ -24,6 +24,10 @@ interface Props {
   subcategoryNodes: SubcategoryNode[];
   categoryId: string;
   onEditCard?: (card: Card) => void;
+  /** When set, the reader will clear filters (if needed) and jump to this card. */
+  initialCardId?: string | null;
+  /** Called once the initialCardId has been honored, so the parent can clear it. */
+  onInitialConsumed?: () => void;
 }
 
 type SidePanel = "source" | "mindmap" | null;
@@ -58,7 +62,7 @@ function loadPersistedFilters(categoryId: string): PersistedFilters {
   }
 }
 
-export default function PassiveReader({ cards, subcategoryNodes, categoryId, onEditCard }: Props) {
+export default function PassiveReader({ cards, subcategoryNodes, categoryId, onEditCard, initialCardId, onInitialConsumed }: Props) {
   // Lazy init from localStorage so previously selected filters return on mount.
   const [subFilter, setSubFilter] = useState<string>(() => loadPersistedFilters(categoryId).subFilter);
   const [chapterFilter, setChapterFilter] = useState<string>(() => loadPersistedFilters(categoryId).chapterFilter);
@@ -113,6 +117,31 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
   useEffect(() => {
     if (index > 0 && index >= filtered.length) setIndex(Math.max(0, filtered.length - 1));
   }, [filtered.length, index]);
+
+  // ── Focus a specific card requested from outside (quick action from card list) ──
+  // Two-phase: (1) if the card isn't in `filtered` due to active filters, clear them
+  // and re-run on the next render. (2) once visible, set index to it and notify parent.
+  const consumedInitialRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!initialCardId || consumedInitialRef.current === initialCardId) return;
+    const target = cards.find(c => c.id === initialCardId);
+    if (!target) {
+      // Card no longer exists — drop the request silently.
+      consumedInitialRef.current = initialCardId;
+      onInitialConsumed?.();
+      return;
+    }
+    const idx = filtered.findIndex(c => c.id === initialCardId);
+    if (idx === -1) {
+      // Filters are hiding it — clear them and retry on next render.
+      if (subFilter !== "all") setSubFilter("all");
+      if (chapterFilter !== "all") setChapterFilter("all");
+      return;
+    }
+    setIndex(idx);
+    consumedInitialRef.current = initialCardId;
+    onInitialConsumed?.();
+  }, [initialCardId, cards, filtered, subFilter, chapterFilter, onInitialConsumed]);
 
   // Keyboard navigation
   useEffect(() => {

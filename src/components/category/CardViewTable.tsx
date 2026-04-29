@@ -24,6 +24,7 @@ interface Props {
   onToggleSelection: (id: string) => void;
   toggleTag: (cardId: string, tag: string) => void;
   onEdit?: (card: Card) => void;
+  onPassiveRead?: (card: Card) => void;
   onDelete?: (id: string) => void;
   onOpenMoveModal: (cardId: string) => void;
   hasActiveFilters: boolean;
@@ -34,7 +35,7 @@ interface Props {
 export default function CardViewTable({
   filteredCards, allCategories, expandedId, onToggle,
   selectionMode, selectedIds, onToggleSelection,
-  toggleTag, onEdit, onDelete, onOpenMoveModal,
+  toggleTag, onEdit, onPassiveRead, onDelete, onOpenMoveModal,
   hasActiveFilters, totalCount, onResetFilters,
 }: Props) {
   return (
@@ -59,7 +60,7 @@ export default function CardViewTable({
               )}
               <button
                 onClick={() => onToggle(card.id)}
-                className="flex-1 flex items-center gap-3 text-left hover:bg-accent/30 transition-colors rounded"
+                className="flex-1 flex items-center gap-3 text-left hover:bg-accent/30 transition-colors rounded min-w-0"
               >
                 {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 <span className="text-sm text-foreground truncate flex-1">{card.question || "(Bez pitanja)"}</span>
@@ -73,6 +74,36 @@ export default function CardViewTable({
                   </Badge>
                 </div>
               </button>
+              {!selectionMode && (onEdit || onPassiveRead) && (
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {onEdit && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => { e.stopPropagation(); onEdit(card); }}
+                      title="Uredi karticu"
+                      aria-label="Uredi karticu"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {onPassiveRead && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                      onClick={(e) => { e.stopPropagation(); onPassiveRead(card); }}
+                      title="Pasivno čitanje ove kartice"
+                      aria-label="Pasivno čitanje ove kartice"
+                    >
+                      <BookOpen className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             {isExpanded && (

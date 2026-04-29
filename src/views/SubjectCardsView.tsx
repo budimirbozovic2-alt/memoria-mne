@@ -53,6 +53,7 @@ export default function SubjectCardsView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("__all__");
   const [sources, setSources] = useState<Source[]>([]);
+  const [pendingPassiveCardId, setPendingPassiveCardId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!categoryId) return;
@@ -76,6 +77,11 @@ export default function SubjectCardsView() {
     sessionStorage.setItem("sr-edit-return-view", "subject-cards:" + categoryId);
     setEditingCard(card);
     navigate("/edit");
+  };
+
+  const handlePassiveRead = (card: Card) => {
+    setPendingPassiveCardId(card.id);
+    setTab("read");
   };
 
   if (!ready) {
@@ -195,6 +201,7 @@ export default function SubjectCardsView() {
             addFlashCard={addFlashCard}
             onDelete={deleteCard}
             onEdit={handleEdit}
+            onPassiveRead={handlePassiveRead}
             externalQuery={searchQuery}
             externalSourceId={sourceFilter}
           />
@@ -226,6 +233,8 @@ export default function SubjectCardsView() {
             subcategoryNodes={subcategoryNodes}
             categoryId={categoryId!}
             onEditCard={handleEdit}
+            initialCardId={pendingPassiveCardId}
+            onInitialConsumed={() => setPendingPassiveCardId(null)}
           />
         </TabsContent>
       </Tabs>
