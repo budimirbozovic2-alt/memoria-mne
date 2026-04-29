@@ -41,25 +41,34 @@ function clamp(v: number, lo: number, hi: number): number {
 
 export function computeAdaptiveModifiers(ctx?: AdaptiveContext): AdaptiveModifiers {
   if (!ctx || (ctx.frequencyTag === undefined && ctx.sourceType === undefined && ctx.examinerProfile === undefined)) {
-    return { retentionBoost: 0, intervalMultiplier: 1 };
+    return { retentionBoost: 0, intervalMultiplier: 1, reasons: [] };
   }
 
   let retentionBoost = 0;
   let intervalMultiplier = 1;
+  const reasons: AdaptiveReason[] = [];
+
+  const apply = (
+    code: AdaptiveReason["code"],
+    label: string,
+    rDelta: number,
+    iFactor: number,
+  ) => {
+    retentionBoost += rDelta;
+    intervalMultiplier *= iFactor;
+    reasons.push({ code, label, retentionDelta: rDelta, intervalFactor: iFactor });
+  };
 
   // Frequency tag — highest priority signal
   switch (ctx.frequencyTag) {
     case "često":
-      retentionBoost += 0.03;
-      intervalMultiplier *= 0.80;
+      apply("FREQ_CESTO", "Često se pita — čuva se češće", 0.03, 0.80);
       break;
     case "rijetko":
-      retentionBoost -= 0.02;
-      intervalMultiplier *= 1.15;
+      apply("FREQ_RIJETKO", "Rijetko se pita — manje često", -0.02, 1.15);
       break;
     case "nikad":
-      retentionBoost -= 0.04;
-      intervalMultiplier *= 1.30;
+      apply("FREQ_NIKAD", "Nikad se ne pita — najduže", -0.04, 1.30);
       break;
   }
 
@@ -67,31 +76,27 @@ export function computeAdaptiveModifiers(ctx?: AdaptiveContext): AdaptiveModifie
   const pref = ctx.examinerProfile?.preferredAnswerType;
   const src = ctx.sourceType;
   if (pref === "esej" && src === "skripta") {
-    retentionBoost += 0.02;
-    intervalMultiplier *= 0.90;
+    apply("EXAM_PREF_MATCH_ESEJ", "Ispitivač voli eseje + skripta izvor", 0.02, 0.90);
   } else if (pref === "definicija" && src === "zakon") {
-    retentionBoost += 0.02;
-    intervalMultiplier *= 0.90;
+    apply("EXAM_PREF_MATCH_DEFINICIJA", "Ispitivač voli definicije + zakon", 0.02, 0.90);
   } else if (pref === "potpitanja" && (src === "skripta" || src === "zakon")) {
-    retentionBoost += 0.01;
-    intervalMultiplier *= 0.95;
+    apply("EXAM_PREF_MATCH_POTPITANJA", "Ispitivač voli potpitanja", 0.01, 0.95);
   }
 
   // Examiner difficulty bias
   switch (ctx.examinerProfile?.difficulty) {
     case "tezak":
-      retentionBoost += 0.01;
-      intervalMultiplier *= 0.95;
+      apply("EXAM_DIFF_TEZAK", "Težak ispitivač — viša retencija", 0.01, 0.95);
       break;
     case "lak":
-      retentionBoost -= 0.01;
-      intervalMultiplier *= 1.05;
+      apply("EXAM_DIFF_LAK", "Lak ispitivač — niža retencija", -0.01, 1.05);
       break;
   }
 
   return {
     retentionBoost,
     intervalMultiplier: clamp(intervalMultiplier, INTERVAL_MULT_MIN, INTERVAL_MULT_MAX),
+    reasons,
   };
 }
 
