@@ -22,6 +22,7 @@ import { toast } from "sonner";
 
 export default function ZettelkastenView() {
   const { categoryId } = useParams<{ categoryId: string }>();
+  const navigate = useNavigate();
   const { categoryRecords } = useCategoryData();
   const categoryRec = useMemo(
     () => categoryRecords.find(r => r.id === categoryId),
@@ -29,6 +30,7 @@ export default function ZettelkastenView() {
   );
 
   const [articles, setArticles] = useState<KnowledgeBaseArticle[]>([]);
+  const [sources, setSources] = useState<Source[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
