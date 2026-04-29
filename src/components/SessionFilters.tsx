@@ -170,37 +170,52 @@ export default function SessionFilters({
 
       <div className="h-px bg-border/60" />
 
-      {/* Predmet (Category) */}
+      {/* Predmet (Category) — read-only when scope is locked */}
       <div className="space-y-2">
         <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Predmet</label>
-        <ScrollableRow>
-          <motion.button
-            onClick={() => onSelectCategory(null)}
-            className={`${PILL_BASE} ${!selectedCategory ? PILL_ACTIVE : PILL_IDLE}`}
-            whileTap={{ scale: 0.95 }}
-          >
-            {!selectedCategory && (
-              <motion.span layoutId={`${layoutPrefix}-cat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
-            )}
-            <span className="relative z-10">Sve</span>
-          </motion.button>
-          {categories.map((c) => (
+        {lockedCategory ? (
+          <div className="flex">
+            <span
+              className={`${PILL_BASE} bg-primary/10 text-primary border border-primary/20 cursor-default flex items-center gap-1.5`}
+              title="Predmet je zaključan na izvorni Dashboard"
+            >
+              <Lock className="h-3 w-3" />
+              <span>{catName(lockedCategory)}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15">
+                {cards.filter(card => card.categoryId === lockedCategory).length}
+              </span>
+            </span>
+          </div>
+        ) : (
+          <ScrollableRow>
             <motion.button
-              key={c}
-              onClick={() => onSelectCategory(c)}
-              className={`${PILL_BASE} flex items-center gap-1.5 ${selectedCategory === c ? PILL_ACTIVE : PILL_IDLE}`}
+              onClick={() => onSelectCategory(null)}
+              className={`${PILL_BASE} ${!selectedCategory ? PILL_ACTIVE : PILL_IDLE}`}
               whileTap={{ scale: 0.95 }}
             >
-              {selectedCategory === c && (
+              {!selectedCategory && (
                 <motion.span layoutId={`${layoutPrefix}-cat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
               )}
-              <span className="relative z-10">{catName(c)}</span>
-              <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
-                {cards.filter(card => card.categoryId === c).length}
-              </span>
+              <span className="relative z-10">Sve</span>
             </motion.button>
-          ))}
-        </ScrollableRow>
+            {categories.map((c) => (
+              <motion.button
+                key={c}
+                onClick={() => onSelectCategory(c)}
+                className={`${PILL_BASE} flex items-center gap-1.5 ${selectedCategory === c ? PILL_ACTIVE : PILL_IDLE}`}
+                whileTap={{ scale: 0.95 }}
+              >
+                {selectedCategory === c && (
+                  <motion.span layoutId={`${layoutPrefix}-cat-pill`} className="absolute inset-0 rounded-md bg-primary shadow-sm" transition={{ type: "spring", duration: 0.35, bounce: 0.15 }} />
+                )}
+                <span className="relative z-10">{catName(c)}</span>
+                <span className={`relative z-10 text-[10px] px-1.5 py-0.5 rounded-full ${selectedCategory === c ? "bg-primary-foreground/20" : "bg-secondary"}`}>
+                  {cards.filter(card => card.categoryId === c).length}
+                </span>
+              </motion.button>
+            ))}
+          </ScrollableRow>
+        )}
       </div>
 
       {/* Potkategorija — uvijek vidljivo */}
