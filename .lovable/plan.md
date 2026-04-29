@@ -1,55 +1,39 @@
-## Cilj
+## Status
 
-U `CategoryView` (ekran koji renderuje `SourcesTab` na ruti `/category/:categoryId`) dodati jasan breadcrumb i kontekstualni indikator da je to dedicirani **Izvori (Reader/Editor)** ekran za taj predmet, kako bi korisnik uvijek znao gdje se nalazi i kako se vratiti na hub predmeta.
+Osnovna funkcionalnost — čuvanje i vraćanje scroll pozicije nakon edita kartice — **već postoji** (implementirana u prethodnom koraku kao dio "vrati se gdje sam bio" sistema):
 
-## Šta korisnik vidi
+- `handleEdit` u `SubjectCardsView.tsx` snima `window.scrollY` (zajedno sa tabom, sub-modom, pretragom i filterom) u `sessionStorage` prije navigacije na `/edit`.
+- Pri povratku, `useEffect` restaurira sve to, uključujući scroll, kroz `requestAnimationFrame`.
 
-Iznad postojećeg `h1` naslova kategorije pojaviće se kompaktan red:
+## Problem koji ostaje
 
-```text
-[ ← ]  Predmeti  ›  {Naziv predmeta}  ›  Izvori        [ Otvoreno: Izvori predmeta ]
-```
+Trenutni restore koristi **samo jedan `requestAnimationFrame`**. Lista kartica je virtualizovana (`@tanstack/react-virtual`), pa se ukupna `scrollHeight` mjeri asinhrono kako redovi ulaze u viewport. Posljedica: ako je korisnik bio duboko skrolan, prvi frame još nema dovoljno visine, `scrollTo` "ošteti" target i stane gdje god može — što izgleda kao da scroll restore ne radi.
 
-- "Predmeti" je link na početni dashboard (lista svih predmeta).
-- Naziv predmeta je link na `SubjectDashboard` (`/subject/:categoryId`) — hub tog predmeta.
-- "Izvori" je trenutna stranica (neaktivni tekst, `aria-current="page"`).
-- Desno: mali pill/badge "Otvoreno: Izvori predmeta" sa ikonicom `BookOpen`/`FileText` koji jasno kaže da je u kontekstu otvoren samo Reader/Editor za taj predmet (a ne globalni izvori ili druge kartice).
-- Lijevo strelica `←` (ikona `ArrowLeft`) kao prečica nazad na `SubjectDashboard`.
+## Plan: ojačati scroll restore u `SubjectCardsView.tsx`
 
-Postojeći `h1 {category.name}` i mastery bar ostaju netaknuti ispod breadcrumba.
+Zamijeniti single-frame `requestAnimationFrame` sa kratkim retry-loop-om koji se zaustavlja čim je dokument dovoljno visok da prihvati traženi `targetY` (ili nakon ~8 frame-ova, ~130 ms — nevidljivo korisniku).
 
-## Tehničke izmjene
+### Algoritam
 
-### 1. Nova komponenta `src/components/category/SourcesBreadcrumb.tsx`
-Mala prezentaciona komponenta koja prima `categoryId` i `categoryName`. Renderuje:
-- Back dugme (`Button variant="ghost" size="icon"`) → `navigate('/subject/${categoryId}')`.
-- Breadcrumb segmenti koristeći postojeći shadcn `Breadcrumb` (`src/components/ui/breadcrumb.tsx` ako postoji; ako ne, koristiti jednostavan `nav` sa `ChevronRight` separatorima — provjeriti pri implementaciji).
-  - "Predmeti" → `Link` na `/` (ili rutu liste predmeta — provjeriti u `App.tsx`).
-  - `categoryName` → `Link` na `/subject/${categoryId}`.
-  - "Izvori" → `BreadcrumbPage` (current).
-- Desno: `Badge variant="secondary"` sa ikonom i tekstom "Otvoreno: Izvori predmeta", `title`/`tooltip` objašnjenje da edit/reader djeluju samo nad ovim predmetom.
+1. Pročitaj `targetY = initialSnapshot.scrollY`.
+2. Svaki frame:
+   - Izračunaj `maxScroll = scrollHeight - innerHeight`.
+   - `scrollTo({ top: min(targetY, maxScroll), behavior: "auto" })`.
+   - Ako je `maxScroll < targetY` i `attempt < 8`, zakaži novi frame.
+   - Inače: stani.
+3. `useEffect` cleanup postavlja `cancelled = true` i otkazuje aktivni frame.
 
-### 2. Integracija u `src/views/CategoryView.tsx` (oko linije 87–92)
-- Importovati novi `SourcesBreadcrumb`.
-- Renderovati ga kao prvi child `space-y-6` containera, prije header bloka sa `h1`.
-- Naslov `h1` ostaje (potvrda identiteta predmeta), ali se uklanja redundantnost time što breadcrumb daje navigacioni kontekst.
+### Zašto ovo rješava slučaj
 
-### 3. Bez izmjena u `SourcesTab.tsx`
-Breadcrumb je odgovornost stranice (`CategoryView`), ne taba. Ovo poštuje postojeći Orchestrator pattern.
-
-### 4. Pristupačnost
-- `nav aria-label="Breadcrumb"`.
-- Trenutna stranica `aria-current="page"`.
-- Back dugme: `aria-label="Nazad na predmet"`.
-- Badge ima `title` atribut sa punim objašnjenjem.
+- Virtualizer naraste dovoljno već nakon 1–3 frame-a u tipičnim slučajevima.
+- Cap od 8 frame-ova štiti od beskonačne petlje ako je sadržaj zaista kraći (npr. korisnik je obrisao kartice u edit-u).
+- `min(targetY, maxScroll)` osigurava da nikad ne tražimo nemoguće, pa pozicija ostaje u dnu liste umjesto da bude resetovana na vrh.
 
 ## Fajlovi
 
-- **Novo:** `src/components/category/SourcesBreadcrumb.tsx`
-- **Izmijenjeno:** `src/views/CategoryView.tsx` (dodan import + render breadcrumba iznad header bloka)
+- **Izmijenjeno:** `src/views/SubjectCardsView.tsx` — samo `useEffect` blok za scroll restore (linije ~77–84).
 
 ## Van opsega
 
-- Ne mijenja se logika učitavanja/izmjene izvora.
-- Ne dodaje se breadcrumb u druge `Subject*` rute (može u zasebnom koraku ako se traži konzistentnost).
-- Ruta liste predmeta za prvi segment: ako u `App.tsx` ne postoji eksplicitna ruta "Predmeti", koristiće se `/` (root dashboard) — provjeriće se pri implementaciji.
+- Ostali dijelovi snapshot sistema (path, tab, filteri) ostaju netaknuti.
+- `LearnPage` i ostale rute koriste isti helper i ne treba ih dirati ovdje.

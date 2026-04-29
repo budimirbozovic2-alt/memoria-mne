@@ -74,13 +74,34 @@ export default function SubjectCardsView() {
   const [sources, setSources] = useState<Source[]>([]);
   const [pendingPassiveCardId, setPendingPassiveCardId] = useState<string | null>(null);
 
-  // Restore window scroll once after layout. Defer to next frame so the
-  // virtualized card list (or PassiveReader) has measured its content.
+  // Restore window scroll after layout. The card list is virtualized, so
+  // scrollHeight grows asynchronously as rows are measured. Retry across a
+  // few frames until the document is tall enough to honor the saved offset
+  // (or we hit the cap — the user may have deleted cards while editing).
   useEffect(() => {
     if (typeof initialSnapshot?.scrollY !== "number") return;
-    const y = initialSnapshot.scrollY;
-    const id = requestAnimationFrame(() => window.scrollTo({ top: y, behavior: "auto" }));
-    return () => cancelAnimationFrame(id);
+    const targetY = initialSnapshot.scrollY;
+    let cancelled = false;
+    let rafId = 0;
+    let attempt = 0;
+    const maxAttempts = 8; // ~130ms @ 60fps
+    const tick = () => {
+      if (cancelled) return;
+      const maxScroll = Math.max(
+        0,
+        document.documentElement.scrollHeight - window.innerHeight,
+      );
+      window.scrollTo({ top: Math.min(targetY, maxScroll), behavior: "auto" });
+      attempt += 1;
+      if (attempt < maxAttempts && maxScroll < targetY) {
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+    };
   }, [initialSnapshot]);
 
   useEffect(() => {
