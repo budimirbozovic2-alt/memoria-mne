@@ -5,6 +5,8 @@ import { Bold, Italic, Heading2, List, Link2, Code, Map as MapIcon } from "lucid
 
 export interface ZettelEditorHandle {
   insertText: (text: string) => void;
+  /** Insert `text` as a standalone block: guarantees blank line before & after, regardless of cursor position. */
+  insertBlock: (text: string) => void;
   focus: () => void;
 }
 
