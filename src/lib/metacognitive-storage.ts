@@ -317,10 +317,10 @@ export function getDeepWorkStats(days: number = 7) {
   const recent = _activityCache.filter(e => e.timestamp >= cutoff);
 
   const deepWorkMs = recent
-    .filter(e => e.type === "review" || e.type === "learn-active" || e.type === "learn-chain" || e.type === "mnemonic-test")
+    .filter(e => e.type === "review" || e.type === "learn-active" || e.type === "mnemonic-test")
     .reduce((s, e) => s + e.durationMs, 0);
   const shallowWorkMs = recent
-    .filter(e => e.type === "learn-free" || e.type === "admin" || e.type === "analysis" || e.type === "mnemonic-workshop")
+    .filter(e => e.type === "admin" || e.type === "analysis" || e.type === "mnemonic-workshop")
     .reduce((s, e) => s + e.durationMs, 0);
   const totalMs = deepWorkMs + shallowWorkMs;
 
