@@ -1,11 +1,14 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
-import { ArrowLeft, Layers, BookOpen, Network, Brain, Settings } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Layers, BookOpen, Network, Brain, Settings, Search, X } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCardData, useCategoryData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import type { SubcategoryNode } from "@/lib/db";
+import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
 import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
