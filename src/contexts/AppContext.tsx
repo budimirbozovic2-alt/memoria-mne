@@ -5,6 +5,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { recordAppEntry, recordFirstAction, addActivityEntry, ActivityType } from "@/lib/metacognitive-storage";
 import { addPomodoroEntry } from "@/lib/storage";
 import { loadAppSettings } from "@/lib/app-settings";
+import { primeExaminerProfilesFromRecords } from "@/lib/examiner-profile-cache";
 
 const LazyDatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
 
