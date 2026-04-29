@@ -1,6 +1,8 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Layers, BookOpen, Network, Brain, Settings, Search, X } from "lucide-react";
+import {
+  ArrowLeft, Layers, BookOpen, Network, Settings, Search, X, Pencil,
+} from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,12 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCardData, useCategoryData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import type { SubcategoryNode } from "@/lib/db";
+import type { Card } from "@/lib/spaced-repetition";
 import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
 import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
 import PassiveReader from "@/components/subject-cards/PassiveReader";
-import MnemonicModule from "@/components/MnemonicModule";
 
 export default function SubjectCardsView() {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -59,7 +61,6 @@ export default function SubjectCardsView() {
     return () => { cancelled = true; };
   }, [categoryId]);
 
-  // Build allowed source IDs: those used by any card in this subject (avoid noisy options)
   const usedSourceIds = useMemo(() => {
     const set = new Set<string>();
     for (const c of cards) if (c.sourceId) set.add(c.sourceId);
@@ -70,6 +71,12 @@ export default function SubjectCardsView() {
     () => sources.filter(s => usedSourceIds.has(s.id)),
     [sources, usedSourceIds],
   );
+
+  const handleEdit = (card: Card) => {
+    sessionStorage.setItem("sr-edit-return-view", "subject-cards:" + categoryId);
+    setEditingCard(card);
+    navigate("/edit");
+  };
 
   if (!ready) {
     return (
@@ -102,33 +109,46 @@ export default function SubjectCardsView() {
           <Layers className="h-5 w-5 text-primary shrink-0" />
           <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground truncate">{category.name}</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Kartice — pregled, čitanje, struktura i mnemonika</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Kartice — uređivanje, struktura i pasivno čitanje
+            </p>
           </div>
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap">
-          <TabsTrigger value="manage" className="gap-1.5">
-            <Layers className="h-4 w-4" />
-            <span>Pregled</span>
-            <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{cards.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="read" className="gap-1.5">
-            <BookOpen className="h-4 w-4" />
-            <span>Pasivno čitanje</span>
-          </TabsTrigger>
-          <TabsTrigger value="structure" className="gap-1.5">
-            <Network className="h-4 w-4" />
-            <span>Struktura</span>
-          </TabsTrigger>
-          <TabsTrigger value="mnemonics" className="gap-1.5">
-            <Brain className="h-4 w-4" />
-            <span>Mnemonika</span>
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={tab} onValueChange={setTab} className="w-full space-y-4">
+        {/* ── Group: Upravljanje ── */}
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+            Upravljanje
+          </p>
+          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1">
+            <TabsTrigger value="manage" className="gap-1.5">
+              <Pencil className="h-4 w-4" />
+              <span>Uređivanje i dodavanje kartica</span>
+              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{cards.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="structure" className="gap-1.5">
+              <Network className="h-4 w-4" />
+              <span>Struktura i raspored kartica</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="manage" className="pt-4 space-y-3">
+        {/* ── Group: Učenje ── */}
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
+            Učenje
+          </p>
+          <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1">
+            <TabsTrigger value="read" className="gap-1.5">
+              <BookOpen className="h-4 w-4" />
+              <span>Pasivno čitanje</span>
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="manage" className="pt-2 space-y-3">
           <div className="flex items-center gap-2 flex-wrap rounded-lg border bg-card p-2.5">
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -174,21 +194,13 @@ export default function SubjectCardsView() {
             addCard={addCard}
             addFlashCard={addFlashCard}
             onDelete={deleteCard}
-            onEdit={(card) => {
-              sessionStorage.setItem("sr-edit-return-view", "subject-cards:" + categoryId);
-              setEditingCard(card);
-              navigate("/edit");
-            }}
+            onEdit={handleEdit}
             externalQuery={searchQuery}
             externalSourceId={sourceFilter}
           />
         </TabsContent>
 
-        <TabsContent value="read" className="pt-4">
-          <PassiveReader cards={cards} subcategoryNodes={subcategoryNodes} />
-        </TabsContent>
-
-        <TabsContent value="structure" className="pt-4 space-y-3">
+        <TabsContent value="structure" className="pt-2 space-y-3">
           <div className="flex items-center justify-end">
             <Button
               variant="outline"
@@ -208,8 +220,13 @@ export default function SubjectCardsView() {
           />
         </TabsContent>
 
-        <TabsContent value="mnemonics" className="pt-4">
-          <MnemonicModule embedded categoryFilter={categoryId} />
+        <TabsContent value="read" className="pt-2">
+          <PassiveReader
+            cards={cards}
+            subcategoryNodes={subcategoryNodes}
+            categoryId={categoryId!}
+            onEditCard={handleEdit}
+          />
         </TabsContent>
       </Tabs>
 
