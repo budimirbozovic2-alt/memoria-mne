@@ -166,11 +166,22 @@ export default function ZettelkastenView() {
   }, [categoryId, selectedSubId]);
 
   const handleOpen = useCallback((id: string) => {
-    setActiveId(id);
-    setIsEditing(false);
-    setDraft(null);
     setReadingSourceId(null);
-  }, []);
+    setActiveId(id);
+    // Auto-enter edit mode for empty drafts so the user can start writing immediately.
+    const target = articles.find(a => a.id === id);
+    if (target && target.content.trim().length === 0) {
+      setDraft({
+        title: target.title,
+        content: target.content,
+        linkedSourceIds: target.linkedSourceIds ?? [],
+      });
+      setIsEditing(true);
+    } else {
+      setIsEditing(false);
+      setDraft(null);
+    }
+  }, [articles]);
 
   const handleBackToList = useCallback(async () => {
     await flushRef.current();
