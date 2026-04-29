@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Plus, Trash2, FileText, Search, BookOpen, Compass } from "lucide-react";
 import { useCategoryData } from "@/contexts/AppContext";
 import {
@@ -10,15 +10,19 @@ import {
   newArticle,
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
+import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import ZettelEditor from "@/components/zettelkasten/ZettelEditor";
 import ZettelPreview from "@/components/zettelkasten/ZettelPreview";
+import BacklinksPanel from "@/components/zettelkasten/BacklinksPanel";
+import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
 import { toast } from "sonner";
 
 export default function ZettelkastenView() {
   const { categoryId } = useParams<{ categoryId: string }>();
+  const navigate = useNavigate();
   const { categoryRecords } = useCategoryData();
   const categoryRec = useMemo(
     () => categoryRecords.find(r => r.id === categoryId),
@@ -26,6 +30,7 @@ export default function ZettelkastenView() {
   );
 
   const [articles, setArticles] = useState<KnowledgeBaseArticle[]>([]);
+  const [sources, setSources] = useState<Source[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -36,9 +41,13 @@ export default function ZettelkastenView() {
     if (!categoryId) return;
     let cancelled = false;
     setLoading(true);
-    loadArticlesBySubject(categoryId).then(list => {
+    Promise.all([
+      loadArticlesBySubject(categoryId),
+      loadSourcesByCategory(categoryId),
+    ]).then(([list, srcs]) => {
       if (!cancelled) {
         setArticles(list);
+        setSources(srcs);
         setLoading(false);
       }
     });
@@ -130,6 +139,11 @@ export default function ZettelkastenView() {
 
   // Editor view
   if (activeArticle) {
+    const linkedSourceObjs = (activeArticle.linkedSourceIds ?? [])
+      .map(id => sources.find(s => s.id === id))
+      .filter((s): s is Source => Boolean(s))
+      .map(s => ({ id: s.id, title: s.title }));
+
     return (
       <div className="flex flex-col h-[calc(100vh-3rem)] gap-3 p-4">
         <div className="flex items-center justify-between gap-3">
@@ -153,16 +167,33 @@ export default function ZettelkastenView() {
           </Button>
         </div>
 
+        <LinkedSourcesPicker
+          allSources={sources}
+          selectedIds={activeArticle.linkedSourceIds ?? []}
+          onChange={(linkedSourceIds) => handleUpdate({ linkedSourceIds })}
+        />
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-1 min-h-0">
           <ZettelEditor
             value={activeArticle.content}
             onChange={(content) => handleUpdate({ content })}
           />
-          <ZettelPreview
-            markdown={activeArticle.content}
-            onWikiLink={handleWikiLink}
-            existingTitles={existingTitleSet}
-          />
+          <div className="flex flex-col gap-3 min-h-0">
+            <div className="flex-1 min-h-0">
+              <ZettelPreview
+                markdown={activeArticle.content}
+                onWikiLink={handleWikiLink}
+                existingTitles={existingTitleSet}
+                linkedSources={linkedSourceObjs}
+                onSourceClick={(sid) => navigate(`/subject/${categoryId}?source=${sid}`)}
+              />
+            </div>
+            <BacklinksPanel
+              articles={articles}
+              activeArticle={activeArticle}
+              onOpen={(id) => setActiveId(id)}
+            />
+          </div>
         </div>
       </div>
     );

@@ -22,9 +22,11 @@ interface Props {
   onEdit?: (card: Card) => void;
   masteryFilter?: number | null;
   onClearMasteryFilter?: () => void;
+  externalQuery?: string;
+  externalSourceId?: string;
 }
 
-export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, masteryFilter, onClearMasteryFilter }: Props) {
+export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId }: Props) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -33,7 +35,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, patchCa
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [moveCardId, setMoveCardId] = useState<string | null>(null);
 
-  const filters = useCardViewFilters({ cards, allCategories, categoryId, masteryFilter, onClearMasteryFilter });
+  const filters = useCardViewFilters({ cards, allCategories, categoryId, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId });
 
   const otherCategories = useMemo(
     () => allCategories.filter(c => c.id !== categoryId),

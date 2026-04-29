@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { FileText } from "lucide-react";
 
 interface Props {
   markdown: string;
@@ -7,6 +8,10 @@ interface Props {
   onWikiLink: (title: string) => void;
   /** Set of normalized (lowercase, trimmed) titles that already exist — used for styling. */
   existingTitles: Set<string>;
+  /** Linked sources rendered as a footer block. */
+  linkedSources?: { id: string; title: string }[];
+  /** Optional click handler when user activates a linked source chip. */
+  onSourceClick?: (sourceId: string) => void;
 }
 
 function escapeHtml(s: string): string {
@@ -82,23 +87,45 @@ function renderMarkdown(md: string, existingTitles: Set<string>): string {
   return out.filter(Boolean).join("\n");
 }
 
-export default function ZettelPreview({ markdown, onWikiLink, existingTitles }: Props) {
+export default function ZettelPreview({ markdown, onWikiLink, existingTitles, linkedSources, onSourceClick }: Props) {
   const html = useMemo(() => sanitizeHtml(renderMarkdown(markdown, existingTitles)), [markdown, existingTitles]);
 
   return (
-    <div
-      className="prose prose-sm max-w-none p-4 overflow-y-auto h-full bg-card border border-border rounded-md text-foreground"
-      onClick={(e) => {
-        const t = e.target as HTMLElement;
-        const btn = t.closest("button[data-wiki]") as HTMLButtonElement | null;
-        if (btn) {
-          e.preventDefault();
-          const title = btn.getAttribute("data-wiki") ?? "";
-          if (title) onWikiLink(title);
-        }
-      }}
-      // eslint-disable-next-line react/no-danger
-      dangerouslySetInnerHTML={{ __html: html || '<p class="text-muted-foreground italic">Nema sadržaja. Počnite kucati u editoru lijevo.</p>' }}
-    />
+    <div className="flex flex-col h-full bg-card border border-border rounded-md overflow-hidden">
+      <div
+        className="prose prose-sm max-w-none p-4 overflow-y-auto flex-1 text-foreground"
+        onClick={(e) => {
+          const t = e.target as HTMLElement;
+          const btn = t.closest("button[data-wiki]") as HTMLButtonElement | null;
+          if (btn) {
+            e.preventDefault();
+            const title = btn.getAttribute("data-wiki") ?? "";
+            if (title) onWikiLink(title);
+          }
+        }}
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: html || '<p class="text-muted-foreground italic">Nema sadržaja. Počnite kucati u editoru lijevo.</p>' }}
+      />
+      {linkedSources && linkedSources.length > 0 && (
+        <div className="border-t border-border bg-muted/30 px-3 py-2">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5">
+            <FileText className="h-3 w-3" /> Izvori
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {linkedSources.map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => onSourceClick?.(s.id)}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded border border-border bg-background hover:bg-accent/50 text-[11px] transition-colors"
+              >
+                <FileText className="h-3 w-3 text-muted-foreground" />
+                <span className="truncate max-w-[200px]">{s.title}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

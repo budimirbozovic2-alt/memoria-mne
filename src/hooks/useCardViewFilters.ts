@@ -9,9 +9,21 @@ interface UseCardViewFiltersParams {
   categoryId: string;
   masteryFilter?: number | null;
   onClearMasteryFilter?: () => void;
+  /** External text search applied across question + section content. */
+  externalQuery?: string;
+  /** External "filter by linked source" — value of card.sourceId, or "__all__". */
+  externalSourceId?: string;
 }
 
-export function useCardViewFilters({ cards, allCategories, categoryId, masteryFilter, onClearMasteryFilter }: UseCardViewFiltersParams) {
+export function useCardViewFilters({
+  cards,
+  allCategories,
+  categoryId,
+  masteryFilter,
+  onClearMasteryFilter,
+  externalQuery,
+  externalSourceId,
+}: UseCardViewFiltersParams) {
   const [filterSubcategory, setFilterSubcategory] = useState<string>("__all__");
   const [filterChapter, setFilterChapter] = useState<string>("__all__");
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash" | "mnemonic">("all");
@@ -52,6 +64,9 @@ export function useCardViewFilters({ cards, allCategories, categoryId, masteryFi
     return Object.keys(chapterCounts).sort((a, b) => (nameMap[a] ?? a).localeCompare(nameMap[b] ?? b));
   }, [chapterCounts, nameMap]);
 
+  const normalizedQuery = (externalQuery ?? "").trim().toLowerCase();
+  const sourceFilter = externalSourceId && externalSourceId !== "__all__" ? externalSourceId : null;
+
   const filteredCards = useMemo(() => {
     return cards.filter(c => {
       if (masteryFilter !== null && masteryFilter !== undefined && getCardMasteryLevel(c) !== masteryFilter) return false;
@@ -61,11 +76,26 @@ export function useCardViewFilters({ cards, allCategories, categoryId, masteryFi
       if (filterType === "flash" && c.type !== "flash") return false;
       if (filterType === "mnemonic" && !(c.tags?.includes("mnemonic"))) return false;
       if (filterTag !== "__all__" && !(c.tags?.includes(filterTag))) return false;
+      if (sourceFilter && (c.sourceId ?? "") !== sourceFilter) return false;
+      if (normalizedQuery) {
+        const hay =
+          (c.question ?? "").toLowerCase() +
+          " " +
+          (c.sections ?? []).map(s => `${s.title ?? ""} ${s.content ?? ""}`).join(" ").toLowerCase();
+        if (!hay.includes(normalizedQuery)) return false;
+      }
       return true;
     });
-  }, [cards, filterSubcategory, filterChapter, filterType, filterTag, masteryFilter]);
+  }, [cards, filterSubcategory, filterChapter, filterType, filterTag, masteryFilter, sourceFilter, normalizedQuery]);
 
-  const hasActiveFilters = filterSubcategory !== "__all__" || filterChapter !== "__all__" || filterType !== "all" || filterTag !== "__all__" || (masteryFilter !== null && masteryFilter !== undefined);
+  const hasActiveFilters =
+    filterSubcategory !== "__all__" ||
+    filterChapter !== "__all__" ||
+    filterType !== "all" ||
+    filterTag !== "__all__" ||
+    (masteryFilter !== null && masteryFilter !== undefined) ||
+    Boolean(sourceFilter) ||
+    Boolean(normalizedQuery);
 
   const resetFilters = useCallback(() => {
     setFilterSubcategory("__all__");

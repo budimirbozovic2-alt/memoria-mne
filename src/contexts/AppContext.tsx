@@ -5,6 +5,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { recordAppEntry, recordFirstAction, addActivityEntry, ActivityType } from "@/lib/metacognitive-storage";
 import { addPomodoroEntry } from "@/lib/storage";
 import { loadAppSettings } from "@/lib/app-settings";
+import { primeExaminerProfilesFromRecords } from "@/lib/examiner-profile-cache";
 
 const LazyDatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
 
@@ -349,6 +350,12 @@ function CardProvider({ children }: { children: ReactNode }) {
     categories: h.categories, categoryRecords: h.categoryRecords,
     subcategories: h.subcategories, categoryStats: h.categoryStats,
   }), [h.categories, h.categoryRecords, h.subcategories, h.categoryStats]);
+
+  // Sync-prime the examiner-profile cache so calculateNextReview never
+  // sees `undefined` on the first review of a session.
+  useEffect(() => {
+    primeExaminerProfilesFromRecords(h.categoryRecords);
+  }, [h.categoryRecords]);
 
   const reviewState = useMemo<ReviewStateContextValue>(() => ({
     reviewLog: h.reviewLog, srSettings: h.srSettings,
