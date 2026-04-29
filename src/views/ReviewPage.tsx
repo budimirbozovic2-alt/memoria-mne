@@ -6,6 +6,7 @@ import { SectionState } from "@/lib/spaced-repetition";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ReviewSession from "@/components/ReviewSession";
 import EmptyState from "@/components/EmptyState";
+import { getParam } from "@/lib/url-params";
 
 export default function ReviewPage() {
   const { cards, dueCards, ready } = useCardData();
