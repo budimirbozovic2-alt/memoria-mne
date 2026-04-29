@@ -118,6 +118,31 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
     if (index > 0 && index >= filtered.length) setIndex(Math.max(0, filtered.length - 1));
   }, [filtered.length, index]);
 
+  // ── Focus a specific card requested from outside (quick action from card list) ──
+  // Two-phase: (1) if the card isn't in `filtered` due to active filters, clear them
+  // and re-run on the next render. (2) once visible, set index to it and notify parent.
+  const consumedInitialRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!initialCardId || consumedInitialRef.current === initialCardId) return;
+    const target = cards.find(c => c.id === initialCardId);
+    if (!target) {
+      // Card no longer exists — drop the request silently.
+      consumedInitialRef.current = initialCardId;
+      onInitialConsumed?.();
+      return;
+    }
+    const idx = filtered.findIndex(c => c.id === initialCardId);
+    if (idx === -1) {
+      // Filters are hiding it — clear them and retry on next render.
+      if (subFilter !== "all") setSubFilter("all");
+      if (chapterFilter !== "all") setChapterFilter("all");
+      return;
+    }
+    setIndex(idx);
+    consumedInitialRef.current = initialCardId;
+    onInitialConsumed?.();
+  }, [initialCardId, cards, filtered, subFilter, chapterFilter, onInitialConsumed]);
+
   // Keyboard navigation
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
