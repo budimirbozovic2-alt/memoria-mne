@@ -1,7 +1,7 @@
 import { NavLink } from "@/components/NavLink";
 import {
   Home, Settings as SettingsIcon,
-  BarChart3, BookOpen, Gauge, Zap, Map, Scale, Brain,
+  BookOpen, Zap, Map, Scale, Brain,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel,
@@ -16,10 +16,8 @@ const STATIC_NAV = [
 ];
 
 const TOOLS_NAV = [
-  { path: "/stats", icon: BarChart3, label: "Statistika" },
   { path: "/metacognitive", icon: BookOpen, label: "Dnevnik" },
   { path: "/mnemonics", icon: Brain, label: "Memorizacija" },
-  { path: "/planner", icon: Gauge, label: "Strateški planer" },
   { path: "/speed-reader", icon: Zap, label: "Speed Reader" },
   { path: "/mind-map", icon: Map, label: "Mentalne mape" },
 ];

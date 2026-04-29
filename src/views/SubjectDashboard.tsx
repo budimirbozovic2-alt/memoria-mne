@@ -2,7 +2,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { useCardData, useCategoryData, useCardActions } from "@/contexts/AppContext";
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft, BookMarked, Brain, RefreshCw, BarChart3,
+  ArrowLeft, BookMarked, Brain, RefreshCw,
   Info, Settings, Network, BookOpen, Layers, Sparkles,
 } from "lucide-react";
 import ExaminerProfileDialog from "@/components/ExaminerProfileDialog";
@@ -156,12 +156,12 @@ export default function SubjectDashboard() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="icon" className="h-9 w-9" asChild>
-                  <Link to="/stats">
-                    <BarChart3 className="h-4 w-4" />
+                  <Link to="/metacognitive" aria-label="Dnevnik">
+                    <BookOpen className="h-4 w-4" />
                   </Link>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">Statistika</TooltipContent>
+              <TooltipContent side="bottom">Dnevnik</TooltipContent>
             </Tooltip>
 
             <Tooltip>
