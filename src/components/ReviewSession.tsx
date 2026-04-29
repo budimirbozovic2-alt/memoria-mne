@@ -164,6 +164,7 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
         onResumeSession={resumeSession}
         onClearSavedSession={() => { setSavedSession(null); clearSavedSession(); }}
         preSelectedCategory={preSelectedCategory}
+        lockedCategory={lockedCategory}
       />
     );
   }
