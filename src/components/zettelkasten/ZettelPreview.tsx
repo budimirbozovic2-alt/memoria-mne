@@ -28,7 +28,7 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function renderMarkdown(md: string, existingTitles: Set<string>): string {
+function renderMarkdown(md: string, existingTitles: Set<string>, emptyTitles: Set<string>): string {
   const lines = md.split(/\r?\n/);
   const out: string[] = [];
   let inList = false;
@@ -41,10 +41,20 @@ function renderMarkdown(md: string, existingTitles: Set<string>): string {
     let s = escapeHtml(raw);
     s = s.replace(/\[\[([^\]]+)\]\]/g, (_m, t: string) => {
       const title = t.trim();
-      const exists = existingTitles.has(title.toLowerCase());
-      const cls = exists
-        ? "text-primary underline decoration-dotted underline-offset-2 hover:bg-primary/10 px-0.5 rounded"
-        : "text-amber-600 dark:text-amber-400 underline decoration-dotted underline-offset-2 hover:bg-amber-500/10 px-0.5 rounded";
+      const low = title.toLowerCase();
+      const exists = existingTitles.has(low);
+      const empty = exists && emptyTitles.has(low);
+      let cls: string;
+      if (!exists) {
+        // Missing — amber dotted (will be auto-created by the editor scanner)
+        cls = "text-amber-600 dark:text-amber-400 underline decoration-dotted underline-offset-2 hover:bg-amber-500/10 px-0.5 rounded";
+      } else if (empty) {
+        // Draft placeholder — muted dashed italic
+        cls = "text-muted-foreground italic underline decoration-dashed decoration-muted-foreground/60 underline-offset-2 hover:bg-muted px-0.5 rounded";
+      } else {
+        // Populated — primary solid (clear clickable link)
+        cls = "text-primary underline decoration-solid underline-offset-2 hover:bg-primary/10 px-0.5 rounded";
+      }
       return `<button type="button" data-wiki="${escapeHtml(title)}" class="${cls}">${escapeHtml(title)}</button>`;
     });
     s = s.replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-muted text-[0.9em]">$1</code>');
