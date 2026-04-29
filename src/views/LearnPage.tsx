@@ -7,6 +7,7 @@ import LearnSession from "@/components/LearnSession";
 import { Card } from "@/lib/spaced-repetition";
 import type { InitialFilters } from "@/components/learn/types";
 import { setEditReturn } from "@/lib/edit-return";
+import { getParam } from "@/lib/url-params";
 
 export default function LearnPage() {
   const { cards, stats, ready } = useCardData();
