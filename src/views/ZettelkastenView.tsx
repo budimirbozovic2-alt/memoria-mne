@@ -41,9 +41,13 @@ export default function ZettelkastenView() {
     if (!categoryId) return;
     let cancelled = false;
     setLoading(true);
-    loadArticlesBySubject(categoryId).then(list => {
+    Promise.all([
+      loadArticlesBySubject(categoryId),
+      loadSourcesByCategory(categoryId),
+    ]).then(([list, srcs]) => {
       if (!cancelled) {
         setArticles(list);
+        setSources(srcs);
         setLoading(false);
       }
     });
