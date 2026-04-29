@@ -1,26 +1,11 @@
 import { NavLink } from "@/components/NavLink";
 import {
   Home, Settings as SettingsIcon,
-  BookOpen, Zap, Map, Scale, Brain,
+  Zap, Map, Scale, Brain,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel,
-  SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
-import { useCategoryData } from "@/contexts/AppContext";
-
-const STATIC_NAV = [
-  { path: "/", icon: Home, label: "Početna tabla" },
-];
-
-const TOOLS_NAV = [
-  { path: "/metacognitive", icon: BookOpen, label: "Dnevnik" },
-  { path: "/mnemonics", icon: Brain, label: "Memorizacija" },
-  { path: "/speed-reader", icon: Zap, label: "Speed Reader" },
-  { path: "/mind-map", icon: Map, label: "Mentalne mape" },
-];
+  SidebarGroupContent, SidebarMenu
 
 
 export default function AppSidebar() {
