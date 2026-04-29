@@ -51,7 +51,10 @@ export default function HealthMonitor() {
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [orphans, setOrphans] = useState<OrphanResult>({ count: 0, cardIds: [] });
+  const [staleSub, setStaleSub] = useState<OrphanResult>({ count: 0, cardIds: [] });
+  const [staleChap, setStaleChap] = useState<OrphanResult>({ count: 0, cardIds: [] });
   const [cleaning, setCleaning] = useState(false);
+  const [healing, setHealing] = useState(false);
   const [crashLog, setCrashLog] = useState<CrashEntry[]>(loadCrashLog());
 
   const refresh = useCallback(async () => {
@@ -98,6 +101,32 @@ export default function HealthMonitor() {
       const validIds = new Set(allCategories.map(c => c.id));
       const orphanCards = allCards.filter(c => c.categoryId && !validIds.has(c.categoryId));
       setOrphans({ count: orphanCards.length, cardIds: orphanCards.map(c => c.id) });
+
+      // Stale subcategoryId / chapterId detection
+      const subUuids = new Set<string>();
+      const chapUuids = new Set<string>();
+      const chapToSub = new Map<string, string>();
+      for (const cat of allCategories) {
+        for (const sub of cat.subcategories ?? []) {
+          subUuids.add(sub.id);
+          for (const ch of sub.chapters ?? []) {
+            if (typeof ch === "object" && ch.id) {
+              chapUuids.add(ch.id);
+              chapToSub.set(ch.id, sub.id);
+            }
+          }
+        }
+      }
+      const staleSubCards = allCards.filter(c => c.subcategoryId && !subUuids.has(c.subcategoryId));
+      const staleChapCards = allCards.filter(c => {
+        if (!c.chapterId) return false;
+        if (!chapUuids.has(c.chapterId)) return true;
+        // mismatch: chapter exists but belongs to a different sub
+        if (c.subcategoryId && subUuids.has(c.subcategoryId) && chapToSub.get(c.chapterId) !== c.subcategoryId) return true;
+        return false;
+      });
+      setStaleSub({ count: staleSubCards.length, cardIds: staleSubCards.map(c => c.id) });
+      setStaleChap({ count: staleChapCards.length, cardIds: staleChapCards.map(c => c.id) });
 
       // Crash log
       setCrashLog(loadCrashLog());
