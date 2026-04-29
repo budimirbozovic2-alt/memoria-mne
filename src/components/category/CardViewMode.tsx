@@ -2,11 +2,12 @@ import { useState, useCallback, useMemo } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Card } from "@/lib/spaced-repetition";
-import { type CategoryRecord } from "@/lib/db";
+import { type CategoryRecord, type SubcategoryNode } from "@/lib/db";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import CardViewTable from "./CardViewTable";
 import CardViewFilterBar from "./CardViewFilterBar";
+import SubjectHierarchyTree from "./SubjectHierarchyTree";
 import { AddCardDialog, MoveCardDialog, BulkImportWrapper } from "./CardViewDialogs";
 import { useCardViewFilters } from "@/hooks/useCardViewFilters";
 
@@ -14,6 +15,7 @@ interface Props {
   cards: Card[];
   categoryId: string;
   allCategories: CategoryRecord[];
+  subcategoryNodes: SubcategoryNode[];
   patchCard: (id: string, fn: (c: Card) => Card) => void;
   toggleTag: (cardId: string, tag: string) => void;
   addCard: (question: string, sections: { title: string; content: string }[], category: string, subcategory?: string, chapter?: string) => Card;
@@ -27,7 +29,7 @@ interface Props {
   externalSourceId?: string;
 }
 
-export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId }: Props) {
+export default function CardViewMode({ cards, categoryId, allCategories, subcategoryNodes, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId }: Props) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
