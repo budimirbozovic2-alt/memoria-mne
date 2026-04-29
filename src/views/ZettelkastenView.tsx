@@ -534,6 +534,7 @@ export default function ZettelkastenView() {
             {filteredArticles.map(a => {
               const sub = rootSubs.find(s => s.id === a.rootSubcategoryId);
               const preview = a.content.replace(/[#*`[\]]/g, "").trim().slice(0, 140);
+              const isDraft = a.content.trim().length === 0;
               return (
                 <button
                   key={a.id}
@@ -542,12 +543,23 @@ export default function ZettelkastenView() {
                   className="text-left p-3 rounded-md border border-border hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex items-center justify-between gap-3 mb-1">
-                    <div className="font-semibold text-sm truncate">{a.title}</div>
-                    {sub && (
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">
-                        {sub.name}
-                      </span>
-                    )}
+                    <div className={`font-semibold text-sm truncate ${
+                      isDraft ? "text-muted-foreground italic" : "text-foreground"
+                    }`}>
+                      {a.title}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isDraft && (
+                        <span className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded">
+                          Draft
+                        </span>
+                      )}
+                      {sub && (
+                        <span className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                          {sub.name}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {preview && (
                     <div className="text-xs text-muted-foreground line-clamp-2">{preview}</div>
