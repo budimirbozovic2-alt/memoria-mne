@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useMemo, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useCardData, useCategoryData, useReviewData, useCardActions, useUIContext } from "@/contexts/AppContext";
 import { useSessionContext, QueuedReview, QueuedError, QueuedMarkRead } from "@/contexts/SessionContext";
@@ -60,8 +60,13 @@ export default function LearnPage() {
     setView("dashboard");
   }, [session, setView]);
 
-  const { stash: stashEditReturn } = useEditReturn({ path: "/learn" });
+  const editingCardRef = useRef<Card | null>(null);
+  const { stash: stashEditReturn } = useEditReturn({
+    path: "/learn",
+    cardId: () => editingCardRef.current?.id ?? null,
+  });
   const handleEdit = useCallback((card: Card) => {
+    editingCardRef.current = card;
     stashEditReturn();
     setEditingCard(card);
     setView("edit");
