@@ -132,9 +132,22 @@ export default function ReviewSetup({
     return filtered;
   }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType]);
 
+  // Stabilization MUST follow FSRS-due ordering across the full (locked) scope.
+  // It intentionally ignores subcategory / chapter filters so the mechanism
+  // is not undermined by manual scope narrowing. Type + exam-frequent honored.
+  const stabilizationSourceCards = useMemo(() => {
+    let filtered = dueCards;
+    if (lockedCategory) filtered = filtered.filter((c) => c.categoryId === lockedCategory);
+    else if (selectedCategory) filtered = filtered.filter((c) => c.categoryId === selectedCategory);
+    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
+    if (filterType === "essay") filtered = filtered.filter((c) => c.type === "essay");
+    else if (filterType === "flash") filtered = filtered.filter((c) => c.type === "flash");
+    return filtered;
+  }, [dueCards, lockedCategory, selectedCategory, filterExamFrequent, filterType]);
+
   const stabilizationItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
-    filteredDueCards.forEach((card) => {
+    stabilizationSourceCards.forEach((card) => {
       getDueSections(card).forEach((section) => {
         if (
           (section.state === SectionState.Learning || section.state === SectionState.Relearning) &&
@@ -146,7 +159,7 @@ export default function ReviewSetup({
     });
     items.sort((a, b) => a.section.stability - b.section.stability);
     return items;
-  }, [filteredDueCards]);
+  }, [stabilizationSourceCards]);
 
   const criticalItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
