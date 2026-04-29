@@ -22,9 +22,11 @@ interface Props {
   onEdit?: (card: Card) => void;
   masteryFilter?: number | null;
   onClearMasteryFilter?: () => void;
+  externalQuery?: string;
+  externalSourceId?: string;
 }
 
-export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, masteryFilter, onClearMasteryFilter }: Props) {
+export default function CardViewMode({ cards, categoryId, allCategories, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId }: Props) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
