@@ -22,7 +22,6 @@ interface Props {
 
 const PRIMARY_NAV = [
   { path: "/", icon: Home, label: "Dashboard" },
-  { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
 ];
 
 const TOOLS_NAV = [
