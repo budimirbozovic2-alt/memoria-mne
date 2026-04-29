@@ -13,7 +13,6 @@ import { useCardData, useCategoryData } from "@/contexts/AppContext";
 
 const STATIC_NAV = [
   { path: "/", icon: Home, label: "Početna tabla" },
-  { path: "/review", icon: RotateCcw, label: "Konsolidacija", badge: true },
 ];
 
 const TOOLS_NAV = [
