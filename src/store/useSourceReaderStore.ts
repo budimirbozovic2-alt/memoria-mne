@@ -16,6 +16,8 @@ const WIDTH_STORAGE_KEY = "codex-source-reader-width";
 
 export interface SelectionState {
   text: string;
+  /** HTML markup of the selected range (preserves bold/italic/lists/headings). */
+  html: string;
   x: number;
   y: number;
 }
@@ -46,6 +48,7 @@ interface SourceReaderState {
   essayDialogOpen: boolean;
   essayQuestion: string;
   selectedText: string;
+  selectedHtml: string;
   autoSplitOpen: boolean;
   splitSummaryOpen: boolean;
   splitResult: SplitResultState | null;
@@ -55,6 +58,7 @@ interface SourceReaderState {
   splitModules: SelectionModule[];
   linkModalOpen: boolean;
   linkSelectedText: string;
+  linkSelectedHtml: string;
   examQuestions: ExamQuestion[];
 
   // Actions
@@ -68,6 +72,7 @@ interface SourceReaderState {
   setEssayDialogOpen: (v: boolean) => void;
   setEssayQuestion: (v: string) => void;
   setSelectedText: (v: string) => void;
+  setSelectedHtml: (v: string) => void;
   setAutoSplitOpen: (v: boolean) => void;
   setSplitSummaryOpen: (v: boolean) => void;
   setSplitResult: (v: SplitResultState | null) => void;
@@ -77,6 +82,7 @@ interface SourceReaderState {
   setSplitModules: (v: SelectionModule[] | ((prev: SelectionModule[]) => SelectionModule[])) => void;
   setLinkModalOpen: (v: boolean) => void;
   setLinkSelectedText: (v: string) => void;
+  setLinkSelectedHtml: (v: string) => void;
   setExamQuestions: (v: ExamQuestion[] | ((prev: ExamQuestion[]) => ExamQuestion[])) => void;
   reset: () => void;
 }
@@ -100,6 +106,7 @@ const initialState = {
   essayDialogOpen: false,
   essayQuestion: "",
   selectedText: "",
+  selectedHtml: "",
   autoSplitOpen: false,
   splitSummaryOpen: false,
   splitResult: null as SplitResultState | null,
@@ -109,6 +116,7 @@ const initialState = {
   splitModules: [] as SelectionModule[],
   linkModalOpen: false,
   linkSelectedText: "",
+  linkSelectedHtml: "",
   examQuestions: [] as ExamQuestion[],
 };
 
@@ -128,6 +136,7 @@ export const useSourceReaderStore = create<SourceReaderState>((set, get) => ({
   setEssayDialogOpen: (v) => set({ essayDialogOpen: v }),
   setEssayQuestion: (v) => set({ essayQuestion: v }),
   setSelectedText: (v) => set({ selectedText: v }),
+  setSelectedHtml: (v) => set({ selectedHtml: v }),
   setAutoSplitOpen: (v) => set({ autoSplitOpen: v }),
   setSplitSummaryOpen: (v) => set({ splitSummaryOpen: v }),
   setSplitResult: (v) => set({ splitResult: v }),
@@ -143,6 +152,7 @@ export const useSourceReaderStore = create<SourceReaderState>((set, get) => ({
   },
   setLinkModalOpen: (v) => set({ linkModalOpen: v }),
   setLinkSelectedText: (v) => set({ linkSelectedText: v }),
+  setLinkSelectedHtml: (v) => set({ linkSelectedHtml: v }),
   setExamQuestions: (v) => {
     if (typeof v === "function") {
       set({ examQuestions: v(get().examQuestions) });
