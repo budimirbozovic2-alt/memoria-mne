@@ -8,6 +8,7 @@ import { useCardData, useCategoryData, useCardActions } from "@/contexts/AppCont
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import SourceReader from "@/components/SourceReader";
 import SourcesTab from "@/components/category/SourcesTab";
+import SourcesBreadcrumb from "@/components/category/SourcesBreadcrumb";
 
 export default function CategoryView() {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -86,6 +87,9 @@ export default function CategoryView() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb + context indicator */}
+      <SourcesBreadcrumb categoryId={categoryId!} categoryName={category.name} />
+
       {/* Header */}
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold text-foreground flex-1">{category.name}</h1>
