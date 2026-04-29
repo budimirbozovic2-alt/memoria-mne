@@ -1,14 +1,14 @@
-import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw, Lock, ChevronDown, SlidersHorizontal, Info } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw, Lock, Info } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, getDueSections, SRSettings, SectionState, getRetrievability, isLeech } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
-import SessionFilters from "@/components/SessionFilters";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import OnboardingModal, { hasSeenOnboarding } from "@/components/OnboardingModal";
 import { DueItem, ReviewMode, REVIEW_ONBOARDING_KEY, REVIEW_SLIDES } from "./review-constants";
 import type { CategoryRecord } from "@/lib/db";
 import InfoPanel from "@/components/InfoPanel";
+
+type FilterType = "all" | "essay" | "flash";
 
 interface ReviewSetupProps {
   dueCards: Card[];
@@ -16,7 +16,7 @@ interface ReviewSetupProps {
   categoryRecords: CategoryRecord[];
   subcategories: Record<string, string[]>;
   srSettings: SRSettings;
-  onSelectMode: (mode: ReviewMode, category: string | null, subcategory: string | null, chapter: string | null, examFrequent: boolean, filterType: "all" | "essay" | "flash", items: DueItem[]) => void;
+  onSelectMode: (mode: ReviewMode, category: string | null, subcategory: string | null, chapter: string | null, examFrequent: boolean, filterType: FilterType, items: DueItem[]) => void;
   onBack: () => void;
   savedSession: { mode: ReviewMode; selectedCategory?: string | null } | null;
   onResumeSession: () => void;
@@ -91,72 +91,45 @@ const MODE_LABELS: Record<string, string> = {
   hardest: "Najteža pitanja",
 };
 
+const FILTER_TYPE_OPTIONS: { value: FilterType; label: string }[] = [
+  { value: "all", label: "Sve" },
+  { value: "essay", label: "Esejska" },
+  { value: "flash", label: "Blic" },
+];
+
 export default function ReviewSetup({
-  dueCards, allCards, categoryRecords, subcategories, srSettings,
+  dueCards, allCards, categoryRecords, srSettings,
   onSelectMode, onBack, savedSession, onResumeSession, onClearSavedSession,
   preSelectedCategory, lockedCategory,
 }: ReviewSetupProps) {
   const [mode, setMode] = useState<ModeKey>("critical");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(lockedCategory ?? preSelectedCategory ?? null);
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [filterExamFrequent, setFilterExamFrequent] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">("all");
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const selectedCategory = lockedCategory ?? preSelectedCategory ?? null;
+  const [filterType, setFilterType] = useState<FilterType>("all");
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding(REVIEW_ONBOARDING_KEY));
 
-  // Stabilization is FSRS-driven: sub/chapter narrowing would compromise the
-  // due-priority selection, so we proactively clear them when entering this mode.
-  useEffect(() => {
-    if (mode === "stabilization") {
-      if (selectedSubcategory !== null) setSelectedSubcategory(null);
-      if (selectedChapter !== null) setSelectedChapter(null);
-    }
-  }, [mode, selectedSubcategory, selectedChapter]);
-
-  const dueCategories = useMemo(() => {
-    const cats = new Set(dueCards.map((c) => c.categoryId));
-    return Array.from(cats).sort();
-  }, [dueCards]);
+  // Type-only filter — sub/chapter narrowing intentionally removed to keep
+  // FSRS prioritization intact across all consolidation modes.
+  const filterByType = useCallback((cards: Card[]) => {
+    if (filterType === "essay") return cards.filter((c) => c.type === "essay");
+    if (filterType === "flash") return cards.filter((c) => c.type === "flash");
+    return cards;
+  }, [filterType]);
 
   const filteredDueCards = useMemo(() => {
     let filtered = dueCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.categoryId === selectedCategory);
-    if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategoryId === selectedSubcategory);
-    if (selectedChapter) filtered = filtered.filter((c) => c.chapterId === selectedChapter);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
-    if (filterType === "essay") filtered = filtered.filter((c) => c.type === "essay");
-    else if (filterType === "flash") filtered = filtered.filter((c) => c.type === "flash");
-    return filtered;
-  }, [dueCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType]);
+    return filterByType(filtered);
+  }, [dueCards, selectedCategory, filterByType]);
 
   const filteredAllCards = useMemo(() => {
     let filtered = allCards;
     if (selectedCategory) filtered = filtered.filter((c) => c.categoryId === selectedCategory);
-    if (selectedSubcategory) filtered = filtered.filter((c) => c.subcategoryId === selectedSubcategory);
-    if (selectedChapter) filtered = filtered.filter((c) => c.chapterId === selectedChapter);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
-    if (filterType === "essay") filtered = filtered.filter((c) => c.type === "essay");
-    else if (filterType === "flash") filtered = filtered.filter((c) => c.type === "flash");
-    return filtered;
-  }, [allCards, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType]);
-
-  // Stabilization MUST follow FSRS-due ordering across the full (locked) scope.
-  // It intentionally ignores subcategory / chapter filters so the mechanism
-  // is not undermined by manual scope narrowing. Type + exam-frequent honored.
-  const stabilizationSourceCards = useMemo(() => {
-    let filtered = dueCards;
-    if (lockedCategory) filtered = filtered.filter((c) => c.categoryId === lockedCategory);
-    else if (selectedCategory) filtered = filtered.filter((c) => c.categoryId === selectedCategory);
-    if (filterExamFrequent) filtered = filtered.filter((c) => c.tags?.includes("često-na-ispitu"));
-    if (filterType === "essay") filtered = filtered.filter((c) => c.type === "essay");
-    else if (filterType === "flash") filtered = filtered.filter((c) => c.type === "flash");
-    return filtered;
-  }, [dueCards, lockedCategory, selectedCategory, filterExamFrequent, filterType]);
+    return filterByType(filtered);
+  }, [allCards, selectedCategory, filterByType]);
 
   const stabilizationItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
-    stabilizationSourceCards.forEach((card) => {
+    filteredDueCards.forEach((card) => {
       getDueSections(card).forEach((section) => {
         if (
           (section.state === SectionState.Learning || section.state === SectionState.Relearning) &&
@@ -168,7 +141,7 @@ export default function ReviewSetup({
     });
     items.sort((a, b) => a.section.stability - b.section.stability);
     return items;
-  }, [stabilizationSourceCards]);
+  }, [filteredDueCards]);
 
   const criticalItems = useMemo<DueItem[]>(() => {
     const items: DueItem[] = [];
@@ -207,49 +180,6 @@ export default function ReviewSetup({
     return combined.slice(0, 50);
   }, [filteredAllCards, srSettings]);
 
-  const examFrequentCount = useMemo(() => {
-    return dueCards.filter(c => c.tags?.includes("često-na-ispitu")).length;
-  }, [dueCards]);
-
-  const subPosMap = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const r of categoryRecords) {
-      (r.subcategories || []).forEach((sub, i: number) => {
-        const id = typeof sub === "string" ? sub : sub.id;
-        const pos = typeof sub === "string" ? i : (sub.sortOrder ?? i);
-        m[id] = pos;
-      });
-    }
-    return m;
-  }, [categoryRecords]);
-
-  const chapPosMap = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const r of categoryRecords) {
-      for (const sub of r.subcategories || []) {
-        if (typeof sub === "string") continue;
-        (sub.chapters || []).forEach((ch, i: number) => {
-          const id = typeof ch === "string" ? ch : ch.id;
-          const pos = typeof ch === "string" ? i : (ch.sortOrder ?? i);
-          m[id] = pos;
-        });
-      }
-    }
-    return m;
-  }, [categoryRecords]);
-
-  const dueSubcategories = useMemo(() => {
-    if (!selectedCategory) return [];
-    const subs = new Set(dueCards.filter((c) => c.categoryId === selectedCategory && c.subcategoryId).map((c) => c.subcategoryId!));
-    return Array.from(subs).sort((a, b) => (subPosMap[a] ?? 999) - (subPosMap[b] ?? 999));
-  }, [dueCards, selectedCategory, subPosMap]);
-
-  const dueChapters = useMemo(() => {
-    if (!selectedSubcategory) return [];
-    const chapters = new Set(dueCards.filter(c => c.categoryId === selectedCategory && c.subcategoryId === selectedSubcategory && c.chapterId).map(c => c.chapterId!));
-    return Array.from(chapters).sort((a, b) => (chapPosMap[a] ?? 999) - (chapPosMap[b] ?? 999));
-  }, [dueCards, selectedCategory, selectedSubcategory, chapPosMap]);
-
   const counts: Record<ModeKey, number> = {
     stabilization: stabilizationItems.length,
     critical: criticalItems.length,
@@ -267,19 +197,9 @@ export default function ReviewSetup({
     return categoryRecords.find(r => r.id === lockedCategory)?.name ?? null;
   }, [lockedCategory, categoryRecords]);
 
-  const filterSummary = useMemo(() => {
-    const parts: string[] = [];
-    if (filterType === "essay") parts.push("Samo eseji");
-    else if (filterType === "flash") parts.push("Samo blic");
-    if (selectedSubcategory) parts.push("Subkategorija");
-    if (selectedChapter) parts.push("Poglavlje");
-    if (filterExamFrequent) parts.push("Često na ispitu");
-    return parts.length ? parts.join(" · ") : "Svi sadržaji";
-  }, [filterType, selectedSubcategory, selectedChapter, filterExamFrequent]);
-
   const handleStartSession = useCallback(() => {
-    onSelectMode(mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType, itemsByMode[mode]);
-  }, [mode, selectedCategory, selectedSubcategory, selectedChapter, filterExamFrequent, filterType, onSelectMode, itemsByMode]);
+    onSelectMode(mode, selectedCategory, null, null, false, filterType, itemsByMode[mode]);
+  }, [mode, selectedCategory, filterType, onSelectMode, itemsByMode]);
 
   const totalForMode = counts[mode];
 
@@ -319,13 +239,38 @@ export default function ReviewSetup({
         </div>
       </div>
 
-      <div>
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <RotateCcw className="h-6 w-6 text-primary" /> Konsolidacija znanja
-        </h2>
-        <p className="text-muted-foreground mt-1.5 text-sm">
-          Izaberi pristup ponavljanju za ovu sesiju.
-        </p>
+      {/* Title + inline type filter */}
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <RotateCcw className="h-6 w-6 text-primary" /> Konsolidacija znanja
+          </h2>
+          <p className="text-muted-foreground mt-1.5 text-sm">
+            Izaberi pristup ponavljanju za ovu sesiju.
+          </p>
+        </div>
+        <div
+          role="radiogroup"
+          aria-label="Tip pitanja"
+          className="inline-flex items-center gap-1 bg-secondary rounded-lg p-1"
+        >
+          {FILTER_TYPE_OPTIONS.map(({ value, label }) => {
+            const active = filterType === value;
+            return (
+              <button
+                key={value}
+                role="radio"
+                aria-checked={active}
+                onClick={() => setFilterType(value)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Locked subject pill */}
@@ -404,49 +349,10 @@ export default function ReviewSetup({
         <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-muted/50 border text-xs text-muted-foreground">
           <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
           <span>
-            FSRS bira sekcije po prioritetu zaborava — sub-kategorija i poglavlje se
-            zanemaruju u ovom režimu. Filter po tipu pitanja i „često na ispitu" ostaju aktivni.
+            FSRS bira sekcije po prioritetu zaborava — bez ručnog sužavanja po sub-kategoriji ili poglavlju.
           </span>
         </div>
       )}
-
-      {/* Filters (collapsible) */}
-      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border bg-card hover:bg-accent/30 transition-colors text-sm">
-          <span className="flex items-center gap-2 text-muted-foreground">
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>Filteri:</span>
-            <span className="text-foreground">{filterSummary}</span>
-          </span>
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-3">
-          <SessionFilters
-            layoutPrefix="review"
-            cards={dueCards}
-            categories={dueCategories}
-            categoryRecords={categoryRecords}
-            subcategories={subcategories}
-            selectedCategory={selectedCategory}
-            selectedSubcategory={selectedSubcategory}
-            selectedChapter={selectedChapter}
-            filterExamFrequent={filterExamFrequent}
-            examFrequentCount={examFrequentCount}
-            filterType={filterType}
-            lockedCategory={lockedCategory}
-            onSelectCategory={(cat) => {
-              if (lockedCategory) return;
-              setSelectedCategory(cat);
-              setSelectedSubcategory(null);
-              setSelectedChapter(null);
-            }}
-            onSelectSubcategory={(sub) => { setSelectedSubcategory(sub); setSelectedChapter(null); }}
-            onSelectChapter={setSelectedChapter}
-            onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
-            onFilterTypeChange={setFilterType}
-          />
-        </CollapsibleContent>
-      </Collapsible>
 
       {/* Start CTA */}
       <Button
