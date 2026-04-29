@@ -1,124 +1,40 @@
-# Wiki-Link Knowledge Web — Auto-Create + Visual Distinction
+# Persist PassiveReader filters per subject
 
-Make `[[Wiki Links]]` first-class: typing one creates a placeholder, populated vs empty articles are visually distinct everywhere, and clicking a draft link opens it straight in Edit Mode.
+Save the user's last selected **Potkategorija** and **Glava** filters in `PassiveReader.tsx` so returning to the page restores them automatically. Scope storage per `categoryId` so each subject keeps its own state.
 
-## 1. Define "empty" centrally
+## Storage strategy
 
-In `ZettelkastenView.tsx`, derive a memoized set alongside `existingTitleSet`:
+Use `localStorage` under the key `passive-reader-filters:<categoryId>` holding `{ subFilter, chapterFilter }`. Per-category scoping prevents one subject's stale subcategory ID from polluting another.
 
-```ts
-const emptyArticleIds = useMemo(
-  () => new Set(articles.filter(a => a.content.trim().length === 0).map(a => a.id)),
-  [articles],
-);
-const emptyTitleSet = useMemo(
-  () => new Set(articles.filter(a => a.content.trim().length === 0)
-                        .map(a => a.title.trim().toLowerCase())),
-  [articles],
-);
-```
+## Implementation in `src/components/subject-cards/PassiveReader.tsx`
 
-Pass `emptyTitleSet` down to `ZettelPreview` (next to `existingTitles`).
+1. **Helper at module scope** — `loadPersistedFilters(categoryId)` that safely reads + JSON-parses, returning `{ subFilter: "all", chapterFilter: "all" }` on any failure (missing key, parse error, SSR).
 
-## 2. Three-state wiki-link rendering (Read Mode)
+2. **Lazy state init** — replace:
+   ```ts
+   const [subFilter, setSubFilter] = useState<string>("all");
+   const [chapterFilter, setChapterFilter] = useState<string>("all");
+   ```
+   with `useState(() => loadPersistedFilters(categoryId).subFilter)` etc., so the very first render already shows the restored selection (no flash of "Sve potkategorije").
 
-Update `ZettelPreview.tsx > inline()` to branch on three cases:
+3. **Validation effect** — after `subcategoryNodes` is available, drop any persisted ID that no longer exists in the current taxonomy (the user may have deleted or renamed a subcategory/chapter since the last visit). Falls back to `"all"`.
 
-| State | Detection | Style |
-|---|---|---|
-| Populated | exists && !empty | `text-primary underline decoration-solid` (clear blue link) |
-| Empty/draft | exists && empty | `text-muted-foreground italic underline decoration-dashed decoration-muted-foreground/60` |
-| Missing | !exists | `text-amber-600 dark:text-amber-400 underline decoration-dotted` (existing behavior) |
+4. **Persist effect** — `useEffect` writes the current `{ subFilter, chapterFilter }` to localStorage whenever either value or `categoryId` changes. Wrapped in try/catch to tolerate quota / privacy mode.
 
-Add `emptyTitles: Set<string>` prop; keep click handler unchanged — `handleWikiLink` already routes correctly.
+5. **No change to existing behavior**:
+   - Filter-change → index reset (existing effect) still runs.
+   - Switching subcategory still clears the chapter filter (existing `onValueChange`).
+   - Side-panel state, FSRS chips, navigation — untouched.
 
-## 3. Auto-create placeholders while typing (Edit Mode)
+## Edge cases handled
 
-In `ZettelkastenView.tsx`, add a debounced scanner that runs whenever `draft.content` changes in edit mode:
-
-```ts
-useEffect(() => {
-  if (!isEditing || !draft || !categoryId) return;
-  const id = setTimeout(async () => {
-    const titles = Array.from(draft.content.matchAll(/\[\[([^\]]+)\]\]/g))
-      .map(m => m[1].trim()).filter(Boolean);
-    const unique = Array.from(new Set(titles.map(t => t.toLowerCase())))
-      .filter(low => !existingTitleSet.has(low));
-    if (unique.length === 0) return;
-    const created: KnowledgeBaseArticle[] = [];
-    for (const low of unique) {
-      const original = titles.find(t => t.toLowerCase() === low)!;
-      // double-check via storage to avoid race with another article in same subject
-      const dup = await findArticleByTitle(categoryId, original);
-      if (dup) continue;
-      const a = newArticle(categoryId, original, activeArticle?.rootSubcategoryId);
-      await saveArticle(a);
-      created.push(a);
-    }
-    if (created.length > 0) {
-      setArticles(prev => [...created, ...prev]);
-      toast.success(`Kreirano ${created.length} novih placeholder članaka`);
-    }
-  }, 800);
-  return () => clearTimeout(id);
-}, [draft?.content, isEditing, categoryId, existingTitleSet, activeArticle]);
-```
-
-Notes:
-- 800 ms debounce avoids spam mid-typing.
-- Created articles immediately appear in `existingTitleSet` (re-render), so the next pass skips them.
-- They have `content: ""`, so they show up as drafts in the new styling.
-
-## 4. Open empty articles in Edit Mode
-
-In `handleWikiLink` and `handleOpen`, when navigating to an article whose `content.trim() === ""`, automatically enter Edit Mode:
-
-```ts
-const handleOpenArticle = useCallback((art: KnowledgeBaseArticle) => {
-  setActiveId(art.id);
-  setReadingSourceId(null);
-  if (art.content.trim().length === 0) {
-    setDraft({ title: art.title, content: art.content,
-               linkedSourceIds: art.linkedSourceIds ?? [] });
-    setIsEditing(true);
-  } else {
-    setIsEditing(false);
-    setDraft(null);
-  }
-}, []);
-```
-
-Update `handleWikiLink` to use it (after fetching/creating the article), and switch sidebar list `onClick={() => handleOpen(a.id)}` to `handleOpenArticle(a)`.
-
-## 5. Sidebar list visual distinction
-
-In the article list (lines ~474-497), add a draft indicator:
-
-```tsx
-const isDraft = a.content.trim().length === 0;
-// title color
-className={`font-semibold text-sm truncate ${
-  isDraft ? "text-muted-foreground italic" : "text-foreground"
-}`}
-// add a small "Draft" pill next to the subcategory chip when isDraft
-{isDraft && (
-  <span className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400
-                   border border-amber-500/40 px-1.5 py-0.5 rounded shrink-0">
-    Draft
-  </span>
-)}
-```
-
-Preview text already hides when empty (`preview` is empty string), so no change needed there.
-
-## 6. Memory update
-
-Append to `mem://features/zettelkasten-notion-ux`: "Wiki-links auto-create placeholders on 800 ms debounce while editing. Three link states: populated (primary solid), draft (muted dashed), missing (amber dotted). Opening a draft article auto-enters Edit Mode."
+- **Stale IDs**: validation effect coerces invalid persisted IDs to `"all"`.
+- **Missing `categoryId`**: persist effect early-returns; loader returns defaults.
+- **Storage unavailable** (Electron renderer with disabled storage, quota exceeded): try/catch silences errors; defaults are used.
+- **Cross-subject leakage**: keys namespaced by `categoryId`.
 
 ## Files touched
 
-- `src/views/ZettelkastenView.tsx` — derive empty sets, debounced auto-create effect, `handleOpenArticle`, sidebar styling.
-- `src/components/zettelkasten/ZettelPreview.tsx` — new `emptyTitles` prop, three-state link styling.
-- `mem://features/zettelkasten-notion-ux` — document the new behavior.
+- `src/components/subject-cards/PassiveReader.tsx` — add helper, lazy init, validation effect, persistence effect.
 
-No changes to storage (`zettelkasten-storage.ts` already exposes `findArticleByTitle` + `newArticle`) or to the editor component.
+No new dependencies, no migration, no schema changes. Memory entry doesn't need updating (this is a small UX polish within an existing documented feature).

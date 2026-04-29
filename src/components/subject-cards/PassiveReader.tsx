@@ -34,13 +34,65 @@ function retentionColor(pct: number): string {
   return "text-destructive";
 }
 
+const FILTER_STORAGE_PREFIX = "passive-reader-filters:";
+
+interface PersistedFilters {
+  subFilter: string;
+  chapterFilter: string;
+}
+
+function loadPersistedFilters(categoryId: string): PersistedFilters {
+  if (typeof window === "undefined" || !categoryId) {
+    return { subFilter: "all", chapterFilter: "all" };
+  }
+  try {
+    const raw = window.localStorage.getItem(FILTER_STORAGE_PREFIX + categoryId);
+    if (!raw) return { subFilter: "all", chapterFilter: "all" };
+    const parsed = JSON.parse(raw) as Partial<PersistedFilters>;
+    return {
+      subFilter: typeof parsed.subFilter === "string" ? parsed.subFilter : "all",
+      chapterFilter: typeof parsed.chapterFilter === "string" ? parsed.chapterFilter : "all",
+    };
+  } catch {
+    return { subFilter: "all", chapterFilter: "all" };
+  }
+}
+
 export default function PassiveReader({ cards, subcategoryNodes, categoryId, onEditCard }: Props) {
-  const [subFilter, setSubFilter] = useState<string>("all");
-  const [chapterFilter, setChapterFilter] = useState<string>("all");
+  // Lazy init from localStorage so previously selected filters return on mount.
+  const [subFilter, setSubFilter] = useState<string>(() => loadPersistedFilters(categoryId).subFilter);
+  const [chapterFilter, setChapterFilter] = useState<string>(() => loadPersistedFilters(categoryId).chapterFilter);
   const [index, setIndex] = useState(0);
   const [sidePanel, setSidePanel] = useState<SidePanel>(null);
   const [linkedSource, setLinkedSource] = useState<Source | null>(null);
   const [sourceLoading, setSourceLoading] = useState(false);
+
+  // Validate persisted filters against the current taxonomy — drop stale IDs.
+  useEffect(() => {
+    if (subFilter !== "all" && !subcategoryNodes.some(s => s.id === subFilter)) {
+      setSubFilter("all");
+      setChapterFilter("all");
+      return;
+    }
+    if (chapterFilter !== "all") {
+      const sub = subcategoryNodes.find(s => s.id === subFilter);
+      const validChapter = sub?.chapters?.some(ch => ch.id === chapterFilter) ?? false;
+      if (!validChapter) setChapterFilter("all");
+    }
+  }, [subcategoryNodes, subFilter, chapterFilter]);
+
+  // Persist filter selection per category.
+  useEffect(() => {
+    if (typeof window === "undefined" || !categoryId) return;
+    try {
+      window.localStorage.setItem(
+        FILTER_STORAGE_PREFIX + categoryId,
+        JSON.stringify({ subFilter, chapterFilter }),
+      );
+    } catch {
+      /* quota or privacy mode — ignore */
+    }
+  }, [categoryId, subFilter, chapterFilter]);
 
   const chapters = useMemo(() => {
     if (subFilter === "all") return [];
