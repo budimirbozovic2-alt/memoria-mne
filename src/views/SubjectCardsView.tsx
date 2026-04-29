@@ -12,10 +12,19 @@ import { useCardData, useCategoryData, useCardActions, useUIContext } from "@/co
 import type { SubcategoryNode } from "@/lib/db";
 import type { Card } from "@/lib/spaced-repetition";
 import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
+import { setEditReturn, stashEditReturnState, consumeEditReturnState } from "@/lib/edit-return";
 import CardViewMode from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
 import PassiveReader from "@/components/subject-cards/PassiveReader";
+
+interface EditReturnSnapshot {
+  tab?: "manage" | "read";
+  manageMode?: "edit" | "structure";
+  searchQuery?: string;
+  sourceFilter?: string;
+  scrollY?: number;
+}
 
 export default function SubjectCardsView() {
   const { categoryId } = useParams<{ categoryId: string }>();
