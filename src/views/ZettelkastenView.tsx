@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2, FileText, Search, BookOpen, Compass } from "lucide-react";
+import {
+  ArrowLeft, Plus, Trash2, FileText, Search, BookOpen, Compass,
+  Pencil, Check, BookMarked, X,
+} from "lucide-react";
 import { useCategoryData } from "@/contexts/AppContext";
 import {
   loadArticlesBySubject,
@@ -14,11 +17,25 @@ import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import ZettelEditor from "@/components/zettelkasten/ZettelEditor";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ZettelEditor, { type ZettelEditorHandle } from "@/components/zettelkasten/ZettelEditor";
 import ZettelPreview from "@/components/zettelkasten/ZettelPreview";
 import BacklinksPanel from "@/components/zettelkasten/BacklinksPanel";
 import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
+import SourceSidePanel from "@/components/zettelkasten/SourceSidePanel";
+import MindMapPickerDialog from "@/components/zettelkasten/MindMapPickerDialog";
 import { toast } from "sonner";
+
+interface Draft {
+  title: string;
+  content: string;
+  linkedSourceIds: string[];
+}
 
 export default function ZettelkastenView() {
   const { categoryId } = useParams<{ categoryId: string }>();
@@ -35,6 +52,13 @@ export default function ZettelkastenView() {
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Active-article view state
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [readingSourceId, setReadingSourceId] = useState<string | null>(null);
+  const [mmPickerOpen, setMmPickerOpen] = useState(false);
+  const editorRef = useRef<ZettelEditorHandle | null>(null);
 
   // Initial load
   useEffect(() => {
@@ -84,6 +108,40 @@ export default function ZettelkastenView() {
     return list;
   }, [articles, selectedSubId, search]);
 
+  // ── Persistence ────────────────────────────────
+  const flushDraft = useCallback(async (): Promise<KnowledgeBaseArticle | null> => {
+    if (!activeArticle || !draft) return null;
+    const titleClean = draft.title.trim() || "Bez naslova";
+    const dirty =
+      titleClean !== activeArticle.title ||
+      draft.content !== activeArticle.content ||
+      JSON.stringify(draft.linkedSourceIds) !== JSON.stringify(activeArticle.linkedSourceIds ?? []);
+    if (!dirty) return activeArticle;
+    const next: KnowledgeBaseArticle = {
+      ...activeArticle,
+      title: titleClean,
+      content: draft.content,
+      linkedSourceIds: draft.linkedSourceIds,
+      updatedAt: Date.now(),
+    };
+    await saveArticle(next);
+    setArticles(prev => prev.map(a => a.id === next.id ? next : a));
+    return next;
+  }, [activeArticle, draft]);
+
+  // Cleanup-flush: when leaving edit mode without explicit save, when switching
+  // articles, or when the view unmounts. Use a ref to always read the latest.
+  const flushRef = useRef(flushDraft);
+  useEffect(() => { flushRef.current = flushDraft; }, [flushDraft]);
+
+  // Flush + reset draft when active article changes
+  useEffect(() => {
+    return () => {
+      // On effect cleanup (article id change OR unmount), persist any pending draft.
+      void flushRef.current();
+    };
+  }, [activeId]);
+
   // ── Mutations ──────────────────────────────────
   const handleCreate = useCallback(async (title?: string, rootSubId?: string) => {
     if (!categoryId) return;
@@ -93,14 +151,42 @@ export default function ZettelkastenView() {
     await saveArticle(article);
     setArticles(prev => [article, ...prev]);
     setActiveId(article.id);
+    // Open new article straight in edit mode
+    setDraft({ title: article.title, content: article.content, linkedSourceIds: article.linkedSourceIds ?? [] });
+    setIsEditing(true);
   }, [categoryId, selectedSubId]);
 
-  const handleUpdate = useCallback(async (patch: Partial<KnowledgeBaseArticle>) => {
+  const handleOpen = useCallback((id: string) => {
+    setActiveId(id);
+    setIsEditing(false);
+    setDraft(null);
+    setReadingSourceId(null);
+  }, []);
+
+  const handleBackToList = useCallback(async () => {
+    await flushRef.current();
+    setActiveId(null);
+    setDraft(null);
+    setIsEditing(false);
+    setReadingSourceId(null);
+  }, []);
+
+  const handleEnterEdit = useCallback(() => {
     if (!activeArticle) return;
-    const next: KnowledgeBaseArticle = { ...activeArticle, ...patch, updatedAt: Date.now() };
-    await saveArticle(next);
-    setArticles(prev => prev.map(a => a.id === next.id ? next : a));
+    setDraft({
+      title: activeArticle.title,
+      content: activeArticle.content,
+      linkedSourceIds: activeArticle.linkedSourceIds ?? [],
+    });
+    setIsEditing(true);
   }, [activeArticle]);
+
+  const handleSaveAndClose = useCallback(async () => {
+    await flushRef.current();
+    setIsEditing(false);
+    setDraft(null);
+    toast.success("Sačuvano");
+  }, []);
 
   const handleDelete = useCallback(async () => {
     if (!activeArticle) return;
@@ -108,22 +194,30 @@ export default function ZettelkastenView() {
     await deleteArticle(activeArticle.id);
     setArticles(prev => prev.filter(a => a.id !== activeArticle.id));
     setActiveId(null);
+    setDraft(null);
+    setIsEditing(false);
     toast.success("Članak obrisan");
   }, [activeArticle]);
 
   const handleWikiLink = useCallback(async (title: string) => {
     if (!categoryId) return;
+    // Persist current draft before navigating away
+    await flushRef.current();
     const existing = await findArticleByTitle(categoryId, title);
     if (existing) {
-      setActiveId(existing.id);
+      handleOpen(existing.id);
       return;
     }
     const article = newArticle(categoryId, title, activeArticle?.rootSubcategoryId);
     await saveArticle(article);
     setArticles(prev => [article, ...prev]);
-    setActiveId(article.id);
+    handleOpen(article.id);
     toast.success(`Kreiran novi članak "${title}"`);
-  }, [categoryId, activeArticle]);
+  }, [categoryId, activeArticle, handleOpen]);
+
+  const handlePickMindMap = useCallback((mmId: string) => {
+    editorRef.current?.insertText(`\n\n::mindmap[${mmId}]\n\n`);
+  }, []);
 
   // ── Render ─────────────────────────────────────
   if (!categoryRec) {
@@ -137,69 +231,155 @@ export default function ZettelkastenView() {
     );
   }
 
-  // Editor view
+  // ─── Active article view (Notion-style) ───
   if (activeArticle) {
-    const linkedSourceObjs = (activeArticle.linkedSourceIds ?? [])
+    const linkedIds = (isEditing && draft ? draft.linkedSourceIds : activeArticle.linkedSourceIds) ?? [];
+    const linkedSourceObjs = linkedIds
       .map(id => sources.find(s => s.id === id))
       .filter((s): s is Source => Boolean(s))
       .map(s => ({ id: s.id, title: s.title }));
+    const readingSource = readingSourceId ? sources.find(s => s.id === readingSourceId) ?? null : null;
+    const displayTitle = isEditing && draft ? draft.title : activeArticle.title;
+    const displayContent = isEditing && draft ? draft.content : activeArticle.content;
+    const showSidePanel = Boolean(readingSource);
 
     return (
       <div className="flex flex-col h-[calc(100vh-3rem)] gap-3 p-4">
+        {/* Top bar */}
         <div className="flex items-center justify-between gap-3">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => setActiveId(null)}
+            onClick={handleBackToList}
             className="gap-1.5"
           >
             <ArrowLeft className="h-4 w-4" /> Nazad na listu
           </Button>
-          <Input
-            value={activeArticle.title}
-            onChange={(e) => handleUpdate({ title: e.target.value })}
-            placeholder="Naslov članka"
-            className="max-w-xl text-base font-semibold"
-          />
-          <Button type="button" variant="ghost" size="sm" onClick={handleDelete} className="text-destructive">
-            <Trash2 className="h-4 w-4 mr-1.5" /> Obriši
-          </Button>
+
+          <div className="flex items-center gap-1.5">
+            {/* Source side-panel toggle */}
+            {linkedSourceObjs.length > 0 ? (
+              showSidePanel ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setReadingSourceId(null)}
+                  className="gap-1.5"
+                >
+                  <X className="h-4 w-4" /> Zatvori izvor
+                </Button>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" variant="outline" size="sm" className="gap-1.5">
+                      <BookMarked className="h-4 w-4" /> Otvori izvor
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-w-xs">
+                    {linkedSourceObjs.map(s => (
+                      <DropdownMenuItem key={s.id} onSelect={() => setReadingSourceId(s.id)}>
+                        <FileText className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{s.title}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )
+            ) : (
+              <Button type="button" variant="outline" size="sm" className="gap-1.5" disabled title="Poveži izvor u režimu uređivanja">
+                <BookMarked className="h-4 w-4" /> Otvori izvor
+              </Button>
+            )}
+
+            {/* Edit / Save toggle */}
+            {isEditing ? (
+              <Button type="button" size="sm" onClick={handleSaveAndClose} className="gap-1.5">
+                <Check className="h-4 w-4" /> Sačuvaj i zatvori
+              </Button>
+            ) : (
+              <Button type="button" size="sm" onClick={handleEnterEdit} className="gap-1.5">
+                <Pencil className="h-4 w-4" /> Uredi
+              </Button>
+            )}
+
+            <Button type="button" variant="ghost" size="sm" onClick={handleDelete} className="text-destructive">
+              <Trash2 className="h-4 w-4 mr-1.5" /> Obriši
+            </Button>
+          </div>
         </div>
 
-        <LinkedSourcesPicker
-          allSources={sources}
-          selectedIds={activeArticle.linkedSourceIds ?? []}
-          onChange={(linkedSourceIds) => handleUpdate({ linkedSourceIds })}
-        />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 flex-1 min-h-0">
-          <ZettelEditor
-            value={activeArticle.content}
-            onChange={(content) => handleUpdate({ content })}
+        {/* Title */}
+        {isEditing && draft ? (
+          <Input
+            value={draft.title}
+            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+            placeholder="Naslov članka"
+            className="text-xl font-bold border-0 px-0 focus-visible:ring-0 shadow-none"
           />
+        ) : (
+          <h1 className="text-2xl font-bold text-foreground">{displayTitle}</h1>
+        )}
+
+        {/* Linked sources picker (edit only) — read mode shows chips inside Preview */}
+        {isEditing && draft && (
+          <LinkedSourcesPicker
+            allSources={sources}
+            selectedIds={draft.linkedSourceIds}
+            onChange={(linkedSourceIds) => setDraft({ ...draft, linkedSourceIds })}
+          />
+        )}
+
+        {/* Main content area */}
+        <div className={`grid gap-3 flex-1 min-h-0 ${showSidePanel ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
           <div className="flex flex-col gap-3 min-h-0">
             <div className="flex-1 min-h-0">
-              <ZettelPreview
-                markdown={activeArticle.content}
-                onWikiLink={handleWikiLink}
-                existingTitles={existingTitleSet}
-                linkedSources={linkedSourceObjs}
-                onSourceClick={(sid) => navigate(`/subject/${categoryId}?source=${sid}`)}
-              />
+              {isEditing && draft ? (
+                <ZettelEditor
+                  ref={editorRef}
+                  value={draft.content}
+                  onChange={(content) => setDraft({ ...draft, content })}
+                  onInsertMindMap={() => setMmPickerOpen(true)}
+                />
+              ) : (
+                <ZettelPreview
+                  markdown={displayContent}
+                  onWikiLink={handleWikiLink}
+                  existingTitles={existingTitleSet}
+                  linkedSources={linkedSourceObjs}
+                  onSourceClick={(sid) => setReadingSourceId(sid)}
+                  categoryId={categoryId!}
+                />
+              )}
             </div>
             <BacklinksPanel
               articles={articles}
               activeArticle={activeArticle}
-              onOpen={(id) => setActiveId(id)}
+              onOpen={handleOpen}
             />
           </div>
+
+          {showSidePanel && readingSource && (
+            <SourceSidePanel
+              source={readingSource}
+              categoryId={categoryId!}
+              onClose={() => setReadingSourceId(null)}
+            />
+          )}
         </div>
+
+        <MindMapPickerDialog
+          open={mmPickerOpen}
+          onOpenChange={setMmPickerOpen}
+          categoryId={categoryId!}
+          onPick={handlePickMindMap}
+        />
       </div>
     );
   }
 
-  // Guided Discovery / List view
+  // ─── Guided Discovery / List view ───
   const rootSubs = categoryRec.subcategories ?? [];
 
   return (
@@ -298,7 +478,7 @@ export default function ZettelkastenView() {
                 <button
                   key={a.id}
                   type="button"
-                  onClick={() => setActiveId(a.id)}
+                  onClick={() => handleOpen(a.id)}
                   className="text-left p-3 rounded-md border border-border hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex items-center justify-between gap-3 mb-1">
