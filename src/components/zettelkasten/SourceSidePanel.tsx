@@ -1,0 +1,66 @@
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { X, ExternalLink, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { sanitizeHtml } from "@/lib/sanitize";
+import type { Source } from "@/lib/db";
+
+interface Props {
+  source: Source;
+  categoryId: string;
+  onClose: () => void;
+}
+
+/**
+ * Read-only side panel that renders a Source's HTML for parallel reading
+ * while the user writes notes. Minimal — no outline, no editing.
+ */
+export default function SourceSidePanel({ source, categoryId, onClose }: Props) {
+  const navigate = useNavigate();
+  const html = useMemo(() => sanitizeHtml(source.htmlContent ?? ""), [source.htmlContent]);
+
+  const openFullReader = () => {
+    sessionStorage.setItem("sr-open-source-id", source.id);
+    navigate(`/category/${categoryId}`);
+  };
+
+  return (
+    <div className="flex flex-col h-full border border-border rounded-md bg-card overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-muted/30 shrink-0">
+        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold truncate">{source.title}</div>
+          {source.officialGazetteInfo && (
+            <div className="text-[10px] text-muted-foreground truncate">{source.officialGazetteInfo}</div>
+          )}
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          onClick={openFullReader}
+          className="h-7 gap-1 text-xs"
+          aria-label="Otvori puni prikaz izvora"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          <span className="hidden md:inline">Pun prikaz</span>
+        </Button>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          onClick={onClose}
+          className="h-7 w-7"
+          aria-label="Zatvori bočni prikaz izvora"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      <div
+        className="prose prose-sm dark:prose-invert max-w-none p-4 overflow-y-auto flex-1 text-foreground"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: html || '<p class="text-muted-foreground italic">Izvor nema sadržaja.</p>' }}
+      />
+    </div>
+  );
+}
