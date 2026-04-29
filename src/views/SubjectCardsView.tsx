@@ -128,7 +128,43 @@ export default function SubjectCardsView() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="manage" className="pt-4">
+        <TabsContent value="manage" className="pt-4 space-y-3">
+          <div className="flex items-center gap-2 flex-wrap rounded-lg border bg-card p-2.5">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Pretraži pitanja, odgovore, tagove..."
+                className="h-8 pl-8 text-xs"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
+                  aria-label="Obriši pretragu"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="h-8 w-auto min-w-[150px] text-xs">
+                <SelectValue placeholder="Izvor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Svi izvori</SelectItem>
+                {sourceOptions.length === 0 ? (
+                  <SelectItem value="__none__" disabled>Nema vezanih izvora</SelectItem>
+                ) : (
+                  sourceOptions.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">{s.title}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
           <CardViewMode
             cards={cards}
             categoryId={categoryId!}
@@ -143,6 +179,8 @@ export default function SubjectCardsView() {
               setEditingCard(card);
               navigate("/edit");
             }}
+            externalQuery={searchQuery}
+            externalSourceId={sourceFilter}
           />
         </TabsContent>
 
