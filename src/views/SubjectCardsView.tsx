@@ -184,12 +184,12 @@ export default function SubjectCardsView() {
         {/* ── Group: Upravljanje ── */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-1">
-            Upravljanje
+            Kartice
           </p>
           <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1">
             <TabsTrigger value="manage" className="gap-1.5">
               <Pencil className="h-4 w-4" />
-              <span>Upravljanje karticama</span>
+              <span>Uređivanje i raspored kartica</span>
               <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{cards.length}</Badge>
             </TabsTrigger>
           </TabsList>
@@ -223,7 +223,7 @@ export default function SubjectCardsView() {
                 aria-pressed={manageMode === "edit"}
               >
                 <LayoutList className="h-3.5 w-3.5" />
-                Uređivanje i dodavanje
+                View — pregled i uređivanje
               </button>
               <button
                 type="button"
@@ -236,7 +236,7 @@ export default function SubjectCardsView() {
                 aria-pressed={manageMode === "structure"}
               >
                 <Network className="h-3.5 w-3.5" />
-                Struktura i raspored
+                Org — struktura i raspored
               </button>
             </div>
 
