@@ -234,8 +234,6 @@ export function getReservoir(type: ActivityType): TimeReservoir {
     case "mnemonic-test":
       return "review";
     case "learn-active":
-    case "learn-free":
-    case "learn-chain":
       return "learning";
     case "admin":
     case "mnemonic-workshop":
