@@ -171,7 +171,7 @@ export default function SubjectDashboard() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="icon" className="h-9 w-9" asChild>
-                  <Link to={`/settings?tab=algorithm&subject=${categoryId}`}>
+                  <Link to={`/settings?tab=algorithm&category=${categoryId}`}>
                     <Settings className="h-4 w-4" />
                   </Link>
                 </Button>
