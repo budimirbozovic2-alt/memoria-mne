@@ -1,7 +1,7 @@
 import { createContext, useContext, useCallback, useMemo, useState, useEffect, useRef, ReactNode, Suspense, lazy } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCards } from "@/hooks/useCards";
-import { Card } from "@/lib/spaced-repetition";
+import { Card, DEFAULT_SR_SETTINGS, type SRSettings } from "@/lib/spaced-repetition";
 import { recordAppEntry, recordFirstAction, addActivityEntry, ActivityType } from "@/lib/metacognitive-storage";
 import { addPomodoroEntry } from "@/lib/storage";
 import { loadAppSettings } from "@/lib/app-settings";
@@ -108,7 +108,8 @@ interface ReviewStateContextValue {
 const ReviewStateContext = createContext<ReviewStateContextValue | null>(null);
 
 const EMPTY_REVIEW_STATE: ReviewStateContextValue = {
-  reviewLog: [], srSettings: {} as import("@/lib/spaced-repetition").SRSettings,
+  reviewLog: [],
+  srSettings: DEFAULT_SR_SETTINGS,
 };
 
 export function useReviewData() {
