@@ -18,7 +18,10 @@ interface UseCardImportDeps {
 
 export function useCardImport({
   setCategoryRecords,
-  setReviewLog, updateSRSettings, setCardMapState, cardMapRef,
+  setReviewLog,
+  updateSRSettings,
+  setCardMapState,
+  cardMapRef,
 }: UseCardImportDeps) {
   const importData = useCallback(
     async (file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {
@@ -169,7 +172,6 @@ export function useCardImport({
             setCategoryRecords(freshRecords);
           } else {
             // Legacy string[] format — create CategoryRecord[] from names
-            
             const existing = await idbLoadCategories();
             const existingNames = new Set(existing.map(r => r.name));
             const legacyNames = data.categories as string[];
@@ -180,7 +182,7 @@ export function useCardImport({
               }
             }
             if (strategy === "overwrite") {
-                const allRecs = legacyNames.map((name, i) => ({ id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] as any[] }));
+              const allRecs = legacyNames.map((name, i) => ({ id: crypto.randomUUID(), name, sortOrder: i, subcategories: [] as any[] }));
               await db.categories.clear();
               await db.categories.bulkPut(allRecs);
               setCategoryRecords(allRecs);
@@ -194,9 +196,8 @@ export function useCardImport({
         // ── Resolve legacy string-name taxonomy → UUIDs (prije persist-a) ──
         let legacyResolveReport: { resolvedSubcategory: number; resolvedChapter: number; unresolvedSubcategory: number; unresolvedChapter: number } | null = null;
         try {
-          
           const freshRecs = await idbLoadCategories();
-                    legacyResolveReport = resolveLegacyTaxonomyNames(merged, freshRecs);
+          legacyResolveReport = resolveLegacyTaxonomyNames(merged, freshRecs);
           // Sinhronizuj nextMap sa potencijalno mutiranim karticama
           for (const c of merged) nextMap[c.id] = c;
         } catch (resolveErr) {
@@ -212,7 +213,6 @@ export function useCardImport({
         const isNewCatFormat = Array.isArray(data.categories) && (data.categories as unknown[]).length > 0 && typeof (data.categories as unknown[])[0] === 'object' && 'id' in ((data.categories as unknown[])[0] as Record<string, unknown>);
         if (data.subcategories && typeof data.subcategories === "object" && !isNewCatFormat) {
           // Legacy subcategories — update categoryRecords nodes
-          
           const recs = await idbLoadCategories();
           const subData = data.subcategories as Record<string, string[]>;
           const updated = recs.map(r => {
@@ -239,14 +239,13 @@ export function useCardImport({
 
         // Restore sources & mindMaps (v3+) — surgical upsert
         if (Array.isArray(data.sources) || Array.isArray(data.mindMaps)) {
-          
           if (Array.isArray(data.sources) && (data.sources as unknown[]).length > 0) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const sanitizedSources = (data.sources as any[]).map((src) => ({
               ...src, htmlContent: sanitizeHtml(src.htmlContent ?? ""),
             }));
             await db.sources.bulkPut(sanitizedSources);
-                        invalidateSourcesCache();
+            invalidateSourcesCache();
             if (strategy === "overwrite") {
               const importedIds = new Set(sanitizedSources.map((s: { id: string }) => s.id));
               const allKeys = await db.sources.toCollection().primaryKeys();
