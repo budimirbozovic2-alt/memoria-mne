@@ -1,4 +1,4 @@
-import { Flame, type LucideIcon } from "lucide-react";
+import { Flame, Lock, type LucideIcon } from "lucide-react";
 import { useMemo, type ComponentType } from "react";
 import { motion } from "framer-motion";
 
