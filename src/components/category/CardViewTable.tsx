@@ -24,6 +24,7 @@ interface Props {
   onToggleSelection: (id: string) => void;
   toggleTag: (cardId: string, tag: string) => void;
   onEdit?: (card: Card) => void;
+  onPassiveRead?: (card: Card) => void;
   onDelete?: (id: string) => void;
   onOpenMoveModal: (cardId: string) => void;
   hasActiveFilters: boolean;
@@ -34,7 +35,7 @@ interface Props {
 export default function CardViewTable({
   filteredCards, allCategories, expandedId, onToggle,
   selectionMode, selectedIds, onToggleSelection,
-  toggleTag, onEdit, onDelete, onOpenMoveModal,
+  toggleTag, onEdit, onPassiveRead, onDelete, onOpenMoveModal,
   hasActiveFilters, totalCount, onResetFilters,
 }: Props) {
   return (
