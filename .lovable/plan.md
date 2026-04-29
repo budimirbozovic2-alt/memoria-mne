@@ -1,42 +1,57 @@
 ## Cilj
 
-Ukloniti "Konsolidacija" iz navigacije. Zadržati je kao akciju na oba dashboarda:
-- **Globalni dashboard**: naziv "Globalna konsolidacija", automatski u modu "critical" (bez izbora kategorije, bez izbora moda)
-- **Lokalni dashboard**: sve 3 opcije ostaju (stabilization, critical, hardest), kategorija auto-zaključana — bez promjena u ponašanju
+Modernizovati UI/UX **Konsolidacije znanja** (ReviewSetup + ReviewCard) po ugledu na čist, fokusiran tok **Aktivnog prisjećanja** (StudyModeRecall): manji vizuelni šum, jasna progresija, nenametljive metainfo, dosljedne ikone i razmaci.
 
-## Promjene
+## A) ReviewSetup — uprošćen mode picker
 
-### 1. Ukloniti iz navigacije
+**`src/components/review/ReviewSetup.tsx`**
 
-**`src/components/TopNav.tsx`** — ukloniti `{ path: "/review", ... }` iz `PRIMARY_NAV`.
+Trenutno: dva koraka (mode → filter), banner "Saved session", `glass-card` kartice sa `bg-${color}` dinamičkim klasama, opširni opisi.
 
-**`src/components/AppSidebar.tsx`** — ukloniti `{ path: "/review", ... }` iz `STATIC_NAV`.
+Novo (jedan ekran, kao FilterSetup u Active Recall):
 
-**`src/views/DashboardPage.tsx`** — ukloniti "Konsolidacija / R" red iz InfoPanel prečica.
+```
+[Header]
+  ← Nazad     Konsolidacija znanja          [? Onboarding]
+  "Izaberi pristup ponavljanju za ovu sesiju."
 
-### 2. Auto-mode parametar
+[Locked subject pill]   (samo ako lockedCategory)
+  🔒 Predmet: Krivično pravo
 
-**`src/views/ReviewPage.tsx`** — čitati `mode` param iz URL-a (`?mode=critical`). Proslijediti ga kao `autoMode` prop u `ReviewSession`.
+[Resume banner]   (samo ako savedSession)
+  ▶ Nastavi prethodnu sesiju · Mod: Kritični pregled
+  [Nastavi]  [×]
 
-**`src/components/ReviewSession.tsx`** — novi opcionalni prop `autoMode?: ReviewMode`. Kada je prisutan, preskočiti `ReviewSetup` — odmah izračunati stavke za taj mod (koristeći postojeći `computeItemsForMode`) i startovati sesiju.
+[3 mode cards — radio-style, kompaktne]
+  ○ Fokusirano utvrđivanje · X sekcija
+    Cilja svježe i nedavno pogrešene kartice.
+  ● Kritični pregled · X sekcija         ← default selected
+    Hvata kartice na granici zaborava (R 80–85%).
+  ○ Najteža pitanja · X sekcija
+    Leech kartice + visoka težina (do 50).
 
-### 3. Globalni Dashboard
+[Filter sažetak]   (collapsible, sakriven po default-u)
+  ▸ Filteri: Sve subkategorije · Sve poglavlja · Sve česte
 
-**`src/components/dashboard/QuickActions.tsx`** — link postaje `/review?mode=critical`. Tekst: "Globalna konsolidacija ({count})". Dodati prop `criticalCount` za prikaz broja sekcija na granici zaborava umjesto `dueCount`.
+[Start dugme — full width, primary]
+  ▶ Počni konsolidaciju (X sekcija)
+```
 
-**`src/components/Dashboard.tsx`** — izračunati `criticalCount` (sekcije sa R ≈ 80-85%, ista logika kao u `ReviewSetup`) i proslijediti u `QuickActions`.
+Implementacija:
+- Ukloniti dva koraka — sve na jednom ekranu.
+- Mode kartice koriste **semantički token color** (`text-primary`, `text-warning`, `text-destructive` direktno preko `cva`-style varianti, **ne** dinamički `bg-${color}` koji Tailwind ne pokupi pouzdano).
+- Selekcija moda: jedan klik bira, drugi klik na "Počni" pokreće. Default: `critical`.
+- Onboarding ostaje, samo dugme "?" u headeru.
+- Filteri (`SessionFilters`) ostaju **kao collapsible sekcija** (`details/summary` ili `<Collapsible>` iz shadcn-a) — sakriveni dok korisnik ne želi suziti opseg. Ako je `lockedCategory` aktivno, filteri su disabled za kategoriju (postojeća logika).
 
-### 4. Lokalni Dashboard — bez promjena
+## B) ReviewCard — fokusiran review tok
 
-**`src/views/SubjectDashboard.tsx`** — URL ostaje `/review?category=${categoryId}` (bez `mode` parametra). `ReviewSetup` se prikazuje normalno sa sva 3 moda.
+**`src/components/review/ReviewCard.tsx`**
 
-### 5. Ruta ostaje
+Cilj: vizuelno blizu `StudyModeRecall` — header sa kategorijom/brojem/širinom + question card + stanje (skriveno/otkriveno) + dugmad ocjena.
 
-`/review` ruta u `App.tsx` ostaje netaknuta — pristupa joj se samo preko dashboard akcija.
+Promjene:
 
-## Što se NE mijenja
-
-- `ReviewSetup.tsx` — tri moda, filteri, `lockedCategory` logika
-- `ReviewCard`, `ReviewComplete`, `SessionFilters`
-- FSRS algoritam i `onReviewSection`
-- Lokalni dashboard akcija "Učenje uz aktivno prisjećanje"
+1. **Header sređen** — koristiti istu strukturu kao `SessionHeader` u StudyModeRecall:
+   - lijevo: `← Nazad` + `⏸ Pauza`
+   - desno: mode badge + width selector + `progress/total` + `?
