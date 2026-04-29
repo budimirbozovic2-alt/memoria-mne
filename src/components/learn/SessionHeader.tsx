@@ -20,10 +20,11 @@ interface Props {
   viewWidth: ViewWidth;
   setViewWidth: (w: ViewWidth) => void;
   onBack: () => void;
+  hideQuestion?: boolean;
 }
 
 const SessionHeader = React.memo(function SessionHeader({
-  card, currentIndex, totalCards, viewWidth, setViewWidth, onBack,
+  card, currentIndex, totalCards, viewWidth, setViewWidth, onBack, hideQuestion = false,
 }: Props) {
   const score = getCardScore(card);
   const isFlash = card.type === "flash";
