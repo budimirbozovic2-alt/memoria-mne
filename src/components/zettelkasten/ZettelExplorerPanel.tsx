@@ -365,8 +365,3 @@ function ZettelExplorerPanelImpl({
 }
 
 export default memo(ZettelExplorerPanelImpl);
-
-// Suppress unused import warning — `X` is part of the component's icon set used
-// by sibling tag editor components elsewhere in the app; keeping the import
-// stable simplifies tree-shaking analysis. (Lint exception, not behavioral.)
-void X;
