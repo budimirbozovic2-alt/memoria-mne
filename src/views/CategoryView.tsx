@@ -1,9 +1,8 @@
 import { useParams } from "react-router-dom";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { getCardMasteryLevel, MASTERY_LEVELS } from "@/lib/mastery";
-import { useLiveQuery } from "dexie-react-hooks";
-import { db, type Source } from "@/lib/db";
-import { invalidateSourcesCache } from "@/lib/sources-storage";
+import { type Source } from "@/lib/db";
+import { invalidateSourcesCache, loadSourcesByCategory, onSourcesChanged } from "@/lib/sources-storage";
 import { useCardData, useCategoryData, useCardActions } from "@/contexts/AppContext";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import SourceReader from "@/components/SourceReader";
@@ -27,11 +26,19 @@ export default function CategoryView() {
     [allCards, categoryId]
   );
 
-  // Sources are not in context — keep useLiveQuery
-  const sources = useLiveQuery(
-    () => categoryId ? db.sources.where("categoryId").equals(categoryId).toArray() : [],
-    [categoryId]
-  ) ?? [];
+  // Sources: subscribe to targeted listener instead of useLiveQuery to avoid
+  // re-rendering on unrelated IDB writes.
+  const [sources, setSources] = useState<Source[]>([]);
+  useEffect(() => {
+    if (!categoryId) { setSources([]); return; }
+    let cancelled = false;
+    const reload = () => {
+      loadSourcesByCategory(categoryId).then(s => { if (!cancelled) setSources(s); });
+    };
+    reload();
+    const off = onSourcesChanged(reload);
+    return () => { cancelled = true; off(); };
+  }, [categoryId]);
 
   const { bulkFlagNeedsReview } = useCardActions();
 
