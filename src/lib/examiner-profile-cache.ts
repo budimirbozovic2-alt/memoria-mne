@@ -3,8 +3,12 @@
 // so callers in the SRS hot-path (calculateNextReview / reviewSection)
 // can read it without async/await and without an "undefined first call".
 //
-// TTL is advisory: entries never expire on read; they get refreshed via
-// primeExaminerProfile whenever AppContext sees new categoryRecords.
+// Invalidation strategy:
+//   * `primeExaminerProfilesFromRecords` is authoritative — it reconciles
+//     the cache with the SSOT (`categoryRecords`) and EVICTS entries for
+//     categories no longer present. This prevents stale profiles from
+//     surviving deletions or in-session subject switches.
+//   * `invalidateExaminerProfile` is the explicit single-entry escape hatch.
 
 import type { ExaminerProfile } from "./db-schema";
 
@@ -23,13 +27,27 @@ export function primeExaminerProfile(
   _cache.set(categoryId, { profile, ts: Date.now() });
 }
 
-/** Bulk prime — call once per `categoryRecords` change. */
+/**
+ * Bulk prime — call once per `categoryRecords` change.
+ *
+ * Performs a full reconciliation:
+ *   1. Updates/inserts the profile for every category in `records`.
+ *   2. Evicts every cache entry whose categoryId is NOT in `records`,
+ *      so deleted (or otherwise no-longer-known) subjects can never
+ *      return a stale profile within the same session.
+ */
 export function primeExaminerProfilesFromRecords(
   records: Array<{ id: string; examinerProfile?: ExaminerProfile }>,
 ): void {
   const now = Date.now();
+  const liveIds = new Set<string>();
   for (const r of records) {
+    liveIds.add(r.id);
     _cache.set(r.id, { profile: r.examinerProfile, ts: now });
+  }
+  // Evict orphans — categories that disappeared since the last prime.
+  for (const id of _cache.keys()) {
+    if (!liveIds.has(id)) _cache.delete(id);
   }
 }
 
