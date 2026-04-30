@@ -353,7 +353,6 @@ export default function SubjectCardsView() {
             cards={cards}
             subcategoryNodes={subcategoryNodes}
             categoryId={categoryId!}
-            onEditCard={handleEdit}
             initialCardId={pendingSpeedCardId}
             onInitialConsumed={() => setPendingSpeedCardId(null)}
           />

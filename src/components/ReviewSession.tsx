@@ -84,9 +84,9 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, srS
     return buildItemsForMode(m, { dueCards, allCards, srSettings });
   }, [dueCards, allCards, srSettings]);
 
-  // Auto-start in a specific mode (e.g. global dashboard's "Globalna konsolidacija"
-  // forces `critical`). Skips ReviewSetup entirely. Runs once when autoMode is set
-  // and no mode has been chosen yet.
+  // Auto-start in a specific mode when the caller passes ?mode=… via the URL,
+  // skipping ReviewSetup entirely. Runs once when autoMode is set and no mode
+  // has been chosen yet.
   const autoStartedRef = useRef(false);
   useEffect(() => {
     if (!autoMode || autoStartedRef.current || mode !== null) return;

@@ -1,4 +1,4 @@
-import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw, Lock, Info } from "lucide-react";
+import { Target, Shield, Zap, BookOpen, ArrowLeft, Play, X as XIcon, HelpCircle, RotateCcw } from "lucide-react";
 import { useState, useMemo, useCallback } from "react";
 import { Card, SRSettings } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
@@ -155,11 +155,6 @@ export default function ReviewSetup({
     hardest: hardestItems,
   };
 
-  const lockedCategoryName = useMemo(() => {
-    if (!lockedCategory) return null;
-    return categoryRecords.find(r => r.id === lockedCategory)?.name ?? null;
-  }, [lockedCategory, categoryRecords]);
-
   const handleStartSession = useCallback(() => {
     onSelectMode(mode, selectedCategory, null, null, false, filterType, itemsByMode[mode]);
   }, [mode, selectedCategory, filterType, onSelectMode, itemsByMode]);
@@ -236,16 +231,6 @@ export default function ReviewSetup({
         </div>
       </div>
 
-      {/* Locked subject pill */}
-      {lockedCategory && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 border border-primary/20 text-xs">
-          <Lock className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="text-foreground">
-            Predmet:&nbsp;<strong>{lockedCategoryName ?? "—"}</strong>
-          </span>
-        </div>
-      )}
-
       {/* Resume saved session */}
       {savedSession && (
         <motion.div
@@ -306,16 +291,6 @@ export default function ReviewSetup({
           );
         })}
       </div>
-
-      {/* FSRS scope notice for stabilization */}
-      {mode === "stabilization" && (
-        <div className="flex items-start gap-2 px-3 py-2 rounded-md bg-muted/50 border text-xs text-muted-foreground">
-          <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-primary" />
-          <span>
-            FSRS bira sekcije po prioritetu zaborava — bez ručnog sužavanja po sub-kategoriji ili poglavlju.
-          </span>
-        </div>
-      )}
 
       {/* Start CTA */}
       <Button

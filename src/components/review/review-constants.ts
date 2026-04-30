@@ -42,8 +42,7 @@ export interface ReviewSessionProps {
   lockedCategory?: string | null;
   /**
    * When set, skip the ReviewSetup mode picker and start the session
-   * directly in this mode. Used by global dashboard's "Globalna konsolidacija"
-   * shortcut which forces `critical` mode.
+   * directly in this mode. Driven by `?mode=…` in the URL.
    */
   autoMode?: Exclude<ReviewMode, null>;
 }

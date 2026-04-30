@@ -1,100 +1,72 @@
-## Audit Status
+## UX/UI Sweep — Revised Plan (per user feedback)
 
-| # | Item | Status |
+User feedback: "Uredi karticu" u **PassiveReader ostaje** (legitiman intent — pasivno čitanje često otkrije grešku koju treba odmah popraviti). Brišemo samo iz **LocalSpeedReader** (RSVP režim je čisti drill, bez uvida za uređivanje). Ostale izmjene prihvaćene u potpunosti.
+
+---
+
+### 1. Cross-domain "Uredi karticu" — samo u LocalSpeedReader
+
+| File | Lines | Action |
 |---|---|---|
-| 1 | Drop unused indexes on `cards` table (Dexie v16) | ⚠️ Implement |
-| 2 | Delete dead redirect routes in `App.tsx` | ⚠️ Implement |
-| 3 | Delete `SpeedReaderDisplay.tsx` (zero importers) | ⚠️ Implement |
-| 4 | Remove `preSelectedCategory` prop chain | ⚠️ Implement |
-| 5 | Delete `calcEnergyRecommendation` + `addDiaryEntry` (orphans) | ⚠️ Implement |
+| `src/components/subject-cards/LocalSpeedReader.tsx` | **410–423** | Delete entire `{current && onEditCard && (<div>… Uredi karticu …</div>)}` block |
+| `src/components/subject-cards/LocalSpeedReader.tsx` | **29** | Remove `onEditCard?: (card: Card) => void` from `Props` |
+| `src/components/subject-cards/LocalSpeedReader.tsx` | **67** | Remove `onEditCard` from destructured signature |
+| `src/components/subject-cards/LocalSpeedReader.tsx` | **3** | Remove `Pencil` from `lucide-react` import |
+| `src/views/SubjectCardsView.tsx` | **356** | Remove `onEditCard={handleEdit}` from `<LocalSpeedReader>` |
 
-Confirmed via `rg`:
-- `frequencyTag` / `sourceType` / `chapterId` are never queried via `db.cards.where(...)` — filtering is in-memory only.
-- `SpeedReaderDisplay.tsx` has zero importers anywhere in `src/`.
-- `preSelectedCategory` is propagated `ReviewPage → ReviewSession → ReviewSetup` but `ReviewSetup` immediately collapses it via `lockedCategory ?? preSelectedCategory ?? null`. `ReviewPage` passes `lockedCategory` to BOTH props, so removing `preSelectedCategory` is a no-op in behavior.
-- `calcEnergyRecommendation` is consumed only in `useDashboardData.ts` (`energyRec` → status icons / brief text).
-- `addDiaryEntry` has zero call sites (the diary input UI was already removed).
+`PassiveReader` and its prop-chain (`SubjectCardsView.tsx:345`) remain untouched.
 
-## Item 1 — Dexie v16 schema bump
+---
 
-`src/lib/db-schema.ts`: append a v16 store migration that respecifies the `cards` schema **without** `frequencyTag`, `sourceType`, `chapterId`, or the two compound `[…+chapterId]` indexes:
+### 2. Redundant "Locked subject" pill in ReviewSetup
 
-```ts
-// v16: drop unused secondary indexes (frequencyTag, sourceType, chapterId,
-// [categoryId+chapterId], [subcategoryId+chapterId]). All filtering on these
-// fields is in-memory; the indexes only added write-amplification.
-this.version(16).stores({
-  cards: "id, categoryId, subcategoryId, type, createdAt, sourceId, [categoryId+subcategoryId]",
-});
-```
+| File | Lines | Action |
+|---|---|---|
+| `src/components/review/ReviewSetup.tsx` | **239–247** | Delete the `<Lock/> Predmet: {lockedCategoryName}` pill block |
+| `src/components/review/ReviewSetup.tsx` | **158–161** | Delete now-unused `lockedCategoryName` `useMemo` |
+| `src/components/review/ReviewSetup.tsx` | **1** | Remove `Lock` from `lucide-react` import |
 
-Earlier versions (v12, v15) stay intact — Dexie applies them in order so existing DBs upgrade cleanly. No data migration callback needed; Dexie drops the obsolete indexes automatically when the new schema string is applied.
+`lockedCategory` prop itself is preserved — still drives `selectedCategory` (line 107) and downstream scoping.
 
-## Item 2 — Dead routes
+---
 
-`src/App.tsx` lines 81, 82, 85: delete the three `<Navigate>` redirect entries. The catch-all `*` route at line 88 already serves `NotFound` for any visitor still hitting these legacy URLs (acceptable — they were removed long ago).
+### 3. Obsolete FSRS-scope notice in stabilization mode
 
-## Item 3 — Delete `SpeedReaderDisplay.tsx`
+| File | Lines | Action |
+|---|---|---|
+| `src/components/review/ReviewSetup.tsx` | **310–318** | Delete the `{mode === "stabilization" && (…)}` notice block |
+| `src/components/review/ReviewSetup.tsx` | **1** | Remove `Info` from `lucide-react` import |
 
-`rm src/components/speed-reader/SpeedReaderDisplay.tsx`. No imports anywhere in the codebase — confirmed via `rg`.
+`<InfoPanel>` (lines 188–193) already covers mode descriptions for users who want context.
 
-## Item 4 — Remove `preSelectedCategory` prop chain
+---
 
-Three files touched, mechanical:
+### 4. Stale "Globalna konsolidacija" comments
 
-**`src/components/review/review-constants.ts`** (line 35): delete the `preSelectedCategory?: string | null;` field on `ReviewSessionProps`.
+| File | Lines | Action |
+|---|---|---|
+| `src/components/ReviewSession.tsx` | **87–89** | Rewrite comment → `// Auto-start in a specific mode when the caller passes ?mode=… via the URL, skipping ReviewSetup entirely.` |
+| `src/components/review/review-constants.ts` | **44–46** | Rewrite JSDoc on `autoMode` to match (no mention of removed global dashboard shortcut) |
 
-**`src/components/ReviewSession.tsx`**:
-- Line 19: drop `preSelectedCategory` from the destructured props.
-- Line 152: drop the `preSelectedCategory={preSelectedCategory}` JSX prop on the `<ReviewSetup>` call.
+Behavior unchanged; prop kept.
 
-**`src/components/review/ReviewSetup.tsx`**:
-- Lines 25 + 104: drop the prop from the interface and the destructure.
-- Line 107: simplify to `const selectedCategory = lockedCategory ?? null;`.
+---
 
-**`src/views/ReviewPage.tsx`** (line 116): drop the `preSelectedCategory={lockedCategory}` JSX prop on the `<ReviewSession>` call.
+### 5. Stale "globalna pretraga" copy
 
-Behavior identical: every code path that was passing `preSelectedCategory` was also passing `lockedCategory` to the same value, and `ReviewSetup` already preferred `lockedCategory`.
+| File | Line | Old → New |
+|---|---|---|
+| `src/components/AppOnboarding.tsx` | **103** | `"Ctrl+K — brza globalna pretraga"` → `"Ctrl+K — brza pretraga kartica"` |
+| `src/components/StrategicPlanner.tsx` | **58** | `<span>Globalna pretraga</span>` → `<span>Brza pretraga</span>` |
+| `src/components/MyStats.tsx` | **67** | `<span>Globalna pretraga</span>` → `<span>Brza pretraga</span>` |
 
-## Item 5 — Diary orphans
+---
 
-**`src/lib/analytics/recovery.ts`**:
-- Delete `calcEnergyRecommendation` function (lines 59–76).
-- Delete `EnergyRecommendation` type (lines 53–57).
-- Delete the now-unused `import { loadDiary } from "../metacognitive-storage";` on line 2.
+## Execution order
 
-**`src/lib/cognitive-analytics.ts`** (line 6): remove `calcEnergyRecommendation` and `type EnergyRecommendation` from the re-export list.
+1. LocalSpeedReader edit-button removal + prop chain (5 edits, 2 files)
+2. ReviewSetup pill + FSRS notice + Lock/Info imports (1 file, 3 trims)
+3. Comment rewrites in ReviewSession + review-constants (2 files)
+4. Onboarding/help string updates (3 files, 1 line each)
 
-**`src/hooks/useDashboardData.ts`**:
-- Line 15: drop `calcEnergyRecommendation` import.
-- Line 171: delete `const energyRec = useDeferredCompute(...)`.
-- Lines 247–249: delete the `if (energyRec?.suggestMnemonics) { parts.push("💡 …"); }` block.
-- Line 251: drop `energyRec` from the dep array.
-
-**`src/lib/metacognitive-storage.ts`**: delete `addDiaryEntry` (lines 68–75). Keep `loadDiary` / `saveDiary` / `_diaryCache` / `DiaryEntry` interface and the `db.diary` table — they remain referenced by:
-- `db-schema.ts` (table definition)
-- `_diaryCache` cache init in `initMetacognitiveCache`
-- The `diary` field is still part of backup/restore JSON shape
-
-Removing only the unused `addDiaryEntry` writer is the safe minimal cut. The reader path stays so any historic diary data backed up earlier still loads/exports correctly.
-
-## Verification
-
-- TypeScript build clean (no `any`, no orphan imports).
-- `rg "preSelectedCategory|calcEnergyRecommendation|addDiaryEntry|SpeedReaderDisplay"` returns zero hits in `src/` after the change.
-- Dexie auto-upgrades when the user next opens the app: existing rows preserved; obsolete indexes dropped.
-- Existing tests untouched (none reference the removed surfaces).
-
-## Files
-
-- **Edit**: `src/lib/db-schema.ts`
-- **Edit**: `src/App.tsx`
-- **Delete**: `src/components/speed-reader/SpeedReaderDisplay.tsx`
-- **Edit**: `src/components/review/review-constants.ts`
-- **Edit**: `src/components/ReviewSession.tsx`
-- **Edit**: `src/components/review/ReviewSetup.tsx`
-- **Edit**: `src/views/ReviewPage.tsx`
-- **Edit**: `src/lib/analytics/recovery.ts`
-- **Edit**: `src/lib/cognitive-analytics.ts`
-- **Edit**: `src/hooks/useDashboardData.ts`
-- **Edit**: `src/lib/metacognitive-storage.ts`
+No cross-batch dependencies. No memory file updates required (none of the affected behaviors are memorized rules).

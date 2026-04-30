@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
-  ChevronLeft, ChevronRight, Zap, Pencil,
+  ChevronLeft, ChevronRight, Zap,
   Activity, AlertTriangle, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ interface Props {
   cards: Card[];
   subcategoryNodes: SubcategoryNode[];
   categoryId: string;
-  onEditCard?: (card: Card) => void;
   initialCardId?: string | null;
   onInitialConsumed?: () => void;
 }
@@ -64,7 +63,7 @@ function retentionColor(pct: number): string {
 }
 
 export default function LocalSpeedReader({
-  cards, subcategoryNodes, categoryId, onEditCard, initialCardId, onInitialConsumed,
+  cards, subcategoryNodes, categoryId, initialCardId, onInitialConsumed,
 }: Props) {
   // ─── Filters ─────────────────────────────
   const [subFilter, setSubFilter] = useState<string>(() => loadFilters(categoryId).subFilter);
@@ -406,21 +405,6 @@ export default function LocalSpeedReader({
           {filtered.length === 0 ? "Nema kartica" : `${index + 1} / ${filtered.length}`}
         </div>
       </div>
-
-      {/* Edit shortcut */}
-      {current && onEditCard && (
-        <div className="flex items-center gap-2">
-          <div className="ml-auto">
-            <Button
-              type="button" size="sm" variant="outline"
-              className="gap-1.5 h-8 text-xs"
-              onClick={() => onEditCard(current)}
-            >
-              <Pencil className="h-3.5 w-3.5" /> Uredi karticu
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Content */}
       {!current ? (
