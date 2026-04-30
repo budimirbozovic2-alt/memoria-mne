@@ -14,6 +14,9 @@ import { useCardBootstrap } from "@/hooks/useCardBootstrap";
 import { buildCardBuckets, EMPTY_BUCKETS, type CardBuckets } from "@/lib/card-buckets";
 import { useCategoryDataInternal, useCategoryStateSetter } from "./CategoryStateProvider";
 
+export type DbError = { type: "version" | "timeout"; message: string };
+
+
 // ─── Card state (re-renders on card mutations) ───
 interface CardStateContextValue {
   cards: Card[];
@@ -22,7 +25,7 @@ interface CardStateContextValue {
   cardCountByCategory: Record<string, number>;
   buckets: CardBuckets;
   ready: boolean;
-  dbError: { type: string; message: string } | null;
+  dbError: DbError | null;
 }
 
 const EMPTY_CARD_STATE: CardStateContextValue = {
@@ -103,7 +106,7 @@ export function useCardStateInternals() {
 }
 
 // ─── DB error broadcast (consumed by composition root for recovery panel) ───
-const DbErrorContext = createContext<{ type: string; message: string } | null>(null);
+const DbErrorContext = createContext<DbError | null>(null);
 export function useDbError() {
   return useContext(DbErrorContext);
 }
