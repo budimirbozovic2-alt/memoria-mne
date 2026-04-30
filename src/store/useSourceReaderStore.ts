@@ -166,7 +166,29 @@ export const useSourceReaderStore = create<SourceReaderState>((set, get) => ({
       set({ splitModules: v });
     }
   },
-  setLinkModalOpen: (v) => set({ linkModalOpen: v }),
+  setSplitEdits: (v) => {
+    if (typeof v === "function") {
+      set({ splitEdits: v(get().splitEdits) });
+    } else {
+      set({ splitEdits: v });
+    }
+  },
+  setSplitMode: (v) => set({ splitMode: v }),
+  setSplitStepIndex: (v) => {
+    if (typeof v === "function") {
+      set({ splitStepIndex: v(get().splitStepIndex) });
+    } else {
+      set({ splitStepIndex: v });
+    }
+  },
+  initSplitWizard: (modules, parentName) => set({
+    splitModules: modules,
+    splitEdits: modules.map((m) => defaultEdit(m)),
+    splitParentName: parentName,
+    splitStepIndex: 0,
+    splitDone: false,
+    splitCreatedCount: 0,
+  }),
   setLinkSelectedText: (v) => set({ linkSelectedText: v }),
   setLinkSelectedHtml: (v) => set({ linkSelectedHtml: v }),
   setExamQuestions: (v) => {
