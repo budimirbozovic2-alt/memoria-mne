@@ -69,15 +69,13 @@ export function useCardAnnotations({
         };
       });
 
-      // Persist review log OUTSIDE the state updater to avoid nested setState
-      (async () => {
-        try { await idbAddReviewLogEntry(entry); }
-        catch (err) {
-          console.error("[reviewSection] log write failed", err);
-          const { toast } = await import("sonner");
-          toast.error("Memorija puna, istorija učenja se ne čuva!");
-        }
-      })();
+      // Persist review log OUTSIDE the state updater to avoid nested setState.
+      // Batched + debounced (250 ms) inside idbAddReviewLogEntry to avoid IDB queue floods.
+      try { idbAddReviewLogEntry(entry); }
+      catch (err) {
+        console.error("[reviewSection] log enqueue failed", err);
+        void import("sonner").then(({ toast }) => toast.error("Memorija puna, istorija učenja se ne čuva!"));
+      }
       // G1 fix: cap in-memory reviewLog to prevent unbounded growth
       setReviewLog((log) => {
         const next = [...log, entry];
