@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { ExamQuestion } from "@/components/ExamSidebar";
 import type { SelectionModule } from "@/lib/selection-split-engine";
+import type { WizardMode, WizardModuleEdit } from "@/lib/split-wizard-build";
+import { defaultEdit } from "@/lib/split-wizard-build";
 
 export type ReaderWidth = "S" | "M" | "L" | "XL" | "Full";
 
@@ -56,6 +58,12 @@ interface SourceReaderState {
   splitCreatedCount: number;
   splitParentName: string;
   splitModules: SelectionModule[];
+  /** Wizard: per-module question/tag/skip overrides, parallel array to splitModules. */
+  splitEdits: WizardModuleEdit[];
+  /** Wizard: 'separate' = N cards, 'combined' = 1 essay with N module-sections. */
+  splitMode: WizardMode;
+  /** Wizard: index of the module currently being edited (0-based). */
+  splitStepIndex: number;
   linkModalOpen: boolean;
   linkSelectedText: string;
   linkSelectedHtml: string;
@@ -80,6 +88,11 @@ interface SourceReaderState {
   setSplitCreatedCount: (v: number) => void;
   setSplitParentName: (v: string) => void;
   setSplitModules: (v: SelectionModule[] | ((prev: SelectionModule[]) => SelectionModule[])) => void;
+  setSplitEdits: (v: WizardModuleEdit[] | ((prev: WizardModuleEdit[]) => WizardModuleEdit[])) => void;
+  setSplitMode: (v: WizardMode) => void;
+  setSplitStepIndex: (v: number | ((prev: number) => number)) => void;
+  /** Re-initialize wizard state for a fresh split (modules + default edits + step 0). */
+  initSplitWizard: (modules: SelectionModule[], parentName: string) => void;
   setLinkModalOpen: (v: boolean) => void;
   setLinkSelectedText: (v: string) => void;
   setLinkSelectedHtml: (v: string) => void;
@@ -114,6 +127,9 @@ const initialState = {
   splitCreatedCount: 0,
   splitParentName: "",
   splitModules: [] as SelectionModule[],
+  splitEdits: [] as WizardModuleEdit[],
+  splitMode: "combined" as WizardMode,
+  splitStepIndex: 0,
   linkModalOpen: false,
   linkSelectedText: "",
   linkSelectedHtml: "",
@@ -150,6 +166,29 @@ export const useSourceReaderStore = create<SourceReaderState>((set, get) => ({
       set({ splitModules: v });
     }
   },
+  setSplitEdits: (v) => {
+    if (typeof v === "function") {
+      set({ splitEdits: v(get().splitEdits) });
+    } else {
+      set({ splitEdits: v });
+    }
+  },
+  setSplitMode: (v) => set({ splitMode: v }),
+  setSplitStepIndex: (v) => {
+    if (typeof v === "function") {
+      set({ splitStepIndex: v(get().splitStepIndex) });
+    } else {
+      set({ splitStepIndex: v });
+    }
+  },
+  initSplitWizard: (modules, parentName) => set({
+    splitModules: modules,
+    splitEdits: modules.map((m) => defaultEdit(m)),
+    splitParentName: parentName,
+    splitStepIndex: 0,
+    splitDone: false,
+    splitCreatedCount: 0,
+  }),
   setLinkModalOpen: (v) => set({ linkModalOpen: v }),
   setLinkSelectedText: (v) => set({ linkSelectedText: v }),
   setLinkSelectedHtml: (v) => set({ linkSelectedHtml: v }),

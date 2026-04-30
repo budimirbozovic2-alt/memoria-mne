@@ -70,7 +70,11 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
 
   // ─── Essay / Split ───
   const handleConvertToEssay = useCallback(() => {
-    const { selection, setSelection, setSplitResult, setSplitParentName, setSplitModules, setSplitDone, setSplitCreatedCount, setSplitSummaryOpen, setSelectedText, setSelectedHtml, setEssayQuestion, setEssayDialogOpen } = useSourceReaderStore.getState();
+    const {
+      selection, setSelection, setSplitResult, setSplitSummaryOpen,
+      setSelectedText, setSelectedHtml, setEssayQuestion, setEssayDialogOpen,
+      initSplitWizard,
+    } = useSourceReaderStore.getState();
     if (!selection) return;
     const text = selection.text;
     const html = selection.html;
@@ -79,10 +83,8 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     const result = splitSelection(text);
     if (result.hasArticles && result.modules.length > 0) {
       setSplitResult(result);
-      setSplitParentName(result.parentName);
-      setSplitModules([...result.modules]);
-      setSplitDone(false);
-      setSplitCreatedCount(0);
+      // initSplitWizard seeds: modules + per-module default edits + parentName + step 0.
+      initSplitWizard([...result.modules], result.parentName);
       setSplitSummaryOpen(true);
     } else {
       setSelectedText(text);
@@ -106,30 +108,73 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     incrementDailyMapped(1);
   }, [source, addCard]);
 
-  const handleSmartSplitConfirm = useCallback(() => {
-    const { splitResult, splitModules, splitParentName, setSplitCreatedCount, setSplitDone } = useSourceReaderStore.getState();
+  const handleSmartSplitConfirm = useCallback(async () => {
+    const {
+      splitResult, splitModules, splitEdits, splitParentName, splitMode,
+      setSplitCreatedCount, setSplitDone,
+    } = useSourceReaderStore.getState();
     if (!splitResult || splitModules.length === 0) return;
     const category = source.categoryId;
-    const modules = splitModules;
-    const parentName = splitParentName.trim() || splitResult.parentName;
-    const sections = modules.map((mod) => ({ title: mod.title, content: sanitizeHtml(mod.contentHtml) }));
-    const sourceModules = modules.map((mod, index) => ({
-      id: crypto.randomUUID(), order: index, articleNum: mod.articleNum,
-      title: mod.title, question: mod.title,
+    const { buildSeparatePlans, buildCombinedPlan } = await import("@/lib/split-wizard-build");
+
+    if (splitMode === "separate") {
+      const plans = buildSeparatePlans(splitModules, splitEdits);
+      if (plans.length === 0) {
+        toast.error("Svi članovi su preskočeni — ništa za kreirati.");
+        return;
+      }
+      for (const plan of plans) {
+        const sections = [{ title: "Odgovor", content: sanitizeHtml(plan.module.contentHtml) }];
+        const anchor = createTextAnchor(plan.module.plainSnippet);
+        addCard(plan.question, sections, category, undefined, undefined, {
+          sourceId: source.id,
+          textAnchor: anchor,
+          originalSourceSnippet: plan.module.plainSnippet,
+          tags: plan.tags.length > 0 ? plan.tags : undefined,
+        });
+      }
+      setSplitCreatedCount(plans.length);
+      setSplitDone(true);
+      incrementDailyMapped(plans.length);
+      window.dispatchEvent(new CustomEvent("codex-mapping-created"));
+      toast.success(`Generisano ${plans.length} kartica`, { description: `Iz "${source.title}"` });
+      return;
+    }
+
+    // combined mode
+    const plan = buildCombinedPlan(splitModules, splitEdits, splitParentName || splitResult.parentName);
+    if (!plan) {
+      toast.error("Svi članovi su preskočeni — ništa za kreirati.");
+      return;
+    }
+    const sections = plan.modules.map(({ question, module: mod }) => ({
+      title: question,
+      content: sanitizeHtml(mod.contentHtml),
+    }));
+    const sourceModules = plan.modules.map(({ question, module: mod }, index) => ({
+      id: crypto.randomUUID(),
+      order: index,
+      articleNum: mod.articleNum,
+      title: question,
+      question,
       textAnchor: createTextAnchor(mod.plainSnippet),
       originalSourceSnippet: mod.plainSnippet,
     }));
-    const combinedSnippet = modules.map(m => m.plainSnippet).join("\n\n");
+    const combinedSnippet = plan.modules.map(({ module: mod }) => mod.plainSnippet).join("\n\n");
     const anchor = createTextAnchor(combinedSnippet);
-    addCard(parentName, sections, category, undefined, undefined, {
-      sourceId: source.id, textAnchor: anchor, originalSourceSnippet: combinedSnippet,
-      childCardIds: sourceModules.map(m => m.id), sourceModules,
+    addCard(plan.parentName, sections, category, undefined, undefined, {
+      sourceId: source.id,
+      textAnchor: anchor,
+      originalSourceSnippet: combinedSnippet,
+      childCardIds: sourceModules.map((m) => m.id),
+      sourceModules,
+      tags: plan.tags.length > 0 ? plan.tags : undefined,
     });
-    setSplitCreatedCount(modules.length);
+    setSplitCreatedCount(plan.modules.length);
     setSplitDone(true);
-    incrementDailyMapped(modules.length);
+    incrementDailyMapped(plan.modules.length);
     window.dispatchEvent(new CustomEvent("codex-mapping-created"));
-    toast.success(`Generisano 1 esej sa ${modules.length} modula`, { description: `${splitResult.rangeLabel} iz "${source.title}"` });
+    toast.success(`Generisano 1 esej sa ${plan.modules.length} modula`, { description: `${splitResult.rangeLabel} iz "${source.title}"` });
   }, [source, addCard]);
 
   // ─── Link to existing ───
