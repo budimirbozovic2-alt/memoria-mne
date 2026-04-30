@@ -18,14 +18,14 @@ export function useBackupActions() {
 }
 
 export function BackupActionsProvider({ children }: { children: ReactNode }) {
-  const { setCardMapState, cardMapRef, setReviewLog, updateSRSettings } = useCardStateInternals();
+  const { setCardMapState, cardMapRef, replaceReviewLog, updateSRSettings } = useCardStateInternals();
   const { setCategoryRecords } = useCategoryStateInternals();
   const { cards } = useCardData();
   const { srSettings } = useReviewData();
 
   const exportApi = useCardExport({ cards, srSettings });
   const importApi = useCardImport({
-    setCategoryRecords, setReviewLog, updateSRSettings, setCardMapState, cardMapRef,
+    setCategoryRecords, setReviewLog: replaceReviewLog, updateSRSettings, setCardMapState, cardMapRef,
   });
 
   const value = useMemo<BackupActionsValue>(

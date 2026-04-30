@@ -87,7 +87,10 @@ export function useCategoryStatsData() {
 interface CardStateInternals {
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   cardMapRef: React.MutableRefObject<CardMap>;
+  /** Updater-form setter (used by annotations/review). */
   setReviewLog: (updater: (prev: ReviewLogEntry[]) => ReviewLogEntry[]) => void;
+  /** Replace-form setter (used by import to overwrite the log wholesale). */
+  replaceReviewLog: (log: ReviewLogEntry[]) => void;
   updateSRSettings: (settings: SRSettings) => void;
 }
 
@@ -200,6 +203,10 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
     setReviewLogState((prev) => updater(prev));
   }, []);
 
+  const replaceReviewLog = useCallback((log: ReviewLogEntry[]) => {
+    setReviewLogState(log);
+  }, []);
+
   const updateSRSettings = useCallback((settings: SRSettings) => {
     setSrSettingsState(settings);
     idbSaveSettings("srSettings", settings);
@@ -289,8 +296,8 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   const categoryStatsValue = useMemo<CategoryStatsContextValue>(() => ({ categoryStats }), [categoryStats]);
 
   const internals = useMemo<CardStateInternals>(
-    () => ({ setCardMapState, cardMapRef, setReviewLog, updateSRSettings }),
-    [setReviewLog, updateSRSettings],
+    () => ({ setCardMapState, cardMapRef, setReviewLog, replaceReviewLog, updateSRSettings }),
+    [setReviewLog, replaceReviewLog, updateSRSettings],
   );
 
   return (
