@@ -86,19 +86,39 @@ export default function ZettelkastenView() {
     [articles, activeId],
   );
 
+  // Title sets are consumed only by `<ZettelPreview>` (read-only mode). When
+  // the user is editing, the preview is unmounted, so we skip building these
+  // sets entirely — guarantees zero work for these memos during typing bursts
+  // (and during any `articles` mutation that lands while editing, e.g. after
+  // a wiki-link auto-create batch persists).
   const existingTitleSet = useMemo(
-    () => new Set(articles.map(a => a.title.trim().toLowerCase())),
-    [articles],
+    () => isEditing
+      ? new Set<string>()
+      : new Set(articles.map(a => a.title.trim().toLowerCase())),
+    [articles, isEditing],
   );
 
   const emptyTitleSet = useMemo(
-    () => new Set(
-      articles
-        .filter(a => a.content.trim().length === 0)
-        .map(a => a.title.trim().toLowerCase()),
-    ),
-    [articles],
+    () => isEditing
+      ? new Set<string>()
+      : new Set(
+          articles
+            .filter(a => a.content.trim().length === 0)
+            .map(a => a.title.trim().toLowerCase()),
+        ),
+    [articles, isEditing],
   );
+
+  // Always-current title lookup for the wiki-link auto-create effect, which
+  // runs *during* editing and therefore can't rely on the gated memo above.
+  // A ref keeps this O(N_articles) work outside the render path.
+  const existingTitlesLowerRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    existingTitlesLowerRef.current = new Set(
+      articles.map(a => a.title.trim().toLowerCase()),
+    );
+  }, [articles]);
+
 
   const articleCountByRoot = useMemo(() => {
     const map = new Map<string, number>();
@@ -196,7 +216,7 @@ export default function ZettelkastenView() {
     const matches = Array.from(content.matchAll(/\[\[([^\]]+)\]\]/g))
       .map(m => m[1].trim())
       .filter(Boolean);
-    const pendingAll = matches.filter(t => !existingTitleSet.has(t.toLowerCase()));
+    const pendingAll = matches.filter(t => !existingTitlesLowerRef.current.has(t.toLowerCase()));
     if (pendingAll.length === 0) {
       // Nothing pending → reset overflow latch so a future burst notifies fresh.
       lastOverflowNotifiedRef.current = 0;
@@ -204,9 +224,10 @@ export default function ZettelkastenView() {
     }
 
     // Apply hard cap. Anything beyond the cap is deferred to the next tick(s):
-    // after the current batch persists, `setArticles` grows `existingTitleSet`,
-    // which re-triggers this effect and the still-unresolved tail becomes the
-    // new `pendingAll` for the next pass — draining the queue in 50-sized chunks.
+    // after the current batch persists, `setArticles` grows the ref-backed
+    // `existingTitlesLowerRef` (via the sync effect above), and on the next
+    // keystroke the still-unresolved tail becomes the new `pendingAll` for the
+    // next pass — draining the queue in 50-sized chunks.
     const overflow = pendingAll.length > WIKI_LINK_BATCH_CAP;
     const pending = overflow ? pendingAll.slice(0, WIKI_LINK_BATCH_CAP) : pendingAll;
 
@@ -252,7 +273,10 @@ export default function ZettelkastenView() {
       }
     }, delay);
     return () => clearTimeout(handle);
-  }, [draft?.content, isEditing, categoryId, existingTitleSet, activeArticle]);
+    // `articles` is in the deps so that after a capped batch persists (which
+    // updates `existingTitlesLowerRef` via its own sync effect) we still re-run
+    // and process the next 50 of the overflow tail, even if the user paused typing.
+  }, [draft?.content, isEditing, categoryId, articles, activeArticle]);
 
   // ── Mutations ──────────────────────────────────
   const handleCreate = useCallback(async (title?: string, rootSubId?: string) => {
