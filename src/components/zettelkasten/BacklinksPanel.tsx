@@ -1,23 +1,31 @@
-import { useMemo } from "react";
-import { ArrowLeftRight, FileText } from "lucide-react";
+import { useDeferredValue, useMemo, useRef } from "react";
+import { ArrowLeftRight, FileText, Pause } from "lucide-react";
 import type { KnowledgeBaseArticle } from "@/lib/zettelkasten-storage";
 
 interface Props {
   articles: KnowledgeBaseArticle[];
   activeArticle: KnowledgeBaseArticle;
   onOpen: (id: string) => void;
+  /** When true, BacklinksPanel freezes its last computed result and skips
+   *  re-scanning the article corpus. Re-enabled when the user exits edit mode. */
+  isEditing?: boolean;
 }
 
 const WIKI_RE = /\[\[([^\]]+)\]\]/g;
+
+interface Backlink {
+  article: KnowledgeBaseArticle;
+  snippet: string;
+}
 
 /** Returns articles that contain a [[link]] pointing to `targetTitle`. */
 function findBacklinks(
   articles: KnowledgeBaseArticle[],
   targetId: string,
   targetTitle: string,
-): { article: KnowledgeBaseArticle; snippet: string }[] {
+): Backlink[] {
   const norm = targetTitle.trim().toLowerCase();
-  const out: { article: KnowledgeBaseArticle; snippet: string }[] = [];
+  const out: Backlink[] = [];
   for (const a of articles) {
     if (a.id === targetId) continue;
     let match: RegExpExecArray | null;
@@ -36,17 +44,39 @@ function findBacklinks(
   return out;
 }
 
-export default function BacklinksPanel({ articles, activeArticle, onOpen }: Props) {
-  const backlinks = useMemo(
-    () => findBacklinks(articles, activeArticle.id, activeArticle.title),
-    [articles, activeArticle.id, activeArticle.title],
-  );
+export default function BacklinksPanel({ articles, activeArticle, onOpen, isEditing = false }: Props) {
+  // Freeze the last computed result while editing — we don't want to regex-scan
+  // the entire subject's article corpus on every keystroke.
+  const cacheRef = useRef<{ key: string; backlinks: Backlink[] } | null>(null);
+
+  // useDeferredValue lets React skip stale recomputations under heavy input.
+  const deferredArticles = useDeferredValue(articles);
+  const deferredTitle = useDeferredValue(activeArticle.title);
+
+  const backlinks = useMemo<Backlink[]>(() => {
+    if (isEditing && cacheRef.current) {
+      // Return the snapshot taken before editing started; do NOT rescan.
+      return cacheRef.current.backlinks;
+    }
+    const computed = findBacklinks(deferredArticles, activeArticle.id, deferredTitle);
+    cacheRef.current = { key: activeArticle.id + "::" + deferredTitle, backlinks: computed };
+    return computed;
+  }, [deferredArticles, activeArticle.id, deferredTitle, isEditing]);
 
   return (
     <div className="rounded-md border border-border bg-card/60">
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border text-xs font-medium text-muted-foreground">
         <ArrowLeftRight className="h-3.5 w-3.5" />
         Backlinks
+        {isEditing && (
+          <span
+            className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400"
+            title="Backlinks su pauzirani tokom uređivanja radi performansi. Osvježiće se nakon izlaska iz režima uređivanja."
+          >
+            <Pause className="h-3 w-3" />
+            pauzirano
+          </span>
+        )}
         <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted">
           {backlinks.length}
         </span>
