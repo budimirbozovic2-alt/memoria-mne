@@ -105,13 +105,13 @@ function createPersistQueue() {
       clearTimeout(timer);
       timer = null;
     }
-    if (pending.length > 0) {
-      try { sessionStorage.setItem("codex-flush-pending", "1"); } catch {}
+    if (hasPending()) {
+      try { sessionStorage.setItem("codex-flush-pending", "1"); } catch { /* noop */ }
       await flush();
     }
   }
 
-  return { schedule, cleanup, flush, hasPending: () => pending.length > 0 };
+  return { schedule, cleanup, flush, hasPending };
 }
 
 // Singleton persist queue — created once per module, safe for StrictMode double-mount
