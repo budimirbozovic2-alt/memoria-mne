@@ -85,8 +85,41 @@ export async function idbCountReviewLog(): Promise<number> {
   return db.reviewLog.count();
 }
 
-export async function idbAddReviewLogEntry(entry: ReviewLogEntry): Promise<void> {
-  await db.reviewLog.add(entry);
+// ─── Review log persist queue ───────────────────────────
+// Append-only micro-queue, drained by a 250 ms debounce timer using
+// `db.reviewLog.bulkAdd`. Prevents IDB write-queue floods during fast
+// review streaks (Zen mode, 10+ grades/sec).
+
+const _reviewLogQueue: ReviewLogEntry[] = [];
+let _reviewLogTimer: ReturnType<typeof setTimeout> | null = null;
+const REVIEW_LOG_DEBOUNCE_MS = 250;
+
+function _flushReviewLogQueue(): Promise<void> {
+  _reviewLogTimer = null;
+  if (_reviewLogQueue.length === 0) return Promise.resolve();
+  const batch = _reviewLogQueue.splice(0, _reviewLogQueue.length);
+  return db.reviewLog.bulkAdd(batch).catch((err: unknown) => {
+    console.error("[reviewLog] bulk write failed", err);
+    // Re-queue so we don't silently lose entries on transient failures.
+    _reviewLogQueue.unshift(...batch);
+    throw err;
+  });
+}
+
+/** Enqueue a review-log entry. Batched & debounced (250 ms) to avoid
+ *  flooding Dexie's serialized write queue during fast review streaks. */
+export function idbAddReviewLogEntry(entry: ReviewLogEntry): void {
+  _reviewLogQueue.push(entry);
+  if (_reviewLogTimer == null) {
+    _reviewLogTimer = setTimeout(() => { void _flushReviewLogQueue(); }, REVIEW_LOG_DEBOUNCE_MS);
+  }
+}
+
+/** Force-drain the queue. Call before backup/export/full-restore so no
+ *  pending entries are missed. */
+export async function flushReviewLogQueue(): Promise<void> {
+  if (_reviewLogTimer != null) { clearTimeout(_reviewLogTimer); _reviewLogTimer = null; }
+  await _flushReviewLogQueue();
 }
 
 // ─── Settings ───────────────────────────────────────────
