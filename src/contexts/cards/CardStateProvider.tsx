@@ -12,7 +12,7 @@ import { onCardLinksCleared, onCardReviewConfirmed } from "@/lib/sources-storage
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { useCardBootstrap } from "@/hooks/useCardBootstrap";
 import { buildCardBuckets, EMPTY_BUCKETS, type CardBuckets } from "@/lib/card-buckets";
-import { useCategoryDataInternal, useCategoryStateSetter } from "./CategoryStateProvider";
+import { useCategoryData, useCategoryStateSetter } from "./CategoryStateProvider";
 
 export type DbError = { type: "version" | "timeout"; message: string };
 
@@ -101,7 +101,7 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   const [srSettings, setSrSettingsState] = useState<SRSettings>(DEFAULT_SR_SETTINGS);
 
   // Categories live in the sibling provider; we read both the data and the setter for bootstrap.
-  const { categories, categoryRecords } = useCategoryDataInternal();
+  const { categories, categoryRecords } = useCategoryData();
   const setCategoryRecordsState = useCategoryStateSetter();
 
   // Ref-Delta mirror

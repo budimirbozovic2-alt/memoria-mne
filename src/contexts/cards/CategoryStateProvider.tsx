@@ -22,10 +22,6 @@ export function useCategoryData() {
   return ctx;
 }
 
-// Back-compat alias retained for the small number of internal callers
-// inside CardStateProvider that read this from the same package.
-export const useCategoryDataInternal = useCategoryData;
-
 // ── Internal plumbing for action providers ──
 interface CategoryStateInternals {
   setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
