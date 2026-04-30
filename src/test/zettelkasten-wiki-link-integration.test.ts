@@ -180,7 +180,7 @@ describe("wiki-link integration — parallel clicks", () => {
 
     // Backlink index must report Linker → Cilj.
     const backlinks = backlinkIndex.getBacklinks(SUBJECT, "Cilj");
-    expect(backlinks.map(b => b.id)).toContain(linker.id);
+    expect(backlinks.map(b => b.articleId)).toContain(linker.id);
   });
 
   it("interleaved bursts: same title clicked in two waves only creates once total", async () => {
