@@ -46,6 +46,31 @@ export async function idbDeleteCard(id: string): Promise<void> {
   await db.cards.delete(id);
 }
 
+/**
+ * Atomic batch: puts and deletes execute in a single rw transaction so a
+ * crash mid-flush can never leave the store half-applied. Used by the
+ * surgical persist queue.
+ */
+export async function idbBulkApply(
+  puts: Card[],
+  deleteIds: string[],
+): Promise<void> {
+  if (puts.length === 0 && deleteIds.length === 0) return;
+  try {
+    await db.transaction("rw", db.cards, async () => {
+      if (puts.length > 0) await db.cards.bulkPut(puts);
+      if (deleteIds.length > 0) await db.cards.bulkDelete(deleteIds);
+    });
+  } catch (err: unknown) {
+    const e = err instanceof Error ? err : new Error(String(err));
+    if (e.name === "QuotaExceededError" || hasInnerQuotaError(err)) {
+      console.error("[MemoriaDB] Storage quota exceeded during bulk apply", err);
+      throw new Error("QUOTA_EXCEEDED");
+    }
+    throw err;
+  }
+}
+
 // ─── Categories ─────────────────────────────────────────
 
 export async function idbLoadCategories(): Promise<CategoryRecord[]> {
