@@ -1,6 +1,6 @@
 import { memo, useState, lazy, Suspense } from "react";
 import { Edit2, Trash2, Scale, ChevronDown, ChevronRight, Zap, Flame } from "lucide-react";
-import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability } from "@/lib/spaced-repetition";
+import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability, EXAM_FREQUENT_TAG } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { format } from "date-fns";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
@@ -41,7 +41,7 @@ const CardRow = memo(function CardRow({
   const retention = getCardRetrievability(card);
   const isFlash = card.type === "flash";
   const cardTags = card.tags || [];
-  const isFrequent = cardTags.includes("često-na-ispitu");
+  const isFrequent = cardTags.includes(EXAM_FREQUENT_TAG);
   const hasSource = !!card.sourceId && !!card.originalSourceSnippet;
   const [snippetOpen, setSnippetOpen] = useState(false);
 
@@ -91,7 +91,7 @@ const CardRow = memo(function CardRow({
                 <Scale className="h-4 w-4" />
               </button>
             )}
-            <button onClick={() => onToggleTag(card.id, "često-na-ispitu")} className={`p-2 rounded-lg transition-colors ${isFrequent ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`} title={isFrequent ? "Često na ispitu (klikni da ukloniš)" : "Označi kao često na ispitu"}>
+            <button onClick={() => onToggleTag(card.id, EXAM_FREQUENT_TAG)} className={`p-2 rounded-lg transition-colors ${isFrequent ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`} title={isFrequent ? "Često na ispitu (klikni da ukloniš)" : "Označi kao često na ispitu"}>
               <Flame className="h-4 w-4" />
             </button>
             <CardContextMenu
