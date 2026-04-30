@@ -69,6 +69,25 @@ export default {
   				DEFAULT: 'hsl(var(--gold))',
   				foreground: 'hsl(var(--gold-foreground))'
   			},
+  			info: {
+  				DEFAULT: 'hsl(var(--info))',
+  				foreground: 'hsl(var(--info-foreground))'
+  			},
+  			mastery: {
+  				new: 'hsl(var(--mastery-new))',
+  				critical: 'hsl(var(--mastery-critical))',
+  				hard: 'hsl(var(--mastery-hard))',
+  				uncertain: 'hsl(var(--mastery-uncertain))',
+  				stable: 'hsl(var(--mastery-stable))',
+  				mastered: 'hsl(var(--mastery-mastered))'
+  			},
+  			node: {
+  				blue: 'hsl(var(--node-blue))',
+  				green: 'hsl(var(--node-green))',
+  				amber: 'hsl(var(--node-amber))',
+  				red: 'hsl(var(--node-red))',
+  				purple: 'hsl(var(--node-purple))'
+  			},
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
   				foreground: 'hsl(var(--sidebar-foreground))',
