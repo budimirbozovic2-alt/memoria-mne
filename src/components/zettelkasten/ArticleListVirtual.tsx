@@ -22,7 +22,7 @@ const VIRTUALIZATION_THRESHOLD = 50;
 
 interface RowData {
   articles: KnowledgeBaseArticle[];
-  rootSubs: RootSubLite[] | Subcategory[];
+  rootSubs: RootSubLite[];
   onOpen: (id: string) => void;
 }
 
