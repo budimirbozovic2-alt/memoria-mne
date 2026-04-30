@@ -9,6 +9,7 @@ import {
   ArrowUp, ArrowDown, FolderOpen, BookOpen, AlertTriangle,
 } from "lucide-react";
 import type { SubcategoryNode, ChapterNode } from "@/lib/db";
+import { stableLegacyId } from "@/lib/stable-id";
 import { cn } from "@/lib/utils";
 
 interface StructureManagerDialogProps {
@@ -169,8 +170,13 @@ export default function StructureManagerDialog({
         <div className="space-y-2">
           {sorted.map((node, idx) => {
             const isExpanded = expandedSubs.has(node.id);
-            const chapters: ChapterNode[] = (node.chapters || []).map((ch: any, ci: number) =>
-              typeof ch === "string" ? { id: crypto.randomUUID(), name: ch, sortOrder: ci } : ch
+            // Stable id for legacy string chapters: deterministic per (subId, name)
+            // so React keys never thrash across renders. Real persisted chapters
+            // already have their own UUID — we never overwrite those.
+            const chapters: ChapterNode[] = (node.chapters || []).map((ch: unknown, ci: number) =>
+              typeof ch === "string"
+                ? { id: stableLegacyId(node.id, ch), name: ch, sortOrder: ci }
+                : (ch as ChapterNode)
             );
             return (
               <Collapsible key={node.id} open={isExpanded} onOpenChange={() => toggleExpanded(node.id)}>

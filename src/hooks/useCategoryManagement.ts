@@ -5,6 +5,7 @@ import { db, idbDeleteCard, type CategoryRecord, type SubcategoryNode, type Chap
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { toast } from "sonner";
 import { optimisticCategoryUpdate } from "@/lib/category-service";
+import { stableLegacyId } from "@/lib/stable-id";
 
 interface UseCategoryManagementParams {
   setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
@@ -14,22 +15,31 @@ interface UseCategoryManagementParams {
 }
 
 // ─── Helper: osigurava da čvorovi imaju UUID sistemsku strukturu ───
-function normalizeNode(s: any, i: number): SubcategoryNode {
+// Legacy string nodes get a *deterministic* id (stableLegacyId) so re-running
+// normalization on the same record never mints a fresh UUID. This keeps
+// references from cards stable and prevents action-path id drift.
+function normalizeNode(s: unknown, i: number, parentScope: string): SubcategoryNode {
   if (typeof s === "string") {
-    return { id: crypto.randomUUID(), name: s, chapters: [], sortOrder: i };
+    return { id: stableLegacyId(parentScope, s), name: s, chapters: [], sortOrder: i };
   }
+  const obj = s as Partial<SubcategoryNode> & { name: string };
+  const subId = obj.id || stableLegacyId(parentScope, obj.name);
   return {
-    id: s.id || crypto.randomUUID(),
-    name: s.name,
-    chapters: ((s.chapters || []) as any[]).map((ch: any, ci: number): ChapterNode =>
-      typeof ch === "string" ? { id: crypto.randomUUID(), name: ch, sortOrder: ci } : { id: ch.id || crypto.randomUUID(), name: ch.name, sortOrder: ch.sortOrder ?? ci }
-    ),
-    sortOrder: s.sortOrder ?? i,
+    id: subId,
+    name: obj.name,
+    chapters: ((obj.chapters || []) as unknown[]).map((ch, ci): ChapterNode => {
+      if (typeof ch === "string") {
+        return { id: stableLegacyId(subId, ch), name: ch, sortOrder: ci };
+      }
+      const c = ch as Partial<ChapterNode> & { name: string };
+      return { id: c.id || stableLegacyId(subId, c.name), name: c.name, sortOrder: c.sortOrder ?? ci };
+    }),
+    sortOrder: obj.sortOrder ?? i,
   };
 }
 
 function getNodes(rec: CategoryRecord): SubcategoryNode[] {
-  return ((rec.subcategories || []) as any[]).map(normalizeNode);
+  return ((rec.subcategories || []) as unknown[]).map((s, i) => normalizeNode(s, i, rec.id));
 }
 
 export function useCategoryManagement({

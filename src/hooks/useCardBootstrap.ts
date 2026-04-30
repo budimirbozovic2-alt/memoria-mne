@@ -15,6 +15,7 @@ import {
   type SubcategoryNode,
 } from "@/lib/db";
 import { checkInterruptedFlush } from "@/lib/persist-queue";
+import { stableLegacyId } from "@/lib/stable-id";
 
 async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string, fallback: T): Promise<T> {
   try {
@@ -158,30 +159,36 @@ export function useCardBootstrap(setters: BootSetters) {
         let needsPersist = false;
 
         for (const r of catRecords) {
-          // Migrate legacy string[] to SubcategoryNode[] with UUID
-          let nodes: SubcategoryNode[] = (r.subcategories || []).map((s: any, i: number) => {
+          // Migrate legacy string[] to SubcategoryNode[] with a *deterministic*
+          // id (stableLegacyId scoped to the parent). Re-running boot after
+          // restore yields the same ids, keeping card → subcategory references
+          // coherent.
+          let nodes: SubcategoryNode[] = (r.subcategories || []).map((s: unknown, i: number) => {
             if (typeof s === "string") {
               needsPersist = true;
-              return { id: crypto.randomUUID(), name: s, chapters: [] as import("@/lib/db").ChapterNode[], sortOrder: i };
+              return { id: stableLegacyId(r.id, s), name: s, chapters: [] as import("@/lib/db").ChapterNode[], sortOrder: i };
             }
+            const sObj = s as Partial<SubcategoryNode> & { name: string };
+            const subId = sObj.id || stableLegacyId(r.id, sObj.name);
             // Ensure node has id
             const node: SubcategoryNode = {
-              id: s.id || crypto.randomUUID(),
-              name: s.name,
-              sortOrder: s.sortOrder ?? i,
-              chapters: ((s.chapters || []) as any[]).map((ch: any, ci: number): import("@/lib/db").ChapterNode => {
+              id: subId,
+              name: sObj.name,
+              sortOrder: sObj.sortOrder ?? i,
+              chapters: ((sObj.chapters || []) as unknown[]).map((ch, ci): import("@/lib/db").ChapterNode => {
                 if (typeof ch === "string") {
                   needsPersist = true;
-                  return { id: crypto.randomUUID(), name: ch, sortOrder: ci };
+                  return { id: stableLegacyId(subId, ch), name: ch, sortOrder: ci };
                 }
-                if (!ch.id) {
+                const c = ch as Partial<import("@/lib/db").ChapterNode> & { name: string };
+                if (!c.id) {
                   needsPersist = true;
-                  return { ...ch, id: crypto.randomUUID(), sortOrder: ch.sortOrder ?? ci };
+                  return { ...c, id: stableLegacyId(subId, c.name), sortOrder: c.sortOrder ?? ci } as import("@/lib/db").ChapterNode;
                 }
-                return ch;
+                return c as import("@/lib/db").ChapterNode;
               }),
             };
-            if (!s.id) needsPersist = true;
+            if (!sObj.id) needsPersist = true;
             return node;
           });
 
@@ -197,14 +204,16 @@ export function useCardBootstrap(setters: BootSetters) {
 
             let node = nodeMap.get(sub);
             if (!node) {
-              node = { id: crypto.randomUUID(), name: sub, chapters: [], sortOrder: nodes.length };
+              // Card references an unknown sub id — synthesize a node keyed by
+              // that id so we don't break the link.
+              node = { id: sub, name: sub, chapters: [], sortOrder: nodes.length };
               nodes.push(node);
               nodeMap.set(sub, node);
               needsPersist = true;
               if (import.meta.env.DEV) console.log(`[boot] fallback SubcategoryNode created: "${sub}" in category ${r.name}`);
             }
             if (ch && !node.chapters.some(c => c.id === ch)) {
-              node.chapters.push({ id: crypto.randomUUID(), name: ch, sortOrder: node.chapters.length });
+              node.chapters.push({ id: ch, name: ch, sortOrder: node.chapters.length });
               needsPersist = true;
               if (import.meta.env.DEV) console.log(`[boot] fallback chapter registered: "${ch}" under "${sub}" in ${r.name}`);
             }
