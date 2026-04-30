@@ -129,9 +129,11 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   const { categories, categoryRecords } = useCategoryData();
   const setCategoryRecordsState = useCategoryStateSetter();
 
-  // Ref-Delta mirror
+  // Ref-Delta mirror — kept as an *independent* clone of state. CRUD hooks
+  // mutate this ref in place for O(1) writes; never alias state and ref or
+  // mutations will silently corrupt the rendered map.
   const cardMapRef = useRef<CardMap>({});
-  useEffect(() => { cardMapRef.current = cardMap; }, [cardMap]);
+  useEffect(() => { cardMapRef.current = { ...cardMap }; }, [cardMap]);
 
   // Boot
   const { ready, dbError } = useCardBootstrap({
