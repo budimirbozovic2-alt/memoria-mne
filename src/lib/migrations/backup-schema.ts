@@ -23,27 +23,43 @@ import type {
 import type { MnemonicCard } from "@/lib/mnemonic-storage";
 
 // ─── Primitive helpers ──────────────────────────────────
+// All helpers are `.optional()` so missing fields don't trigger Zod v4
+// "nonoptional" errors; the transform supplies the default.
 
 /** Coerce a value to string and run it through DOMPurify. */
 const SafeHtml = z
   .unknown()
+  .optional()
   .transform((v) => (typeof v === "string" ? sanitizeHtml(v) : ""));
 
 /** Plain string fallback (no HTML allowed — strip angle brackets). */
 const SafeText = z
   .unknown()
+  .optional()
   .transform((v) => (typeof v === "string" ? v.replace(/[<>]/g, "") : ""));
 
 const NumberWithDefault = (def: number) =>
-  z.unknown().transform((v) => (typeof v === "number" && Number.isFinite(v) ? v : def));
+  z.unknown().optional().transform((v) => (typeof v === "number" && Number.isFinite(v) ? v : def));
 
 const NullableNumber = z
   .unknown()
+  .optional()
   .transform((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
 
 const StringArray = z
   .unknown()
+  .optional()
   .transform((v) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []));
+
+const FrequencyTagInner = z
+  .unknown()
+  .optional()
+  .transform((v) => (v === "često" || v === "rijetko" || v === "nikad" ? v : undefined));
+
+const SourceTypeInner = z
+  .unknown()
+  .optional()
+  .transform((v) => (v === "skripta" || v === "zakon" ? v : undefined));
 
 // ─── FSRS Section ───────────────────────────────────────
 
