@@ -23,7 +23,7 @@ export function OrgSubcategoryPanel({ node, isExpanded, onToggle, tree, assignCh
     <div
       className={cn(
         "rounded-xl border overflow-hidden transition-colors",
-        isUnassigned ? "border-orange-500/20 bg-orange-500/[0.02]" : "border-border bg-card"
+        isUnassigned ? "border-warning/20 bg-warning/[0.02]" : "border-border bg-card"
       )}
     >
       <button
@@ -35,12 +35,12 @@ export function OrgSubcategoryPanel({ node, isExpanded, onToggle, tree, assignCh
           : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
         }
         {isUnassigned
-          ? <Inbox className="h-4 w-4 text-orange-500/70 shrink-0" />
+          ? <Inbox className="h-4 w-4 text-warning/70 shrink-0" />
           : <FolderOpen className="h-4 w-4 text-primary/70 shrink-0" />
         }
         <span className={cn(
           "text-sm font-semibold flex-1 text-left truncate",
-          isUnassigned ? "text-orange-600 dark:text-orange-400" : "text-foreground"
+          isUnassigned ? "text-warning" : "text-foreground"
         )}>
           {node.subcategory}
         </span>
@@ -52,7 +52,7 @@ export function OrgSubcategoryPanel({ node, isExpanded, onToggle, tree, assignCh
           )}
           <Badge
             variant={isUnassigned ? "outline" : "secondary"}
-            className={cn("text-[10px]", isUnassigned && "border-orange-500/30 text-orange-600 dark:text-orange-400")}
+            className={cn("text-[10px]", isUnassigned && "border-warning/30 text-warning")}
           >
             {totalCards} {totalCards === 1 ? "modul" : "modula"}
           </Badge>
@@ -86,11 +86,11 @@ export function OrgSubcategoryPanel({ node, isExpanded, onToggle, tree, assignCh
           {node.unassigned.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 px-1">
-                <Inbox className="h-3.5 w-3.5 text-orange-500/60" />
-                <span className="text-xs font-medium text-orange-600/80 dark:text-orange-400/80">
+                <Inbox className="h-3.5 w-3.5 text-warning/60" />
+                <span className="text-xs font-medium text-warning/80 dark:text-warning/80">
                   Bez glave
                 </span>
-                <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-orange-500/30 text-orange-600/70 dark:text-orange-400/70 ml-auto">
+                <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-warning/30 text-warning/70 dark:text-warning/70 ml-auto">
                   {node.unassigned.length}
                 </Badge>
               </div>

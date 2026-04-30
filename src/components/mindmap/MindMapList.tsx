@@ -50,7 +50,7 @@ export default function MindMapList({ onOpen, showOnboarding, onShowOnboarding, 
   };
 
   const modeIcon = (mode?: MindMapMode) =>
-    mode === "procedure" ? <Workflow className="h-5 w-5 text-amber-500" /> : <GitBranch className="h-5 w-5 text-primary" />;
+    mode === "procedure" ? <Workflow className="h-5 w-5 text-warning" /> : <GitBranch className="h-5 w-5 text-primary" />;
 
   const modeLabel = (mode?: MindMapMode) =>
     mode === "procedure" ? "Procedura" : "Hijerarhija";
@@ -113,10 +113,10 @@ export default function MindMapList({ onOpen, showOnboarding, onShowOnboarding, 
           </button>
           <button
             onClick={() => createNew("procedure")}
-            className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-amber-500 bg-card hover:bg-amber-500/5 transition-all group"
+            className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-border hover:border-warning bg-card hover:bg-warning/5 transition-all group"
           >
-            <div className="p-3 rounded-xl bg-amber-500/10 group-hover:bg-amber-500/20 transition-colors">
-              <Workflow className="h-8 w-8 text-amber-500" />
+            <div className="p-3 rounded-xl bg-warning/10 group-hover:bg-warning/20 transition-colors">
+              <Workflow className="h-8 w-8 text-warning" />
             </div>
             <div className="text-center">
               <p className="font-semibold text-foreground">Procedura</p>
@@ -153,7 +153,7 @@ export default function MindMapList({ onOpen, showOnboarding, onShowOnboarding, 
                     <span className="text-sm font-medium text-foreground">{m.title}</span>
                     <span className={cn(
                       "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
-                      m.mode === "procedure" ? "bg-amber-500/15 text-amber-600" : "bg-primary/15 text-primary"
+                      m.mode === "procedure" ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
                     )}>
                       {modeLabel(m.mode)}
                     </span>

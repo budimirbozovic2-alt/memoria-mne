@@ -161,7 +161,7 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
                   className={cn(
                     "group rounded-md border px-2.5 py-2 space-y-1.5 transition-all duration-300",
                     justMapped
-                      ? "bg-green-500/10 border-green-500/30 scale-95 opacity-50"
+                      ? "bg-success/10 border-success/30 scale-95 opacity-50"
                       : "bg-background"
                   )}
                 >
@@ -172,7 +172,7 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
                       className={cn(
                         "flex-1 h-6 text-[10px] gap-1 transition-all",
                         isMapping
-                          ? "bg-green-600 text-white"
+                          ? "bg-success text-success-foreground"
                           : hasSelection
                             ? "bg-primary text-primary-foreground"
                             : "opacity-50"
@@ -215,7 +215,7 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
                 className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 <span className="flex items-center gap-1.5">
-                  <Check className="h-3 w-3 text-green-500" />
+                  <Check className="h-3 w-3 text-success" />
                   Završeno ({done.length})
                 </span>
                 {doneExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />}
@@ -223,12 +223,12 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
               {doneExpanded && (
                 <div className="px-2 pb-2 space-y-1">
                   {done.map(q => (
-                    <div key={q.id} className="rounded-md bg-green-500/10 border border-green-500/20 px-2.5 py-1.5 flex items-start gap-1.5">
-                      <Check className="h-3 w-3 text-green-500 flex-shrink-0 mt-0.5" />
+                    <div key={q.id} className="rounded-md bg-success/10 border border-success/20 px-2.5 py-1.5 flex items-start gap-1.5">
+                      <Check className="h-3 w-3 text-success flex-shrink-0 mt-0.5" />
                       <div className="min-w-0 flex-1">
                         <p className="text-xs text-muted-foreground line-through opacity-70">{q.text}</p>
                         {q.moduleCount && (
-                          <span className="text-[10px] text-green-600 dark:text-green-500">{q.moduleCount} modula</span>
+                          <span className="text-[10px] text-success">{q.moduleCount} modula</span>
                         )}
                       </div>
                       <Button

@@ -150,7 +150,7 @@ export default function ZenMode({ active, onToggle }: Props) {
   const phaseConfig = {
     focus: { label: "Fokus", icon: Brain, accent: "text-primary", ring: "stroke-primary", bg: "bg-primary" },
     break: { label: "Pauza", icon: Coffee, accent: "text-success", ring: "stroke-success", bg: "bg-success" },
-    longBreak: { label: "Dugačka pauza", icon: Coffee, accent: "text-amber-500", ring: "stroke-amber-500", bg: "bg-amber-500" },
+    longBreak: { label: "Dugačka pauza", icon: Coffee, accent: "text-warning", ring: "stroke-warning", bg: "bg-warning" },
   }[phase];
 
   // Circular progress ring

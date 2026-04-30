@@ -91,7 +91,7 @@ export default function EmptyState({ type, onAction, actionLabel, diagnostics, i
               <div className="text-foreground font-medium text-right">{diagnostics.totalCards}</div>
               <div className="text-muted-foreground">Nove cjeline:</div>
               <div className="text-foreground font-medium text-right">
-                <span className="text-amber-500">{diagnostics.newSections}</span>
+                <span className="text-warning">{diagnostics.newSections}</span>
               </div>
               <div className="text-muted-foreground">U ponavljanju:</div>
               <div className="text-foreground font-medium text-right">
