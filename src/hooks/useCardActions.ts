@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { CategoryRecord, SubcategoryNode } from "@/lib/db";
 import { Card, FrequencyTag, CardSourceType } from "@/lib/spaced-repetition";
 import { toast } from "sonner";
+import { useCardDraftAutosave, loadCardDraft, buildDraftKey, type CardDraftSnapshot } from "./useCardDraftAutosave";
 
 // ─── Types ──────────────────────────────────────────────
 export interface SectionInput {
