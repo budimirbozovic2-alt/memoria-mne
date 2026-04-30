@@ -1,5 +1,5 @@
 import { memo, useCallback, useDeferredValue, useMemo, useState } from "react";
-import { Compass, Plus, Search, ChevronLeft, ChevronRight, FileText, Link2, Tag, X } from "lucide-react";
+import { Compass, Plus, Search, ChevronLeft, ChevronRight, FileText, Link2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
