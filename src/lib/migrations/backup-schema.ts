@@ -65,7 +65,7 @@ const SourceTypeInner = z
 
 export const BackupSectionSchema = z
   .object({
-    id: z.unknown().transform((v) => (typeof v === "string" && v.length > 0 ? v : crypto.randomUUID())),
+    id: z.unknown().optional().transform((v) => (typeof v === "string" && v.length > 0 ? v : crypto.randomUUID())),
     title: SafeText,
     content: SafeHtml,
     state: NumberWithDefault(0),
@@ -77,7 +77,7 @@ export const BackupSectionSchema = z
     lapses: NumberWithDefault(0),
     elapsedDays: NumberWithDefault(0),
     scheduledDays: NumberWithDefault(0),
-    firstReviewPending: z.unknown().transform((v) => (typeof v === "boolean" ? v : false)),
+    firstReviewPending: z.unknown().optional().transform((v) => (typeof v === "boolean" ? v : false)),
   })
   .passthrough();
 
@@ -98,7 +98,7 @@ export const BackupCardSchema = z
     id: z.string(),
     question: SafeHtml,
     sections: z.array(BackupSectionSchema).default([]),
-    categoryId: z.unknown().transform((v) => (typeof v === "string" ? v : "")),
+    categoryId: z.unknown().optional().transform((v) => (typeof v === "string" ? v : "")),
     // Legacy backups stored these as `subcategory` / `chapter` (name strings).
     // Accept either spelling; the legacy-resolver later remaps names → UUIDs.
     subcategoryId: z.unknown().optional(),
@@ -109,9 +109,9 @@ export const BackupCardSchema = z
     createdAt: NumberWithDefault(Date.now()),
     updatedAt: z.unknown().optional(),
     readCount: NumberWithDefault(0),
-    type: z.unknown().transform((v) => (v === "flash" ? "flash" : "essay")),
+    type: z.unknown().optional().transform((v) => (v === "flash" ? "flash" : "essay")),
     tags: StringArray,
-    errorLog: z.unknown().transform((v) => (Array.isArray(v) ? v : [])),
+    errorLog: z.unknown().optional().transform((v) => (Array.isArray(v) ? v : [])),
     sortOrder: z.unknown().optional(),
     sourceId: z.unknown().optional(),
     textAnchor: z.unknown().optional(),
@@ -181,8 +181,8 @@ export const BackupSubcategorySchema: z.ZodType<SubcategoryNode> = z
 
 const ExaminerProfileSchema = z
   .object({
-    difficulty: z.unknown().transform((v) => (v === "tezak" || v === "lak" ? v : undefined)),
-    preferredAnswerType: z.unknown().transform((v) =>
+    difficulty: z.unknown().optional().transform((v) => (v === "tezak" || v === "lak" ? v : undefined)),
+    preferredAnswerType: z.unknown().optional().transform((v) =>
       v === "esej" || v === "definicija" || v === "potpitanja" ? v : undefined,
     ),
     notes: SafeHtml.optional(),
@@ -204,7 +204,7 @@ export const BackupCategoryRecordSchema = z
     name: SafeText,
     sortOrder: NumberWithDefault(0),
     subcategories: z.array(BackupSubcategorySchema).default([]),
-    color: z.unknown().transform((v) => (typeof v === "string" ? v : undefined)),
+    color: z.unknown().optional().transform((v) => (typeof v === "string" ? v : undefined)),
     examinerProfile: z.unknown().optional(),
   })
   .passthrough()
@@ -228,12 +228,12 @@ export const BackupCategoryRecordSchema = z
 export const BackupSourceSchema = z
   .object({
     id: z.string(),
-    categoryId: z.unknown().transform((v) => (typeof v === "string" ? v : "")),
+    categoryId: z.unknown().optional().transform((v) => (typeof v === "string" ? v : "")),
     title: SafeText,
-    date: z.unknown().transform((v) => (typeof v === "string" ? v : "")),
+    date: z.unknown().optional().transform((v) => (typeof v === "string" ? v : "")),
     htmlContent: SafeHtml,
-    outline: z.unknown().transform((v) => (Array.isArray(v) ? v : [])),
-    articles: z.unknown().transform((v) => (Array.isArray(v) ? v : [])),
+    outline: z.unknown().optional().transform((v) => (Array.isArray(v) ? v : [])),
+    articles: z.unknown().optional().transform((v) => (Array.isArray(v) ? v : [])),
     version: NumberWithDefault(1),
     createdAt: NumberWithDefault(Date.now()),
     updatedAt: NumberWithDefault(Date.now()),
@@ -251,8 +251,8 @@ const MindMapNodeSchema = z
   .object({
     id: z.string(),
     type: z.unknown().optional(),
-    position: z.unknown().transform((v) => (v && typeof v === "object" ? v : { x: 0, y: 0 })),
-    data: z.unknown().transform((v) => {
+    position: z.unknown().optional().transform((v) => (v && typeof v === "object" ? v : { x: 0, y: 0 })),
+    data: z.unknown().optional().transform((v) => {
       if (!v || typeof v !== "object") return {};
       const obj = v as Record<string, unknown>;
       const out: Record<string, unknown> = { ...obj };
@@ -277,7 +277,7 @@ export const BackupMindMapSchema = z
     id: z.string(),
     categoryId: z.unknown().optional(),
     title: SafeText,
-    mode: z.unknown().transform((v) => (v === "procedure" ? "procedure" : "hierarchy")),
+    mode: z.unknown().optional().transform((v) => (v === "procedure" ? "procedure" : "hierarchy")),
     nodes: z.array(MindMapNodeSchema).default([]),
     edges: z.array(MindMapEdgeSchema).default([]),
     createdAt: NumberWithDefault(Date.now()),
@@ -291,7 +291,7 @@ export const BackupMindMapSchema = z
 export const BackupMnemonicSchema = z
   .object({
     id: z.string(),
-    categoryId: z.unknown().transform((v) => (typeof v === "string" ? v : "")),
+    categoryId: z.unknown().optional().transform((v) => (typeof v === "string" ? v : "")),
   })
   .passthrough()
   .transform((m): MnemonicCard => m as unknown as MnemonicCard);
@@ -301,7 +301,7 @@ export const BackupMnemonicSchema = z
 export const BackupKnowledgeBaseArticleSchema = z
   .object({
     id: z.string(),
-    subjectId: z.unknown().transform((v) => (typeof v === "string" ? v : "")),
+    subjectId: z.unknown().optional().transform((v) => (typeof v === "string" ? v : "")),
     title: SafeHtml,
     content: SafeHtml,
     linkedSourceIds: StringArray,
