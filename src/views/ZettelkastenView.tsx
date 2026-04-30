@@ -224,9 +224,10 @@ export default function ZettelkastenView() {
     }
 
     // Apply hard cap. Anything beyond the cap is deferred to the next tick(s):
-    // after the current batch persists, `setArticles` grows `existingTitleSet`,
-    // which re-triggers this effect and the still-unresolved tail becomes the
-    // new `pendingAll` for the next pass — draining the queue in 50-sized chunks.
+    // after the current batch persists, `setArticles` grows the ref-backed
+    // `existingTitlesLowerRef` (via the sync effect above), and on the next
+    // keystroke the still-unresolved tail becomes the new `pendingAll` for the
+    // next pass — draining the queue in 50-sized chunks.
     const overflow = pendingAll.length > WIKI_LINK_BATCH_CAP;
     const pending = overflow ? pendingAll.slice(0, WIKI_LINK_BATCH_CAP) : pendingAll;
 
