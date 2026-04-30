@@ -155,25 +155,56 @@ export default function ZettelkastenView() {
   }, [activeId]);
 
   // ── Auto-create placeholder articles for new [[Wiki Links]] while editing ──
-  // Debounced 800ms to avoid spamming IDB mid-typing. All lookups + inserts
-  // happen inside ONE Dexie `rw` transaction via `bulkCreateArticlesIfMissing`,
-  // eliminating per-link round-trips and ensuring atomic create-if-missing.
+  // Adaptive debounce in [300, 1000]ms driven by typing cadence + pending batch
+  // size. Fast typing or large unresolved batches push toward the upper bound
+  // (let work accumulate into one tx); idle pauses with a single new link fire
+  // near the lower bound (snappy). All lookups + inserts still happen inside
+  // ONE Dexie `rw` transaction via `bulkCreateArticlesIfMissing`.
+  const lastKeystrokeAtRef = useRef<number>(0);
+  const lastIntervalRef = useRef<number>(Number.POSITIVE_INFINITY);
+
+  // Reset cadence tracking when switching articles so a fresh edit session
+  // starts from "idle" rather than inheriting the previous article's velocity.
+  useEffect(() => {
+    lastKeystrokeAtRef.current = 0;
+    lastIntervalRef.current = Number.POSITIVE_INFINITY;
+  }, [activeId]);
+
   useEffect(() => {
     if (!isEditing || !draft || !categoryId) return;
     const content = draft.content;
     const rootSubId = activeArticle?.rootSubcategoryId;
+
+    // Update typing cadence. First change in a session yields Infinity → idle bias.
+    const now = Date.now();
+    if (lastKeystrokeAtRef.current > 0) {
+      lastIntervalRef.current = now - lastKeystrokeAtRef.current;
+    }
+    lastKeystrokeAtRef.current = now;
+
+    // Cheap pre-check against in-memory set; bail before scheduling any timer
+    // when there is nothing new — the typical keystroke case.
+    const matches = Array.from(content.matchAll(/\[\[([^\]]+)\]\]/g))
+      .map(m => m[1].trim())
+      .filter(Boolean);
+    const pending = matches.filter(t => !existingTitleSet.has(t.toLowerCase()));
+    if (pending.length === 0) return;
+
+    // Adaptive delay computation.
+    const BASE_MIN = 300;
+    const BASE_MAX = 1000;
+    const VEL_FAST = 120;   // <=120ms between keystrokes ⇒ fast typing
+    const VEL_IDLE = 400;   // >=400ms ⇒ effectively idle
+    const interval = lastIntervalRef.current;
+    const velocityWeight = !Number.isFinite(interval)
+      ? 0
+      : Math.max(0, Math.min(1, (VEL_IDLE - interval) / (VEL_IDLE - VEL_FAST)));
+    const batchWeight = Math.max(0, Math.min(1, pending.length / 8));
+    const weight = Math.max(velocityWeight, batchWeight);
+    const delay = Math.round(BASE_MIN + (BASE_MAX - BASE_MIN) * weight);
+
     const handle = setTimeout(async () => {
-      const matches = Array.from(content.matchAll(/\[\[([^\]]+)\]\]/g))
-        .map(m => m[1].trim())
-        .filter(Boolean);
-      if (matches.length === 0) return;
-
-      // Local fast filter against in-memory set first to skip the transaction entirely
-      // when nothing is new (the typical keystroke case).
-      const candidates = matches.filter(t => !existingTitleSet.has(t.toLowerCase()));
-      if (candidates.length === 0) return;
-
-      const created = await bulkCreateArticlesIfMissing(categoryId, candidates, rootSubId);
+      const created = await bulkCreateArticlesIfMissing(categoryId, pending, rootSubId);
       if (created.length > 0) {
         setArticles(prev => [...created, ...prev]);
         toast.success(
@@ -182,7 +213,7 @@ export default function ZettelkastenView() {
             : `Kreirano ${created.length} placeholder članaka`,
         );
       }
-    }, 800);
+    }, delay);
     return () => clearTimeout(handle);
   }, [draft?.content, isEditing, categoryId, existingTitleSet, activeArticle]);
 

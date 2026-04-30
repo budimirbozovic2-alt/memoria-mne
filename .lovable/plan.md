@@ -1,71 +1,88 @@
-# Refaktor i ispravke mehanizma konsolidacije
+## Goal
 
-Cilj: konsolidacija mora da poštuje FSRS raspored (`nextReview ≤ now`) u svim modovima, da ima jedan izvor istine za izbor sekcija, i da Active Recall ne korumpira FSRS signale.
+Replace the fixed 800ms debounce for wiki-link auto-creation in `ZettelkastenView` with an **adaptive debounce (300–1000ms)** that adjusts based on:
+1. **Typing velocity** — fast typing waits longer, idle/slow typing fires sooner.
+2. **Unresolved link count** — more new `[[links]]` queued = wait longer to batch them into one transaction.
 
-## 1. Due-only filter u svim modovima (BUG 1, 2)
+This keeps the IDB write rate low during bursts while still feeling responsive when the user pauses or only adds one link.
 
-Trenutno `critical` i `hardest` biraju iz `allCards` bez obzira na `nextReview`, pa FSRS dobija prijevremene ocjene koje kvare stabilnost. Promjena:
+---
 
-- **`stabilization`** — ostaje na `dueCards` (već OK).
-- **`critical`** — promijeniti izvor sa `filteredAllCards` na `filteredDueCards`. Prozor `R ∈ [80, 85]` ostaje, ali primijenjen samo na sekcije koje su due ili overdue. Time se hvata "kritični trenutak" tačno onda kad ga FSRS očekuje.
-- **`hardest`** — dodati prag: leech/teške sekcije ulaze samo ako je `nextReview ≤ now + grace`, gdje je `grace = 2 dana` (konfigurabilno konstantom u `review-constants.ts`). Razlog: leech kartice se često žele forsirati i prije roka, ali ne smije da bude "iz vedra neba" — 2 dana prozor je dobar kompromis.
-- Dodati upozorenje na karticu u `ReviewCard` kada je sekcija prerano (early review): mali badge "Prijevremena konsolidacija — FSRS će smanjiti rast intervala".
+## Files Touched
 
-## 2. Centralizacija logike modova (BUG 3)
+- **edited** `src/views/ZettelkastenView.tsx` — replace the fixed-delay `setTimeout` block (lines 161–187) with an adaptive scheduler.
 
-Izvući `computeItemsForMode` iz `ReviewSession.tsx` i identičnu trojku iz `ReviewSetup.tsx` u jedan modul:
+No new files. No API changes to `zettelkasten-storage.ts`.
 
+---
+
+## Design
+
+### Inputs to the adaptive delay
+
+Tracked via refs (no re-renders):
+
+- `lastKeystrokeAtRef: number` — timestamp of the most recent `draft.content` change.
+- `lastIntervalRef: number` — ms between the two most recent content changes (typing cadence proxy).
+
+Derived per scheduling pass:
+
+- `velocityFactor` — short interval (<120ms between keystrokes) → fast typing → bias toward upper bound. Long interval (>400ms) → idle → bias toward lower bound.
+- `pendingCount` — number of `[[wiki]]` candidates not yet in `existingTitleSet`. Larger batches → longer delay (let them accumulate for a single transaction).
+
+### Formula
+
+```text
+BASE_MIN = 300
+BASE_MAX = 1000
+
+velocityWeight = clamp((lastInterval ms in [120..400]) inverted to [0..1])
+   // <=120ms => 1.0 (fast),  >=400ms => 0.0 (idle)
+
+batchWeight = clamp(pendingCount / 8, 0, 1)
+   // 0 candidates => 0, 8+ => 1
+
+weight = max(velocityWeight, batchWeight)   // either signal can extend the wait
+delay  = BASE_MIN + (BASE_MAX - BASE_MIN) * weight
 ```
-src/lib/review-mode-builder.ts
-  - buildStabilizationItems(dueCards): DueItem[]
-  - buildCriticalItems(dueCards): DueItem[]
-  - buildHardestItems(dueCards, srSettings, graceDays): DueItem[]
-  - buildItemsForMode(mode, dueCards, allCards, srSettings): DueItem[]
-```
 
-`ReviewSetup` i `ReviewSession` oboje pozivaju ove funkcije. Brojači u UI-u i stvarna sesija će biti garantovano identični.
+Rationale:
+- Single keystroke after a pause with one new link → ~300ms (snappy).
+- Continuous typing → ~900–1000ms (avoid mid-burst transactions).
+- Pasting a chunk with many new links → upper bound regardless of cadence.
 
-## 3. Active Recall — grade per section, ne per card (BUG 4)
+### Scheduler shape
 
-U `StudyModeRecall.tsx`, umjesto `sections.forEach(s => onReviewSection(card.id, s.id, grade))`:
+The current `useEffect` runs on every `draft.content` change. We keep that but:
 
-- Ako kartica ima 1 sekciju (flash) → ocijeni tu sekciju (postojeće ponašanje).
-- Ako ima više sekcija (esej) → ocijeni samo sekcije koje su trenutno due, ostale ne diraj. To štiti ne-due sekcije od umjetne stabilizacije.
+1. Update `lastIntervalRef` and `lastKeystrokeAtRef` synchronously at the top.
+2. Compute `pendingCount` cheaply by regex-matching content and filtering against `existingTitleSet` (already memoized).
+3. If `pendingCount === 0`, **skip scheduling entirely** (no timer churn).
+4. Otherwise compute `delay` via the formula and `setTimeout(..., delay)`.
+5. Cleanup clears the timer as today.
 
-Alternativno (manji rizik): dodati settings prekidač "Active Recall fan-out" — default OFF nakon refaktora.
+The async body inside the timeout is unchanged — still calls `bulkCreateArticlesIfMissing` inside the existing single Dexie `rw` transaction, still updates `articles` state and toasts on creation.
 
-## 4. Čišćenje (BUG 5, 6, 7)
+### Safety / correctness
 
-- Ukloniti `subcategories` prop iz `ReviewSessionProps`, `ReviewSetupProps` i lanca poziva.
-- Ukloniti `selectedCategory?: string | null` iz `SavedSessionState` (nije korišten).
-- Provjeriti je li `getPendingFirstReviewCount` korišten igdje; ako nije, ostaviti (može biti za buduću dashboard signalizaciju) — ne brisati u ovom PR-u.
+- Refs reset when `activeId` changes (piggyback on existing flush effect at line 150) so switching articles starts a fresh cadence measurement.
+- Bounds are hard-clamped (`Math.min/Math.max`) so the delay can never escape `[300, 1000]`.
+- When `isEditing` flips off, the cleanup clears any pending timer — no orphan transactions.
+- Re-uses existing `existingTitleSet` memo, so no extra per-keystroke allocations beyond the regex (already done today).
 
-## 5. Test pokrivenost
+---
 
-Dodati `src/test/review-mode-builder.test.ts` sa scenarijima:
-- Kartica sa `nextReview = now + 5d` ne smije ući ni u `critical` ni u `hardest` (ovaj drugi može samo unutar `grace` prozora).
-- Stabilizacija prazna kada nema Learning/Relearning sekcija sa stab<5.
-- Hardest sortiranje: leech prvi, zatim difficulty desc, ukupno ≤50.
+## Out of Scope
 
-## 6. Tehnički detalji (developer only)
+- No change to `bulkCreateArticlesIfMissing` (already optimal: single tx + bulkPut).
+- No change to `BacklinksPanel` (already gated by `isEditing` + `useDeferredValue`).
+- No new user-facing setting; the heuristic is internal. Can be promoted to a setting later if needed.
 
-- `grace` konstanta: `const HARDEST_GRACE_MS = 2 * 24 * 60 * 60 * 1000;` u `review-constants.ts`.
-- Tip `BuildArgs = { dueCards: Card[]; allCards: Card[]; srSettings: SRSettings; now?: number }` — `now` injectable za testove.
-- `ReviewSetup` više ne treba `allCards` jer sve gradi iz `dueCards` (+ grace prozor); prop ostaje radi `EmptyState` brojača na nivou `ReviewPage`.
-- `LocalSpeedReader` i `PassiveReader` nisu zahvaćeni.
+---
 
-## Šta NE mijenjamo
+## Verification
 
-- Skala ocjena 1–4, FSRS formule (`calculateNextReview`), `targetRetention` izvor (ostaje globalan u ovoj rundi — per-subject je posebna tema vezana za Dijagnostiku).
-- Pause/Resume IDB ključ i 2h TTL.
-- Auto-mode iz globalnog dashboarda (`?mode=critical`).
-- UI izgled mod-pickera (samo brojači će se promijeniti jer izvor postaje `dueCards`).
-
-## Datoteke koje će se mijenjati
-
-- **Novo**: `src/lib/review-mode-builder.ts`, `src/test/review-mode-builder.test.ts`
-- **Izmjene**: `src/components/ReviewSession.tsx`, `src/components/review/ReviewSetup.tsx`, `src/components/review/review-constants.ts`, `src/components/review/ReviewCard.tsx` (early-review badge), `src/components/learn/StudyModeRecall.tsx`
-
-## Otvoreno pitanje
-
-Da li želiš da `hardest` mod ipak dozvoli sve leech kartice bez `grace` ograničenja (jer su one same po sebi izuzetak), a samo `difficulty>7` da podliježe due-only pravilu? To je čistije pedagoški, ali pišem li ovako ili strogo due-only — javi prije implementacije.
+- Type a paragraph fast with no new `[[links]]` → no timers scheduled, zero IDB writes.
+- Type one new `[[Foo]]` then pause → placeholder appears ~300–400ms after the pause.
+- Paste a block with 5+ new `[[links]]` → single transaction fires near the 1000ms ceiling, one toast.
+- Switch articles mid-typing → no orphan placeholders created against the previous article (timer cleared on effect cleanup).
