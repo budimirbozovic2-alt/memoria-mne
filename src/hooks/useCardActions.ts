@@ -148,20 +148,42 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
   }, [editCard?.sourceId]);
 
   // ── Load available chapters from SubcategoryNode tree ──
+  // NOTE: All legacy string→object normalization happens once in useCardBootstrap
+  // and is persisted to IDB. We MUST NOT generate UUIDs in the render path here:
+  // doing so produces a fresh id on every memo recompute, breaking React identity
+  // for child Select options (focus loss, mount/unmount thrash). If we ever
+  // encounter a legacy string node here, skip it defensively and warn in dev.
   const availableChapters = useMemo((): { id: string; name: string }[] => {
     const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategoryId;
     const cat = showNewCat && newCategory.trim() ? newCategory.trim() : categoryId;
     if (!sub || !cat || !categoryRecords) return [];
     const catRec = categoryRecords.find(r => r.id === cat);
     if (!catRec) return [];
-    const nodes: SubcategoryNode[] = (catRec.subcategories as any[] || []).map((s: any) =>
-      typeof s === "string" ? { id: crypto.randomUUID(), name: s, chapters: [], sortOrder: 0 } : s
-    );
+    const rawNodes = (catRec.subcategories as unknown[]) || [];
+    const nodes: SubcategoryNode[] = [];
+    for (const s of rawNodes) {
+      if (typeof s === "string") {
+        if (import.meta.env.DEV) {
+          console.warn("[useCardActions] legacy string subcategory encountered in render; bootstrap should have normalized it:", s);
+        }
+        continue;
+      }
+      nodes.push(s as SubcategoryNode);
+    }
     const node = nodes.find(n => n.id === sub);
     if (!node) return [];
-    return (node.chapters || []).map((ch: any) =>
-      typeof ch === "string" ? { id: ch, name: ch } : { id: ch.id, name: ch.name }
-    );
+    const result: { id: string; name: string }[] = [];
+    for (const ch of (node.chapters || []) as unknown[]) {
+      if (typeof ch === "string") {
+        if (import.meta.env.DEV) {
+          console.warn("[useCardActions] legacy string chapter encountered in render:", ch);
+        }
+        continue;
+      }
+      const c = ch as { id: string; name: string };
+      if (c.id && c.name) result.push({ id: c.id, name: c.name });
+    }
+    return result;
   }, [categoryId, subcategoryId, showNewCat, newCategory, showNewSub, newSubcategory, categoryRecords]);
 
   // ── Section actions ───────────────────────────────────
