@@ -12,19 +12,14 @@
 
 import type { ExaminerProfile } from "./db-schema";
 
-interface Entry {
-  profile: ExaminerProfile | undefined;
-  ts: number;
-}
-
-const _cache = new Map<string, Entry>();
+const _cache = new Map<string, ExaminerProfile | undefined>();
 
 /** Synchronously set the profile for a category. */
 export function primeExaminerProfile(
   categoryId: string,
   profile: ExaminerProfile | undefined,
 ): void {
-  _cache.set(categoryId, { profile, ts: Date.now() });
+  _cache.set(categoryId, profile);
 }
 
 /**
@@ -32,29 +27,21 @@ export function primeExaminerProfile(
  *
  * Performs a full reconciliation:
  *   1. For every category in `records`, writes its profile into the cache.
- *      If `examinerProfile` is `undefined` on the record (never set, cleared,
- *      or transiently absent during a partial update), the cache entry is
- *      OVERWRITTEN with `profile: undefined` rather than left at its prior
- *      value. This guarantees a freshly-primed but profile-less category
- *      can never return a stale profile from a previous prime cycle.
- *   2. Evicts every cache entry whose categoryId is NOT in `records`.
- *
- * Distinguishing "never primed" vs "primed but absent": callers that need
- * to tell these apart should use `hasExaminerProfileEntry(id)` — `true`
- * means we've reconciled at least once and the SSOT says "no profile".
+ *      If `examinerProfile` is `undefined` on the record, the cache entry is
+ *      OVERWRITTEN with `undefined` rather than left at its prior value.
+ *      This guarantees a freshly-primed but profile-less category can never
+ *      return a stale profile from a previous prime cycle.
+ *   2. Evicts every cache entry whose categoryId is NOT in `records`
+ *      (cache eviction for deleted subjects).
  */
 export function primeExaminerProfilesFromRecords(
   records: Array<{ id: string; examinerProfile?: ExaminerProfile }>,
 ): void {
-  const now = Date.now();
   const liveIds = new Set<string>();
   for (const r of records) {
     liveIds.add(r.id);
-    // Explicit overwrite — `r.examinerProfile` may be `undefined` and that
-    // must REPLACE any previously-cached profile, not be skipped.
-    _cache.set(r.id, { profile: r.examinerProfile, ts: now });
+    _cache.set(r.id, r.examinerProfile);
   }
-  // Evict orphans — categories that disappeared since the last prime.
   for (const id of _cache.keys()) {
     if (!liveIds.has(id)) _cache.delete(id);
   }
@@ -66,7 +53,7 @@ export function primeExaminerProfilesFromRecords(
 export function getExaminerProfileSync(
   categoryId: string,
 ): ExaminerProfile | undefined {
-  return _cache.get(categoryId)?.profile;
+  return _cache.get(categoryId);
 }
 
 /** True iff the category has been reconciled into the cache, regardless of
