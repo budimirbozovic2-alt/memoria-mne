@@ -1,5 +1,6 @@
+import { useMemo } from "react";
 import { AlertTriangle, Shield, Zap, ArrowRightLeft, HeartPulse, Eye, Wrench } from "lucide-react";
-import { Card } from "@/lib/spaced-repetition";
+import { Card, getErrorStatus } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -12,7 +13,9 @@ import {
   calcWeakHooks,
 } from "@/lib/cognitive-analytics";
 import { loadPlanner } from "@/lib/planner-storage";
+import { loadCalibration, loadLatency } from "@/lib/metacognitive-storage";
 import LazyChart from "@/components/LazyChart";
+import InfoPanel from "@/components/InfoPanel";
 
 interface Props {
   cards: Card[];
@@ -23,8 +26,64 @@ interface Props {
   categoryId?: string;
 }
 
+/** Small reusable list item for the "Korišćeni podaci" section inside an InfoPanel. */
+function DataRow({ label, value }: { label: string; value: number | string }) {
+  return (
+    <li className="flex items-center justify-between gap-3 text-[11px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="tabular-nums font-medium text-foreground">{value}</span>
+    </li>
+  );
+}
+
 export default function CognitiveAnalytics({ cards, categories, reviewLog, catNameMap, categoryId }: Props) {
   const isScoped = !!categoryId;
+
+  // ─── Per-subject data counters (used inside InfoPanels) ───
+  const counts = useMemo(() => {
+    const cardIds = new Set(cards.map(c => c.id));
+
+    let cardsWithErrors = 0;
+    let activeErrors = 0;
+    let totalErrors = 0;
+    let sectionsWithReview = 0;
+    let totalSections = 0;
+
+    cards.forEach(c => {
+      const log = c.errorLog || [];
+      if (log.length > 0) cardsWithErrors++;
+      log.forEach(e => {
+        totalErrors++;
+        if (getErrorStatus(e) !== "mastered") activeErrors++;
+      });
+      c.sections.forEach(s => {
+        totalSections++;
+        if (s.lastReviewed) sectionsWithReview++;
+      });
+    });
+
+    // Calibration & latency are global stores; filter to this subject's cards.
+    const calibration = loadCalibration();
+    const latency = loadLatency();
+    const subjectCalibration = calibration.filter(e => cardIds.has(e.cardId)).length;
+    const subjectLatency = latency.filter(e => cardIds.has(e.cardId)).length;
+
+    const planner = loadPlanner();
+
+    return {
+      cards: cards.length,
+      cardsWithErrors,
+      activeErrors,
+      totalErrors,
+      sectionsWithReview,
+      totalSections,
+      reviewLog: reviewLog.length,
+      subjectCalibration,
+      subjectLatency,
+      examDate: planner.finalGoalDate,
+    };
+  }, [cards, reviewLog]);
+
   return (
     <div className="space-y-6">
       {/* 1. Interference Index */}
@@ -33,6 +92,18 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
         icon={<AlertTriangle className="h-4 w-4 text-warning" />}
         compute={() => calcInterferencePairs(cards)}
         delay={0}
+        info={
+          <InfoPanel title="Indeks interferencije">
+            <p><b>Šta mjeri:</b> parove kartica iz istog predmeta čije se tipične greške i formulacije pitanja preklapaju — tj. mjesta gdje mozak miješa srodne pojmove.</p>
+            <p><b>Kako se računa:</b> skor = min(100, brojZajedničkihGrešaka·30 + sličnostPitanja·70). U prikaz ulaze parovi sa skorom ≥ 20.</p>
+            <p><b>Korišćeni podaci za ovaj predmet:</b></p>
+            <ul className="space-y-0.5 pt-1">
+              <DataRow label="Kartice u predmetu" value={counts.cards} />
+              <DataRow label="Kartice sa zabilježenim greškama" value={counts.cardsWithErrors} />
+              <DataRow label="Aktivne (nesavladane) greške" value={counts.activeErrors} />
+            </ul>
+          </InfoPanel>
+        }
       >
         {(pairs) => pairs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nema detektovanih interferencija.</p>
@@ -75,6 +146,18 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
           return calcCategoryStability(cards, categories, planner.finalGoalDate);
         }}
         delay={1}
+        info={
+          <InfoPanel title="Stabilnost memorije">
+            <p><b>Šta mjeri:</b> prosječnu FSRS „stability“ (otpornost na zaborav, u danima) i trenutnu „retrievability“ (vjerovatnoću prisjećanja sada) za sekcije ovog predmeta.</p>
+            <p><b>Kako se računa:</b> R = exp(-elapsedDana / stability). Sekcija je <b>kritična</b> ako se njena R spušta ispod 85% do datuma cilja iz Strateškog plana.</p>
+            <p><b>Korišćeni podaci za ovaj predmet:</b></p>
+            <ul className="space-y-0.5 pt-1">
+              <DataRow label="Sekcije ukupno" value={counts.totalSections} />
+              <DataRow label="Sekcije sa istorijom ponavljanja" value={counts.sectionsWithReview} />
+              <DataRow label="Datum cilja (planner)" value={counts.examDate || "nije postavljen"} />
+            </ul>
+          </InfoPanel>
+        }
       >
         {(stabilityData) => stabilityData.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nedovoljno podataka.</p>
@@ -117,6 +200,18 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
         icon={<Zap className="h-4 w-4 text-primary" />}
         compute={() => calcStressPerformance(reviewLog)}
         delay={2}
+        info={
+          <InfoPanel title="Otpornost na stres">
+            <p><b>Šta mjeri:</b> koliko ti pada tačnost kad odgovaraš brzo (pod „stresom“) u odnosu na uobičajen tempo.</p>
+            <p><b>Kako se računa:</b> prag stresa = 50% tvoje prosječne latencije; otpornost = max(0, (1 − pad/3)·100). Minimum za prikaz: 5 normalnih + 3 stresna odgovora.</p>
+            <p><b>Korišćeni podaci za ovaj predmet:</b></p>
+            <ul className="space-y-0.5 pt-1">
+              <DataRow label="Review zapisi predmeta" value={counts.reviewLog} />
+              <DataRow label="Latencije za kartice predmeta" value={counts.subjectLatency} />
+            </ul>
+            <p className="text-[10px]">Latencija se loguje globalno; metrika spaja review predmeta sa latencijom istog odgovora (±30s).</p>
+          </InfoPanel>
+        }
       >
         {(stressPerf) => !stressPerf ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nedovoljno podataka.</p>
@@ -227,6 +322,18 @@ export default function CognitiveAnalytics({ cards, categories, reviewLog, catNa
           return categoryId ? spots.filter(s => s.category === categoryId) : spots;
         }}
         delay={5}
+        info={
+          <InfoPanel title="Slijepe tačke">
+            <p><b>Šta mjeri:</b> kartice na kojima si bio siguran u tačan odgovor (sigurnost ≥ 4/5), a stvarna ocjena bila niska (≤ 2/4) — klasična „iluzija znanja“.</p>
+            <p><b>Kako se računa:</b> agregira se iz dnevnika kalibracije (samoprocjena vs. ocjena) i filtrira na kartice ovog predmeta.</p>
+            <p><b>Korišćeni podaci za ovaj predmet:</b></p>
+            <ul className="space-y-0.5 pt-1">
+              <DataRow label="Kalibracijski zapisi (predmet)" value={counts.subjectCalibration} />
+              <DataRow label="Kartice u predmetu" value={counts.cards} />
+            </ul>
+            <p className="text-[10px]">Minimum za prikaz: ukupno 5+ kalibracijskih zapisa u sistemu.</p>
+          </InfoPanel>
+        }
       >
         {(blindSpots) => blindSpots.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">Nema detektovanih slijepih tačaka.</p>
