@@ -172,7 +172,7 @@ export default function ExamSidebar({ questions, onSetQuestions, onMapSelection,
                       className={cn(
                         "flex-1 h-6 text-[10px] gap-1 transition-all",
                         isMapping
-                          ? "bg-success text-white"
+                          ? "bg-success text-success-foreground"
                           : hasSelection
                             ? "bg-primary text-primary-foreground"
                             : "opacity-50"
