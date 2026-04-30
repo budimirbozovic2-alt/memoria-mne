@@ -55,9 +55,27 @@ export default function ZettelkastenView() {
   const [articles, setArticles] = useState<KnowledgeBaseArticle[]>([]);
   const [sources, setSources] = useState<Source[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Index article id (the auto-created entry-point). Used by "Back to Index"
+  // navigation. Resolved during initial load and kept in sync with `articles`.
+  const indexArticleId = useMemo(
+    () => articles.find(a => a.isIndex)?.id ?? null,
+    [articles],
+  );
+
+  // Explorer panel collapsed state — persisted per user across sessions.
+  const EXPLORER_COLLAPSED_KEY = "zettel.explorer.collapsed";
+  const [explorerCollapsed, setExplorerCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(EXPLORER_COLLAPSED_KEY) === "1"; } catch { return false; }
+  });
+  const toggleExplorer = useCallback(() => {
+    setExplorerCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem(EXPLORER_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
   // Active-article view state
   const [isEditing, setIsEditing] = useState(false);
@@ -66,26 +84,39 @@ export default function ZettelkastenView() {
   const [mmPickerOpen, setMmPickerOpen] = useState(false);
   const editorRef = useRef<ZettelEditorHandle | null>(null);
 
-  // Initial load
+  // Initial load — also ensures the subject has its Index article (auto-creates
+  // it on first visit, or promotes a pre-existing same-titled article during
+  // migration). The user always lands on the Index when no other article is open.
   useEffect(() => {
-    if (!categoryId) return;
+    if (!categoryId || !categoryRec) return;
     let cancelled = false;
     setLoading(true);
     Promise.all([
       loadArticlesBySubject(categoryId),
       loadSourcesByCategory(categoryId),
-    ]).then(([list, srcs]) => {
-      if (!cancelled) {
-        setArticles(list);
-        setSources(srcs);
-        // Build the per-subject backlink index once; subsequent saves/deletes
-        // update it incrementally via event-bus events emitted below.
-        backlinkIndex.rebuildFromAll(categoryId, list);
-        setLoading(false);
-      }
+    ]).then(async ([list, srcs]) => {
+      if (cancelled) return;
+      // Seed Index article using the subject's subcategory names as discovery
+      // hints (NOT structural tags — they're just initial wiki-link suggestions
+      // the user is free to ignore, rename, or delete).
+      const suggested = (categoryRec.subcategories ?? []).map(s => s.name);
+      const idx = await ensureIndexArticle(categoryId, categoryRec.name, suggested);
+      if (cancelled) return;
+
+      // Merge the (possibly newly-created or promoted) Index back into the list.
+      const merged = list.some(a => a.id === idx.id)
+        ? list.map(a => a.id === idx.id ? idx : a)
+        : [idx, ...list];
+
+      setArticles(merged);
+      setSources(srcs);
+      backlinkIndex.rebuildFromAll(categoryId, merged);
+      // Default landing: Index article in read mode.
+      setActiveId(prev => prev ?? idx.id);
+      setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [categoryId]);
+  }, [categoryId, categoryRec]);
 
   const activeArticle = useMemo(
     () => articles.find(a => a.id === activeId) ?? null,
