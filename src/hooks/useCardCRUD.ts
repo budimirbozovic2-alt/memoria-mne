@@ -60,6 +60,7 @@ export function useCardCRUD({
         originalSourceSnippet?: string;
         childCardIds?: string[];
         sourceModules?: SourceModule[];
+        tags?: string[];
       },
     ) => {
       const card = createCard(question, sections, categoryId, subcategoryId);
@@ -70,6 +71,7 @@ export function useCardCRUD({
       if (extra?.originalSourceSnippet) card.originalSourceSnippet = extra.originalSourceSnippet;
       if (extra?.childCardIds) card.childCardIds = extra.childCardIds;
       if (extra?.sourceModules) card.sourceModules = extra.sourceModules;
+      if (extra?.tags && extra.tags.length > 0) card.tags = extra.tags;
       cardMapRef.current[card.id] = card; // In-place ref delta
       schedulePersist({ type: "put", card });
       setCardMapState((prev) => ({ ...prev, [card.id]: card }));
