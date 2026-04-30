@@ -1,146 +1,87 @@
-## Goal
+# Finish the dependency inversion
 
-Eliminate the `Proxy` indirection in `CardProvider` and the 308-line `useCards` distributor. Replace them with **independent domain providers**, one per sub-hook, each exposing a stable actions context. Public hook names (`useCardData`, `useCardActions`, `useCategoryData`, `useReviewData`) stay identical so all 60+ consumers keep working unchanged.
+The structural refactor (5 sibling providers, no Proxy, `useCards.ts` deleted) is already in place. What's left is to **make consumers feel the inversion** — right now they still go through merged shims that recreate the old "God Object" surface, and a handful of components still reach past the providers into `@/lib/db` directly.
 
-## Why this is safe
+This plan finishes the job in four scoped passes.
 
-- All five sub-hooks (`useCardCRUD`, `useCardAnnotations`, `useCategoryManagement`, `useCardImport`, `useCardExport`) **already** wrap every returned function in `useCallback` with correct deps. The references are stable today; the Proxy was masking, not enabling, that stability.
-- `useCardBootstrap` returns only `{ ready, dbError }` — trivially extractable.
-- `useCards` itself only owns: 4 `useState`s, the `cardMapRef`, three `useEffect` listeners (quit-flush, source link clear, review-confirm, orphan reload), and one big derived-state `useMemo` (dueCards/stats/categoryStats/cardCountByCategory).
-- Public consumers import only `useCardData` / `useCardActions` / `useCategoryData` / `useReviewData` from `@/contexts/AppContext` — verified, only `CardProvider.tsx` imports `useCards` directly. No external file changes required.
+## Current state (verified)
 
-## Target architecture
+- `CardProvider.tsx` is a 78-line composition root mounting `CategoryStateProvider → CardStateProvider → CardActions → CategoryActions → BackupActions`.
+- Sub-hooks return stable `useCallback`/`useMemo` references — the Proxy is gone.
+- Two back-compat shims survive in `CardProvider.tsx`:
+  - `useCardActions()` merges `useCardOnlyActions + useCategoryActions + useBackupActions + updateSRSettings` → consumed by **17 files**.
+  - `useCategoryData()` merges category state + `categoryStats` → consumed by **27 files**.
+- 45 direct `@/lib/db` imports remain in `src/components` + `src/views`. **The vast majority are type-only** (`type CategoryRecord`, `type Source`, `MindMapDoc`) — those are fine. Only ~6 files pull the runtime `db` instance.
+- `useCardData` / `useReviewData` / `useCategoryDataInternal` still silently return empty fallbacks in DEV when no provider is mounted (masks bugs).
 
-```text
-AppProvider
-  ├─ CardStateProvider          (owns cardMap state + cardMapRef + boot + derived stats)
-  │    exposes useCardData, useReviewData
-  │
-  ├─ CategoryStateProvider      (owns categoryRecords state)
-  │    exposes useCategoryData
-  │
-  ├─ CardActionsProvider        (mounts useCardCRUD + useCardAnnotations, value = stable object)
-  │    exposes useCardActions (CRUD + annotations slice)
-  │
-  ├─ CategoryActionsProvider    (mounts useCategoryManagement)
-  │    exposes useCategoryActions  ← NEW, but useCardActions also re-exports for back-compat
-  │
-  ├─ BackupActionsProvider      (mounts useCardImport + useCardExport)
-  │    exposes useBackupActions    ← NEW, also surfaced via useCardActions back-compat
-  │
-  ├─ PomodoroProvider, UIProvider (unchanged)
-```
+## Pass 1 — Migrate `useCardActions` consumers to focused hooks
 
-State providers must mount **above** action providers because actions need `setCardMapState` / `cardMapRef` / `setCategoryRecordsState` from state. We pass these down via a thin internal context (not exported) — no prop drilling beyond one layer.
+Each of the 17 callers actually uses 1–4 functions from one domain. We replace the merged shim with the right specific hook.
 
-## Step-by-step
+For each file in the consumer set, classify the calls and rewrite the import:
 
-### Step 1 — Extract state into `CardStateProvider`
+| Domain used                          | Hook to import                                |
+| ------------------------------------ | --------------------------------------------- |
+| `addCard`/`updateCard`/`deleteCard`/`patchCard`/`splitCard`/`bulkAddCards`/`addFlashCard` | `useCardOnlyActions` from `CardActionsProvider` |
+| `reviewSection`/`markRead`/`toggleTag`/`logError`/`clearErrorLog`/`addKeyPart`/`bulkFlagNeedsReview`/`bulkUpdateChapter` | `useCardOnlyActions` (same provider)            |
+| `add/rename/deleteCategory`, subcategory ops, chapter ops, reorders, `updateExaminerProfile` | `useCategoryActions` from `CategoryActionsProvider` |
+| `exportData`/`exportTemplate`/`importData`/`importCards` | `useBackupActions` from `BackupActionsProvider`  |
+| `updateSRSettings`                  | new `useSettingsActions()` exported from `CardStateProvider` (thin wrapper around the existing internal) |
 
-Create `src/contexts/cards/CardStateProvider.tsx`:
+Then **delete `useCardActions()` from `CardProvider.tsx`**. A component that needs two domains imports two hooks — that's the point of the inversion.
 
-- Owns `cardMap` state, `cardMapRef`, `reviewLog`, `srSettings` (these are tightly coupled to card mutation flow).
-- Mounts `useCardBootstrap` for `ready` / `dbError`.
-- Owns the three lifecycle `useEffect`s (quit-backup flush, `onCardLinksCleared`, `onCardReviewConfirmed`, `CARDS_UPDATED` orphan reload).
-- Owns the big single-pass `useMemo` for `{ dueCards, stats, categoryStats, cardCountByCategory }` — but `categoryStats` depends on `categoryRecords`, which lives in a sibling provider. Resolve by **reading `categoryRecords` from `CategoryStateContext`** inside this provider via `useContext`. (CategoryStateProvider must therefore mount outside CardStateProvider.)
-- Exposes 3 contexts: `CardStateContext`, `ReviewStateContext`, plus an internal `CardStateInternalsContext` carrying `{ setCardMapState, cardMapRef, setReviewLog, updateSRSettings }` for action providers below.
-- `useCardData` and `useReviewData` move here unchanged.
+## Pass 2 — Split `useCategoryData` into reader + stats
 
-### Step 2 — Extract `CategoryStateProvider`
+The 27 callers fall into two groups:
 
-Create `src/contexts/cards/CategoryStateProvider.tsx`:
+- **Pure list/record consumers** (most of them): only need `categories`, `categoryRecords`, or `subcategories`. Migrate to `useCategoryDataInternal` (renamed to **`useCategoryData`** publicly — the merged shim drops the `Internal` suffix).
+- **Stats consumers** (`Dashboard`, `MyStats`, sidebars, dashboards): also need `categoryStats`. They call **`useCategoryStatsData()`** in addition.
 
-- Owns only `categoryRecords` state + the derived `categories` UUID list and `subcategories` UUID map (`useMemo`s lifted verbatim from `useCards`).
-- Primes the examiner-profile cache via `useEffect` (one-liner, currently in `CardProvider`).
-- Exposes `CategoryStateContext` (public — used by `useCategoryData`) and `CategoryStateInternalsContext` (internal — `{ setCategoryRecords, getCategoryRecords }` for action providers).
+Rename in two steps to avoid collisions:
 
-### Step 3 — Build action providers
+1. Rename the current `useCategoryDataInternal` → `useCategoryData` and re-export from `CategoryStateProvider`.
+2. Delete the merged `useCategoryData()` shim in `CardProvider.tsx`.
+3. Update the ~6 stats consumers to also call `useCategoryStatsData`.
 
-Create `src/contexts/cards/CardActionsProvider.tsx`:
+This guarantees that a component touching only the category list **does not re-render** when card stats change.
 
-- Reads internals from both state providers via `useContext`.
-- Mounts `useCardCRUD` + `useCardAnnotations`.
-- Combines their returns into one `useMemo` value (no Proxy — sub-hooks already stable, but `useMemo` ensures the wrapper object identity is stable too).
-- Exposes `CardActionsContext`.
+## Pass 3 — Harden missing-provider behavior
 
-Create `src/contexts/cards/CategoryActionsProvider.tsx`:
+Today these three hooks silently return empty fallbacks in DEV, which hides real "rendered outside provider" bugs:
 
-- Mounts `useCategoryManagement` with internals from both state providers (`setCategoryRecords`, `setCardMapState`, `cardMapRef`, `getCategoryRecords`).
-- Exposes `CategoryActionsContext`.
+- `useCardData` (`CardStateProvider.tsx`)
+- `useReviewData` (`CardStateProvider.tsx`)
+- `useCategoryDataInternal` (`CategoryStateProvider.tsx`)
 
-Create `src/contexts/cards/BackupActionsProvider.tsx`:
+Change them to **throw in both DEV and PROD**. The HMR concern in the comments is moot because `CardProvider` is mounted at the App root — there is no legitimate path where a child renders without it.
 
-- Mounts `useCardImport` + `useCardExport` (export needs `cards` + `srSettings` — read from `CardStateContext` and `ReviewStateContext` via `useContext`).
-- Exposes `BackupActionsContext`.
+## Pass 4 — Remove the few real runtime DB leaks
 
-### Step 4 — Back-compat `useCardActions`
+Type-only imports (`type CategoryRecord`, `type Source`, `MindMapDoc`) **stay** — they're free at runtime and types are the lingua franca of the data layer. We only target files that import the `db` instance or runtime query helpers:
 
-Keep the **existing public name** `useCardActions` returning the same 30-key shape. Implement it as a thin reader that pulls from the three new actions contexts and returns a single `useMemo`-stabilized merged object. No Proxy, no `ownKeys`, no `getOwnPropertyDescriptor`. Identity is stable because each underlying actions object is stable.
+- `src/components/HealthMonitor.tsx` — owns orphan-scan logic; this one is legitimately a DB tool, leave it (document as the single sanctioned exception).
+- `src/components/ExportImportDialog.tsx` — should call `useBackupActions` only; remove direct `db` import if any read is still inline.
+- Audit the remaining handful with `rg -n "import \{[^}]*\bdb\b" src/components src/views` and migrate each to either a domain action or a one-off `db-queries.ts` helper.
 
-Optionally also export the new granular hooks `useCategoryActions` and `useBackupActions` for future code, but the back-compat shape stays so we don't have to touch any of the 19 existing call sites in this pass.
+We do **not** chase the ~40 type-only imports — that would be churn for no architectural gain.
 
-### Step 5 — New `CardProvider` composition
+## Out of scope
 
-`src/contexts/cards/CardProvider.tsx` becomes a pure composition root, ~25 lines:
+- ESLint rules to ban raw Tailwind colors / direct DB imports — separate audit recommendation, not part of the inversion.
+- Further decomposition of `useCardCRUD` / `useCategoryManagement` internals — they're already focused.
 
-```tsx
-<CategoryStateProvider>
-  <CardStateProvider>
-    <CardActionsProvider>
-      <CategoryActionsProvider>
-        <BackupActionsProvider>
-          {dbError ? <DatabaseRecoveryPanel/> : children}
-        </BackupActionsProvider>
-      </CategoryActionsProvider>
-    </CardActionsProvider>
-  </CardStateProvider>
-</CategoryStateProvider>
-```
+## Technical notes
 
-The DB-error branch keeps wrapping `children` in all providers (current behavior) so the recovery panel still has access to actions.
+- `useSettingsActions` is a 6-line addition to `CardStateProvider.tsx` that exposes `{ updateSRSettings }` from the existing internals context — gives us a clean home for that one stray action without resurrecting a merged shim.
+- After Pass 1+2, `src/contexts/cards/CardProvider.tsx` shrinks from ~78 lines to ~40: just the composition root, the `RecoveryGate`, and re-exports.
+- Build will surface every missed migration via TS — no runtime risk.
+- No changes to data flow, persistence, IDB schema, or boot sequence.
 
-### Step 6 — Delete `src/hooks/useCards.ts`
+## Files touched (estimate)
 
-Once everything is migrated, delete the file. `CardProvider.tsx` is the only importer; nothing else references it.
+- **Modified**: `src/contexts/cards/CardProvider.tsx`, `CardStateProvider.tsx`, `CategoryStateProvider.tsx`, plus ~17 + ~27 (with overlap, net ~35) consumer files for hook renames, plus 2–3 view components for the runtime-DB cleanup.
+- **No new files**, **no deletions** beyond the two shim functions.
 
-### Step 7 — Fix the silent-fallback inconsistency (audit fix #2 carryover)
+## Approval
 
-The current `useCardData` / `useCategoryData` / `useReviewData` return `EMPTY_*` fallbacks instead of throwing. In the new providers, gate the fallback behind `import.meta.env.DEV` (logged warning + empty value) and **throw in production**. `useCardActions` already throws — now all four hooks share that contract.
-
-## Files touched
-
-**Created**
-- `src/contexts/cards/CardStateProvider.tsx`
-- `src/contexts/cards/CategoryStateProvider.tsx`
-- `src/contexts/cards/CardActionsProvider.tsx`
-- `src/contexts/cards/CategoryActionsProvider.tsx`
-- `src/contexts/cards/BackupActionsProvider.tsx`
-
-**Rewritten**
-- `src/contexts/cards/CardProvider.tsx` — shrinks from 230 lines to ~50 (composition root + back-compat `useCardActions` re-export)
-- `src/contexts/AppContext.tsx` — re-export list adjusted (no API changes for consumers)
-
-**Deleted**
-- `src/hooks/useCards.ts` (308 lines removed)
-
-**Untouched**
-- All consumer files (60+ components / views / hooks) — public hook names and shapes are identical.
-- All sub-hooks (`useCardCRUD`, `useCardAnnotations`, `useCategoryManagement`, `useCardImport`, `useCardExport`, `useCardBootstrap`).
-
-## Risks and mitigations
-
-| Risk | Mitigation |
-|---|---|
-| Re-render storms if action contexts churn | Each sub-hook already memoizes; wrap merged action objects in `useMemo` keyed only on the inner functions, which are stable. |
-| `categoryStats` needs both card data and `categoryRecords` | `CardStateProvider` mounts inside `CategoryStateProvider` and reads its context. Verified the dependency graph is acyclic. |
-| `useCardActions` consumer expects the merged shape | Back-compat hook returns the same merged object via `useMemo`; identity stability is *better* than today (Proxy returned a new wrapper on every read). |
-| Provider mount order breaks an effect ordering assumption | The three lifecycle effects (quit-backup, source-link-clear, review-confirm, orphan reload) all live inside `CardStateProvider` — same execution order as today. |
-| Silent-fallback change breaks dev HMR | DEV branch retains the current warning + empty-fallback behavior; only production throws. |
-
-## Net result
-
-- **−308 lines** (`useCards.ts` deletion).
-- **−180 lines** (`CardProvider.tsx` slimmed from 230 to ~50).
-- **+~250 lines** spread across five focused provider files (each ~50 lines, single responsibility).
-- **Net code: ~−240 lines**, plus the Proxy disappears, plus consistent throw-on-missing-provider semantics.
-- Zero changes required in any consumer file. Verified by grep: only `CardProvider.tsx` imports `useCards`.
+Confirm and I'll execute all four passes in one go. The build will be the regression test — every miscategorized call site fails type-check immediately.
