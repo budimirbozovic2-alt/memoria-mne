@@ -334,10 +334,12 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
           onSave(question, sections, cat, sub, ch);
         }
       }
+      // Successful submit → drop the persisted draft so it doesn't resurface.
+      clearDraft();
     } finally {
       setIsSaving(false);
     }
-  }, [cardType, question, flashAnswer, sections, resolvedMeta, editCard, onSave, onSaveFlash, onUpdate]);
+  }, [cardType, question, flashAnswer, sections, resolvedMeta, editCard, onSave, onSaveFlash, onUpdate, clearDraft]);
 
   return {
     // State
