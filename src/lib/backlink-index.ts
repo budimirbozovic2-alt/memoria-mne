@@ -215,6 +215,42 @@ class BacklinkIndex {
     return out;
   }
 
+  /**
+   * Count of incoming wiki-links per article (keyed by article id).
+   * Used by the Explorer panel to surface "most-linked" sorting and
+   * orphan detection in O(N_articles + N_links). Articles never referenced
+   * are absent from the map (callers should treat missing as 0).
+   */
+  getCountsByArticle(
+    subjectId: string,
+    articles: readonly KnowledgeBaseArticle[],
+  ): Map<string, number> {
+    const out = new Map<string, number>();
+    const s = this.subjects.get(subjectId);
+    if (!s) return out;
+    for (const a of articles) {
+      const ids = s.byTarget.get(norm(a.title));
+      if (ids && ids.size > 0) {
+        // Self-references are skipped at index time, so size is accurate.
+        out.set(a.id, ids.size);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Articles with zero incoming links AND that are not the subject's Index.
+   * Useful for surfacing "sirote" (orphans) in the Explorer statistics — these
+   * are typically branches the user started but never wove into the network.
+   */
+  getOrphans(
+    subjectId: string,
+    articles: readonly KnowledgeBaseArticle[],
+  ): KnowledgeBaseArticle[] {
+    const counts = this.getCountsByArticle(subjectId, articles);
+    return articles.filter(a => !a.isIndex && (counts.get(a.id) ?? 0) === 0);
+  }
+
   /** Subscribe to backlink-set changes for one (subject, target). */
   subscribe(subjectId: string, targetTitle: string, listener: () => void): () => void {
     const s = this.getOrCreate(subjectId);
