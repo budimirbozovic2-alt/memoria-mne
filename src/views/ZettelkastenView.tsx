@@ -86,19 +86,39 @@ export default function ZettelkastenView() {
     [articles, activeId],
   );
 
+  // Title sets are consumed only by `<ZettelPreview>` (read-only mode). When
+  // the user is editing, the preview is unmounted, so we skip building these
+  // sets entirely — guarantees zero work for these memos during typing bursts
+  // (and during any `articles` mutation that lands while editing, e.g. after
+  // a wiki-link auto-create batch persists).
   const existingTitleSet = useMemo(
-    () => new Set(articles.map(a => a.title.trim().toLowerCase())),
-    [articles],
+    () => isEditing
+      ? new Set<string>()
+      : new Set(articles.map(a => a.title.trim().toLowerCase())),
+    [articles, isEditing],
   );
 
   const emptyTitleSet = useMemo(
-    () => new Set(
-      articles
-        .filter(a => a.content.trim().length === 0)
-        .map(a => a.title.trim().toLowerCase()),
-    ),
-    [articles],
+    () => isEditing
+      ? new Set<string>()
+      : new Set(
+          articles
+            .filter(a => a.content.trim().length === 0)
+            .map(a => a.title.trim().toLowerCase()),
+        ),
+    [articles, isEditing],
   );
+
+  // Always-current title lookup for the wiki-link auto-create effect, which
+  // runs *during* editing and therefore can't rely on the gated memo above.
+  // A ref keeps this O(N_articles) work outside the render path.
+  const existingTitlesLowerRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    existingTitlesLowerRef.current = new Set(
+      articles.map(a => a.title.trim().toLowerCase()),
+    );
+  }, [articles]);
+
 
   const articleCountByRoot = useMemo(() => {
     const map = new Map<string, number>();

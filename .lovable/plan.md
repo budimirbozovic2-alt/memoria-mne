@@ -1,36 +1,66 @@
-## Goal
+## Audit Status — What's Already Done
 
-Cap the wiki-link auto-creation batch at **50 placeholders per debounce tick** in `ZettelkastenView`. Anything beyond the cap is deferred to the next tick(s); the user is notified once per overflow burst (not once per keystroke).
+Inspecting the current code shows three of the four requested fixes are **already in place** from prior turns:
 
-## File
+| # | Fix | Status | Location |
+|---|---|---|---|
+| 1 | `findArticleByTitle` uses `[subjectId+title]` compound index, falls back to `.where().filter().first()` | ✅ Already done | `src/lib/zettelkasten-storage.ts` lines 17–39 |
+| 2 | Wiki-link batch via `db.transaction("rw", ...)` + `bulkPut`, single dedup pass | ✅ Already done | `src/lib/zettelkasten-storage.ts` lines 57–96 (`bulkCreateArticlesIfMissing`) |
+| 3a | Gate `existingTitleSet` / `emptyTitleSet` behind `!isEditing` | ⚠️ Not yet — implement now |
+| 3b | `BacklinksPanel` deferred/frozen during edit | ✅ Already done | `BacklinksPanel.tsx` — uses `useDeferredValue` + `cacheRef` freeze when `isEditing` |
 
-- **edited**: `src/views/ZettelkastenView.tsx` — extends the existing adaptive-debounce effect (lines 173–218).
+So the **only remaining work is item 3a**.
 
-## Changes
+## Subtlety With Item 3a
 
-1. Add a constant `WIKI_LINK_BATCH_CAP = 50` inside the view.
-2. Add `lastOverflowNotifiedRef` (a `useRef<number>(0)`) to dedupe overflow notifications across keystrokes.
-3. Reset that ref alongside the existing cadence-reset effect on `activeId` change.
-4. After computing `pendingAll` (the unresolved candidates):
-   - If empty → reset overflow latch and bail (existing behavior).
-   - Else slice to the cap: `pending = pendingAll.slice(0, WIKI_LINK_BATCH_CAP)`.
-   - If `pendingAll.length > cap` AND the latch value differs from the current overflow size:
-     - `console.warn(...)` with both numbers.
-     - `toast.warning("Previše novih wiki-linkova (N). Obrađujem 50 po koraku — ostatak slijedi.")`.
-     - Update the latch to `pendingAll.length`.
-   - If batch shrank back under the cap, clear the latch to 0 so future overflows re-notify.
-5. Pass the capped `pending` (not `pendingAll`) to `bulkCreateArticlesIfMissing`.
+The wiki-link auto-create effect (`ZettelkastenView.tsx` lines ~177–255) currently reads `existingTitleSet` to decide which `[[link]]` candidates need to be created. That effect runs **only while editing** — exactly the case where the request asks the memo to be empty. A naive gate would break the effect (every wiki-link would look "missing" and a placeholder would be re-created on every keystroke).
 
-## Why the tail still gets created
+Note: the audit's framing ("rebuild on every keystroke") is technically inaccurate against today's code — `articles` state identity does NOT change on keystrokes (only on save / auto-create / delete), so the `useMemo`s already do not rebuild during typing. The gate still has a real benefit: it skips the work entirely on the *first* render after entering edit mode and on every `articles` mutation that happens during edit (e.g. after a placeholder batch lands).
 
-After each successful batch the new placeholders flow into `articles` state → `existingTitleSet` memo updates → next debounce tick sees the remaining unresolved titles as the new "pending" set and processes the next 50. No additional scheduling is needed — the existing effect dependency on `existingTitleSet` already triggers a re-run after each `setArticles`.
+## Plan for Item 3a
 
-## Notification dedup logic
+File: **`src/views/ZettelkastenView.tsx`**
 
-Latch stores the last overflow count we toasted for. While the user keeps typing and the size stays the same → no new toast. If the size changes (paste grew, or one chunk drained), we re-notify with the new number. When count drops to/below 50 the latch clears so the next paste storm notifies fresh.
+1. Gate both memos behind `isEditing`:
+   ```tsx
+   const existingTitleSet = useMemo(
+     () => isEditing
+       ? new Set<string>()
+       : new Set(articles.map(a => a.title.trim().toLowerCase())),
+     [articles, isEditing],
+   );
+   const emptyTitleSet = useMemo(
+     () => isEditing
+       ? new Set<string>()
+       : new Set(
+           articles
+             .filter(a => a.content.trim().length === 0)
+             .map(a => a.title.trim().toLowerCase()),
+         ),
+     [articles, isEditing],
+   );
+   ```
+   Both sets feed only `<ZettelPreview ... />`, which is unmounted during edit (the editor is shown instead), so an empty set is harmless.
+
+2. Add a ref-based always-current lookup for the wiki-link effect so it doesn't depend on the now-gated memo:
+   ```tsx
+   const existingTitlesLowerRef = useRef<Set<string>>(new Set());
+   useEffect(() => {
+     existingTitlesLowerRef.current = new Set(
+       articles.map(a => a.title.trim().toLowerCase()),
+     );
+   }, [articles]);
+   ```
+
+3. Update the wiki-link effect:
+   - Replace `existingTitleSet.has(...)` with `existingTitlesLowerRef.current.has(...)`.
+   - Remove `existingTitleSet` from its dependency array; add nothing (refs are stable).
+   - Keep all other behavior (adaptive debounce, 50-cap with deduped warn toast, transaction batching) untouched.
+
+4. No other call sites change (ripgrep confirmed both sets are consumed only by `<ZettelPreview>` props on lines 458–459 and the wiki-link effect).
 
 ## Verification
 
-- Type/paste 200 wiki-links: one warning toast + one console.warn, 50 placeholders appear, next tick auto-processes 50 more, etc., until drained.
-- Normal typing of 1–10 new links: no warnings, no behavior change.
-- Switching articles mid-overflow: latch resets, new article evaluated cleanly.
+- Editor mount/unmount: switching to edit mode produces empty sets without recomputing the full set; switching back rebuilds them once.
+- Wiki-link auto-create still suppresses duplicates correctly during edit (uses ref).
+- Existing test `src/test/zettelkasten-bulk-create.test.ts` continues to pass (no production logic for batch creation changed).
