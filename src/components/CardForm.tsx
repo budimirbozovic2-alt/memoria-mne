@@ -1,4 +1,4 @@
-import { X, FileText, Loader2, Scissors } from "lucide-react";
+import { X, FileText, Loader2, Scissors, Save, RotateCcw } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/lib/spaced-repetition";
@@ -38,8 +38,33 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
   const a = useCardActions({ categories, subcategories, categoryRecords, editCard, onSave, onSaveFlash, onUpdate });
   const navigate = useNavigate();
 
+  const draftAgeLabel = a.pendingDraftSavedAt
+    ? new Date(a.pendingDraftSavedAt).toLocaleString("bs-BA", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })
+    : "";
+
   return (
     <form onSubmit={a.handleSubmit} className={`space-y-6 ${widthClasses[a.formWidth]} transition-all duration-300`}>
+      {/* ── Restore unsaved draft banner (B9) ─────────── */}
+      {a.pendingDraft && (
+        <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-primary/30 bg-primary/5">
+          <div className="flex items-center gap-2 text-sm">
+            <Save className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-foreground">
+              Pronađen je nesnimljen nacrt
+              {draftAgeLabel && <span className="text-muted-foreground"> (posljednje izmjene {draftAgeLabel})</span>}.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button type="button" size="sm" variant="default" onClick={a.restoreDraft}>
+              <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+              Vrati nacrt
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={a.dismissDraft}>
+              Odbaci
+            </Button>
+          </div>
+        </div>
+      )}
       {/* ── Header ─────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <h2 className="imperial-title">{editCard ? "Uredi modul" : "Novi modul"}</h2>

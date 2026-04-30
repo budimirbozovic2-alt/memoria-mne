@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import type { CategoryRecord, SubcategoryNode } from "@/lib/db";
 import { Card, FrequencyTag, CardSourceType } from "@/lib/spaced-repetition";
 import { toast } from "sonner";
+import { useCardDraftAutosave, loadCardDraft, buildDraftKey, type CardDraftSnapshot } from "./useCardDraftAutosave";
 
 // ─── Types ──────────────────────────────────────────────
 export interface SectionInput {
@@ -127,6 +128,62 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
   const [frequencyTag, setFrequencyTag] = useState<FrequencyTag | "">(editCard?.frequencyTag ?? "");
   const [sourceType, setSourceType] = useState<CardSourceType | "">(editCard?.sourceType ?? "");
 
+  // ── Draft autosave (B9) ───────────────────────────────
+  // Stable per-form key. New cards get one slot per category; edits get a
+  // dedicated slot bound to the card id.
+  const initialCategoryIdRef = useRef<string>(editCard?.categoryId ?? categories[0] ?? "");
+  const draftKey = useMemo(
+    () => buildDraftKey(editCard?.id ?? null, initialCategoryIdRef.current),
+    [editCard?.id],
+  );
+
+  // Surface a "restore draft?" banner. We load once at mount and let the
+  // consumer decide whether to apply or discard.
+  const [pendingDraft, setPendingDraft] = useState<CardDraftSnapshot | null>(null);
+  const [pendingDraftSavedAt, setPendingDraftSavedAt] = useState<number | null>(null);
+  useEffect(() => {
+    const stored = loadCardDraft(draftKey);
+    if (stored) {
+      setPendingDraft(stored);
+      setPendingDraftSavedAt(stored.savedAt);
+    }
+    // Only on mount per draftKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  const draftSnapshot: CardDraftSnapshot = useMemo(() => ({
+    cardType, question, flashAnswer, sections,
+    categoryId, subcategoryId, chapterId,
+    frequencyTag, sourceType,
+  }), [cardType, question, flashAnswer, sections, categoryId, subcategoryId, chapterId, frequencyTag, sourceType]);
+
+  // Disable autosave while the restore banner is awaiting a decision so we
+  // don't overwrite the stored draft with the empty initial form state.
+  const autosaveEnabled = pendingDraft === null;
+  const { clearDraft, flushDraft: _flushDraft } = useCardDraftAutosave(draftKey, draftSnapshot, autosaveEnabled);
+  void _flushDraft;
+
+  const restoreDraft = useCallback(() => {
+    if (!pendingDraft) return;
+    setCardType(pendingDraft.cardType);
+    setQuestion(pendingDraft.question);
+    setFlashAnswer(pendingDraft.flashAnswer);
+    setSections(pendingDraft.sections.length > 0 ? pendingDraft.sections : [{ title: "Cjelina 1", content: "" }]);
+    setCategoryId(pendingDraft.categoryId);
+    setSubcategoryId(pendingDraft.subcategoryId);
+    setChapterId(pendingDraft.chapterId);
+    setFrequencyTag(pendingDraft.frequencyTag);
+    setSourceType(pendingDraft.sourceType);
+    setPendingDraft(null);
+    setPendingDraftSavedAt(null);
+  }, [pendingDraft]);
+
+  const dismissDraft = useCallback(() => {
+    clearDraft();
+    setPendingDraft(null);
+    setPendingDraftSavedAt(null);
+  }, [clearDraft]);
+
   // ── Derived ───────────────────────────────────────────
   const availableSubs: { id: string; name: string }[] = useMemo(() => {
     const catRec = categoryRecords?.find(r => r.id === categoryId);
@@ -148,20 +205,42 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
   }, [editCard?.sourceId]);
 
   // ── Load available chapters from SubcategoryNode tree ──
+  // NOTE: All legacy string→object normalization happens once in useCardBootstrap
+  // and is persisted to IDB. We MUST NOT generate UUIDs in the render path here:
+  // doing so produces a fresh id on every memo recompute, breaking React identity
+  // for child Select options (focus loss, mount/unmount thrash). If we ever
+  // encounter a legacy string node here, skip it defensively and warn in dev.
   const availableChapters = useMemo((): { id: string; name: string }[] => {
     const sub = showNewSub && newSubcategory.trim() ? newSubcategory.trim() : subcategoryId;
     const cat = showNewCat && newCategory.trim() ? newCategory.trim() : categoryId;
     if (!sub || !cat || !categoryRecords) return [];
     const catRec = categoryRecords.find(r => r.id === cat);
     if (!catRec) return [];
-    const nodes: SubcategoryNode[] = (catRec.subcategories as any[] || []).map((s: any) =>
-      typeof s === "string" ? { id: crypto.randomUUID(), name: s, chapters: [], sortOrder: 0 } : s
-    );
+    const rawNodes = (catRec.subcategories as unknown[]) || [];
+    const nodes: SubcategoryNode[] = [];
+    for (const s of rawNodes) {
+      if (typeof s === "string") {
+        if (import.meta.env.DEV) {
+          console.warn("[useCardActions] legacy string subcategory encountered in render; bootstrap should have normalized it:", s);
+        }
+        continue;
+      }
+      nodes.push(s as SubcategoryNode);
+    }
     const node = nodes.find(n => n.id === sub);
     if (!node) return [];
-    return (node.chapters || []).map((ch: any) =>
-      typeof ch === "string" ? { id: ch, name: ch } : { id: ch.id, name: ch.name }
-    );
+    const result: { id: string; name: string }[] = [];
+    for (const ch of (node.chapters || []) as unknown[]) {
+      if (typeof ch === "string") {
+        if (import.meta.env.DEV) {
+          console.warn("[useCardActions] legacy string chapter encountered in render:", ch);
+        }
+        continue;
+      }
+      const c = ch as { id: string; name: string };
+      if (c.id && c.name) result.push({ id: c.id, name: c.name });
+    }
+    return result;
   }, [categoryId, subcategoryId, showNewCat, newCategory, showNewSub, newSubcategory, categoryRecords]);
 
   // ── Section actions ───────────────────────────────────
@@ -255,10 +334,12 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
           onSave(question, sections, cat, sub, ch);
         }
       }
+      // Successful submit → drop the persisted draft so it doesn't resurface.
+      clearDraft();
     } finally {
       setIsSaving(false);
     }
-  }, [cardType, question, flashAnswer, sections, resolvedMeta, editCard, onSave, onSaveFlash, onUpdate]);
+  }, [cardType, question, flashAnswer, sections, resolvedMeta, editCard, onSave, onSaveFlash, onUpdate, clearDraft]);
 
   return {
     // State
@@ -281,5 +362,7 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
     setFrequencyTag, setSourceType,
     // Actions
     addSection, removeSection, updateSection, moveSection, handleCut, handleSubmit,
+    // Draft autosave (B9)
+    pendingDraft, pendingDraftSavedAt, restoreDraft, dismissDraft,
   };
 }
