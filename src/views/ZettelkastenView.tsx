@@ -273,7 +273,10 @@ export default function ZettelkastenView() {
       }
     }, delay);
     return () => clearTimeout(handle);
-  }, [draft?.content, isEditing, categoryId, existingTitleSet, activeArticle]);
+    // `articles` is in the deps so that after a capped batch persists (which
+    // updates `existingTitlesLowerRef` via its own sync effect) we still re-run
+    // and process the next 50 of the overflow tail, even if the user paused typing.
+  }, [draft?.content, isEditing, categoryId, articles, activeArticle]);
 
   // ── Mutations ──────────────────────────────────
   const handleCreate = useCallback(async (title?: string, rootSubId?: string) => {
