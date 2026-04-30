@@ -15,6 +15,7 @@ import {
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
+import { sameStringSet } from "@/lib/struct-eq";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -147,7 +148,7 @@ export default function ZettelkastenView() {
     const dirty =
       titleClean !== activeArticle.title ||
       draft.content !== activeArticle.content ||
-      JSON.stringify(draft.linkedSourceIds) !== JSON.stringify(activeArticle.linkedSourceIds ?? []);
+      !sameStringSet(draft.linkedSourceIds, activeArticle.linkedSourceIds ?? []);
     if (!dirty) return activeArticle;
     const next: KnowledgeBaseArticle = {
       ...activeArticle,
