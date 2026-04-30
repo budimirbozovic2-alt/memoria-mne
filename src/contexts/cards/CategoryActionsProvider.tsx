@@ -7,9 +7,18 @@ export type CategoryActionsValue = ReturnType<typeof useCategoryManagement>;
 
 const CategoryActionsContext = createContext<CategoryActionsValue | null>(null);
 
+const noop = () => { /* HMR fallback */ };
+const NOOP_CATEGORY_ACTIONS = new Proxy({} as CategoryActionsValue, { get: () => noop });
+
 export function useCategoryActions() {
   const ctx = useContext(CategoryActionsContext);
-  if (!ctx) throw new Error("useCategoryActions must be used within CategoryActionsProvider");
+  if (!ctx) {
+    if (import.meta.env.DEV) {
+      console.warn("[useCategoryActions] no provider — returning noop fallback (HMR transient)");
+      return NOOP_CATEGORY_ACTIONS;
+    }
+    throw new Error("useCategoryActions must be used within CategoryActionsProvider");
+  }
   return ctx;
 }
 
