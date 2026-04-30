@@ -128,6 +128,62 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
   const [frequencyTag, setFrequencyTag] = useState<FrequencyTag | "">(editCard?.frequencyTag ?? "");
   const [sourceType, setSourceType] = useState<CardSourceType | "">(editCard?.sourceType ?? "");
 
+  // ── Draft autosave (B9) ───────────────────────────────
+  // Stable per-form key. New cards get one slot per category; edits get a
+  // dedicated slot bound to the card id.
+  const initialCategoryIdRef = useRef<string>(editCard?.categoryId ?? categories[0] ?? "");
+  const draftKey = useMemo(
+    () => buildDraftKey(editCard?.id ?? null, initialCategoryIdRef.current),
+    [editCard?.id],
+  );
+
+  // Surface a "restore draft?" banner. We load once at mount and let the
+  // consumer decide whether to apply or discard.
+  const [pendingDraft, setPendingDraft] = useState<CardDraftSnapshot | null>(null);
+  const [pendingDraftSavedAt, setPendingDraftSavedAt] = useState<number | null>(null);
+  useEffect(() => {
+    const stored = loadCardDraft(draftKey);
+    if (stored) {
+      setPendingDraft(stored);
+      setPendingDraftSavedAt(stored.savedAt);
+    }
+    // Only on mount per draftKey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  const draftSnapshot: CardDraftSnapshot = useMemo(() => ({
+    cardType, question, flashAnswer, sections,
+    categoryId, subcategoryId, chapterId,
+    frequencyTag, sourceType,
+  }), [cardType, question, flashAnswer, sections, categoryId, subcategoryId, chapterId, frequencyTag, sourceType]);
+
+  // Disable autosave while the restore banner is awaiting a decision so we
+  // don't overwrite the stored draft with the empty initial form state.
+  const autosaveEnabled = pendingDraft === null;
+  const { clearDraft, flushDraft: _flushDraft } = useCardDraftAutosave(draftKey, draftSnapshot, autosaveEnabled);
+  void _flushDraft;
+
+  const restoreDraft = useCallback(() => {
+    if (!pendingDraft) return;
+    setCardType(pendingDraft.cardType);
+    setQuestion(pendingDraft.question);
+    setFlashAnswer(pendingDraft.flashAnswer);
+    setSections(pendingDraft.sections.length > 0 ? pendingDraft.sections : [{ title: "Cjelina 1", content: "" }]);
+    setCategoryId(pendingDraft.categoryId);
+    setSubcategoryId(pendingDraft.subcategoryId);
+    setChapterId(pendingDraft.chapterId);
+    setFrequencyTag(pendingDraft.frequencyTag);
+    setSourceType(pendingDraft.sourceType);
+    setPendingDraft(null);
+    setPendingDraftSavedAt(null);
+  }, [pendingDraft]);
+
+  const dismissDraft = useCallback(() => {
+    clearDraft();
+    setPendingDraft(null);
+    setPendingDraftSavedAt(null);
+  }, [clearDraft]);
+
   // ── Derived ───────────────────────────────────────────
   const availableSubs: { id: string; name: string }[] = useMemo(() => {
     const catRec = categoryRecords?.find(r => r.id === categoryId);
