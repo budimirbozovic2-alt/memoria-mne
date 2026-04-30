@@ -100,7 +100,7 @@ const APP_SLIDES: OnboardingSlide[] = [
     content: "Svaka sekcija ima svoje dugme za pomoć (?) sa detaljnijim uputstvima. Počni kreiranjem prve kartice ili uvozom iz dokumenta.",
     bullets: [
       "Klikom na ? u bilo kojoj sekciji dobijaš detaljni vodič",
-      "Ctrl+K — brza globalna pretraga",
+      "Ctrl+K — brza pretraga kartica",
       "Backup podataka je dostupan u Podešavanja → Sistem (Export/Import)",
     ],
   },
