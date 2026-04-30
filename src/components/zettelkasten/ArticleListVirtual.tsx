@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { List, type RowComponentProps } from "react-window";
 import type { KnowledgeBaseArticle } from "@/lib/zettelkasten-storage";
-import type { Subcategory } from "@/lib/spaced-repetition";
 
 interface RootSubLite {
   id: string;
@@ -10,7 +9,7 @@ interface RootSubLite {
 
 interface Props {
   articles: KnowledgeBaseArticle[];
-  rootSubs: RootSubLite[] | Subcategory[];
+  rootSubs: RootSubLite[];
   onOpen: (id: string) => void;
 }
 
