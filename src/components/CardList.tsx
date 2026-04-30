@@ -109,9 +109,13 @@ export default function CardList({
     const m: Record<string, string> = {};
     for (const r of allCats) {
       m[r.id] = r.name;
-      for (const sub of r.subcategories ?? []) m[sub.id] = sub.name;
-      for (const sub of r.subcategories ?? []) for (const ch of sub.chapters ?? []) m["__ch_" + ch.id] = ch.name;
-      for (const sub of r.subcategories ?? []) m["__sub_" + sub.id] = sub.name;
+      for (const sub of r.subcategories ?? []) {
+        m[sub.id] = sub.name;
+        m["__sub_" + sub.id] = sub.name;
+        for (const ch of sub.chapters ?? []) {
+          m["__ch_" + ch.id] = ch.name;
+        }
+      }
     }
     return m;
   }, [allCats]);
