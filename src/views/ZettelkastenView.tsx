@@ -306,11 +306,13 @@ export default function ZettelkastenView() {
   }, [draft?.content, isEditing, categoryId, articles, activeArticle]);
 
   // ── Mutations ──────────────────────────────────
-  const handleCreate = useCallback(async (title?: string, rootSubId?: string) => {
+  const handleCreate = useCallback(async (title?: string) => {
     if (!categoryId) return;
     const t = (title ?? prompt("Naslov novog članka:") ?? "").trim();
     if (!t) return;
-    const article = newArticle(categoryId, t, rootSubId ?? selectedSubId ?? undefined);
+    // Articles created via Explorer "+" or top bar are taxonomy-free; they
+    // join the network organically via wiki-links written into them later.
+    const article = newArticle(categoryId, t);
     await saveArticle(article);
     setArticles(prev => [article, ...prev]);
     eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId, article });
@@ -318,7 +320,7 @@ export default function ZettelkastenView() {
     // Open new article straight in edit mode
     setDraft({ title: article.title, content: article.content, linkedSourceIds: article.linkedSourceIds ?? [] });
     setIsEditing(true);
-  }, [categoryId, selectedSubId]);
+  }, [categoryId]);
 
   const handleOpen = useCallback((id: string) => {
     setReadingSourceId(null);
@@ -338,13 +340,20 @@ export default function ZettelkastenView() {
     }
   }, [articles]);
 
-  const handleBackToList = useCallback(async () => {
+  // "Back" from a regular article returns the user to the Index article (the
+  // entry-point for organic exploration). If the Index doesn't exist for any
+  // reason, fall back to clearing the active selection.
+  const handleBackToIndex = useCallback(async () => {
     await flushRef.current();
-    setActiveId(null);
+    setReadingSourceId(null);
     setDraft(null);
     setIsEditing(false);
-    setReadingSourceId(null);
-  }, []);
+    if (indexArticleId) {
+      setActiveId(indexArticleId);
+    } else {
+      setActiveId(null);
+    }
+  }, [indexArticleId]);
 
   const handleEnterEdit = useCallback(() => {
     if (!activeArticle) return;
@@ -365,15 +374,26 @@ export default function ZettelkastenView() {
 
   const handleDelete = useCallback(async () => {
     if (!activeArticle) return;
+    // The Index article is the subject's entry-point and must always exist —
+    // deleting it would leave the Zettelkasten orphaned.
+    if (activeArticle.isIndex) {
+      toast.error("Index članak (polazna tačka predmeta) se ne može obrisati.");
+      return;
+    }
     if (!confirm(`Obrisati članak "${activeArticle.title}"?`)) return;
     await deleteArticle(activeArticle.id);
     eventBus.emit(EVENT_TYPES.KB_ARTICLE_REMOVED, { subjectId: activeArticle.subjectId, articleId: activeArticle.id });
     setArticles(prev => prev.filter(a => a.id !== activeArticle.id));
-    setActiveId(null);
+    // After delete, return to the Index rather than to a non-existent list.
+    if (indexArticleId && indexArticleId !== activeArticle.id) {
+      setActiveId(indexArticleId);
+    } else {
+      setActiveId(null);
+    }
     setDraft(null);
     setIsEditing(false);
     toast.success("Članak obrisan");
-  }, [activeArticle]);
+  }, [activeArticle, indexArticleId]);
 
   // In-flight guard: dedupes parallel clicks on the same wiki-link title.
   // Maps normalized title -> Promise resolving to the article id to open.
