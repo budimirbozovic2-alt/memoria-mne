@@ -1,6 +1,6 @@
 import { MoreVertical, FolderOpen, BookOpen, Flame, Brain, Check, ChevronRight } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
-import { Card } from "@/lib/spaced-repetition";
+import { Card, EXAM_FREQUENT_TAG, MNEMONIC_TAG } from "@/lib/spaced-repetition";
 
 interface CardContextMenuProps {
   card: Card;
@@ -33,8 +33,8 @@ function CardContextMenuInner({ card, categories, subcategories, availableChapte
   }, [open]);
 
   const cardTags = card.tags || [];
-  const isFrequent = cardTags.includes("često-na-ispitu");
-  const hasMnemoTag = cardTags.includes("mnemonic");
+  const isFrequent = cardTags.includes(EXAM_FREQUENT_TAG);
+  const hasMnemoTag = cardTags.includes(MNEMONIC_TAG);
 
   const menuItems: { icon: typeof FolderOpen; label: string; action: () => void; active?: boolean }[] = [];
 
@@ -44,7 +44,7 @@ function CardContextMenuInner({ card, categories, subcategories, availableChapte
   if (availableChapters && availableChapters.length > 0 && onAssignChapter) {
     menuItems.push({ icon: BookOpen, label: "Dodijeli glavu", action: () => setSubmenu("chapter") });
   }
-  menuItems.push({ icon: Flame, label: isFrequent ? "Ukloni 'Često na ispitu'" : "Označi 'Često na ispitu'", action: () => { onToggleTag(card.id, "često-na-ispitu"); setOpen(false); }, active: isFrequent });
+  menuItems.push({ icon: Flame, label: isFrequent ? "Ukloni 'Često na ispitu'" : "Označi 'Često na ispitu'", action: () => { onToggleTag(card.id, EXAM_FREQUENT_TAG); setOpen(false); }, active: isFrequent });
   if (onCloneToMnemonic) {
     menuItems.push({ icon: Brain, label: hasMnemoTag ? "Već u Mnemo radionici" : "Kloniraj u Mnemo radionicu", action: () => { if (!hasMnemoTag) { onCloneToMnemonic(card); setOpen(false); } }, active: hasMnemoTag });
   }

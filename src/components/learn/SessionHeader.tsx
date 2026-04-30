@@ -1,6 +1,6 @@
 import { Volume2, ArrowLeft, Zap } from "lucide-react";
 import React from "react";
-import { Card, getCardScore } from "@/lib/spaced-repetition";
+import { Card, getCardScore, EXAM_FREQUENT_TAG } from "@/lib/spaced-repetition";
 import { ViewWidth, viewWidthClasses, viewWidthLabels } from "./types";
 
 import { useCategoryData } from "@/contexts/AppContext";
@@ -81,7 +81,7 @@ const SessionHeader = React.memo(function SessionHeader({
             {isFlash && (
               <span className="text-xs text-primary flex items-center gap-1"><Zap className="h-3 w-3" /> Blic</span>
             )}
-            {(card.tags || []).includes("često-na-ispitu") && (
+            {(card.tags || []).includes(EXAM_FREQUENT_TAG) && (
               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-primary/10 text-primary">Često na ispitu</span>
             )}
           </div>

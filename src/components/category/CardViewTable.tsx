@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, ArrowRightLeft, Star, Link2, BookOpen, Alert
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { type Card, CARD_TAGS, SectionState } from "@/lib/spaced-repetition";
+import { type Card, CARD_TAGS, SectionState, EXAM_FREQUENT_TAG } from "@/lib/spaced-repetition";
 import { type CategoryRecord } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -65,7 +65,7 @@ export default function CardViewTable({
                 {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 <span className="text-sm text-foreground truncate flex-1">{card.question || "(Bez pitanja)"}</span>
                 <div className="flex items-center gap-2 shrink-0">
-                  {hasTags && card.tags!.includes("često-na-ispitu") && (
+                  {hasTags && card.tags!.includes(EXAM_FREQUENT_TAG) && (
                     <Star className="h-3.5 w-3.5 text-destructive fill-destructive" />
                   )}
                   <span className={cn("text-[10px] font-medium", stab.color)}>{stab.text}</span>
