@@ -15,7 +15,7 @@ interface ReviewSetupProps {
   dueCards: Card[];
   allCards: Card[];
   categoryRecords: CategoryRecord[];
-  subcategories: Record<string, string[]>;
+  subcategories?: Record<string, string[]>;
   srSettings: SRSettings;
   onSelectMode: (mode: ReviewMode, category: string | null, subcategory: string | null, chapter: string | null, examFrequent: boolean, filterType: FilterType, items: DueItem[]) => void;
   onBack: () => void;

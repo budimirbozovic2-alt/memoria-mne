@@ -108,7 +108,7 @@ export default function ReviewPage() {
           dueCards={scopedDueCards}
           allCards={scopedAllCards}
           categoryRecords={categoryRecords}
-          subcategories={subcategories}
+          
           srSettings={srSettings}
           onReviewSection={handleReviewSection}
           onLogError={handleLogError}
