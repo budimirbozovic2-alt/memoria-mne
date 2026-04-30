@@ -11,6 +11,7 @@ import {
   deleteArticle,
   findArticleByTitle,
   newArticle,
+  bulkCreateArticlesIfMissing,
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
