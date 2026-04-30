@@ -94,16 +94,18 @@ const _reviewLogQueue: ReviewLogEntry[] = [];
 let _reviewLogTimer: ReturnType<typeof setTimeout> | null = null;
 const REVIEW_LOG_DEBOUNCE_MS = 250;
 
-function _flushReviewLogQueue(): Promise<void> {
+async function _flushReviewLogQueue(): Promise<void> {
   _reviewLogTimer = null;
-  if (_reviewLogQueue.length === 0) return Promise.resolve();
+  if (_reviewLogQueue.length === 0) return;
   const batch = _reviewLogQueue.splice(0, _reviewLogQueue.length);
-  return db.reviewLog.bulkAdd(batch).catch((err: unknown) => {
+  try {
+    await db.reviewLog.bulkAdd(batch);
+  } catch (err: unknown) {
     console.error("[reviewLog] bulk write failed", err);
     // Re-queue so we don't silently lose entries on transient failures.
     _reviewLogQueue.unshift(...batch);
     throw err;
-  });
+  }
 }
 
 /** Enqueue a review-log entry. Batched & debounced (250 ms) to avoid
