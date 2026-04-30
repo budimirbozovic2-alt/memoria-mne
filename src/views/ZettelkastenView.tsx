@@ -216,7 +216,7 @@ export default function ZettelkastenView() {
     const matches = Array.from(content.matchAll(/\[\[([^\]]+)\]\]/g))
       .map(m => m[1].trim())
       .filter(Boolean);
-    const pendingAll = matches.filter(t => !existingTitleSet.has(t.toLowerCase()));
+    const pendingAll = matches.filter(t => !existingTitlesLowerRef.current.has(t.toLowerCase()));
     if (pendingAll.length === 0) {
       // Nothing pending → reset overflow latch so a future burst notifies fresh.
       lastOverflowNotifiedRef.current = 0;
