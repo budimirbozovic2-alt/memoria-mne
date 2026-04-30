@@ -164,8 +164,9 @@ export default function ZettelkastenView() {
     };
     await saveArticle(next);
     setArticles(prev => prev.map(a => a.id === next.id ? next : a));
+    eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId!, article: next });
     return next;
-  }, [activeArticle, draft]);
+  }, [activeArticle, draft, categoryId]);
 
   // Cleanup-flush: when leaving edit mode without explicit save, when switching
   // articles, or when the view unmounts. Use a ref to always read the latest.
