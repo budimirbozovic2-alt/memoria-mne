@@ -91,7 +91,7 @@ describe("ensureIndexArticle", () => {
     const idx = await ensureIndexArticle(SUBJECT_A, "Predmet bez podkat.", []);
     expect(idx.content).toContain("Dobrodošli");
     expect(idx.content).not.toContain("[[");
-    expect(idx.content).toContain("Počnite kucanjem");
+    expect(idx.content).toContain("Počnite kucanjem prvog wiki-linka");
   });
 
   it("caps suggested links at 8 to avoid wall-of-links onboarding", async () => {
