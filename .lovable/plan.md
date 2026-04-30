@@ -1,72 +1,83 @@
-## Plan: Razbijanje `AppContext.tsx` God Object
+## Plan: Razbijanje `src/lib/spaced-repetition.ts` God Object
 
 ### Cilj
-Mehanički podijeliti 502-linijski `src/contexts/AppContext.tsx` u izolovane module po domenima. **Nikakva poslovna logika se ne mijenja** — samo se premješta. Sve postojeće javne API tačke (`useCardData`, `useCardActions`, `useCategoryData`, `useReviewData`, `useUIContext`, `usePomodoroStable`, `usePomodoroTick`, `usePomodoroContext`, `useCurrentView`, `AppProvider`, tip `View`, tip `PomodoroState`) ostaju eksportovane iz `@/contexts/AppContext` da se ne razbije nijedan od **34 fajla** koji ih trenutno importuju.
+Mehanički podijeliti 489-linijski FSRS modul u 6 fokusiranih fajlova u `src/lib/sr/`. **Nikakva matematika niti ponašanje se ne mijenja** — samo se kod premješta. `src/lib/spaced-repetition.ts` ostaje kao thin **barrel re-export** da svih **91 postojećih potrošača** rade nepromijenjeno.
 
 ### Nova struktura
 
 ```text
-src/contexts/
-├── AppContext.tsx                 (~70 linija — composition root + re-exporti)
-├── routing/
-│   └── useCurrentView.ts          (View enum, VIEW_TO_PATH, PATH_TO_VIEW,
-│                                   useCurrentView, VIEW_ACTIVITY_MAP)
-├── pomodoro/
-│   ├── usePomodoroEngine.ts       (useGlobalPomodoro hook + tipovi)
-│   └── PomodoroProvider.tsx       (PomodoroStableContext, PomodoroTickContext,
-│                                   usePomodoroStable/Tick/Context, Provider)
-├── ui/
-│   ├── useNotificationScheduler.ts (useEffect za dnevni Notification trigger)
-│   ├── useActivityTracker.ts      (useEffect-i za recordFirstAction +
-│   │                                VIEW_ACTIVITY_MAP timing)
-│   └── UIProvider.tsx             (UIContext, useUIContext, UIProvider —
-│                                   poziva oba hook-a iznad)
-└── cards/
-    └── CardProvider.tsx           (sva 4 konteksta: CardState, Category,
-                                    Review, CardActions + Proxy factory +
-                                    EMPTY fallback objekti + hooks)
+src/lib/
+├── spaced-repetition.ts      (~50 linija — barrel; re-eksportuje sve iz sr/)
+└── sr/
+    ├── types.ts              (Card, Section, SectionState, SRSettings,
+    │                          DEFAULT_SR_SETTINGS, FrequencyTag, SourceType,
+    │                          CardSourceType alias, ExaminerProfile re-export,
+    │                          ErrorLogEntry, ErrorStatus, SourceModule,
+    │                          ReviewGrade)
+    ├── adaptive.ts           (AdaptiveContext, AdaptiveReason, AdaptiveModifiers,
+    │                          computeAdaptiveModifiers, clamp helper,
+    │                          RETENTION_MIN/MAX, INTERVAL_MULT_MIN/MAX)
+    ├── algorithm.ts          (INITIAL_VALUES, nextState, calculateInterval,
+    │                          calculateNextReview, getCachedRetention,
+    │                          isLeech, getDueCards, getDueSections,
+    │                          getCardNextReview, getPendingFirstReviewCount)
+    ├── retrievability.ts     (getRetrievability, getCardRetrievability,
+    │                          getSectionScore, getCardScore)
+    ├── factories.ts          (createSection, createCard, createFlashCard,
+    │                          getErrorStatus)
+    └── format.ts             (GRADES, FREQUENCY_TAGS, SOURCE_TYPES, CARD_TAGS,
+                               formatInterval, previewIntervals)
 ```
 
 ### Mapa premještanja (linija → fajl)
 
-| Trenutne linije AppContext.tsx | Cilj |
+| Trenutne linije `spaced-repetition.ts` | Cilj |
 |---|---|
-| 14–34 (View tip, mape, useCurrentView, VIEW_ACTIVITY_MAP) | `routing/useCurrentView.ts` |
-| 37–42 (PomodoroState), 195–303 (useGlobalPomodoro) | `pomodoro/usePomodoroEngine.ts` |
-| 198–235, 400–417 (Pomodoro konteksti, hookovi, Provider) | `pomodoro/PomodoroProvider.tsx` |
-| 428–459 (notification scheduler useEffect) | `ui/useNotificationScheduler.ts` |
-| 461–475 (activity tracker useEffect-i) | `ui/useActivityTracker.ts` |
-| 176–190, 419–490 (UIContext + UIProvider) | `ui/UIProvider.tsx` |
-| 47–171 (sva 4 konteksta + hooks + EMPTY) i 309–398 (CardProvider + Proxy) | `cards/CardProvider.tsx` |
-| 492–502 (AppProvider + composition) | `AppContext.tsx` (ostaje) |
+| 3, 5 (`ExaminerProfile` import + re-export), 115–157, 165–177, 179–234 (svi tipovi i konstante) | `sr/types.ts` |
+| 11–101 (cijela adaptive sekcija + `clamp`, RETENTION/INTERVAL granice) | `sr/adaptive.ts` |
+| 104–113 (getCachedRetention), 236–367 (INITIAL_VALUES, clampDifficulty, getElapsedDays, nextState, calculateInterval, calculateNextReview, isLeech), 410–412, 440–458 (due/leech queries) | `sr/algorithm.ts` |
+| 460–487 (getRetrievability, getCardRetrievability, getSectionScore, getCardScore) | `sr/retrievability.ts` |
+| 159–163 (getErrorStatus), 392–408, 414–438 (createSection, createCard, createFlashCard) | `sr/factories.ts` |
+| 168–177 (FREQUENCY_TAGS, SOURCE_TYPES), 205–208 (CARD_TAGS), 217–222 (GRADES), 369–390 (formatInterval, previewIntervals) | `sr/format.ts` |
 
-### `AppContext.tsx` nakon refaktora (~70 linija)
+### `spaced-repetition.ts` nakon refaktora (~50 linija)
 
-Fajl ostaje na istoj putanji da svih 34 importera nastave da rade nepromijenjeno. Sadržaj:
+Ostaje na istoj putanji kao **barrel** — re-eksportuje sve simbole koje 91 fajlova trenutno importuje. Sadržaj:
 
-- **Re-eksporti** (sve iz novih fajlova):
-  - `View`, `useCurrentView` iz `./routing/useCurrentView`
-  - `PomodoroState`, `usePomodoroStable`, `usePomodoroTick`, `usePomodoroContext` iz `./pomodoro/PomodoroProvider`
-  - `useUIContext` iz `./ui/UIProvider`
-  - `useCardData`, `useCardActions`, `useCategoryData`, `useReviewData` iz `./cards/CardProvider`
-- **Composition root** `AppProvider` koji wrapuje children u `CardProvider` → `PomodoroProvider` → `UIProvider` (isti redoslijed kao sada).
+```ts
+// Barrel: zadržan da postojeći importi nastave da rade.
+// Novi kod neka importuje direktno iz @/lib/sr/<modul>.
+export * from "./sr/types";
+export * from "./sr/adaptive";
+export * from "./sr/algorithm";
+export * from "./sr/retrievability";
+export * from "./sr/factories";
+export * from "./sr/format";
+```
 
 ### Tehnička pravila izvršenja
 
-1. **Zero logic change** — copy-paste linija je verbatim. Imports unutar svakog novog fajla se uskladi (npr. `useCardActions` u `UIProvider` se importuje iz `../cards/CardProvider`).
-2. **Tipovi se kreću zajedno sa kontekstom kojem pripadaju** (`PomodoroState` u pomodoro modul, `View` u routing modul itd.).
-3. **`EMPTY_*` fallback konstante** ostaju uz svoje kontekste u `cards/CardProvider.tsx`.
-4. **Proxy-based action factory** (linije 313–342) ostaje 1:1, samo se premješta.
-5. **HMR/Refresh stabilnost** — splitanje rješava i trenutnu `useCardActions must be used within CardProvider` HMR grešku jer će svaki provider imati vlastitu modulnu granicu (Vite Fast Refresh briše state samo za izmijenjeni fajl).
-6. **Cyclic imports check** — jedini cross-modul import: `UIProvider` zove `useCardActions()` iz `cards/`. To je jednosmjerno, bez ciklusa.
-7. **Bez izmjena u 34 fajla potrošača** — svi nastavljaju da importuju iz `@/contexts/AppContext`.
+1. **Zero math change** — kopiranje verbatim. Brojni literali (0.05, 0.3, 3.0, 5.0, log(0.9) itd.) ostaju identični.
+2. **Cross-module imports** unutar `sr/`:
+   - `algorithm.ts` → `types.ts`, `adaptive.ts`, `../app-settings`
+   - `adaptive.ts` → `types.ts` samo
+   - `retrievability.ts` → `types.ts` samo
+   - `factories.ts` → `types.ts` samo
+   - `format.ts` → `types.ts`, `adaptive.ts`, `algorithm.ts`
+   - `types.ts` → `../db-schema` (za `ExaminerProfile`)
+   - **Bez ciklusa** — DAG je čist.
+3. **Internal helpers** (`clampDifficulty`, `getElapsedDays`) ostaju `function`-scope unutar `algorithm.ts` (bez `export`-a) jer ih niko spolja ne koristi.
+4. **`SourceType` alias** — audit explicitno traži `SourceType`. Postojeći kod koristi `CardSourceType`. Eksportovaću **oba** (`SourceType = CardSourceType`) iz `types.ts` da nema breakage-a.
+5. **91 fajlova-potrošača ostaje nepromijenjeno** u prvoj fazi — barrel ih sve servisira. Komentar u barrelu upućuje budući kod da koristi specifične `@/lib/sr/*` putanje.
+6. **Internal sweep (opciono)** — prepravka unutrašnjih importa unutar `src/lib/` (npr. `card-buckets.ts`, `db-schema.ts`, `planner-storage.ts`, `card-ordering.ts`, `mastery.ts`, `auto-link-suggestion.ts`, `coverage-analysis.ts`, `source-coverage.ts`, `db-queries.ts`, `persist-queue.ts`, `review-mode-builder.ts`) tako da koriste nove specifične putanje. Komponente i hookovi ostaju na barrelu (89% slučajeva) jer dotiču po 5–8 simbola iz različitih modula i nema vrijednosti od micro-managementa.
 
 ### Out of scope
-- `spaced-repetition.ts` (Korak 6) — biće zaseban prompt nakon što ovaj prođe.
-- Nikakve preimenovane API tačke, nikakvi novi feature-i, nikakve TypeScript optimizacije.
+- Bilo kakva izmjena FSRS koeficijenata ili rasporeda.
+- Mijenjanje internih helpera (`clampDifficulty` itd.) ili API-ja.
+- Test fajlovi ostaju na barrelu (trebaju u jednom importu da provjeravaju cijeli surface).
 
 ### Verifikacija
-- TypeScript kompajlira bez grešaka.
-- 34 fajla koja importuju iz `@/contexts/AppContext` rade bez izmjena.
-- Pomodoro nastavlja tikati, notifikacije se emituju, view tracking radi.
-- HMR error iz preview-a nestaje jer `CardProvider` više ne dijeli modul sa nepovezanim hookovima.
+- TypeScript kompajlira bez grešaka (svi 91 fajlova još uvijek razrješavaju simbole kroz barrel).
+- `src/test/spaced-repetition.test.ts` prolazi nepromijenjen.
+- Konzole bez upozorenja o cikličnim importima.
+- Veličina svake nove datoteke ostaje pod 200 linija (lakše za HMR i čitanje).
