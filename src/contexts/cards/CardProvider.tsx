@@ -1,53 +1,26 @@
-import { Suspense, lazy, useMemo, type ReactNode } from "react";
-import { CategoryStateProvider, useCategoryDataInternal } from "./CategoryStateProvider";
-import {
-  CardStateProvider,
-  useCardData,
-  useReviewData,
-  useDbError,
-  useCategoryStatsData,
-  useCardStateInternals,
-} from "./CardStateProvider";
-import { CardActionsProvider, useCardOnlyActions } from "./CardActionsProvider";
-import { CategoryActionsProvider, useCategoryActions } from "./CategoryActionsProvider";
-import { BackupActionsProvider, useBackupActions } from "./BackupActionsProvider";
+import { Suspense, lazy, type ReactNode } from "react";
+import { CategoryStateProvider } from "./CategoryStateProvider";
+import { CardStateProvider, useDbError } from "./CardStateProvider";
+import { CardActionsProvider } from "./CardActionsProvider";
+import { CategoryActionsProvider } from "./CategoryActionsProvider";
+import { BackupActionsProvider } from "./BackupActionsProvider";
 
 const LazyDatabaseRecoveryPanel = lazy(() => import("@/components/DatabaseRecoveryPanel"));
 
 // ─────────────────────────────────────────────────────────────
-// Public hooks (back-compat surface)
+// Public hooks — focused re-exports, no merged shims.
+// Components import directly from the right domain provider.
 // ─────────────────────────────────────────────────────────────
-export { useCardData, useReviewData };
-export { useCategoryActions, useBackupActions };
-
-/**
- * Back-compat: combines public category list + card-derived `categoryStats`
- * into the historical shape so existing 26 consumers don't change.
- */
-export function useCategoryData() {
-  const base = useCategoryDataInternal();
-  const { categoryStats } = useCategoryStatsData();
-  return useMemo(
-    () => ({ ...base, categoryStats }),
-    [base, categoryStats],
-  );
-}
-
-/**
- * Back-compat: merged actions object that mirrors the historical 30-key API.
- * No Proxy — each underlying actions context already returns a stable
- * `useMemo`-wrapped value, so the merged identity is stable too.
- */
-export function useCardActions() {
-  const card = useCardOnlyActions();
-  const category = useCategoryActions();
-  const backup = useBackupActions();
-  const { updateSRSettings } = useCardStateInternals();
-  return useMemo(
-    () => ({ ...card, ...category, ...backup, updateSRSettings }),
-    [card, category, backup, updateSRSettings],
-  );
-}
+export {
+  useCardData,
+  useReviewData,
+  useCategoryStatsData,
+  useSettingsActions,
+} from "./CardStateProvider";
+export { useCategoryData } from "./CategoryStateProvider";
+export { useCardOnlyActions } from "./CardActionsProvider";
+export { useCategoryActions } from "./CategoryActionsProvider";
+export { useBackupActions } from "./BackupActionsProvider";
 
 // ─────────────────────────────────────────────────────────────
 // Composition root
