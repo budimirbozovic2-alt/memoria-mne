@@ -77,9 +77,14 @@ export default function StudyModeRecall({
   }, [card.id, updateProgress]);
 
   const handleGrade = useCallback((grade: number) => {
-    // Feed FSRS — one grade per section (card-level signal)
+    // Feed FSRS — only grade sections that are actually due. This prevents
+    // multi-section essay cards from artificially stabilizing sections that
+    // FSRS hasn't yet scheduled for review.
     if (sections.length > 0) {
-      sections.forEach(s => onReviewSection(card.id, s.id, grade));
+      const now = Date.now();
+      const dueOnly = sections.filter(s => s.nextReview <= now || s.state === 0 /* New */);
+      const targets = dueOnly.length > 0 ? dueOnly : [sections[0]]; // fallback: at least one signal
+      targets.forEach(s => onReviewSection(card.id, s.id, grade));
     }
     setTotalGrades(prev => [...prev, grade]);
 

@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Card, SRSettings, getDueSections, SectionState, getRetrievability, isLeech } from "@/lib/spaced-repetition";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Card, SRSettings } from "@/lib/spaced-repetition";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
 import { idbLoadSettings, idbSaveSettings } from "@/lib/db";
 import { ReviewMode, DueItem, ViewWidth, ReviewSessionProps } from "./review/review-constants";
+import { buildItemsForMode } from "@/lib/review-mode-builder";
 import ReviewSetup from "./review/ReviewSetup";
 import ReviewCard from "./review/ReviewCard";
 import ReviewComplete from "./review/ReviewComplete";
@@ -15,7 +16,7 @@ interface SavedSessionState {
   timestamp: number;
 }
 
-export default function ReviewSession({ dueCards, allCards, categoryRecords, subcategories, srSettings, onReviewSection, onLogError, onBack, preSelectedCategory, lockedCategory, autoMode }: ReviewSessionProps) {
+export default function ReviewSession({ dueCards, allCards, categoryRecords, srSettings, onReviewSection, onLogError, onBack, preSelectedCategory, lockedCategory, autoMode }: ReviewSessionProps) {
   const [mode, setMode] = useState<ReviewMode>(null);
   const [items, setItems] = useState<DueItem[]>([]);
   const [randomIndex, setRandomIndex] = useState(0);
@@ -77,43 +78,10 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
   }, [saveSessionState, onBack]);
 
   // C3 fix: Recompute items when resuming so currentItem is never undefined
-  const computeItemsForMode = useCallback((m: ReviewMode): DueItem[] => {
-    if (m === "stabilization") {
-      const items: DueItem[] = [];
-      dueCards.forEach(card => {
-        getDueSections(card).forEach(section => {
-          if ((section.state === SectionState.Learning || section.state === SectionState.Relearning) && section.stability < 5) {
-            items.push({ card, section });
-          }
-        });
-      });
-      items.sort((a, b) => a.section.stability - b.section.stability);
-      return items;
-    } else if (m === "critical") {
-      const items: DueItem[] = [];
-      allCards.forEach(card => {
-        card.sections.forEach(section => {
-          if (section.state === SectionState.New) return;
-          const r = getRetrievability(section);
-          if (r >= 80 && r <= 85) items.push({ card, section });
-        });
-      });
-      items.sort((a, b) => getRetrievability(a.section) - getRetrievability(b.section));
-      return items;
-    } else {
-      const leechItems: DueItem[] = [];
-      const highDiffItems: DueItem[] = [];
-      allCards.forEach(card => {
-        card.sections.forEach(section => {
-          if (section.state === SectionState.New) return;
-          if (isLeech(section, srSettings)) leechItems.push({ card, section });
-          else if (section.difficulty > 7) highDiffItems.push({ card, section });
-        });
-      });
-      highDiffItems.sort((a, b) => b.section.difficulty - a.section.difficulty);
-      const combined = [...leechItems, ...highDiffItems.slice(0, 50 - leechItems.length)];
-      return combined.slice(0, 50);
-    }
+  // Centralized via review-mode-builder so the picker (ReviewSetup) and
+  // the live session (resume / autoMode) always agree on contents.
+  const computeItemsForMode = useCallback((m: Exclude<ReviewMode, null>): DueItem[] => {
+    return buildItemsForMode(m, { dueCards, allCards, srSettings });
   }, [dueCards, allCards, srSettings]);
 
   // Auto-start in a specific mode (e.g. global dashboard's "Globalna konsolidacija"
@@ -140,6 +108,7 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
     if (modeStr === "essay") resumeMode = "stabilization";
     else if (modeStr === "random") resumeMode = "critical";
     else if (modeStr === "difficult") resumeMode = "hardest";
+    if (resumeMode === null) return; // legacy / corrupt state — ignore
     const resumeItems = computeItemsForMode(resumeMode);
     const safeIndex = Math.min(savedSession.randomIndex || 0, Math.max(0, resumeItems.length - 1));
     setMode(resumeMode);
@@ -173,7 +142,7 @@ export default function ReviewSession({ dueCards, allCards, categoryRecords, sub
         dueCards={dueCards}
         allCards={allCards}
         categoryRecords={categoryRecords}
-        subcategories={subcategories}
+        subcategories={{}}
         srSettings={srSettings}
         onSelectMode={handleSelectMode}
         onBack={onBack}

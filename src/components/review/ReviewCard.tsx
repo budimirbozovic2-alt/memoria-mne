@@ -1,6 +1,7 @@
-import { ArrowLeft, Eye, ChevronRight, AlertTriangle, Pause, Scale } from "lucide-react";
+import { ArrowLeft, Eye, ChevronRight, AlertTriangle, Pause, Scale, Clock } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { Card, Section, isLeech, formatInterval, getCachedRetention, SRSettings } from "@/lib/spaced-repetition";
+import { isEarlyReview } from "@/lib/review-mode-builder";
 import AdaptiveReasonPanel from "./AdaptiveReasonPanel";
 import { useCategoryData } from "@/contexts/AppContext";
 import { HighlightedSection } from "@/lib/highlight-key-parts";
@@ -166,6 +167,21 @@ export default function ReviewCard({
               Pala {lapses}× — razmislite o podjeli na manje dijelove ili drugačijem pristupu učenju.
             </p>
           </div>
+        </motion.div>
+      )}
+
+      {/* Early review notice — sekcija ranjiva za FSRS scheduling distortion */}
+      {!sectionIsLeech && isEarlyReview(section) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 rounded-xl border border-warning/30 bg-warning/5 p-3"
+        >
+          <Clock className="h-4 w-4 text-warning shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            <strong className="text-warning">Prijevremena konsolidacija.</strong>{" "}
+            FSRS će smanjiti rast intervala jer kartica još nije dospjela.
+          </p>
         </motion.div>
       )}
 

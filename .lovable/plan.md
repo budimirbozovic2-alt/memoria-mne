@@ -1,131 +1,71 @@
-## Cilj
+# Refaktor i ispravke mehanizma konsolidacije
 
-Speed Reader prestaje da bude globalna funkcija. Postaje **lokalni mod „Brzo čitanje"** unutar `SubjectCardsView` (Kartice predmeta), kao još jedan tab pored „Pasivno čitanje" — sa identičnim izgledom (preporučena/featured kartica). Radi isključivo nad karticama trenutnog predmeta, izvori i biranje kategorija/podkategorija se uklanjaju.
+Cilj: konsolidacija mora da poštuje FSRS raspored (`nextReview ≤ now`) u svim modovima, da ima jedan izvor istine za izbor sekcija, i da Active Recall ne korumpira FSRS signale.
 
-## Konceptualni model
+## 1. Due-only filter u svim modovima (BUG 1, 2)
 
-```text
-SubjectCardsView (već postoji)
-└── Tabs (vrijednosti: "manage" | "read" | "speed")
-    ├── manage  → Uređivanje + Struktura
-    ├── read    → Pasivno čitanje (postoji)
-    └── speed   → Brzo čitanje (NOVO, lokalno, isti vizualni stil kao "read")
+Trenutno `critical` i `hardest` biraju iz `allCards` bez obzira na `nextReview`, pa FSRS dobija prijevremene ocjene koje kvare stabilnost. Promjena:
+
+- **`stabilization`** — ostaje na `dueCards` (već OK).
+- **`critical`** — promijeniti izvor sa `filteredAllCards` na `filteredDueCards`. Prozor `R ∈ [80, 85]` ostaje, ali primijenjen samo na sekcije koje su due ili overdue. Time se hvata "kritični trenutak" tačno onda kad ga FSRS očekuje.
+- **`hardest`** — dodati prag: leech/teške sekcije ulaze samo ako je `nextReview ≤ now + grace`, gdje je `grace = 2 dana` (konfigurabilno konstantom u `review-constants.ts`). Razlog: leech kartice se često žele forsirati i prije roka, ali ne smije da bude "iz vedra neba" — 2 dana prozor je dobar kompromis.
+- Dodati upozorenje na karticu u `ReviewCard` kada je sekcija prerano (early review): mali badge "Prijevremena konsolidacija — FSRS će smanjiti rast intervala".
+
+## 2. Centralizacija logike modova (BUG 3)
+
+Izvući `computeItemsForMode` iz `ReviewSession.tsx` i identičnu trojku iz `ReviewSetup.tsx` u jedan modul:
+
+```
+src/lib/review-mode-builder.ts
+  - buildStabilizationItems(dueCards): DueItem[]
+  - buildCriticalItems(dueCards): DueItem[]
+  - buildHardestItems(dueCards, srSettings, graceDays): DueItem[]
+  - buildItemsForMode(mode, dueCards, allCards, srSettings): DueItem[]
 ```
 
-`SpeedReader` engine se zadržava (riječi, tajming, TTS, kontrole), ali se **wrap-uje** u novi lokalni komponentni omotač `LocalSpeedReader` koji:
-- prima već filtrovanu listu kartica predmeta + `subcategoryNodes` + `categoryId`,
-- pokazuje selektor stila „Pasivnog čitanja" (potkat / glava / tip = sve/esej/blic, jedna aktivna kartica),
-- za prikaz teksta koristi **isti tekstualni layout kao PassiveReader** (header sa pitanjem + FSRS chip-ovi + sekcije sa naslovima i `prose` HTML), ali sa speed-reader overlay-em za riječ-po-riječ čitanje (highlight aktivne riječi unutar prose teksta).
+`ReviewSetup` i `ReviewSession` oboje pozivaju ove funkcije. Brojači u UI-u i stvarna sesija će biti garantovano identični.
 
-## Konkretne izmjene
+## 3. Active Recall — grade per section, ne per card (BUG 4)
 
-### 1. Novi: `src/components/subject-cards/LocalSpeedReader.tsx`
-Lokalna verzija Speed Reader-a. Internally koristi postojeći `useSpeedReaderEngine` ali samo za riječi/tajming/TTS/kontrole — selekcija je lokalna.
+U `StudyModeRecall.tsx`, umjesto `sections.forEach(s => onReviewSection(card.id, s.id, grade))`:
 
-Ulazni props (po uzoru na `PassiveReader`):
-```ts
-interface Props {
-  cards: Card[];                // već filtrovano na predmet
-  subcategoryNodes: SubcategoryNode[];
-  categoryId: string;
-  onEditCard?: (card: Card) => void;
-  initialCardId?: string | null;
-  onInitialConsumed?: () => void;
-}
-```
+- Ako kartica ima 1 sekciju (flash) → ocijeni tu sekciju (postojeće ponašanje).
+- Ako ima više sekcija (esej) → ocijeni samo sekcije koje su trenutno due, ostale ne diraj. To štiti ne-due sekcije od umjetne stabilizacije.
 
-Ponašanje:
-- **Filteri (preuzeti iz PassiveReader):** Potkategorija → Glava → Tip (sve/esej/blic). Persist u `localStorage` ključ `speed-reader-filters:{categoryId}` (isti pattern kao `PassiveReader`-ov `passive-reader-filters:`).
-- **Card-by-card navigacija:** ChevronLeft/Right + brojač `n / total` (kao PassiveReader). Nema `subcategory-merge` (sve kartice u jedan tok) — Brzo čitanje radi nad **jednom karticom u datom trenutku**, isto kao Pasivno.
-- **Prikaz teksta:** kopiramo strukturu `PassiveReader` workspace-a:
-  - header `<h2>` sa `current.question` + FSRS chip-ovi (reads, lapses, stability, retention),
-  - liste sekcija sa `<h3>` naslovom i sadržajem; **ali** sadržaj se renderuje preko `SpeedReaderDisplay`-a (riječ-po-riječ highlight) umjesto kroz `dangerouslySetInnerHTML`. Ako je previše invazivno, sekcije ostaju u `prose` formatu i ispod njih sjedi `SpeedReaderDisplay` — biramo prvu varijantu (display zamjenjuje sekcije, header sa pitanjem ostaje).
-- **Speed kontrole:** koristimo postojeći `<SpeedReaderControls/>` (WPM, font, play/pause, prev/next, TTS).
-- **Bez** prikaza izvora, bez panela za izbor kategorije/podkategorije globalno, bez „Čitaj sve kartice predmeta odjednom" — fokus je jedna kartica.
+Alternativno (manji rizik): dodati settings prekidač "Active Recall fan-out" — default OFF nakon refaktora.
 
-### 2. Refaktor `useSpeedReaderEngine` u dvije varijante (najmanje invazivno)
-Engine trenutno čita `cards` iz `AppContext` i dopušta filtriranje po `selCat/selSub` + učitava sve `sources`. Da ne bismo razbijali postojeću logiku, dodajemo **opcioni mod „local"**:
+## 4. Čišćenje (BUG 5, 6, 7)
 
-- Nova potpis-varijanta: `useSpeedReaderEngine({ mode: "local", cards: Card[], categoryId: string })` koja:
-  - preskače učitavanje `sources` i potpuno isključuje `contentSource === "sources"`,
-  - ne nudi `selCat` (zaključan na `categoryId`),
-  - prima vec-filtriranu listu (`filteredCards`) spolja preko prop-a, a interni `selSub` se ignoriše ili koristi kao thin pass-through,
-  - `startSubcategoryRead` postaje `startCardRead(card)` jer radimo card-by-card.
+- Ukloniti `subcategories` prop iz `ReviewSessionProps`, `ReviewSetupProps` i lanca poziva.
+- Ukloniti `selectedCategory?: string | null` iz `SavedSessionState` (nije korišten).
+- Provjeriti je li `getPendingFirstReviewCount` korišten igdje; ako nije, ostaviti (može biti za buduću dashboard signalizaciju) — ne brisati u ovom PR-u.
 
-Implementaciono najsigurnije: **ne diramo** postojeći engine; umjesto toga `LocalSpeedReader` koristi:
-- `buildSegments([currentCard])` direktno iz `speed-reader-constants` za aktivnu karticu,
-- mali lokalni hook `useLocalSpeedReaderEngine` koji enkapsulira tajming/TTS/kontrole iz postojećeg engine-a (kopiramo samo timer + TTS dio, ~150 LOC, bez selektora i bez `loadSources`).
+## 5. Test pokrivenost
 
-Ovo izbjegava regressije na globalnoj `/speed-reader` ruti dok je još živa, i ostavlja nam slobodu da je čisto obrišemo u koraku 4.
+Dodati `src/test/review-mode-builder.test.ts` sa scenarijima:
+- Kartica sa `nextReview = now + 5d` ne smije ući ni u `critical` ni u `hardest` (ovaj drugi može samo unutar `grace` prozora).
+- Stabilizacija prazna kada nema Learning/Relearning sekcija sa stab<5.
+- Hardest sortiranje: leech prvi, zatim difficulty desc, ukupno ≤50.
 
-### 3. `src/views/SubjectCardsView.tsx`
-- Tab union postaje `"manage" | "read" | "speed"`.
-- `EditReturnSnapshot.tab` proširujemo: `tab?: "manage" | "read" | "speed"`.
-- U sekciji „Učenje" (featured) dodajemo **drugi `TabsTrigger`** za „Brzo čitanje", istog vizualnog jezika kao „Pasivno čitanje" (border-2 primary/50, gradient bg, ikona `Zap` u primary blok), poredan **desno od** Pasivno čitanje.
-- Layout: `TabsList` postaje `grid grid-cols-1 md:grid-cols-2 gap-3` da dvije featured kartice stoje rame uz rame.
-- Novi `<TabsContent value="speed">` renderuje `<LocalSpeedReader …/>` sa istim `cards` i `subcategoryNodes`.
-- Dugme „Nazad na uređivanje" (već postoji za `tab === "read"`) proširujemo da se prikazuje i za `tab === "speed"`.
-- Subtitle ispod naziva predmeta: „Kartice — uređivanje, struktura, pasivno i brzo čitanje".
+## 6. Tehnički detalji (developer only)
 
-### 4. Uklanjanje globalnog Speed Readera
-Kada lokalni radi, brišemo:
-- **Routes** u `src/App.tsx`: linije za `/speed-reader` i `/subject/:categoryId/speed-reader`, kao i lazy importe `SpeedReaderPage` i `SubjectSpeedReaderPage`.
-- **Files:** `src/views/SpeedReaderPage.tsx`, `src/views/SubjectSpeedReaderPage.tsx`, `src/components/SpeedReader.tsx`, `src/components/speed-reader/SpeedReaderSelector.tsx` (zastarjelo — selekcija je sad lokalna).
-- **Navigacija:** ukloniti unose iz `src/components/AppSidebar.tsx` (`{ path: "/speed-reader", … }`) i `src/components/TopNav.tsx`.
-- **Breadcrumbs:** ukloniti `"/speed-reader"` mapu i ukloniti iz `LAB_ROUTES`.
-- **AppContext:** iz `View` union-a izbrisati `"speed-reader"` i odgovarajući redak iz `viewToPath` mape.
+- `grace` konstanta: `const HARDEST_GRACE_MS = 2 * 24 * 60 * 60 * 1000;` u `review-constants.ts`.
+- Tip `BuildArgs = { dueCards: Card[]; allCards: Card[]; srSettings: SRSettings; now?: number }` — `now` injectable za testove.
+- `ReviewSetup` više ne treba `allCards` jer sve gradi iz `dueCards` (+ grace prozor); prop ostaje radi `EmptyState` brojača na nivou `ReviewPage`.
+- `LocalSpeedReader` i `PassiveReader` nisu zahvaćeni.
 
-Zadržavamo:
-- `src/hooks/useSpeedReaderEngine.ts` (ili njegovo srce) — koristi se interno od `LocalSpeedReader`-a.
-- `src/components/speed-reader/SpeedReaderControls.tsx`, `SpeedReaderDisplay.tsx`, `speed-reader-constants.ts` — i dalje korisni building blokovi.
-- `src/components/SpeedReaderOnboarding.tsx` — okida se iz lokalnog tab-a (mali „Vodič" link u headeru taba „Brzo čitanje").
+## Šta NE mijenjamo
 
-## UI specifikacija (featured tab par)
+- Skala ocjena 1–4, FSRS formule (`calculateNextReview`), `targetRetention` izvor (ostaje globalan u ovoj rundi — per-subject je posebna tema vezana za Dijagnostiku).
+- Pause/Resume IDB ključ i 2h TTL.
+- Auto-mode iz globalnog dashboarda (`?mode=critical`).
+- UI izgled mod-pickera (samo brojači će se promijeniti jer izvor postaje `dueCards`).
 
-```text
-┌──────────────────────────────────────────┬──────────────────────────────────────────┐
-│  📖  Pasivno čitanje    [Preporučeno]    │  ⚡  Brzo čitanje        [Preporučeno]    │
-│  Slušanje i čitanje sadržaja kartica     │  RSVP brzo čitanje kartica predmeta —    │
-│  bez ocjenjivanja                        │  treniraj brzinu i fokus                  │
-└──────────────────────────────────────────┴──────────────────────────────────────────┘
-```
+## Datoteke koje će se mijenjati
 
-- Ikona za Brzo: `Zap` (lucide), iste boje i raspored kao kod Pasivno (primary blok pozadine, primary-foreground ikona).
-- Bez `[Sparkles]` chip-a u desnom kutu na Brzom — samo Pasivno ostaje označeno kao primarno preporučeno; Brzo nosi label „Brzo" mali badge umjesto „Preporučeno", da hijerarhija ostane jasna. (Otvoren detalj — ako želiš oba kao „Preporučeno", lako je promijeniti.)
+- **Novo**: `src/lib/review-mode-builder.ts`, `src/test/review-mode-builder.test.ts`
+- **Izmjene**: `src/components/ReviewSession.tsx`, `src/components/review/ReviewSetup.tsx`, `src/components/review/review-constants.ts`, `src/components/review/ReviewCard.tsx` (early-review badge), `src/components/learn/StudyModeRecall.tsx`
 
-## Edge cases
+## Otvoreno pitanje
 
-- **Prazan predmet:** „Nema esejskih ni blic kartica za brzo čitanje." (PassiveReader-style empty state).
-- **Filteri sakrivaju aktivnu karticu:** isti pattern kao u `PassiveReader` (`initialCardId` two-phase reset filtera).
-- **TTS:** ostaje globalno iz `loadTTSSettings/saveTTSSettings`.
-- **Persistirani snapshot tab-a:** ako legacy snapshot ima `"read"` ostaje validan; za `"speed"` postoji guard (`tab === "speed" ? "speed" : initialSnapshot?.tab ?? "manage"`).
-
-## Šta se NE mijenja
-
-- FSRS, review log, stats, planner, dashboard predmeta (osim eventualnog dugmeta — vidi pitanje ispod, ali default je da Brzo čitanje ostane samo unutar „Kartice" view-a, pošto je tu i Pasivno čitanje).
-- `SpeedReaderControls`, `SpeedReaderDisplay`, `speed-reader-constants` (samo se reuse-uju).
-- Onboarding sadržaj.
-
-## Otvoreno pitanje (ako želiš drugačije)
-
-Iz teksta („dugme treba da stoji pored dugmeta Pasivno čitanje") razumijem da govorimo o **tabu** unutar `SubjectCardsView` (jer je tamo Pasivno čitanje). Ako si mislio na **dugme na SubjectDashboard-u**, javi pa ću dodati i duplikat shortcut tile (tile pored „Kartice" / kao novi „Brzo čitanje" tile koji vodi na `/subject/:categoryId/cards?tab=speed`).
-
-## Lista fajlova
-
-**Novi**
-- `src/components/subject-cards/LocalSpeedReader.tsx`
-
-**Izmijenjeni**
-- `src/views/SubjectCardsView.tsx` (novi tab + featured tile)
-- `src/App.tsx` (uklanjanje globalnih ruta)
-- `src/components/AppSidebar.tsx` (uklanjanje stavke)
-- `src/components/TopNav.tsx` (uklanjanje stavke)
-- `src/components/Breadcrumbs.tsx` (uklanjanje mape i LAB_ROUTES)
-- `src/contexts/AppContext.tsx` (uklanjanje `"speed-reader"` iz `View` i `viewToPath`)
-
-**Obrisani**
-- `src/views/SpeedReaderPage.tsx`
-- `src/views/SubjectSpeedReaderPage.tsx`
-- `src/components/SpeedReader.tsx`
-- `src/components/speed-reader/SpeedReaderSelector.tsx`
-- `src/hooks/useSpeedReaderEngine.ts` (ako uspijem cijeli zamijeniti lokalnim hook-om; u suprotnom ostaje, samo se prestaje koristiti globalno)
+Da li želiš da `hardest` mod ipak dozvoli sve leech kartice bez `grace` ograničenja (jer su one same po sebi izuzetak), a samo `difficulty>7` da podliježe due-only pravilu? To je čistije pedagoški, ali pišem li ovako ili strogo due-only — javi prije implementacije.
