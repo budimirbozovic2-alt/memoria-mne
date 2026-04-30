@@ -11,7 +11,7 @@ import { idbSaveSettings } from "@/lib/db";
 import { onCardLinksCleared, onCardReviewConfirmed } from "@/lib/sources-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { useCardBootstrap } from "@/hooks/useCardBootstrap";
-import { buildCardBuckets, EMPTY_BUCKETS, type CardBuckets } from "@/lib/card-buckets";
+import { buildCardBuckets, EMPTY_BUCKETS, bucketFingerprint, type CardBuckets } from "@/lib/card-buckets";
 import { useCategoryData, useCategoryStateSetter } from "./CategoryStateProvider";
 
 export type DbError = { type: "version" | "timeout"; message: string };
@@ -230,7 +230,19 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const cards = useMemo(() => mapToArray(cardMap), [cardMap]);
-  const buckets = useMemo(() => buildCardBuckets(cards), [cards]);
+
+  // Buckets only depend on taxonomy fields (categoryId/subcategoryId/chapterId).
+  // Reuse the previous bucket object when the fingerprint matches, so a grade
+  // (which mutates only FSRS section state) doesn't trigger an O(N) rebuild.
+  const bucketCacheRef = useRef<{ fp: string; buckets: CardBuckets } | null>(null);
+  const buckets = useMemo(() => {
+    const fp = bucketFingerprint(cards);
+    const cached = bucketCacheRef.current;
+    if (cached && cached.fp === fp) return cached.buckets;
+    const fresh = buildCardBuckets(cards);
+    bucketCacheRef.current = { fp, buckets: fresh };
+    return fresh;
+  }, [cards]);
 
   // Single-pass derived data
   const { dueCards, stats, categoryStats, cardCountByCategory } = useMemo(() => {
