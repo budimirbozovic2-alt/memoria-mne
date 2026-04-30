@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import type { ExamQuestion } from "@/components/ExamSidebar";
 import type { SelectionModule } from "@/lib/selection-split-engine";
+import type { WizardMode, WizardModuleEdit } from "@/lib/split-wizard-build";
+import { defaultEdit } from "@/lib/split-wizard-build";
 
 export type ReaderWidth = "S" | "M" | "L" | "XL" | "Full";
 
