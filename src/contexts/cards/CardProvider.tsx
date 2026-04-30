@@ -1,4 +1,4 @@
-import { Suspense, lazy, useContext, useMemo, type ReactNode } from "react";
+import { Suspense, lazy, useMemo, type ReactNode } from "react";
 import { CategoryStateProvider, useCategoryDataInternal } from "./CategoryStateProvider";
 import {
   CardStateProvider,
@@ -6,6 +6,7 @@ import {
   useReviewData,
   useDbError,
   useCategoryStatsData,
+  useCardStateInternals,
 } from "./CardStateProvider";
 import { CardActionsProvider, useCardOnlyActions } from "./CardActionsProvider";
 import { CategoryActionsProvider, useCategoryActions } from "./CategoryActionsProvider";
@@ -41,9 +42,10 @@ export function useCardActions() {
   const card = useCardOnlyActions();
   const category = useCategoryActions();
   const backup = useBackupActions();
+  const { updateSRSettings } = useCardStateInternals();
   return useMemo(
-    () => ({ ...card, ...category, ...backup }),
-    [card, category, backup],
+    () => ({ ...card, ...category, ...backup, updateSRSettings }),
+    [card, category, backup, updateSRSettings],
   );
 }
 
