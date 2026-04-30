@@ -9,7 +9,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=123",
+    "lint:critical": "eslint src/hooks/useCardImport.ts src/hooks/useCardExport.ts src/lib/migrations src/lib/sanitize.ts src/lib/persist-queue.ts src/lib/db-queries.ts src/lib/db-schema.ts src/contexts/cards",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -89,6 +90,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.4.1",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

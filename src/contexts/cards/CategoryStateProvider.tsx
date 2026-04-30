@@ -68,13 +68,9 @@ export function CategoryStateProvider({ children }: { children: ReactNode }) {
   const subcategories = useMemo(() => {
     const map: Record<string, string[]> = {};
     for (const r of categoryRecords) {
-      const subs = [...(r.subcategories || [])];
-      subs.sort((a: any, b: any) => {
-        const ao = typeof a === "string" ? 0 : (a.sortOrder ?? 0);
-        const bo = typeof b === "string" ? 0 : (b.sortOrder ?? 0);
-        return ao - bo;
-      });
-      map[r.id] = subs.map((n: any) => (typeof n === "string" ? n : n.id));
+      const subs = [...(r.subcategories ?? [])];
+      subs.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      map[r.id] = subs.map((n) => n.id);
     }
     return map;
   }, [categoryRecords]);

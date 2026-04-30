@@ -28,6 +28,11 @@ export default tseslint.config(
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
 
+      // Zero-any policy — enforced as warning globally with a CI plafond
+      // (see `lint` script in package.json). Critical paths upgrade this to
+      // "error" via the dedicated config block below.
+      "@typescript-eslint/no-explicit-any": "warn",
+
       // Block raw Tailwind palette colors in JSX/string literals.
       // Forces use of semantic design tokens defined in src/index.css.
       "no-restricted-syntax": [
@@ -43,6 +48,24 @@ export default tseslint.config(
             "Raw Tailwind palette colors are forbidden. Use semantic tokens (success, warning, destructive, info, primary, mastery-*, node-*) defined in src/index.css.",
         },
       ],
+    },
+  },
+
+  // Critical paths: backup/import/persist/contexts/migrations cannot regress.
+  // Any new `any` in these files must FAIL the build.
+  {
+    files: [
+      "src/hooks/useCardImport.ts",
+      "src/hooks/useCardExport.ts",
+      "src/lib/migrations/**/*.ts",
+      "src/lib/sanitize.ts",
+      "src/lib/persist-queue.ts",
+      "src/lib/db-queries.ts",
+      "src/lib/db-schema.ts",
+      "src/contexts/cards/**/*.{ts,tsx}",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
     },
   },
 
