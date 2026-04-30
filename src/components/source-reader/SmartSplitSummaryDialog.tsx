@@ -1,6 +1,6 @@
 import {
   Wand2, PenSquare, ChevronLeft, ChevronRight, SkipForward,
-  X, Tag as TagIcon, Layers, FileText, Eye,
+  X, Tag as TagIcon, Layers, FileText, Eye, ArrowLeft,
 } from "lucide-react";
 import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -11,7 +11,7 @@ import type { Source } from "@/lib/sources-storage";
 import { useSourceReaderStore } from "@/store/useSourceReaderStore";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { normalizeTag, TAG_LIMITS } from "@/lib/zettelkasten-tags";
-import { unfinishedIndices } from "@/lib/split-wizard-build";
+import { unfinishedIndices, buildSeparatePlans, buildCombinedPlan } from "@/lib/split-wizard-build";
 
 interface Props {
   source: Source;
