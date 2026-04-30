@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Plus, Trash2, FileText, Search, BookOpen, Compass,
+  ArrowLeft, Plus, Trash2, FileText, Compass,
   Pencil, Check, BookMarked,
 } from "lucide-react";
 import { useCategoryData } from "@/contexts/AppContext";
@@ -12,6 +12,7 @@ import {
   findArticleByTitle,
   newArticle,
   bulkCreateArticlesIfMissing,
+  ensureIndexArticle,
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
