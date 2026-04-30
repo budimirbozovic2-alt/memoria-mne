@@ -92,6 +92,8 @@ export function useCardImport({
           question: sanitizeHtml(c.question ?? ""),
           tags: c.tags || [],
           errorLog: c.errorLog || [],
+          frequencyTag: sanitizeFrequencyTag(c.frequencyTag),
+          sourceType: sanitizeSourceType(c.sourceType),
           sections: (c.sections || []).map((s: any) => ({
             ...s,
             id: s.id || crypto.randomUUID(),
@@ -107,6 +109,18 @@ export function useCardImport({
             scheduledDays: s.scheduledDays ?? 0,
           })),
         });
+
+        // Sanitize CategoryRecord.examinerProfile (V13 schema) for safety in adaptive scheduler.
+        const sanitizeCategoryRecord = (cr: CategoryRecord): CategoryRecord => {
+          const profile = sanitizeExaminerProfile(cr.examinerProfile);
+          if (profile) return { ...cr, examinerProfile: profile };
+          // Strip invalid profile to prevent runtime crashes downstream.
+          if (cr.examinerProfile && !profile) {
+            const { examinerProfile: _drop, ...rest } = cr;
+            return rest as CategoryRecord;
+          }
+          return cr;
+        };
 
         const importedCards: Card[] = cardsArr.map(c => migrateImported(c));
         const currentMap = cardMapRef.current;
