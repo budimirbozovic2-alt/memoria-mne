@@ -10,9 +10,18 @@ export type CardActionsValue = CRUD & Annotations;
 
 const CardActionsContext = createContext<CardActionsValue | null>(null);
 
+const noop = () => { /* HMR fallback */ };
+const NOOP_CARD_ACTIONS = new Proxy({} as CardActionsValue, { get: () => noop });
+
 export function useCardOnlyActions() {
   const ctx = useContext(CardActionsContext);
-  if (!ctx) throw new Error("useCardOnlyActions must be used within CardActionsProvider");
+  if (!ctx) {
+    if (import.meta.env.DEV) {
+      console.warn("[useCardOnlyActions] no provider — returning noop fallback (HMR transient)");
+      return NOOP_CARD_ACTIONS;
+    }
+    throw new Error("useCardOnlyActions must be used within CardActionsProvider");
+  }
   return ctx;
 }
 

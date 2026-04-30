@@ -11,9 +11,18 @@ export type BackupActionsValue = ExportValue & ImportValue;
 
 const BackupActionsContext = createContext<BackupActionsValue | null>(null);
 
+const noop = () => { /* HMR fallback */ };
+const NOOP_BACKUP_ACTIONS = new Proxy({} as BackupActionsValue, { get: () => noop });
+
 export function useBackupActions() {
   const ctx = useContext(BackupActionsContext);
-  if (!ctx) throw new Error("useBackupActions must be used within BackupActionsProvider");
+  if (!ctx) {
+    if (import.meta.env.DEV) {
+      console.warn("[useBackupActions] no provider — returning noop fallback (HMR transient)");
+      return NOOP_BACKUP_ACTIONS;
+    }
+    throw new Error("useBackupActions must be used within BackupActionsProvider");
+  }
   return ctx;
 }
 
