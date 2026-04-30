@@ -77,6 +77,32 @@ export default function SubjectDiagnosticsPage() {
           </div>
         </div>
 
+        {/* Data scope summary */}
+        <div className="rounded-xl border bg-card/50 p-4 space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Sve metrike ispod računaju se isključivo iz podataka ovog predmeta.
+            Pritisni „Info“ u zaglavlju svake metrike za formulu i izvor podataka.
+          </p>
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
+            <span><span className="text-muted-foreground">Kartice:</span> <span className="tabular-nums font-medium">{subjectCards.length}</span></span>
+            <span>
+              <span className="text-muted-foreground">Sekcije sa istorijom:</span>{" "}
+              <span className="tabular-nums font-medium">
+                {subjectCards.reduce((sum, c) => sum + c.sections.filter(s => s.lastReviewed).length, 0)}
+                {" / "}
+                {subjectCards.reduce((sum, c) => sum + c.sections.length, 0)}
+              </span>
+            </span>
+            <span><span className="text-muted-foreground">Review zapisi:</span> <span className="tabular-nums font-medium">{subjectReviewLog.length}</span></span>
+            <span>
+              <span className="text-muted-foreground">Zabilježene greške:</span>{" "}
+              <span className="tabular-nums font-medium">
+                {subjectCards.reduce((sum, c) => sum + (c.errorLog?.length || 0), 0)}
+              </span>
+            </span>
+          </div>
+        </div>
+
         {/* Frequent errors (scoped) */}
         <section className="space-y-4">
           <FrequentErrors
