@@ -1,127 +1,128 @@
 ## Cilj
 
-Sanirati 4 mjesta koja postaju nepodnošljiva s rastom baze:
+Pretvoriti Zettelkasten iz "grid potkategorija + lista" u **organski istraživački prostor** vođen wiki-linkovima, sa stalno dostupnim **Explorer panelom** sa strane koji prikazuje sve članke kao slobodnu strukturu — bez nametanja taksonomije predmeta.
 
-1. **B1** — Razbijanje `useCardActions` "God-Object" hooka na 3 fokusirana sub-hooka.
-2. **A2** — Backlinks O(N×C) regex skeniranje → in-memory backlink indeks (BroadcastChannel sync).
-3. **A3** — Zamjena `JSON.stringify` poređenja sa strukturalnim komparatorima (Set/sortirano) na 4 mjesta gdje pravi "false dirty" + nepotrebne IDB write-ove.
-4. **B11+B12** — Post-save UX: bulk "Sačuvaj i dodaj sljedeću" + jasna post-save navigacija.
+## Filozofija promjene
 
----
+Trenutno Zettelkasten **nasljeđuje** strukturu predmeta (potkategorije postaju filter chip-ovi, svaki članak je vezan za `rootSubcategoryId`). To je u suprotnosti sa svrhom Zettelkastena: organska, emergentna mreža misli koja ne mora pratiti formalnu organizaciju gradiva.
 
-## 1. B1 — Razbijanje `useCardActions`
+Nova logika:
+- **Index članak** (auto-kreiran kao prvi članak, naslov = ime predmeta) je ulazna tačka — korisnik započinje istraživanje od njega i grana se kroz `[[wiki-linkove]]`.
+- **Bočni Explorer** je uvijek vidljiv u listi i u čitanju članka — daje "vraćanje gore" kad se korisnik izgubi ili traži konkretnu oblast.
+- **Potkategorije se uklanjaju iz UI-ja** kao primarni navigacioni element. `rootSubcategoryId` se zadržava kao opcioni metapodatak (nije obavezan, ne prikazuje se kao filter), da postojeći podaci ne padnu.
 
-**Problem:** Hook vraća 25+ vrijednosti i miješa tri orthogonal nezavisna domena (sadržaj/UI/metadata/submit). Svaki keystroke u `question` setteru invalidira sve `useMemo`-e u potrošačima koji konzumiraju "cijeli" `a`. Pošto `CardForm` destrukturira `const a = useCardActions(...)` i prosljeđuje `a.*` u `MetadataSection` i `EditorSection`, izmjena bilo kojeg polja editora trigeruje re-render `MetadataSection`-a (i obrnuto).
+## Šta gradimo
 
-**Rješenje — 3 sub-hooka + tanki barrel:**
+### 1. Index članak (Predmet kao polazna tačka)
 
-| Hook | Šta drži | Tipičan re-render trigger |
-|---|---|---|
-| `useCardContent` | `cardType`, `question`, `flashAnswer`, `sections`, section actions (add/remove/move/cut), validation errors, `cuttingIndex` | tipkanje u editoru |
-| `useCardMetadata` | `categoryId`, `subcategoryId`, `chapterId`, `newCategory/Sub/Chapter`, `show*`, `frequencyTag`, `sourceType`, `availableSubs`, `availableChapters`, `linkedGazetteInfo` | promjena dropdown-a |
-| `useCardSubmit` | `handleSubmit`, `isSaving`, integrira `clearDraft`, `formWidth`, `setFormWidth`, draft autosave (B9) — koristi snapshot iz prva dva | submit + width toggle |
+Pri prvom učitavanju Zettelkastena, ako ne postoji nijedan članak, automatski se kreira jedan članak sa:
+- `title = categoryRec.name` (npr. "Ustavno pravo")
+- `content` = onboarding šablon sa nekoliko predloženih `[[wiki-linkova]]` izvedenih iz `categoryRec.subcategories` (kao **smjernice za istraživanje**, ne kao struktura).
+- Posebna oznaka `isIndex: true` — ne može se obrisati, uvijek se otvara prvi.
 
-**Barrel `useCardActions`** ostaje (back-compat za jedinog consumera `CardForm`) ali interno zove tri sub-hooka. Vraća isti shape API kako bi `CardForm` migracija bila trivial.
+Na "Nazad na listu" iz bilo kog članka, fokus se vraća na Index članak (ne na grid). Lista svih članaka i dalje postoji ali kao sekundarni prikaz unutar Explorer panela.
 
-**Optimizacija u CardForm-u:** uvodimo `MetadataSection` i `EditorSection` da primaju **samo svoju** isječnu propsu (ne destrukturiranu cijelu `a`). `React.memo` na obje sekcije spriječava unakrsne re-rendere kad bilo koji prop ne uđe u njihov scope.
+### 2. Explorer Panel (lijevo, kolapsibilan)
 
-**Mjera uspjeha:** Tipkanje u sekciji eseja → `MetadataSection.render` se ne poziva (ručno verifikovano u test renderu sa render-counter ref-om).
+Stalno prisutan panel sa lijeve strane — i u čitanju i u uređivanju, i na Index pogledu. Sadrži:
 
----
+- **Search box** (top, sticky) — pretraga po naslovu članka.
+- **Sortiranje**: Najnoviji / Abecedno / Najviše linkovan (broj backlinkova). Default = Najnoviji.
+- **Lista svih članaka** (virtualizovana, koristi postojeći `ArticleListVirtual` adaptiran za uži panel):
+  - Naslov + mala metrika (broj backlinkova, datum)
+  - Index članak je zakačen na vrh sa ikonom kompasa
+  - Prazni placeholderi (bez sadržaja) imaju vizuelnu oznaku (slabija boja)
+- **Footer**: dugme "+ Novi članak" i "Statistika" (ukupno članaka, ukupno linkova, sirote — članci bez ulaznih linkova).
 
-## 2. A2 — Backlinks indeks (in-memory + sync)
+Panel je collapsible (širina 280px otvoren / 0 zatvoren) sa toggle dugmetom u top baru. Stanje (otvoreno/zatvoreno) se pamti u `localStorage` po korisniku.
 
-**Problem:** `findBacklinks` u `BacklinksPanel` skenira **svih N članaka** sa regex-om za **svaki** otvoreni članak (C otvaranja). Na 1k članaka × prosjek 5kB sadržaja = 5MB regex-a po otvaranju → main thread freeze.
+### 3. Uklanjanje grid prikaza potkategorija
 
-**Rješenje — globalni reverzni indeks `Map<normalizedTitle, Set<articleId>>`** + `Map<articleId, snippetByTarget>`:
+Trenutni "Koju oblast biste željeli više da istražite?" grid + chip filter se uklanja. Zamjenjuje ga ulazak direktno u Index članak. Lista filtrirana po potkategoriji prestaje biti primarna navigacija — ako korisnik želi sličnu funkciju, postoji Explorer Search.
 
-- Novi modul `src/lib/backlink-index.ts`:
-  - Singleton store sa metodama: `rebuildFromAll(articles)`, `upsertArticle(article)`, `removeArticle(id)`, `getBacklinks(targetTitle, targetId)`.
-  - Pri `upsert`: parsiraj `[[...]]` linkove iz sadržaja, izračunaj snippete (40 char prozor), update reverse mapu.
-  - Subject-aware: indeksi su per `subjectId` (Map<subjectId, IndexState>) jer su Zettelkasten artikli scoped po subjektu (Core: scoping bounded by categoryId).
-  - Sluša `BroadcastChannel` event-bus događaj `kb-article:upserted` / `:removed` (postojeća arhitektura — vidi mem://technical-choices/event-bus-architecture) i sinkronizuje između tabova/prozora.
-  - Eksportuje `useBacklinkIndex(subjectId)` hook koji koristi `useSyncExternalStore` da emituje samo onaj `BacklinksPanel` koji gleda relevantan subjekat.
+`rootSubcategoryId` polje na članku ostaje u shemi (zbog kompatibilnosti i mogućnosti budućeg "tag" sistema), ali se **ne prikazuje** u UI-ju i **ne postavlja automatski** za nove članke kreirane preko wiki-linkova (oni se kreiraju "slobodni").
 
-- `BacklinksPanel`:
-  - Uklanja `findBacklinks` regex sweep.
-  - Poziva `useBacklinks(subjectId, targetTitle, targetId)` → O(1) lookup.
-  - Zadržava `isEditing` snapshot ponašanje (ne emituje update dok edit traje).
+### 4. Vizuelni layout
 
-- Bootstrap u `ZettelkastenView`:
-  - Nakon `loadArticlesBySubject` zove `backlinkIndex.rebuildFromAll(subjectId, articles)` jednom.
-  - `flushDraft` i `bulkCreateArticlesIfMissing` emituju `kb-article:upserted` event s novim sadržajem.
-  - `deleteArticle` emituje `:removed`.
+```text
+┌────────────────────────────────────────────────────────────────┐
+│  ← Nazad na predmet         Zettelkasten — Ustavno pravo       │
+├────────────┬───────────────────────────────────────────────────┤
+│ Explorer   │                                                   │
+│ ┌────────┐ │   ┌──── Index članak / aktivni članak ────────┐   │
+│ │ Search │ │   │                                            │   │
+│ └────────┘ │   │  # Ustavno pravo                           │   │
+│ Sort: ▾    │   │                                            │   │
+│            │   │  Dobrodošli. Krenite od:                   │   │
+│ ★ Ustavno  │   │  - [[Načela ustavnosti]]                   │   │
+│   pravo    │   │  - [[Ljudska prava]]                       │   │
+│   12 link. │   │  - [[Organi vlasti]]                       │   │
+│            │   │                                            │   │
+│ Načela ust.│   │                                            │   │
+│   3 link.  │   └────────────────────────────────────────────┘   │
+│ Ljudska pr.│                                                    │
+│   ...      │   ┌──── Backlinks ─────────────────────────────┐   │
+│            │   │  Pominje se u: ...                         │   │
+│ + Novi     │   └────────────────────────────────────────────┘   │
+└────────────┴────────────────────────────────────────────────────┘
+```
 
-**Performans:** O(1) lookup po otvaranju + O(linkova u članku) update po save-u. Inicijalni rebuild je O(N×C) ali se izvršava **jednom** asinhrono (idle-callback) umjesto svaki put.
+## Tehnički plan
 
----
+### Schema (`src/lib/db.ts` + `zettelkasten-storage.ts`)
+- Dodati `isIndex?: boolean` polje na `KnowledgeBaseArticle`. Bez migracije sheme (Dexie tolerantno).
+- Nova storage funkcija `ensureIndexArticle(subjectId, subjectName, suggestedLinks)` — atomično (rw tx): ako već postoji `isIndex=true` za subject, vrati ga; inače kreiraj sa onboarding sadržajem koji koristi `[[suggestedLinks]]`.
+- `deleteArticle` u `ZettelkastenView.handleDelete`: dodati guard koji blokira brisanje Index članka (toast: "Index članak se ne može obrisati").
 
-## 3. A3 — Strukturalna poređenja umjesto JSON.stringify
+### Novi komponenta: `src/components/zettelkasten/ZettelExplorerPanel.tsx`
+- Props: `articles`, `activeId`, `onOpen`, `onCreate`, `categoryName`, `collapsed`, `onToggleCollapsed`.
+- Interno: search input (lokalni state), sort dropdown (3 opcije), virtualizovana lista (re-use `ArticleListVirtual` ili novi tanji red).
+- Statistika u footeru — izračunata iz `articles` + backlink indeks (`backlinkIndex.getCounts(subjectId)` — dodati helper koji vraća `Map<articleId, backlinkCount>`).
 
-**Pogođena mjesta (4 stvarna problema):**
+### Backlink helper (`src/lib/backlink-index.ts`)
+- Dodati javni `getCountsByArticle(subjectId): Map<string, number>` — broji koliko ulaznih linkova ima svaki članak (po njegovom normalizovanom naslovu).
+- Dodati `getOrphans(subjectId, articles): string[]` — članci bez ijednog ulaznog linka i koji nisu Index. Koristi se za "Sirote" sekciju u statistici.
 
-| Fajl:linija | Problem | Rješenje |
-|---|---|---|
-| `useCardCRUD.ts:34` | `sourceModules` poređenje za invalidaciju coverage cache-a | Helper `sameSourceModules(a, b)`: dužina + strukturalno poređenje po stabilnom UUID ključu. |
-| `ZettelkastenView.tsx:150` | `linkedSourceIds` "dirty" check (redoslijed bitan?) | Helper `sameStringSet(a, b)` (Set-based, redoslijed nebitan) + odvojeni `sameStringList` ako se redoslijed gleda — ovdje je Set OK jer je to lista linkova. |
-| `SRSettingsPanel.tsx:148-156` | `JSON.stringify(local) !== JSON.stringify(settings)` na 5 mjesta za detekciju "dirty" forme + isDefault | Helper `shallowSettingsEqual(a, b, keys)` — iterira po listi ključeva, primitivna jednakost. Settings objekti imaju samo primitive + plitka polja. |
-| `PassiveReader.tsx:100`, `LocalSpeedReader.tsx:92` | `JSON.stringify({ subFilter, chapterFilter, typeFilter })` kao `useEffect` dep | Pretvoriti u tri zasebna deps direktno (`[subFilter, chapterFilter, typeFilter]`) — eliminiše stringifikaciju per render. |
+### `ZettelkastenView.tsx` — refaktor
+- Ukloniti `selectedSubId`, `articleCountByRoot`, root-subs grid blok (linije ~565–626).
+- Ukloniti chip filter; `filteredArticles` postaje samo search-driven (Explorer panel sadrži svoju pretragu).
+- Initial load effect: nakon `loadArticlesBySubject`, ako lista prazna → pozvati `ensureIndexArticle` i postaviti `activeId` na njegov ID, otvoriti odmah u read modu.
+- Layout postaje split: levi `ZettelExplorerPanel` + desni glavni sadržaj (Index/aktivni članak/empty state).
+- "Nazad na listu" dugme se preimenuje u "Nazad na Index" i postavlja `activeId = indexArticleId`.
+- `handleCreate` više ne prima `rootSubId` po defaultu — članci se kreiraju slobodni.
 
-**Ne diramo** (legitimno korištenje JSON.stringify za serijalizaciju u storage): `edit-return.ts`, `tts.ts`, `subject-settings.ts`, `app-settings.ts`, `storage.ts`, `useCardDraftAutosave.ts`, `useCardImport.ts:433`, `useCardExport.ts`, `MentalSkeleton.tsx`, `ErrorBoundary.tsx`, `SubjectHierarchyTree.tsx`. Ova mjesta serijalizuju za perzistenciju, nisu performans hot-path.
+### Memoization
+- `backlinkCounts` Map se računa jednom po `articles` i koristi i u Explorer panelu i u statistici (preko `useMemo`).
+- Explorer panel je `React.memo` da kucanje u editoru ne re-render-uje listu članaka.
 
-**Novi util:** `src/lib/struct-eq.ts` sa `sameStringSet`, `sameStringList`, `sameSourceModules`, `shallowEqualByKeys`. Pokriven test-fajlom.
+### Migracija postojećih korisnika
+- Pri prvom otvaranju nakon update-a, ako postoje članci ali nijedan nema `isIndex=true`:
+  - Ako postoji članak čiji naslov tačno odgovara `categoryRec.name` → označi ga kao Index (`isIndex=true`).
+  - Inače → kreiraj novi Index članak iznad postojećih (postojeći ostaju netaknuti).
+- Ovo se radi unutar `ensureIndexArticle` da bude atomično.
 
----
+### Testovi (`src/test/`)
+- `zettelkasten-index-article.test.ts` — `ensureIndexArticle` idempotentnost, atomičnost pri paralelnim pozivima, migracija postojećih (matching by name), guard na delete.
+- `zettelkasten-backlink-counts.test.ts` — `getCountsByArticle` i `getOrphans` korektnost.
 
-## 4. B11+B12 — Post-save navigacija + Bulk add
-
-**B11 — Post-save navigacija:** `handleSubmit` u `useCardSubmit` ne radi ništa nakon poziva `onSave` — navigacija je zakopana u parent-u. Standardizujemo:
-
-- Novi prop u `CardForm`: `onAfterSave?: (createdId: string | null, mode: "stay" | "next" | "back") => void`.
-- Po default-u: nakon save → `mode="back"` (postojeće ponašanje, pozove `onCancel`).
-- Trenutni handlere `onSave/onSaveFlash` proširiti da vraćaju `string | null` (id kreirane kartice) — minor type change ali compatibilan jer postojeći callers mogu vratiti `void` (treat as `null`).
-
-**B12 — "Sačuvaj i dodaj sljedeću":**
-
-- Novi button u `CardForm` footeru pored "Sačuvaj": **"Sačuvaj i nastavi"** (`Ctrl+Enter`).
-- Pozove submit, ali nakon uspjeha:
-  - **Resetuje samo content** (`question`, `flashAnswer`, `sections` → defaults).
-  - **Zadržava metadata** (kategorija/subkategorija/chapter/frequencyTag/sourceType) — power-user dodaje 10 kartica u istu glavu bez ponovnog odabira.
-  - Briše draft, vrati fokus na `question` polje.
-  - Mali toast "Sačuvano. Dodaj sljedeću karticu."
-- Sakriven u edit modu (`editCard != null`).
-
----
-
-## Tehnički rezime
-
-**Novi fajlovi:**
-- `src/hooks/useCardContent.ts` — sadržaj + sekcije + validacija.
-- `src/hooks/useCardMetadata.ts` — taksonomija + frequencyTag/sourceType + linkedGazetteInfo.
-- `src/hooks/useCardSubmit.ts` — submit + width + draft autosave + bulk-add reset.
-- `src/lib/backlink-index.ts` — per-subject reverzni indeks + `useBacklinks` hook (useSyncExternalStore).
-- `src/lib/struct-eq.ts` — strukturalni komparatori.
-- `src/test/backlink-index.test.ts`, `src/test/struct-eq.test.ts`, `src/test/use-card-content.test.ts` — testovi.
-
-**Izmijenjeni fajlovi:**
-- `src/hooks/useCardActions.ts` — pretvoren u tanki barrel koji kompoznira tri sub-hooka (back-compat shape).
-- `src/components/CardForm.tsx` — `onAfterSave` prop, "Sačuvaj i nastavi" dugme, kraći prosljeđivanje propsa u memo-iranim sekcijama.
-- `src/components/card-form/MetadataSection.tsx`, `EditorSection.tsx` — `React.memo` + uže propsy.
-- `src/components/zettelkasten/BacklinksPanel.tsx` — koristi `useBacklinks`, uklanja regex sweep.
-- `src/views/ZettelkastenView.tsx` — bootstrap indeksa, emituje upsert/remove na save/delete, koristi `sameStringSet` umjesto JSON.stringify.
-- `src/hooks/useCardCRUD.ts` — `sameSourceModules` umjesto JSON.stringify.
-- `src/components/SRSettingsPanel.tsx` — `shallowEqualByKeys` umjesto JSON.stringify šabona.
-- `src/components/subject-cards/PassiveReader.tsx` + `LocalSpeedReader.tsx` — split filter deps.
-
-**Bez breaking change-ova** za korisnika ni za perzistenciju.
-
----
+### Šta se NE mijenja
+- `ZettelEditor`, `ZettelPreview`, `BacklinksPanel`, `LinkedSourcesPicker`, `SourceSidePanel` — svi ostaju.
+- `bulkCreateArticlesIfMissing` i wiki-link auto-create flow — netaknuti (već je solidan).
+- `rootSubcategoryId` na shemi (samo se ne koristi iz UI-ja).
+- Ostali pogledi predmeta (Cards, Sources, MindMaps) — Zettelkasten promjena je izolovana.
 
 ## Redoslijed izvršavanja
 
-1. **A3** — `struct-eq.ts` + zamjena na 4 mjesta (najmanji rizik, čista pobjeda).
-2. **A2** — `backlink-index.ts` + integracija (potpuno izolovan modul, postojeći BacklinksPanel ima fallback ponašanje).
-3. **B1** — Sub-hooki + barrel migracija `useCardActions` (najveći diff, ali jedan consumer).
-4. **B11+B12** — UX dugme i navigacija (gradi na B1 sub-hookima).
+1. Schema flag `isIndex` + `ensureIndexArticle` storage funkcija + testovi.
+2. Backlink helpers (`getCountsByArticle`, `getOrphans`) + testovi.
+3. `ZettelExplorerPanel` komponenta (sa search/sort/stat).
+4. Refaktor `ZettelkastenView` — ukloniti grid, integrisati panel, default na Index članak, delete guard.
+5. Memorija (`mem://features/zettelkasten-organic`) + ručni QA pasovi (prazan predmet, postojeći predmet sa člancima, paralelni klikovi i dalje rade).
 
-Nakon svakog koraka pokrećem postojeći test suite + nove testove. Memorija (`mem://`) se ažurira na kraju.
+## Otvoreno pitanje
+
+Index članak može imati 1 od 2 ponašanja kad korisnik nema potkategorija na predmetu:
+- (a) Kreirati ga sa praznim onboarding tekstom ("Počnite kucanjem prvog `[[wiki-linka]]`...").
+- (b) Kreirati ga sa generičkim šablonom za pravne predmete (Pojam, Izvori, Načela, Klasifikacija, Praksa) kao 5 inicijalnih wiki-linkova.
+
+Idem sa **(a) + ako postoje potkategorije, koristi njih**; korisnik može ručno proširiti. Ako preferiraš (b) za bogatiji start, javi.
