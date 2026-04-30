@@ -82,6 +82,13 @@ export function useCardStateInternals() {
   return ctx;
 }
 
+// Public actions hook for SR settings — split out so SettingsPage doesn't
+// need to pull a merged "all actions" object.
+export function useSettingsActions() {
+  const { updateSRSettings } = useCardStateInternals();
+  return useMemo(() => ({ updateSRSettings }), [updateSRSettings]);
+}
+
 // ─── DB error broadcast (consumed by composition root for recovery panel) ───
 const DbErrorContext = createContext<DbError | null>(null);
 export function useDbError() {
