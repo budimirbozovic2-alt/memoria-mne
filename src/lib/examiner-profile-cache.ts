@@ -31,10 +31,17 @@ export function primeExaminerProfile(
  * Bulk prime — call once per `categoryRecords` change.
  *
  * Performs a full reconciliation:
- *   1. Updates/inserts the profile for every category in `records`.
- *   2. Evicts every cache entry whose categoryId is NOT in `records`,
- *      so deleted (or otherwise no-longer-known) subjects can never
- *      return a stale profile within the same session.
+ *   1. For every category in `records`, writes its profile into the cache.
+ *      If `examinerProfile` is `undefined` on the record (never set, cleared,
+ *      or transiently absent during a partial update), the cache entry is
+ *      OVERWRITTEN with `profile: undefined` rather than left at its prior
+ *      value. This guarantees a freshly-primed but profile-less category
+ *      can never return a stale profile from a previous prime cycle.
+ *   2. Evicts every cache entry whose categoryId is NOT in `records`.
+ *
+ * Distinguishing "never primed" vs "primed but absent": callers that need
+ * to tell these apart should use `hasExaminerProfileEntry(id)` — `true`
+ * means we've reconciled at least once and the SSOT says "no profile".
  */
 export function primeExaminerProfilesFromRecords(
   records: Array<{ id: string; examinerProfile?: ExaminerProfile }>,
@@ -43,6 +50,8 @@ export function primeExaminerProfilesFromRecords(
   const liveIds = new Set<string>();
   for (const r of records) {
     liveIds.add(r.id);
+    // Explicit overwrite — `r.examinerProfile` may be `undefined` and that
+    // must REPLACE any previously-cached profile, not be skipped.
     _cache.set(r.id, { profile: r.examinerProfile, ts: now });
   }
   // Evict orphans — categories that disappeared since the last prime.
@@ -51,11 +60,20 @@ export function primeExaminerProfilesFromRecords(
   }
 }
 
-/** Synchronous read — returns undefined only if the category was never primed. */
+/** Synchronous read — returns `undefined` for both "never primed" AND
+ *  "primed but record has no examinerProfile". Use `hasExaminerProfileEntry`
+ *  to disambiguate when needed. */
 export function getExaminerProfileSync(
   categoryId: string,
 ): ExaminerProfile | undefined {
   return _cache.get(categoryId)?.profile;
+}
+
+/** True iff the category has been reconciled into the cache, regardless of
+ *  whether it actually has a profile attached. Lets callers distinguish
+ *  "never primed" (false) from "primed, profile absent" (true). */
+export function hasExaminerProfileEntry(categoryId: string): boolean {
+  return _cache.has(categoryId);
 }
 
 /** Drop a single entry (used after an explicit category delete). */
