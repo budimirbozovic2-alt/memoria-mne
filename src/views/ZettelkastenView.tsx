@@ -21,7 +21,6 @@ import { backlinkIndex } from "@/lib/backlink-index";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,7 +32,7 @@ import ZettelPreview from "@/components/zettelkasten/ZettelPreview";
 import BacklinksPanel from "@/components/zettelkasten/BacklinksPanel";
 import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
 import SourceSidePanel from "@/components/zettelkasten/SourceSidePanel";
-import ArticleListVirtual from "@/components/zettelkasten/ArticleListVirtual";
+import ZettelExplorerPanel from "@/components/zettelkasten/ZettelExplorerPanel";
 import MindMapPickerDialog from "@/components/zettelkasten/MindMapPickerDialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
