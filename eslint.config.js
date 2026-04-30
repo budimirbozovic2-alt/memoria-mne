@@ -51,22 +51,15 @@ export default tseslint.config(
   // because no dedicated provider exists for those domains yet.
   {
     files: ["src/views/**/*.{ts,tsx}"],
-    ignores: [
-      "src/views/MindMapPage.tsx",
-      "src/views/SubjectMindMapPage.tsx",
-      "src/views/SubjectCardsView.tsx",
-      "src/views/SubjectDashboard.tsx",
-      "src/views/CategoryView.tsx",
-    ],
     rules: {
       "no-restricted-imports": [
-        "warn",
+        "error",
         {
           paths: [
             {
               name: "@/lib/db",
               message:
-                "Views must use domain providers (useCardData, useCategoryActions, useBackupActions, …) instead of importing the raw db instance. Type-only imports (import type) are still allowed.",
+                "Views must use domain providers (useCardData, useCategoryActions, useBackupActions, …) instead of importing the raw db instance. Type-only imports (import type … from '@/lib/db') are still allowed.",
               importNames: ["db"],
             },
           ],
