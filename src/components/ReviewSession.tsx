@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Card, SRSettings, getDueSections, SectionState, getRetrievability, isLeech } from "@/lib/spaced-repetition";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Card, SRSettings } from "@/lib/spaced-repetition";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
 import { idbLoadSettings, idbSaveSettings } from "@/lib/db";
 import { ReviewMode, DueItem, ViewWidth, ReviewSessionProps } from "./review/review-constants";
+import { buildItemsForMode } from "@/lib/review-mode-builder";
 import ReviewSetup from "./review/ReviewSetup";
 import ReviewCard from "./review/ReviewCard";
 import ReviewComplete from "./review/ReviewComplete";
