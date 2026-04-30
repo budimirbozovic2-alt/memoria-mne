@@ -157,25 +157,10 @@ export default function ZettelkastenView() {
   }, [articles]);
 
 
-  const articleCountByRoot = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const a of articles) {
-      if (a.rootSubcategoryId) {
-        map.set(a.rootSubcategoryId, (map.get(a.rootSubcategoryId) ?? 0) + 1);
-      }
-    }
-    return map;
-  }, [articles]);
-
-  const filteredArticles = useMemo(() => {
-    let list = articles;
-    if (selectedSubId) list = list.filter(a => a.rootSubcategoryId === selectedSubId);
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(a => a.title.toLowerCase().includes(q));
-    }
-    return list;
-  }, [articles, selectedSubId, search]);
+  // NOTE: Subcategory-based filtering and grid-style organization were removed
+  // intentionally. The Zettelkasten is meant to grow organically; imposing the
+  // subject's formal taxonomy on top of it defeated the purpose. Browsing,
+  // searching, and sorting now live exclusively inside `ZettelExplorerPanel`.
 
   // ── Persistence ────────────────────────────────
   const flushDraft = useCallback(async (): Promise<KnowledgeBaseArticle | null> => {
