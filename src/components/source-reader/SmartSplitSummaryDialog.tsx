@@ -128,6 +128,39 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
     [currentModule],
   );
 
+  /**
+   * Build the final list of "preview cards" the user is about to import.
+   * Each preview card carries `{ question, tags, sections[{title, html}] }`,
+   * pre-sanitized so the renderer can safely use `dangerouslySetInnerHTML`.
+   *
+   * - separate mode → one preview card per non-skipped module
+   * - combined mode → exactly one preview card with N sections
+   */
+  const previewCards = useMemo(() => {
+    if (!previewAll || !splitResult) return [];
+    if (splitMode === "separate") {
+      return buildSeparatePlans(splitModules, splitEdits).map((p) => ({
+        question: p.question,
+        tags: p.tags,
+        sections: [{ title: "Odgovor", html: sanitizeHtml(p.module.contentHtml) }],
+      }));
+    }
+    const combined = buildCombinedPlan(
+      splitModules,
+      splitEdits,
+      splitParentName || splitResult.parentName,
+    );
+    if (!combined) return [];
+    return [{
+      question: combined.parentName,
+      tags: combined.tags,
+      sections: combined.modules.map(({ question, module: mod }) => ({
+        title: question,
+        html: sanitizeHtml(mod.contentHtml),
+      })),
+    }];
+  }, [previewAll, splitMode, splitModules, splitEdits, splitParentName, splitResult]);
+
   // Auto-focus the question textarea on step change to keep flow keyboard-driven.
   const questionRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
