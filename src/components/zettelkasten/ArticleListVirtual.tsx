@@ -49,7 +49,7 @@ function ArticleRow(props: RowComponentProps<RowData>) {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {isDraft && (
-              <span className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] uppercase tracking-wide text-warning border border-warning/40 px-1.5 py-0.5 rounded">
                 Draft
               </span>
             )}
@@ -99,7 +99,7 @@ export default function ArticleListVirtual({ articles, rootSubs, onOpen }: Props
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {isDraft && (
-                    <span className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 border border-amber-500/40 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] uppercase tracking-wide text-warning border border-warning/40 px-1.5 py-0.5 rounded">
                       Draft
                     </span>
                   )}

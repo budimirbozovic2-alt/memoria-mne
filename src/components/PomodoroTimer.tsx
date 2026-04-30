@@ -8,7 +8,7 @@ const MODE_LABELS: Record<string, string> = { work: "Fokus", break: "Pauza", lon
 const MODE_BADGE_CLASS: Record<string, string> = {
   work: "bg-primary/10 text-primary",
   break: "bg-success/10 text-success",
-  longBreak: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  longBreak: "bg-warning/10 text-warning",
 };
 
 export default function PomodoroTimer({ compact = false }: { compact?: boolean }) {

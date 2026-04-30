@@ -40,9 +40,9 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
         </DialogHeader>
         {splitDone ? (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-4">
-              <div className="h-8 w-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                <PenSquare className="h-4 w-4 text-green-500" />
+            <div className="flex items-center gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-4">
+              <div className="h-8 w-8 rounded-full bg-success/20 flex items-center justify-center">
+                <PenSquare className="h-4 w-4 text-success" />
               </div>
               <div>
                 <p className="text-sm font-medium">Uspješno generisano 1 esejsko pitanje sa {splitCreatedCount} modula</p>

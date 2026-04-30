@@ -48,7 +48,7 @@ export function MindMapToolbar({
 
       <div className={cn(
         "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold",
-        isProcedure ? "bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-primary/15 text-primary"
+        isProcedure ? "bg-warning/15 text-warning" : "bg-primary/15 text-primary"
       )}>
         {isProcedure ? <Workflow className="h-3.5 w-3.5" /> : <GitBranch className="h-3.5 w-3.5" />}
         {isProcedure ? "Procedura" : "Hijerarhija"}

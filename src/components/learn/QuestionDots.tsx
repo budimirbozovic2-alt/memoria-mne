@@ -20,7 +20,7 @@ const QuestionDots = React.memo(function QuestionDots({
       {cards.map((c, i) => {
         const isActive = i === currentIndex;
         let dotColor = "bg-secondary";
-        if (completedCards.has(c.id)) dotColor = "bg-emerald-400 dark:bg-emerald-500";
+        if (completedCards.has(c.id)) dotColor = "bg-success";
 
         return (
           <button

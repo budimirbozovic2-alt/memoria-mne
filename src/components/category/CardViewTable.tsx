@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 function stabilityLabel(s: number): { text: string; color: string } {
-  if (s >= 30) return { text: "Stabilno", color: "text-green-500" };
-  if (s >= 7) return { text: "Srednje", color: "text-yellow-500" };
-  return { text: "Slabo", color: "text-red-500" };
+  if (s >= 30) return { text: "Stabilno", color: "text-success" };
+  if (s >= 7) return { text: "Srednje", color: "text-warning" };
+  return { text: "Slabo", color: "text-destructive" };
 }
 
 interface Props {
@@ -163,7 +163,7 @@ export default function CardViewTable({
                     </Badge>
                   )}
                   {card.needsReview && (
-                    <Badge className="text-[10px] gap-1 bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/30">
+                    <Badge className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
                       <AlertTriangle className="h-3 w-3" />
                       Izvor ažuriran
                     </Badge>

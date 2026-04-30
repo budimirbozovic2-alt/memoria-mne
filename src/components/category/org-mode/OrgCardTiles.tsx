@@ -97,7 +97,7 @@ export function UnassignedCardRow({
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-2 group">
-      <div className="flex-1 flex items-center gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 px-3 py-2 hover:border-orange-500/40 transition-all">
+      <div className="flex-1 flex items-center gap-3 rounded-lg border border-warning/20 bg-warning/5 px-3 py-2 hover:border-warning/40 transition-all">
         <span
           {...attributes}
           {...listeners}

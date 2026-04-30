@@ -33,8 +33,8 @@ interface Props {
 type SidePanel = "source" | "mindmap" | null;
 
 function retentionColor(pct: number): string {
-  if (pct >= 80) return "text-emerald-600 dark:text-emerald-400";
-  if (pct >= 50) return "text-amber-600 dark:text-amber-400";
+  if (pct >= 80) return "text-success";
+  if (pct >= 50) return "text-warning";
   return "text-destructive";
 }
 

@@ -46,7 +46,7 @@ function renderMarkdown(md: string, existingTitles: Set<string>, emptyTitles: Se
       const empty = exists && emptyTitles.has(low);
       let cls: string;
       if (!exists) {
-        cls = "zettel-wikilink text-amber-600 dark:text-amber-400 underline decoration-dotted underline-offset-2 hover:bg-amber-500/10 px-0.5 rounded cursor-pointer";
+        cls = "zettel-wikilink text-warning underline decoration-dotted underline-offset-2 hover:bg-warning/10 px-0.5 rounded cursor-pointer";
       } else if (empty) {
         cls = "zettel-wikilink text-muted-foreground italic underline decoration-dashed decoration-muted-foreground/60 underline-offset-2 hover:bg-muted px-0.5 rounded cursor-pointer";
       } else {

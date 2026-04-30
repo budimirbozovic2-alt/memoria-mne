@@ -278,12 +278,12 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
           <span>Pronađeno <strong className="text-foreground">{detected.length}</strong> članova</span>
           <span>•</span>
           <Badge variant="outline" className="text-[10px] gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-500 inline-block" />
+            <span className="h-1.5 w-1.5 rounded-full bg-success inline-block" />
             {newCount} novih
           </Badge>
           {existsCount > 0 && (
             <Badge variant="outline" className="text-[10px] gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 inline-block" />
+              <span className="h-1.5 w-1.5 rounded-full bg-warning inline-block" />
               {existsCount} postojećih
             </Badge>
           )}
@@ -305,8 +305,8 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
 
         {/* Done */}
         {done && (
-          <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3">
-            <Check className="h-4 w-4 text-green-500" />
+          <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 px-4 py-3">
+            <Check className="h-4 w-4 text-success" />
             <span className="text-sm font-medium">Uspješno generisano {importedCount} eseja!</span>
           </div>
         )}
@@ -408,8 +408,8 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
                     )}
                     {row.articles[0]?.autoTitle && !row.isGroup && (
                       <div className="flex items-center gap-1 mt-1">
-                        <Sparkles className="h-3 w-3 text-amber-500" />
-                        <span className="text-[10px] text-amber-500">Auto-naslov</span>
+                        <Sparkles className="h-3 w-3 text-warning" />
+                        <span className="text-[10px] text-warning">Auto-naslov</span>
                       </div>
                     )}
                   </div>

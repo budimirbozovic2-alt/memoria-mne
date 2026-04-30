@@ -70,7 +70,7 @@ export default function BacklinksPanel({ articles, activeArticle, onOpen, isEdit
         Backlinks
         {isEditing && (
           <span
-            className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400"
+            className="inline-flex items-center gap-1 text-[10px] text-warning"
             title="Backlinks su pauzirani tokom uređivanja radi performansi. Osvježiće se nakon izlaska iz režima uređivanja."
           >
             <Pause className="h-3 w-3" />

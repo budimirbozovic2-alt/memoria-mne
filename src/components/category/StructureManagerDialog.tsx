@@ -185,7 +185,7 @@ export default function StructureManagerDialog({
                             <Input value={editSubValue} onChange={e => setEditSubValue(e.target.value)}
                               className="h-6 text-xs flex-1" autoFocus
                               onKeyDown={e => { if (e.key === "Enter") handleRenameSub(node.id); if (e.key === "Escape") setEditingSub(null); }} />
-                            <button onClick={() => handleRenameSub(node.id)} className="p-0.5 rounded hover:bg-secondary text-green-500"><Check className="h-3 w-3" /></button>
+                            <button onClick={() => handleRenameSub(node.id)} className="p-0.5 rounded hover:bg-secondary text-success"><Check className="h-3 w-3" /></button>
                             <button onClick={() => setEditingSub(null)} className="p-0.5 rounded hover:bg-secondary text-muted-foreground"><X className="h-3 w-3" /></button>
                           </div>
                         ) : (
@@ -216,7 +216,7 @@ export default function StructureManagerDialog({
                               <Input value={editChapterValue} onChange={e => setEditChapterValue(e.target.value)}
                                 className="h-6 text-xs flex-1" autoFocus
                                 onKeyDown={e => { if (e.key === "Enter") handleRenameChapter(node.id, ch.id); if (e.key === "Escape") setEditingChapter(null); }} />
-                              <button onClick={() => handleRenameChapter(node.id, ch.id)} className="p-0.5 rounded hover:bg-secondary text-green-500"><Check className="h-3 w-3" /></button>
+                              <button onClick={() => handleRenameChapter(node.id, ch.id)} className="p-0.5 rounded hover:bg-secondary text-success"><Check className="h-3 w-3" /></button>
                               <button onClick={() => setEditingChapter(null)} className="p-0.5 rounded hover:bg-secondary text-muted-foreground"><X className="h-3 w-3" /></button>
                             </div>
                           ) : (

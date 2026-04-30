@@ -239,7 +239,7 @@ export default function HealthMonitor() {
             </Alert>
           ) : (
             <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3 text-xs">
-              <ShieldCheck className="h-4 w-4 text-green-500" />
+              <ShieldCheck className="h-4 w-4 text-success" />
               <span className="text-muted-foreground">Nema orphan zapisa — podaci su konzistentni</span>
             </div>
           )}
@@ -355,7 +355,7 @@ export default function HealthMonitor() {
           </div>
           {crashLog.length === 0 ? (
             <div className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3 text-xs">
-              <ShieldCheck className="h-4 w-4 text-green-500" />
+              <ShieldCheck className="h-4 w-4 text-success" />
               <span className="text-muted-foreground">Nema zabilježenih grešaka</span>
             </div>
           ) : (
