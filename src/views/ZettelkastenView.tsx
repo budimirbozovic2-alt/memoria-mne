@@ -517,8 +517,9 @@ export default function ZettelkastenView() {
             )}
           </div>
           <BacklinksPanel
-            articles={articles}
-            activeArticle={activeArticle}
+            subjectId={categoryId!}
+            activeArticleId={activeArticle.id}
+            activeTitle={activeArticle.title}
             onOpen={handleOpen}
             isEditing={isEditing}
           />
