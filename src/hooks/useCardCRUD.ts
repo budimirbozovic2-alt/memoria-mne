@@ -35,7 +35,7 @@ export function useCardCRUD({
     )) {
       invalidateCoverageCache(updated.sourceId);
     }
-    cardMapRef.current = { ...cardMapRef.current, [id]: updated }; // Sync ref — prevents double-mutation race
+    cardMapRef.current[id] = updated; // In-place ref delta — render never reads ref
     schedulePersist({ type: "put", card: updated });
     setCardMapState(prev => {
       if (!prev[id]) return prev;
@@ -67,7 +67,7 @@ export function useCardCRUD({
       if (extra?.originalSourceSnippet) card.originalSourceSnippet = extra.originalSourceSnippet;
       if (extra?.childCardIds) card.childCardIds = extra.childCardIds;
       if (extra?.sourceModules) card.sourceModules = extra.sourceModules;
-      cardMapRef.current = { ...cardMapRef.current, [card.id]: card }; // Sync ref
+      cardMapRef.current[card.id] = card; // In-place ref delta
       schedulePersist({ type: "put", card });
       setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
@@ -80,7 +80,7 @@ export function useCardCRUD({
     (question: string, answer: string, categoryId: string, subcategoryId?: string) => {
       const card = createFlashCard(question, answer, categoryId, subcategoryId);
       card.updatedAt = Date.now();
-      cardMapRef.current = { ...cardMapRef.current, [card.id]: card }; // Sync ref
+      cardMapRef.current[card.id] = card; // In-place ref delta
       schedulePersist({ type: "put", card });
       setCardMapState((prev) => ({ ...prev, [card.id]: card }));
       bumpMapVersion();
@@ -149,7 +149,7 @@ export function useCardCRUD({
   const deleteCard = useCallback((id: string) => {
     const card = cardMapRef.current[id];
     if (card?.sourceId) invalidateCoverageCache(card.sourceId);
-    const nextRef = { ...cardMapRef.current }; delete nextRef[id]; cardMapRef.current = nextRef;
+    delete cardMapRef.current[id]; // In-place ref delta
     setCardMapState((prev) => {
       const next = { ...prev };
       delete next[id];
@@ -179,7 +179,7 @@ export function useCardCRUD({
       updatedAt: Date.now(),
     }));
     // Sync ref before state update
-    const nextRef = { ...cardMapRef.current }; delete nextRef[id]; newCards.forEach(c => { nextRef[c.id] = c; }); cardMapRef.current = nextRef;
+    delete cardMapRef.current[id]; for (const c of newCards) cardMapRef.current[c.id] = c; // In-place ref delta
     schedulePersist({ type: "bulk", cards: newCards });
     idbDeleteCard(id).catch(e => console.error("[splitCard] IDB delete failed", e));
     setCardMapState(prev => {
@@ -194,11 +194,14 @@ export function useCardCRUD({
   // Bulk add — single state update + single IDB transaction (eliminates thrashing)
   const bulkAddCards = useCallback((newCards: Card[]) => {
     if (newCards.length === 0) return;
-    const nextRef = { ...cardMapRef.current };
-    for (const c of newCards) nextRef[c.id] = c;
-    cardMapRef.current = nextRef;
+    for (const c of newCards) cardMapRef.current[c.id] = c; // In-place ref delta
     schedulePersist({ type: "bulk", cards: newCards });
-    setCardMapState(() => nextRef);
+    // State must be a fresh reference to trigger re-render
+    setCardMapState(prev => {
+      const next = { ...prev };
+      for (const c of newCards) next[c.id] = c;
+      return next;
+    });
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);
 

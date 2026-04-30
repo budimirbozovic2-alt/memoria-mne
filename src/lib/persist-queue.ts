@@ -1,9 +1,6 @@
 import { toast } from "sonner";
 import { Card } from "@/lib/spaced-repetition";
-import {
-  idbDeleteCard,
-  idbBulkPutCards,
-} from "@/lib/db";
+import { idbBulkApply } from "@/lib/db";
 
 // ─── Internal Map type for O(1) access ──────────────────
 export type CardMap = Record<string, Card>;
@@ -36,37 +33,53 @@ export type PersistAction =
   | { type: "bulk"; cards: Card[] };
 
 function createPersistQueue() {
-  const pending: PersistAction[] = [];
+  // Coalesce by id: last write wins; delete after put cancels put; put after delete cancels delete.
+  const pendingPuts = new Map<string, Card>();
+  const pendingDeletes = new Set<string>();
   let timer: number | null = null;
+
+  function enqueue(action: PersistAction) {
+    if (action.type === "put") {
+      pendingDeletes.delete(action.card.id);
+      pendingPuts.set(action.card.id, action.card);
+    } else if (action.type === "delete") {
+      pendingPuts.delete(action.id);
+      pendingDeletes.add(action.id);
+    } else {
+      // bulk
+      for (const c of action.cards) {
+        pendingDeletes.delete(c.id);
+        pendingPuts.set(c.id, c);
+      }
+    }
+  }
+
+  function hasPending() {
+    return pendingPuts.size > 0 || pendingDeletes.size > 0;
+  }
 
   async function flush() {
     timer = null;
-    const actions = pending.splice(0);
-    if (actions.length === 0) {
-      try { sessionStorage.removeItem("codex-flush-pending"); } catch {}
+    if (!hasPending()) {
+      try { sessionStorage.removeItem("codex-flush-pending"); } catch { /* noop */ }
       return;
     }
-    try { sessionStorage.setItem("codex-flush-pending", "1"); } catch {}
+    const puts = Array.from(pendingPuts.values());
+    const deletes = Array.from(pendingDeletes);
+    pendingPuts.clear();
+    pendingDeletes.clear();
 
+    try { sessionStorage.setItem("codex-flush-pending", "1"); } catch { /* noop */ }
+    const t0 = import.meta.env.DEV ? performance.now() : 0;
     try {
-      const puts: Card[] = [];
-      const deletes: string[] = [];
-      for (const a of actions) {
-        if (a.type === "put") puts.push(a.card);
-        else if (a.type === "delete") deletes.push(a.id);
-        else if (a.type === "bulk") puts.push(...a.cards);
+      await idbBulkApply(puts, deletes);
+      try { sessionStorage.removeItem("codex-flush-pending"); } catch { /* noop */ }
+      if (import.meta.env.DEV) {
+        const dur = (performance.now() - t0).toFixed(1);
+        console.debug(`[persistQueue] flush ok puts=${puts.length} deletes=${deletes.length} ${dur}ms`);
       }
-
-      if (puts.length > 0) await idbBulkPutCards(puts);
-      if (deletes.length > 0) {
-        const results = await Promise.allSettled(deletes.map(id => idbDeleteCard(id)));
-        results.forEach((r, i) => {
-          if (r.status === "rejected") console.error(`[persistQueue] delete failed for ${deletes[i]}`, r.reason);
-        });
-      }
-      try { sessionStorage.removeItem("codex-flush-pending"); } catch {}
     } catch (err: unknown) {
-      try { sessionStorage.removeItem("codex-flush-pending"); } catch {}
+      try { sessionStorage.removeItem("codex-flush-pending"); } catch { /* noop */ }
       const e = err instanceof Error ? err : new Error(String(err));
       if (e.message === "QUOTA_EXCEEDED") {
         toast.error("Memorija browsera je puna! Exportuj backup i očisti nepotrebne podatke.");
@@ -77,7 +90,7 @@ function createPersistQueue() {
   }
 
   function schedule(action: PersistAction) {
-    pending.push(action);
+    enqueue(action);
     if (timer !== null) return;
     timer = window.setTimeout(flush, 16);
   }
@@ -92,13 +105,13 @@ function createPersistQueue() {
       clearTimeout(timer);
       timer = null;
     }
-    if (pending.length > 0) {
-      try { sessionStorage.setItem("codex-flush-pending", "1"); } catch {}
+    if (hasPending()) {
+      try { sessionStorage.setItem("codex-flush-pending", "1"); } catch { /* noop */ }
       await flush();
     }
   }
 
-  return { schedule, cleanup, flush, hasPending: () => pending.length > 0 };
+  return { schedule, cleanup, flush, hasPending };
 }
 
 // Singleton persist queue — created once per module, safe for StrictMode double-mount

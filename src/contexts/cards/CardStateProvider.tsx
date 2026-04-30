@@ -11,7 +11,7 @@ import { idbSaveSettings } from "@/lib/db";
 import { onCardLinksCleared, onCardReviewConfirmed } from "@/lib/sources-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { useCardBootstrap } from "@/hooks/useCardBootstrap";
-import { buildCardBuckets, EMPTY_BUCKETS, type CardBuckets } from "@/lib/card-buckets";
+import { buildCardBuckets, EMPTY_BUCKETS, bucketFingerprint, type CardBuckets } from "@/lib/card-buckets";
 import { useCategoryData, useCategoryStateSetter } from "./CategoryStateProvider";
 
 export type DbError = { type: "version" | "timeout"; message: string };
@@ -129,9 +129,11 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   const { categories, categoryRecords } = useCategoryData();
   const setCategoryRecordsState = useCategoryStateSetter();
 
-  // Ref-Delta mirror
+  // Ref-Delta mirror — kept as an *independent* clone of state. CRUD hooks
+  // mutate this ref in place for O(1) writes; never alias state and ref or
+  // mutations will silently corrupt the rendered map.
   const cardMapRef = useRef<CardMap>({});
-  useEffect(() => { cardMapRef.current = cardMap; }, [cardMap]);
+  useEffect(() => { cardMapRef.current = { ...cardMap }; }, [cardMap]);
 
   // Boot
   const { ready, dbError } = useCardBootstrap({
@@ -169,13 +171,13 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
         for (const id of clearedIds) {
           if (next[id]?.sourceId) {
             next[id] = { ...next[id], sourceId: undefined, textAnchor: undefined, needsReview: undefined };
+            // Keep ref in sync as a separate object so future in-place CRUD
+            // mutations don't bleed into rendered state.
+            cardMapRef.current[id] = next[id];
             changed = true;
           }
         }
-        if (changed) {
-          cardMapRef.current = next;
-          return next;
-        }
+        if (changed) return next;
         return prev;
       });
     });
@@ -188,7 +190,8 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
         if (!prev[cardId]) return prev;
         const updated = { ...prev[cardId], needsReview: undefined };
         const next = { ...prev, [cardId]: updated };
-        cardMapRef.current = next;
+        // Keep ref in sync as a separate object — never alias state and ref.
+        cardMapRef.current[cardId] = updated;
         schedulePersist({ type: "put", card: updated });
         bumpMapVersion();
         return next;
@@ -203,8 +206,10 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
         idbLoadCards().then(loaded => {
           const map: CardMap = {};
           for (const c of loaded) map[c.id] = c;
+          // Ref and state are independent objects (state is a fresh clone)
+          // so future in-place CRUD ref mutations don't alias rendered state.
           cardMapRef.current = map;
-          setCardMapState(map);
+          setCardMapState({ ...map });
           bumpMapVersion();
         });
       });
@@ -225,7 +230,19 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const cards = useMemo(() => mapToArray(cardMap), [cardMap]);
-  const buckets = useMemo(() => buildCardBuckets(cards), [cards]);
+
+  // Buckets only depend on taxonomy fields (categoryId/subcategoryId/chapterId).
+  // Reuse the previous bucket object when the fingerprint matches, so a grade
+  // (which mutates only FSRS section state) doesn't trigger an O(N) rebuild.
+  const bucketCacheRef = useRef<{ fp: string; buckets: CardBuckets } | null>(null);
+  const buckets = useMemo(() => {
+    const fp = bucketFingerprint(cards);
+    const cached = bucketCacheRef.current;
+    if (cached && cached.fp === fp) return cached.buckets;
+    const fresh = buildCardBuckets(cards);
+    bucketCacheRef.current = { fp, buckets: fresh };
+    return fresh;
+  }, [cards]);
 
   // Single-pass derived data
   const { dueCards, stats, categoryStats, cardCountByCategory } = useMemo(() => {

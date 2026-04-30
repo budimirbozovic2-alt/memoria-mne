@@ -2,104 +2,80 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock Dexie/IDB before importing persist-queue
 vi.mock("@/lib/db", () => ({
+  idbBulkApply: vi.fn().mockResolvedValue(undefined),
+  // legacy mocks kept so other module paths don't blow up
   idbBulkPutCards: vi.fn().mockResolvedValue(undefined),
   idbDeleteCard: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { idbBulkPutCards, idbDeleteCard } from "@/lib/db";
+import { idbBulkApply } from "@/lib/db";
 import { PersistAction } from "@/lib/persist-queue";
 
-describe("C3+C4: Persist Queue Safety", () => {
-
+describe("Persist Queue Safety", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("C3: 'full' type no longer exists in PersistAction", () => {
-    // Verify at the type level: "full" should not be a valid type
     const validTypes = ["put", "delete", "bulk"] as const;
-    type ActionType = PersistAction["type"];
-    // If "full" existed, this would be a broader type — runtime check:
     const action: PersistAction = { type: "put", card: { id: "x" } as any };
     expect(validTypes).toContain(action.type);
-    // Ensure "full" is not in the union by testing that creating one would fail type check
-    // (runtime: just verify the module doesn't export/handle "full" anymore)
     expect((action as any).type).not.toBe("full");
   });
 
-  it("C4: schedulePersist is not called inside state updaters (structural check)", async () => {
-    // Import the actual persist module to verify schedule works outside updaters
+  it("schedulePersist routes a put through idbBulkApply", async () => {
     const { schedulePersist } = await import("@/lib/persist-queue");
-
-    // Simulate the C4 pattern: schedule AFTER state computation
-    const mockCard = {
-      id: "test-1",
-      question: "Test",
-      sections: [{ id: "s1", title: "T", content: "C", interval: 1, nextReview: "", difficulty: 5, stability: 1, state: 0, elapsedDays: 0, scheduledDays: 0 }],
-      category: "Opšte",
-      subcategory: "",
-      type: "essay",
-      createdAt: Date.now(),
-      readCount: 0,
-      successCount: 0,
-      failCount: 0,
-      streak: 0,
-      lastReviewed: "",
-      firstReviewPending: true,
-    } as any;
-
-    // Schedule a put action (should not throw)
+    const mockCard = { id: "test-1", question: "Test" } as any;
     schedulePersist({ type: "put", card: mockCard });
-
-    // Wait for the microtask queue to flush (16ms timer)
     await new Promise(r => setTimeout(r, 50));
-
-    // Verify idbBulkPutCards was called with our card
-    expect(idbBulkPutCards).toHaveBeenCalledWith([mockCard]);
+    expect(idbBulkApply).toHaveBeenCalledWith([mockCard], []);
   });
 
-  it("C3: bulk actions don't delete stale cards (no idbSaveCards call)", async () => {
+  it("bulk action upserts only — no deletes", async () => {
     const { schedulePersist } = await import("@/lib/persist-queue");
-
-    const cards = [
-      { id: "a", question: "A" },
-      { id: "b", question: "B" },
-    ] as any[];
-
+    const cards = [{ id: "a" }, { id: "b" }] as any[];
     schedulePersist({ type: "bulk", cards });
-
     await new Promise(r => setTimeout(r, 50));
-
-    // Should use bulkPut (upsert only), NOT the old idbSaveCards (which deleted stale)
-    expect(idbBulkPutCards).toHaveBeenCalledWith(cards);
-    // idbDeleteCard should NOT have been called
-    expect(idbDeleteCard).not.toHaveBeenCalled();
+    expect(idbBulkApply).toHaveBeenCalledWith(cards, []);
   });
 
-  it("C4: delete action works correctly outside updater", async () => {
+  it("delete action routed through idbBulkApply", async () => {
     const { schedulePersist } = await import("@/lib/persist-queue");
-
     schedulePersist({ type: "delete", id: "card-to-delete" });
-
     await new Promise(r => setTimeout(r, 50));
-
-    expect(idbDeleteCard).toHaveBeenCalledWith("card-to-delete");
+    expect(idbBulkApply).toHaveBeenCalledWith([], ["card-to-delete"]);
   });
 
-  it("C3+C4: mixed put + delete batch processes correctly", async () => {
+  it("mixed put + delete batched into a single atomic call", async () => {
     const { schedulePersist } = await import("@/lib/persist-queue");
-
-    const card1 = { id: "new-1", question: "New" } as any;
-    const card2 = { id: "new-2", question: "New2" } as any;
-
-    // Simulate what splitCard does: delete old, bulk new
+    const card1 = { id: "new-1" } as any;
+    const card2 = { id: "new-2" } as any;
     schedulePersist({ type: "delete", id: "old-card" });
     schedulePersist({ type: "bulk", cards: [card1, card2] });
-
     await new Promise(r => setTimeout(r, 50));
+    // Both batched into one transaction call
+    expect(idbBulkApply).toHaveBeenCalledTimes(1);
+    expect(idbBulkApply).toHaveBeenCalledWith([card1, card2], ["old-card"]);
+  });
 
-    // Both operations should have been batched
-    expect(idbBulkPutCards).toHaveBeenCalledWith([card1, card2]);
-    expect(idbDeleteCard).toHaveBeenCalledWith("old-card");
+  it("coalesces repeated puts of the same id (last write wins)", async () => {
+    const { schedulePersist } = await import("@/lib/persist-queue");
+    const v1 = { id: "x", v: 1 } as any;
+    const v2 = { id: "x", v: 2 } as any;
+    const v3 = { id: "x", v: 3 } as any;
+    schedulePersist({ type: "put", card: v1 });
+    schedulePersist({ type: "put", card: v2 });
+    schedulePersist({ type: "put", card: v3 });
+    await new Promise(r => setTimeout(r, 50));
+    expect(idbBulkApply).toHaveBeenCalledTimes(1);
+    expect(idbBulkApply).toHaveBeenCalledWith([v3], []);
+  });
+
+  it("delete after put cancels the put", async () => {
+    const { schedulePersist } = await import("@/lib/persist-queue");
+    schedulePersist({ type: "put", card: { id: "y" } as any });
+    schedulePersist({ type: "delete", id: "y" });
+    await new Promise(r => setTimeout(r, 50));
+    expect(idbBulkApply).toHaveBeenCalledWith([], ["y"]);
   });
 });
