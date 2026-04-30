@@ -362,5 +362,7 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
     setFrequencyTag, setSourceType,
     // Actions
     addSection, removeSection, updateSection, moveSection, handleCut, handleSubmit,
+    // Draft autosave (B9)
+    pendingDraft, pendingDraftSavedAt, restoreDraft, dismissDraft,
   };
 }
