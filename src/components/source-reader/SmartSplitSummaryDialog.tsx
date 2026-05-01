@@ -258,7 +258,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
             <Wand2 className="h-5 w-5 text-primary" />
             {splitDone
               ? "Generisanje završeno"
-              : isSyntheticSingle
+              : !showModeToggle
                 ? "Kreiranje eseja"
                 : "Smart-Split čarobnjak"}
           </DialogTitle>
@@ -392,7 +392,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
         ) : splitResult && currentModule && currentEdit ? (
           <>
             {/* ── Top: mode toggle + summary (hidden when N=1) ───────────── */}
-            {!isSingleModule && (
+            {!!showModeToggle && (
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
                   <button
@@ -449,10 +449,10 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
             {/* ── Body: rail + editor (rail hidden when N=1) ─────────────── */}
             <div className={cn(
               "flex-1 min-h-0 grid gap-3 overflow-hidden",
-              isSingleModule ? "grid-cols-1" : "grid-cols-[200px_1fr]",
+              !showModeToggle ? "grid-cols-1" : "grid-cols-[200px_1fr]",
             )}>
               {/* Left rail — module list (hidden for single-module flow) */}
-              {!isSingleModule && (
+              {!!showModeToggle && (
                 <div className="overflow-y-auto border rounded-lg bg-muted/30 p-1.5 space-y-0.5">
                   {splitModules.map((mod, i) => {
                     const edit = splitEdits[i];
@@ -496,7 +496,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
               <div className="overflow-y-auto pr-1 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    {!isSingleModule && (
+                    {!!showModeToggle && (
                       <Badge variant="outline" className="text-[10px]">
                         Korak {safeIndex + 1} / {total}
                       </Badge>
@@ -512,7 +512,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                       </Badge>
                     )}
                   </div>
-                  {!isSingleModule && (
+                  {!!showModeToggle && (
                     <button
                       type="button"
                       onClick={() => updateEdit(safeIndex, { skipped: !currentEdit.skipped })}
@@ -621,7 +621,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
 
             {/* ── Footer: navigation + actions ──────────────────────────── */}
             <div className="flex items-center gap-2 pt-2 border-t">
-              {!isSingleModule && (<>
+              {!!showModeToggle && (<>
               <Button
                 variant="outline"
                 size="sm"
@@ -665,7 +665,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                 title="Vidi kako će kartica izgledati u učenju prije importa"
               >
                 <Eye className="h-3.5 w-3.5" />
-                {isSingleModule
+                {!showModeToggle
                   ? "Pregled kartice"
                   : `Pregled svih (${splitMode === "separate" ? `${keptCount} kartica` : `1 esej, ${keptCount} modula`})`}
               </Button>
