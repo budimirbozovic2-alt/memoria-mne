@@ -341,6 +341,11 @@ export default function SubjectCardsView() {
                 onPassiveRead={handlePassiveRead}
                 externalQuery={searchQuery}
                 externalSourceId={sourceFilter}
+                initialSubcategory={initialSnapshot?.cvSubcategory}
+                initialChapter={initialSnapshot?.cvChapter}
+                initialType={initialSnapshot?.cvType}
+                initialTag={initialSnapshot?.cvTag ?? null}
+                onFiltersChange={handleCardViewFiltersChange}
               />
             </>
           ) : (
