@@ -14,7 +14,7 @@ import type { Card } from "@/lib/spaced-repetition";
 import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
 import { useEditReturn } from "@/hooks/useEditReturn";
 import type { BaseEditReturnSnapshot } from "@/lib/edit-return";
-import CardViewMode from "@/components/category/CardViewMode";
+import CardViewMode, { type CardViewFiltersSnapshot } from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
 import PassiveReader from "@/components/subject-cards/PassiveReader";
