@@ -43,13 +43,22 @@ export default function OnboardingModal({ slides, storageKey, onComplete, finish
     onComplete();
   };
 
+  /**
+   * Close the modal WITHOUT marking onboarding as seen — the user accidentally
+   * clicked the backdrop, so we'll re-show the modal on next session. The
+   * explicit X button and "Počni" CTA still call `finish` (they're intentional).
+   */
+  const dismissForNow = () => {
+    onComplete();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
-      onClick={finish}
+      onClick={dismissForNow}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
