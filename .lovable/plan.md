@@ -1,31 +1,53 @@
-# Problem
+# Plan: Diskretnija integracija Mentalnih mapa i Memorizacije unutar predmeta
 
-Bočni panel ima statičke linkove `/mind-map` i `/mnemonics`, ali te globalne rute više ne postoje u `App.tsx` — postoje samo per‑predmet varijante (`/subject/:categoryId/mind-maps` i `/subject/:categoryId/mnemonics`). Klik na njih vodi na 404 (vidi se i u konzoli).
+## Cilj
+- Ukloniti podstavke "Mentalne mape" i "Memorizacija" iz bočnog navigacionog panela ispod svakog predmeta.
+- **Memorizaciju** dodati kao suptilnu malu ikonicu u zaglavlju stranice kartica (desni kraj reda sa naslovom predmeta), bez narušavanja postojeće strukture.
+- **Mentalne mape** integrisati kao novi tab unutar `SourcesTab` pored "Propisi" i "Skripte", sa listom postojećih mapa za predmet i dugmetom za kreiranje na dnu (vodi na postojeću stranicu).
 
-Ovo je u skladu sa već postavljenim pravilom (Domain Scoping): sve je strogo skopovano po `categoryId`, pa "globalna" mentalna mapa / mnemonika nemaju smisla.
-
-# Rješenje
-
-Reorganizovati grupu "Alati" u sidebaru tako da se Mentalne mape i Memorizacija prikazuju **kao podstavke unutar svakog predmeta**, umjesto kao globalni linkovi.
-
-## Promjene
+## Izmjene po fajlovima
 
 ### 1. `src/components/AppSidebar.tsx`
-- Ukloniti konstantu `TOOLS_NAV` i čitavu sekciju "Alati" sa globalnim linkovima `/mnemonics` i `/mind-map`.
-- U sekciji "Predmeti", ispod svake stavke predmeta, dodati dva pod‑linka (uvučena, manja ikona):
-  - `Mentalne mape` → `/subject/{cat.id}/mind-maps` (ikona `Map`)
-  - `Memorizacija` → `/subject/{cat.id}/mnemonics` (ikona `Brain`)
-- Pod‑linkovi se prikazuju samo kada sidebar nije `collapsed`.
-- Glavni link predmeta ostaje `/subject/{cat.id}` (Subject Dashboard).
+- Ukloniti `SUBJECT_TOOLS` konstantu i `Map`/`Brain` importe.
+- Ukloniti blok koji renderuje podstavke (linije ~98–114) ispod svakog predmeta.
+- Sidebar predmeta vraća se na čistu listu — samo naziv + due badge.
 
-### 2. `src/components/Breadcrumbs.tsx`
-- Ukloniti zastarele globalne unose `/mnemonics` i `/mind-map` iz mape ruta i iz `LAB_ROUTES` skupa, jer te rute više ne postoje. Per‑predmet rute već se rješavaju kroz postojeću logiku.
+### 2. `src/views/SubjectCardsView.tsx` (Memorizacija — diskretna ikonica)
+- U header redu (gdje se nalazi naslov, esej/blic badge-ovi i "Nazad na uređivanje" dugme), na **suprotnoj strani** od naslova dodati malu ikonicu-link:
+  - Lucide `Brain` ikonica, `size-4`, `variant="ghost"` `size="icon"`, `h-8 w-8`.
+  - `tooltip`/`title="Memorizacija"`, `aria-label="Memorizacija"`.
+  - Link na `/subject/${categoryId}/mnemonics`.
+- Postavlja se prije postojećeg "Nazad na uređivanje" dugmeta (ili na samom kraju reda kad smo u `manage` tabu, jer tada to dugme nije prisutno) — u oba slučaja `ml-auto` raspored ostaje očuvan jer je `flex-1 min-w-0` blok već gura na desno.
 
-### 3. `src/contexts/routing/useCurrentView.ts`
-- Ukloniti `mnemonic: "/mnemonics"` iz `VIEW_TO_PATH` (i odgovarajući unos u `VIEW_ACTIVITY_MAP` ako referenciše `mnemonic`) jer odgovarajući globalni view više ne postoji. Ovo sprečava buduće slučajne navigacije na nepostojeću rutu.
+### 3. `src/components/category/SourcesTab.tsx` (novi tab "Mentalne mape")
+- Dodati `"mape"` kao treću vrijednost `activeSourceTab` state-a (`"propis" | "skripta" | "mape"`).
+- U `TabsList` dodati `<TabsTrigger value="mape">Mentalne mape</TabsTrigger>` sa Badge brojačem mapa.
+- Dodati `useEffect` za učitavanje mapa za `categoryId` preko `loadMindMaps()` iz `@/lib/mindmap-storage`, filtrirane po `d.categoryId === categoryId`.
+- Dodati novi `<TabsContent value="mape">` koji:
+  - Prikazuje listu mapa istim vizuelnim stilom kao izvore (red sa ikonom Map, naslovom, modom i datumom).
+  - Klik na red navigira na `/subject/${categoryId}/mind-maps` i otvara mapu (preko `sessionStorage` flag-a, vidi sljedeću tačku) — ili jednostavnije, samo navigira na `/subject/${categoryId}/mind-maps` sa `?open={id}` query-jem.
+  - Ako nema mapa: empty state sa Map ikonicom i porukom.
+  - **Na dnu**, ispod liste, veliko centrirano dugme `<Plus/> Kreiraj mentalnu mapu` koje vodi na `/subject/${categoryId}/mind-maps`.
+- "Importuj DOCX" dugme u toolbar-u sakriti (ili `disabled`) kad je aktivni tab `"mape"` — nije primjenjivo.
 
-# Rezultat
+### 4. `src/views/SubjectMindMapPage.tsx` (opciono, za otvaranje mape iz tab-a)
+- Pročitati `?open={id}` query parametar pri mountu i, ako mapa postoji u učitanim mapama, automatski je postaviti kao `activeDoc`. Ovo daje korisniku besprekoran prelaz iz `SourcesTab` direktno u canvas mape.
 
-- Nestaju 404 greške za `/mind-map` i `/mnemonics`.
-- Bočni panel jasno prikazuje da su ovi alati per‑predmet (što je arhitekturna istina projekta).
-- Korisnik iz sidebara može direktno otvoriti Mentalne mape ili Memorizaciju za bilo koji predmet u jednom kliku.
+## Tehnički detalji
+
+```text
+Header kartica (SubjectCardsView):
+[<- Back] [Layers] Naslov + badges ............. [Brain ikonica] [Nazad na uređivanje?]
+
+SourcesTab tabovi:
+[Propisi (3)] [Skripte (1)] [Mentalne mape (5)]              [Importuj DOCX]
+```
+
+- `MindMapDoc` već ima polje `categoryId` (vidljivo u `MindMapSidePanel.tsx`), tako da je filtriranje trivijalno.
+- Ikonica Brain u headeru karta ne narušava postojeći layout jer header već koristi `flex items-center gap-3` sa `flex-1` blokom za naslov.
+- Sve postojeće rute (`/subject/:id/mnemonics`, `/subject/:id/mind-maps`) ostaju netaknute — samo se mijenjaju ulazne tačke.
+
+## Šta se NE mijenja
+- `Breadcrumbs.tsx`, `useCurrentView.ts` — ostaju kako jesu (rute i dalje postoje).
+- Same stranice `SubjectMnemonicPage` i `MindMapCanvas` ostaju netaknute.
+- `MindMapSidePanel` u `PassiveReader`-u ostaje kao zaseban entry-point i nije zahvaćen.

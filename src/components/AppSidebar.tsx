@@ -1,8 +1,5 @@
 import { NavLink } from "@/components/NavLink";
-import {
-  Home, Settings as SettingsIcon,
-  Map, Scale, Brain,
-} from "lucide-react";
+import { Home, Settings as SettingsIcon, Scale } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel,
   SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton,
@@ -95,23 +92,6 @@ export default function AppSidebar() {
                         )}
                       </NavLink>
                     </SidebarMenuButton>
-                    {!collapsed && SUBJECT_TOOLS.map(({ suffix, icon: Icon, label }) => (
-                      <SidebarMenuButton
-                        key={suffix}
-                        asChild
-                        tooltip={label}
-                        className="pl-8 h-7"
-                      >
-                        <NavLink
-                          to={`/subject/${cat.id}${suffix}`}
-                          className="hover:bg-sidebar-accent/50 text-muted-foreground"
-                          activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                        >
-                          <Icon className="h-3.5 w-3.5 shrink-0" />
-                          <span className="truncate text-[12px]">{label}</span>
-                        </NavLink>
-                      </SidebarMenuButton>
-                    ))}
                   </SidebarMenuItem>
                 );
               })}
