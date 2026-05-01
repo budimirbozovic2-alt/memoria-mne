@@ -544,6 +544,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
 
             {/* ── Footer: navigation + actions ──────────────────────────── */}
             <div className="flex items-center gap-2 pt-2 border-t">
+              {!isSingleModule && (<>
               <Button
                 variant="outline"
                 size="sm"
