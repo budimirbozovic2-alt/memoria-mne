@@ -504,14 +504,13 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
               </div>
             )}
 
-            {/* ── Body: rail + editor (rail hidden when N=1) ─────────────── */}
-            <div className={cn(
-              "flex-1 min-h-0 grid gap-3 overflow-hidden",
-              !showModeToggle ? "grid-cols-1" : "grid-cols-[200px_1fr]",
-            )}>
-              {/* Left rail — module list (hidden for single-module flow) */}
-              {!!showModeToggle && (
-                <div className="overflow-y-auto border rounded-lg bg-muted/30 p-1.5 space-y-0.5">
+            {/* ── Body: rail (always visible) + editor ─────────────────────
+               Rail lets the user jump between modules, delete unwanted ones,
+               and add new modules manually — even when starting from a single
+               synthetic selection. */}
+            <div className="flex-1 min-h-0 grid gap-3 overflow-hidden grid-cols-[220px_1fr]">
+              <div className="overflow-y-auto border rounded-lg bg-muted/30 p-1.5 flex flex-col">
+                <div className="space-y-0.5 flex-1">
                   {splitModules.map((mod, i) => {
                     const edit = splitEdits[i];
                     const isActive = i === safeIndex;
@@ -519,36 +518,75 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                     const isPersonalized =
                       edit && !isSkipped && edit.question.trim() !== mod.title.trim();
                     return (
-                      <button
-                        key={`${mod.articleNum}-${i}`}
-                        type="button"
-                        onClick={() => setStepIndex(i)}
+                      <div
+                        key={`mod-${i}`}
                         className={cn(
-                          "w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors flex items-center gap-2",
+                          "group rounded-md text-xs transition-colors flex items-center gap-1 pr-1",
                           isActive
-                            ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
-                            : "hover:bg-muted text-muted-foreground",
-                          isSkipped && "opacity-50 line-through",
+                            ? "bg-primary/15 ring-1 ring-primary/40"
+                            : "hover:bg-muted",
                         )}
                       >
-                        <Badge
-                          variant="outline"
+                        <button
+                          type="button"
+                          onClick={() => setStepIndex(i)}
                           className={cn(
-                            "text-[9px] h-4 px-1 flex-shrink-0",
-                            isPersonalized && "border-primary/50 text-primary",
+                            "flex-1 min-w-0 text-left px-2 py-1.5 flex items-center gap-2",
+                            isActive ? "text-foreground" : "text-muted-foreground",
+                            isSkipped && "opacity-50 line-through",
                           )}
                         >
-                          čl. {mod.articleNum}
-                        </Badge>
-                        <span className="truncate flex-1">{edit?.question || mod.title}</span>
-                        {edit?.tags.length ? (
-                          <TagIcon className="h-2.5 w-2.5 flex-shrink-0 text-primary" />
-                        ) : null}
-                      </button>
+                          {mod.articleNum ? (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[9px] h-4 px-1 flex-shrink-0",
+                                isPersonalized && "border-primary/50 text-primary",
+                              )}
+                            >
+                              čl. {mod.articleNum}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[9px] h-4 px-1 flex-shrink-0",
+                                isPersonalized && "border-primary/50 text-primary",
+                              )}
+                            >
+                              {i + 1}
+                            </Badge>
+                          )}
+                          <span className="truncate flex-1">{edit?.question || mod.title}</span>
+                          {edit?.tags.length ? (
+                            <TagIcon className="h-2.5 w-2.5 flex-shrink-0 text-primary" />
+                          ) : null}
+                        </button>
+                        {total > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => deleteModule(i)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                            title="Obriši modul"
+                            aria-label={`Obriši modul ${i + 1}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
-              )}
+                <button
+                  type="button"
+                  onClick={addNewModule}
+                  className="mt-1.5 w-full text-xs px-2 py-1.5 rounded-md border border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                  Dodaj modul
+                </button>
+              </div>
+
 
               {/* Right pane — editor for the active module */}
               <div className="overflow-y-auto pr-1 space-y-3">
