@@ -23,10 +23,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     [cards, source.id]
   );
 
-  const coverage = useMemo(
-    () => analyzeCoverage(source.id, source.htmlContent, sourceCards),
-    [source.id, source.htmlContent, sourceCards]
-  );
+
 
   const safeHtml = useMemo(() => sanitizeHtml(source.htmlContent), [source.htmlContent]);
   const linkedCount = sourceCards.length;
