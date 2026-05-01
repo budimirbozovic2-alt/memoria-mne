@@ -28,10 +28,10 @@ export default tseslint.config(
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
 
-      // Zero-any policy — enforced as warning globally with a CI plafond
-      // (see `lint` script in package.json). Critical paths upgrade this to
-      // "error" via the dedicated config block below.
-      "@typescript-eslint/no-explicit-any": "warn",
+      // Zero-any policy — enforced as ERROR globally. Tests are exempted
+      // via the dedicated `src/test/**` override block below (partial mocks
+      // legitimately need `any`). All production code must use strict types.
+      "@typescript-eslint/no-explicit-any": "error",
 
       // Block raw Tailwind palette colors in JSX/string literals.
       // Forces use of semantic design tokens defined in src/index.css.
