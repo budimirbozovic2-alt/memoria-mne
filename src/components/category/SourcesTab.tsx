@@ -24,16 +24,32 @@ interface SourcesTabProps {
   bulkFlagNeedsReview: (cardIds: string[]) => void;
 }
 
+type SourceTabValue = "propis" | "skripta" | "mape";
+
 export default function SourcesTab({ categoryId, sources, onOpenReader, onSourceUpdated, bulkFlagNeedsReview }: SourcesTabProps) {
-  const [activeSourceTab, setActiveSourceTab] = useState<"propis" | "skripta">("propis");
+  const navigate = useNavigate();
+  const [activeSourceTab, setActiveSourceTab] = useState<SourceTabValue>("propis");
   const [editorSource, setEditorSource] = useState<Source | null>(null);
   const [importing, setImporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Source | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [mindMaps, setMindMaps] = useState<MindMapDoc[]>([]);
+  const [mindMapsLoading, setMindMapsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const propisSources = useMemo(() => sources.filter(s => (s.sourceKind ?? "propis") === "propis"), [sources]);
   const skriptaSources = useMemo(() => sources.filter(s => s.sourceKind === "skripta"), [sources]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMindMapsLoading(true);
+    loadMindMaps().then(all => {
+      if (cancelled) return;
+      setMindMaps(all.filter(d => d.categoryId === categoryId));
+      setMindMapsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [categoryId]);
 
   const handleDocxImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
