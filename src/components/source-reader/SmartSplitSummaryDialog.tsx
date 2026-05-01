@@ -871,6 +871,20 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
             </div>
           </>
         ) : null}
+
+        <DirtyConfirmBar
+          open={pendingClose}
+          onCancel={cancelClose}
+          onDiscard={confirmDiscard}
+          onSave={async () => {
+            // "Save & close" in wizard context = jump to final preview so the
+            // user can confirm the import (the only valid persistence path).
+            setPreviewAll(true);
+            cancelClose();
+          }}
+          message="Imate nesačuvan čarobnjak. Kartice još nisu kreirane."
+          saveLabel="Pregled za import"
+        />
       </DialogContent>
     </Dialog>
   );
