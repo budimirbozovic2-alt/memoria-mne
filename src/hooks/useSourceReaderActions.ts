@@ -4,7 +4,6 @@ import { createTextAnchor, type Source } from "@/lib/sources-storage";
 import { incrementDailyMapped } from "@/lib/planner-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { createSection } from "@/lib/spaced-repetition";
-import { analyzeCoverage } from "@/lib/coverage-analysis";
 import { splitSelection, firstWords, type SelectionModule } from "@/lib/selection-split-engine";
 import { toast } from "sonner";
 import { useSourceReaderStore } from "@/store/useSourceReaderStore";
@@ -24,10 +23,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     [cards, source.id]
   );
 
-  const coverage = useMemo(
-    () => analyzeCoverage(source.id, source.htmlContent, sourceCards),
-    [source.id, source.htmlContent, sourceCards]
-  );
+
 
   const safeHtml = useMemo(() => sanitizeHtml(source.htmlContent), [source.htmlContent]);
   const linkedCount = sourceCards.length;
@@ -411,15 +407,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  // ─── Navigate to covered card ───
-  const handleOpenCoveredCard = useCallback((cardId: string) => {
-    const card = cards.find(c => c.id === cardId);
-    if (card) {
-      sessionStorage.setItem("sr-scroll-to-card", cardId);
-      window.location.hash = `#/category/${card.categoryId}`;
-    }
-  }, [cards]);
-
+ 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -515,7 +503,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
 
   return {
     contentRef,
-    derived: { sourceCards, coverage, safeHtml, linkedCount, cards },
+    derived: { sourceCards, safeHtml, linkedCount, cards },
     actions: {
       handleMouseUp,
       handleConvertToEssay,
@@ -528,7 +516,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       handleFormatSelectionAs,
       handleContextMenu,
       scrollToHeading,
-      handleOpenCoveredCard,
+      
       handleInlineFormat,
       handleEditInput,
       handleAutoFormatArticles,

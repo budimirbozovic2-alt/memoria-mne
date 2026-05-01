@@ -38,7 +38,6 @@ export interface SplitResultState {
 
 interface SourceReaderState {
   // UI state
-  viewMode: "standard" | "coverage";
   editMode: boolean;
   readerWidth: ReaderWidth;
   outlineOpen: boolean;
@@ -70,7 +69,6 @@ interface SourceReaderState {
   examQuestions: ExamQuestion[];
 
   // Actions
-  setViewMode: (m: "standard" | "coverage") => void;
   setEditMode: (v: boolean) => void;
   setReaderWidth: (w: ReaderWidth) => void;
   setOutlineOpen: (v: boolean) => void;
@@ -107,7 +105,6 @@ function loadInitialWidth(): ReaderWidth {
 }
 
 const initialState = {
-  viewMode: "standard" as const,
   editMode: false,
   readerWidth: loadInitialWidth(),
   outlineOpen: true,
@@ -135,7 +132,6 @@ const initialState = {
 export const useSourceReaderStore = create<SourceReaderState>((set, get) => ({
   ...initialState,
 
-  setViewMode: (m) => set({ viewMode: m }),
   setEditMode: (v) => set({ editMode: v }),
   setReaderWidth: (w) => {
     try { localStorage.setItem(WIDTH_STORAGE_KEY, w); } catch {}

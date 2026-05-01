@@ -1,60 +1,67 @@
 ## Goal
 
-Two surgical UX fixes to `SubjectDashboard.tsx` (and one user-facing label in `ZettelkastenView.tsx`):
+Reorganize the cluttered top of the **Source Reader / Editor** page (`SourceReader.tsx` + `SourceToolbar.tsx`) and **completely remove the "Pokrivenost" (Coverage) feature**.
 
-1. "Najčešće greške" doesn't belong in the **Baza i Izvori znanja** row — it isn't a knowledge source. Move it to the small icon-button cluster next to **Info / Podešavanja** in the header.
-2. Rename **Zettelkasten** → **Lokalni Wiki** to align with the Croatian/Bosnian language used everywhere else in the app.
-
-No other behavior, routing, or styling changes.
+The current single-row toolbar crams 9 controls + title onto one line: Back · Title · Auto-Split · [Čitanje | Pokrivenost] · [S/M/L/XL/Full] · Uredi · Članovi · Pitanja · Sadržaj. Result: cramped, visually noisy.
 
 ---
 
 ## Changes
 
-### 1. `src/views/SubjectDashboard.tsx`
+### 1. `src/components/source-reader/SourceToolbar.tsx` — split into two rows, remove Coverage toggle
 
-**A. Header icon cluster (around lines 152–183)**
+- **Remove** the `[Čitanje | Pokrivenost]` segmented switch entirely (and `BarChart3`, `Eye` icon imports, `viewMode`/`setViewMode`/`isCoverage` reads).
+- **Reorganize into two rows** with `space-y-2`:
+  - **Row 1 — Identity** (single visual line): `← Back` · `<SourceHeader>` (title + meta, flex-1) · `Sadržaj` toggle pinned to the right.
+  - **Row 2 — Tools** (action bar):
+    - Left group: `Uredi` (primary action) → contextual edit-mode tools next to it (`Auto-Split` when reading propis, `Članovi` when editing propis).
+    - `ml-auto` spacer.
+    - Right group: `Pitanja` button (with badge), then the compact `[S M L XL Full]` width selector.
+- Keep all existing functionality (edit, exam sidebar, outline, width, auto-split, auto-format) — only Coverage is removed.
 
-Add a third small `Button variant="outline" size="icon" h-9 w-9` *before* Info and Podešavanja:
+### 2. `src/components/SourceReader.tsx` — drop Coverage rendering
 
-```text
-[ AlertTriangle ]  [ Info ]  [ Settings ]
-   Najčešće greške   Info     Podešavanja
-```
+- Remove imports: `CoverageArticleList`, `CoverageStatsBar`.
+- Remove `viewMode`/`isCoverage` reads from the store.
+- Remove the `{isCoverage && <CoverageStatsBar … />}` block.
+- Replace the `{isCoverage ? <CoverageArticleList … /> : <SourceContent … />}` ternary with just `<SourceContent … />`.
+- Simplify `{!isCoverage && selection && <SourceTooltip … />}` to `{selection && <SourceTooltip … />}`.
 
-- Icon: `AlertTriangle` (already imported).
-- `asChild` + `<Link to={`/subject/${categoryId}/diagnostics`}>`.
-- Tooltip: "Najčešće greške".
-- `aria-label="Najčešće greške"`.
+### 3. `src/hooks/useSourceReaderActions.ts` — drop coverage derivations
 
-**B. "Baza i Izvori znanja" grid (lines 191–212)**
+- Remove `import { analyzeCoverage } …`.
+- Remove the `coverage` `useMemo` block (lines ~27–30).
+- Remove `handleOpenCoveredCard` (~line 415) and its export from `actions`.
+- Remove `coverage` from the returned `derived` object.
+- Keep the `[data-coverage-container]` selector fallback in `handleMouseUp` removed (selection container now relies solely on `contentRef.current`).
 
-- Remove the `Najčešće greške` entry from `knowledgeBaseCards` (the 4th item, lines 117–122).
-- Change grid from `grid-cols-4` to `grid-cols-3` so the remaining three cards (Lokalni Wiki, Izvori, Kartice) fill the row evenly at the current 1336px viewport.
+### 4. `src/store/useSourceReaderStore.ts` — drop viewMode field
 
-**C. Rename label**
+- Remove `viewMode` field, `setViewMode` action, and the `"standard" | "coverage"` type union.
+- Remove `viewMode: "standard"` initial value.
 
-In `knowledgeBaseCards` (line 95), change `title: "Zettelkasten"` → `title: "Lokalni Wiki"`. Route stays `/subject/${categoryId}/zettelkasten` (internal slug untouched — no routing/storage churn).
+### 5. Delete dead files
 
-**D. Cleanup**
-
-`AlertTriangle` is already imported (line 6) — no import change needed since it's still used for the new header button. No other imports change.
-
-### 2. `src/views/ZettelkastenView.tsx`
-
-Line 407: rename the in-view header
-
-```text
-Zettelkasten — {categoryRec.name}   →   Lokalni Wiki — {categoryRec.name}
-```
-
-That is the only user-facing string in this file. Comments, function/file names, route slugs, storage keys, and types remain `Zettelkasten*` (internal vocabulary — renaming them would be a large, risky refactor outside the scope of this UX request).
+- `src/components/source-reader/CoverageArticleList.tsx` — delete.
+- `src/components/source-reader/CoverageStatsBar.tsx` — delete.
+- Verify nothing else imports `@/lib/coverage-analysis`; if it's only consumed by the removed hook code, leave the lib file in place (no harm — it's tree-shaken) and skip touching it. **Will verify with `rg` after edits and report.**
 
 ---
 
-## Out of scope (intentionally not touched)
+## Visual result
 
-- Route path `/subject/:categoryId/zettelkasten` (would break deep links and bookmarks).
-- File names, hook names, storage keys, `db-schema.ts`, `backlink-index.ts`, `zettelkasten-tags.ts` — internal identifiers.
-- `App.tsx` `ErrorBoundary label="Zettelkasten"` — diagnostic label, not user-facing copy.
-- Any other dashboard widget or layout from the previous Phase refactors.
+```text
+Before (1 row, 9+ controls):
+[←] Title · meta · v1   [Auto-Split] [Čitanje|Pokrivenost] [S M L XL Full] [Uredi] [Pitanja] [Sadržaj]
+
+After (2 rows, breathing room):
+Row 1:  [←]  Title · meta · v1                                                         [Sadržaj]
+Row 2:  [Uredi] [Auto-Split / Članovi]                          [Pitanja]  [S M L XL Full]
+```
+
+---
+
+## Out of scope
+
+- No changes to the content area, selection tooltip, exam sidebar, navigation outline, dialogs, or any business logic.
+- `coverage-analysis.ts` library file kept in place (tree-shaken) unless `rg` confirms zero remaining importers, in which case it can be deleted in a follow-up.
