@@ -167,13 +167,23 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
     if (open && !splitDone) questionRef.current?.focus();
   }, [open, safeIndex, splitDone]);
 
+  // Single-module synthetic flow: when there are no detected articles, the
+  // wizard shows a streamlined UI (no mode toggle, no module rail, no "Član X"
+  // badge) but still keeps the full preview pipeline.
+  const isSingleModule = total === 1;
+  const isSyntheticSingle = isSingleModule && !!currentModule && !currentModule.articleNum;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[88vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
-            {splitDone ? "Generisanje završeno" : "Smart-Split čarobnjak"}
+            {splitDone
+              ? "Generisanje završeno"
+              : isSyntheticSingle
+                ? "Kreiranje eseja"
+                : "Smart-Split čarobnjak"}
           </DialogTitle>
         </DialogHeader>
 
