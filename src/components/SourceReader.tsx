@@ -11,7 +11,6 @@ import { SourceNavigation } from "@/components/source-reader/SourceNavigation";
 import { CoverageStatsBar } from "@/components/source-reader/CoverageStatsBar";
 import { SourceContextMenu } from "@/components/source-reader/SourceContextMenu";
 import { SourceTooltip } from "@/components/source-reader/SourceTooltip";
-import { EssayCreationDialog } from "@/components/source-reader/EssayCreationDialog";
 import { SmartSplitSummaryDialog } from "@/components/source-reader/SmartSplitSummaryDialog";
 
 const AutoSplitDialog = lazy(() => import("@/components/AutoSplitDialog"));
@@ -34,7 +33,6 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
   const editMode = useSourceReaderStore(s => s.editMode);
   const selection = useSourceReaderStore(s => s.selection);
   const headingMenu = useSourceReaderStore(s => s.headingMenu);
-  const essayDialogOpen = useSourceReaderStore(s => s.essayDialogOpen);
   const splitSummaryOpen = useSourceReaderStore(s => s.splitSummaryOpen);
   const autoSplitOpen = useSourceReaderStore(s => s.autoSplitOpen);
   const linkModalOpen = useSourceReaderStore(s => s.linkModalOpen);
@@ -122,11 +120,6 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
           />
         )}
       </div>
-
-      <EssayCreationDialog
-        source={source}
-        onCreateEssay={actions.handleCreateEssay}
-      />
 
       <SmartSplitSummaryDialog
         source={source}

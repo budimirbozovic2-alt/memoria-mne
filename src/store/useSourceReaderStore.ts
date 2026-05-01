@@ -47,10 +47,6 @@ interface SourceReaderState {
   headingMenu: HeadingMenuState | null;
 
   // Dialog state
-  essayDialogOpen: boolean;
-  essayQuestion: string;
-  selectedText: string;
-  selectedHtml: string;
   autoSplitOpen: boolean;
   splitSummaryOpen: boolean;
   splitResult: SplitResultState | null;
@@ -77,10 +73,6 @@ interface SourceReaderState {
   setExamOpen: (v: boolean) => void;
   setSelection: (s: SelectionState | null) => void;
   setHeadingMenu: (m: HeadingMenuState | null) => void;
-  setEssayDialogOpen: (v: boolean) => void;
-  setEssayQuestion: (v: string) => void;
-  setSelectedText: (v: string) => void;
-  setSelectedHtml: (v: string) => void;
   setAutoSplitOpen: (v: boolean) => void;
   setSplitSummaryOpen: (v: boolean) => void;
   setSplitResult: (v: SplitResultState | null) => void;
@@ -116,10 +108,6 @@ const initialState = {
   examOpen: false,
   selection: null as SelectionState | null,
   headingMenu: null as HeadingMenuState | null,
-  essayDialogOpen: false,
-  essayQuestion: "",
-  selectedText: "",
-  selectedHtml: "",
   autoSplitOpen: false,
   splitSummaryOpen: false,
   splitResult: null as SplitResultState | null,
@@ -149,10 +137,6 @@ export const useSourceReaderStore = create<SourceReaderState>((set, get) => ({
   setExamOpen: (v) => set({ examOpen: v }),
   setSelection: (s) => set({ selection: s }),
   setHeadingMenu: (m) => set({ headingMenu: m }),
-  setEssayDialogOpen: (v) => set({ essayDialogOpen: v }),
-  setEssayQuestion: (v) => set({ essayQuestion: v }),
-  setSelectedText: (v) => set({ selectedText: v }),
-  setSelectedHtml: (v) => set({ selectedHtml: v }),
   setAutoSplitOpen: (v) => set({ autoSplitOpen: v }),
   setSplitSummaryOpen: (v) => set({ splitSummaryOpen: v }),
   setSplitResult: (v) => set({ splitResult: v }),

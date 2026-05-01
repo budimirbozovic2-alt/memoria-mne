@@ -167,13 +167,23 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
     if (open && !splitDone) questionRef.current?.focus();
   }, [open, safeIndex, splitDone]);
 
+  // Single-module synthetic flow: when there are no detected articles, the
+  // wizard shows a streamlined UI (no mode toggle, no module rail, no "Član X"
+  // badge) but still keeps the full preview pipeline.
+  const isSingleModule = total === 1;
+  const isSyntheticSingle = isSingleModule && !!currentModule && !currentModule.articleNum;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-4xl max-h-[88vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
-            {splitDone ? "Generisanje završeno" : "Smart-Split čarobnjak"}
+            {splitDone
+              ? "Generisanje završeno"
+              : isSyntheticSingle
+                ? "Kreiranje eseja"
+                : "Smart-Split čarobnjak"}
           </DialogTitle>
         </DialogHeader>
 
@@ -304,43 +314,45 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
           </>
         ) : splitResult && currentModule && currentEdit ? (
           <>
-            {/* ── Top: mode toggle + summary ─────────────────────────────── */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
-                <button
-                  type="button"
-                  onClick={() => setSplitMode("separate")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-                    splitMode === "separate"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  title="Svaki član postaje zasebna kartica"
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  Zasebne kartice
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSplitMode("combined")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-                    splitMode === "combined"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  title="Jedan esej sa modulima (cjelinama)"
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  Jedan esej + moduli
-                </button>
+            {/* ── Top: mode toggle + summary (hidden when N=1) ───────────── */}
+            {!isSingleModule && (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode("separate")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                      splitMode === "separate"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title="Svaki član postaje zasebna kartica"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Zasebne kartice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode("combined")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                      splitMode === "combined"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title="Jedan esej sa modulima (cjelinama)"
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Jedan esej + moduli
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">{keptCount}</strong> / {total} odabrano
+                  {" • "}{splitResult.rangeLabel}
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                <strong className="text-foreground">{keptCount}</strong> / {total} odabrano
-                {" • "}{splitResult.rangeLabel}
-              </div>
-            </div>
+            )}
 
             {/* ── Combined-mode parent name ─────────────────────────────── */}
             {splitMode === "combined" && (
@@ -357,71 +369,82 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
               </div>
             )}
 
-            {/* ── Body: rail + editor ────────────────────────────────────── */}
-            <div className="flex-1 min-h-0 grid grid-cols-[200px_1fr] gap-3 overflow-hidden">
-              {/* Left rail — module list */}
-              <div className="overflow-y-auto border rounded-lg bg-muted/30 p-1.5 space-y-0.5">
-                {splitModules.map((mod, i) => {
-                  const edit = splitEdits[i];
-                  const isActive = i === safeIndex;
-                  const isSkipped = edit?.skipped;
-                  const isPersonalized =
-                    edit && !isSkipped && edit.question.trim() !== mod.title.trim();
-                  return (
-                    <button
-                      key={`${mod.articleNum}-${i}`}
-                      type="button"
-                      onClick={() => setStepIndex(i)}
-                      className={cn(
-                        "w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors flex items-center gap-2",
-                        isActive
-                          ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
-                          : "hover:bg-muted text-muted-foreground",
-                        isSkipped && "opacity-50 line-through",
-                      )}
-                    >
-                      <Badge
-                        variant="outline"
+            {/* ── Body: rail + editor (rail hidden when N=1) ─────────────── */}
+            <div className={cn(
+              "flex-1 min-h-0 grid gap-3 overflow-hidden",
+              isSingleModule ? "grid-cols-1" : "grid-cols-[200px_1fr]",
+            )}>
+              {/* Left rail — module list (hidden for single-module flow) */}
+              {!isSingleModule && (
+                <div className="overflow-y-auto border rounded-lg bg-muted/30 p-1.5 space-y-0.5">
+                  {splitModules.map((mod, i) => {
+                    const edit = splitEdits[i];
+                    const isActive = i === safeIndex;
+                    const isSkipped = edit?.skipped;
+                    const isPersonalized =
+                      edit && !isSkipped && edit.question.trim() !== mod.title.trim();
+                    return (
+                      <button
+                        key={`${mod.articleNum}-${i}`}
+                        type="button"
+                        onClick={() => setStepIndex(i)}
                         className={cn(
-                          "text-[9px] h-4 px-1 flex-shrink-0",
-                          isPersonalized && "border-primary/50 text-primary",
+                          "w-full text-left px-2 py-1.5 rounded-md text-xs transition-colors flex items-center gap-2",
+                          isActive
+                            ? "bg-primary/15 text-foreground ring-1 ring-primary/40"
+                            : "hover:bg-muted text-muted-foreground",
+                          isSkipped && "opacity-50 line-through",
                         )}
                       >
-                        čl. {mod.articleNum}
-                      </Badge>
-                      <span className="truncate flex-1">{edit?.question || mod.title}</span>
-                      {edit?.tags.length ? (
-                        <TagIcon className="h-2.5 w-2.5 flex-shrink-0 text-primary" />
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[9px] h-4 px-1 flex-shrink-0",
+                            isPersonalized && "border-primary/50 text-primary",
+                          )}
+                        >
+                          čl. {mod.articleNum}
+                        </Badge>
+                        <span className="truncate flex-1">{edit?.question || mod.title}</span>
+                        {edit?.tags.length ? (
+                          <TagIcon className="h-2.5 w-2.5 flex-shrink-0 text-primary" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Right pane — editor for the active module */}
               <div className="overflow-y-auto pr-1 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">
-                      Korak {safeIndex + 1} / {total}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[10px]">
-                      Član {currentModule.articleNum}
-                    </Badge>
+                    {!isSingleModule && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Korak {safeIndex + 1} / {total}
+                      </Badge>
+                    )}
+                    {currentModule.articleNum && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Član {currentModule.articleNum}
+                      </Badge>
+                    )}
                     {currentEdit.skipped && (
                       <Badge variant="outline" className="text-[10px] text-muted-foreground">
                         preskočeno
                       </Badge>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => updateEdit(safeIndex, { skipped: !currentEdit.skipped })}
-                    className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-                  >
-                    <SkipForward className="h-3 w-3" />
-                    {currentEdit.skipped ? "Vrati u import" : "Preskoči ovaj član"}
-                  </button>
+                  {!isSingleModule && (
+                    <button
+                      type="button"
+                      onClick={() => updateEdit(safeIndex, { skipped: !currentEdit.skipped })}
+                      className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                    >
+                      <SkipForward className="h-3 w-3" />
+                      {currentEdit.skipped ? "Vrati u import" : "Preskoči ovaj član"}
+                    </button>
+                  )}
                 </div>
 
                 {/* Question editor */}
@@ -521,6 +544,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
 
             {/* ── Footer: navigation + actions ──────────────────────────── */}
             <div className="flex items-center gap-2 pt-2 border-t">
+              {!isSingleModule && (<>
               <Button
                 variant="outline"
                 size="sm"
@@ -551,6 +575,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                 <Wand2 className="h-3 w-3" />
                 Sljedeći needitovan
               </Button>
+              </>)}
               <div className="flex-1" />
               <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
                 Otkaži
@@ -560,10 +585,12 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                 onClick={() => setPreviewAll(true)}
                 className="gap-1.5"
                 disabled={keptCount === 0}
-                title="Vidi kako će sve kartice izgledati u učenju prije importa"
+                title="Vidi kako će kartica izgledati u učenju prije importa"
               >
                 <Eye className="h-3.5 w-3.5" />
-                Pregled svih ({splitMode === "separate" ? `${keptCount} kartica` : `1 esej, ${keptCount} modula`})
+                {isSingleModule
+                  ? "Pregled kartice"
+                  : `Pregled svih (${splitMode === "separate" ? `${keptCount} kartica` : `1 esej, ${keptCount} modula`})`}
               </Button>
             </div>
           </>
