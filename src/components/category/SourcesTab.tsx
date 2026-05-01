@@ -1,14 +1,18 @@
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { type Source } from "@/lib/db";
 import { saveSource, invalidateSourcesCache, deleteSource } from "@/lib/sources-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { parseArticles } from "@/lib/article-parser";
 import { extractOutline, injectHeadingIds } from "@/lib/sources-storage";
+import { loadMindMaps } from "@/lib/mindmap-storage";
+import type { MindMapDoc } from "@/lib/db";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FileText, Upload, Loader2, Eye, Pencil, Trash2 } from "lucide-react";
+import { FileText, Upload, Loader2, Eye, Pencil, Trash2, Map as MapIcon, Plus, GitBranch, Workflow } from "lucide-react";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import SourceEditor from "@/components/category/SourceEditor";
 
@@ -20,16 +24,32 @@ interface SourcesTabProps {
   bulkFlagNeedsReview: (cardIds: string[]) => void;
 }
 
+type SourceTabValue = "propis" | "skripta" | "mape";
+
 export default function SourcesTab({ categoryId, sources, onOpenReader, onSourceUpdated, bulkFlagNeedsReview }: SourcesTabProps) {
-  const [activeSourceTab, setActiveSourceTab] = useState<"propis" | "skripta">("propis");
+  const navigate = useNavigate();
+  const [activeSourceTab, setActiveSourceTab] = useState<SourceTabValue>("propis");
   const [editorSource, setEditorSource] = useState<Source | null>(null);
   const [importing, setImporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Source | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [mindMaps, setMindMaps] = useState<MindMapDoc[]>([]);
+  const [mindMapsLoading, setMindMapsLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const propisSources = useMemo(() => sources.filter(s => (s.sourceKind ?? "propis") === "propis"), [sources]);
   const skriptaSources = useMemo(() => sources.filter(s => s.sourceKind === "skripta"), [sources]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMindMapsLoading(true);
+    loadMindMaps().then(all => {
+      if (cancelled) return;
+      setMindMaps(all.filter(d => d.categoryId === categoryId));
+      setMindMapsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [categoryId]);
 
   const handleDocxImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -59,7 +79,7 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
         version: 1,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-        sourceKind: activeSourceTab,
+        sourceKind: activeSourceTab === "mape" ? "propis" : activeSourceTab,
       };
 
       await saveSource(newSource);
@@ -89,7 +109,7 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
 
   return (
     <>
-      <Tabs value={activeSourceTab} onValueChange={(v) => setActiveSourceTab(v as "propis" | "skripta")} className="w-full">
+      <Tabs value={activeSourceTab} onValueChange={(v) => setActiveSourceTab(v as SourceTabValue)} className="w-full">
         <div className="flex items-center justify-between mb-3">
           <TabsList>
             <TabsTrigger value="propis" className="gap-1.5">
@@ -104,26 +124,35 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
                 {skriptaSources.length}
               </Badge>
             </TabsTrigger>
+            <TabsTrigger value="mape" className="gap-1.5">
+              <MapIcon className="h-3.5 w-3.5" />
+              Mentalne mape
+              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                {mindMaps.length}
+              </Badge>
+            </TabsTrigger>
           </TabsList>
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".docx"
-              className="hidden"
-              onChange={handleDocxImport}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={importing}
-              onClick={() => fileInputRef.current?.click()}
-              className="gap-2"
-            >
-              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {importing ? "Importujem…" : "Importuj DOCX"}
-            </Button>
-          </div>
+          {activeSourceTab !== "mape" && (
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx"
+                className="hidden"
+                onChange={handleDocxImport}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={importing}
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2"
+              >
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {importing ? "Importujem…" : "Importuj DOCX"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {(["propis", "skripta"] as const).map(kind => {
@@ -173,6 +202,57 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
             </TabsContent>
           );
         })}
+
+        <TabsContent value="mape">
+          {mindMapsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : mindMaps.length === 0 ? (
+            <div className="text-center py-12 space-y-3">
+              <MapIcon className="h-10 w-10 mx-auto text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">
+                Nema mentalnih mapa za ovaj predmet.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {mindMaps.map(m => {
+                const ModeIcon = m.mode === "procedure" ? Workflow : GitBranch;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => navigate(`/subject/${categoryId}/mind-maps?open=${m.id}`)}
+                    className="w-full flex items-center justify-between rounded-lg border bg-card px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <ModeIcon className={`h-4 w-4 shrink-0 ${m.mode === "procedure" ? "text-warning" : "text-primary"}`} />
+                      <div className="min-w-0">
+                        <span className="text-sm text-foreground truncate block">{m.title}</span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {m.mode === "procedure" ? "Procedura" : "Hijerarhija"} · {m.nodes.length} čvorova · {format(new Date(m.updatedAt), "dd.MM.yyyy")}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="mt-4 flex justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate(`/subject/${categoryId}/mind-maps`)}
+            >
+              <Plus className="h-4 w-4" />
+              Kreiraj mentalnu mapu
+            </Button>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Source metadata editor dialog */}
