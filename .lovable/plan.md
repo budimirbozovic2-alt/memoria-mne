@@ -1,29 +1,31 @@
-## Problem
+# Problem
 
-Filtri u "Pregled i Uređivanje" (CardViewMode) — `subcategory`, `chapter`, `type`, `tag` — žive kao lokalni `useState` unutar `useCardViewFilters`. Kada korisnik klikne "Uredi" na kartici, `SubjectCardsView` navigira na `/edit`, `CardViewMode` se demountira, a po povratku se remountira sa default vrijednostima (`__all__`, `"all"`, `null`). Filtri se gube.
+Bočni panel ima statičke linkove `/mind-map` i `/mnemonics`, ali te globalne rute više ne postoje u `App.tsx` — postoje samo per‑predmet varijante (`/subject/:categoryId/mind-maps` i `/subject/:categoryId/mnemonics`). Klik na njih vodi na 404 (vidi se i u konzoli).
 
-`SubjectCardsView` već koristi postojeći `useEditReturn` snapshot-mehanizam za `tab`, `manageMode`, `searchQuery`, `sourceFilter`. Treba dodati i unutarnje CardViewMode filtre u isti snapshot.
+Ovo je u skladu sa već postavljenim pravilom (Domain Scoping): sve je strogo skopovano po `categoryId`, pa "globalna" mentalna mapa / mnemonika nemaju smisla.
 
-## Plan (3 male, surgical izmjene; bez refaktorisanja arhitekture)
+# Rješenje
 
-### 1. `src/hooks/useCardViewFilters.ts`
-- Dodati opcionalna polja u `UseCardViewFiltersParams`: `initialSubcategory`, `initialChapter`, `initialType`, `initialTag`.
-- Inicijalizovati 4 `useState` poziva tim vrijednostima (sa fallback-om na trenutne defaultove).
-- Bez ostalih izmjena u logici.
+Reorganizovati grupu "Alati" u sidebaru tako da se Mentalne mape i Memorizacija prikazuju **kao podstavke unutar svakog predmeta**, umjesto kao globalni linkovi.
 
-### 2. `src/components/category/CardViewMode.tsx`
-- Proširiti `Props` sa: `initialSubcategory?`, `initialChapter?`, `initialType?`, `initialTag?`, i `onFiltersChange?: (snapshot: { subcategory: string; chapter: string; type: FilterTypeValue; tag: string | null }) => void`.
-- Proslijediti `initial*` u `useCardViewFilters`.
-- `useEffect` koji poziva `onFiltersChange` kad god se promijene `filters.filterSubcategory/Chapter/Type/Tag` — parent dobija live snimak tekućih filtera.
+## Promjene
 
-### 3. `src/views/SubjectCardsView.tsx`
-- Proširiti `EditReturnSnapshot`: dodati `cvSub?`, `cvChapter?`, `cvType?`, `cvTag?`.
-- Držati `useRef` (`cardViewFiltersRef`) sa najnovijim vrijednostima koje šalje `CardViewMode` preko `onFiltersChange`.
-- U `buildExtras` dodati polja iz refa.
-- Proslijediti `initialSnapshot?.cv*` kao `initial*` props prema `<CardViewMode />`.
+### 1. `src/components/AppSidebar.tsx`
+- Ukloniti konstantu `TOOLS_NAV` i čitavu sekciju "Alati" sa globalnim linkovima `/mnemonics` i `/mind-map`.
+- U sekciji "Predmeti", ispod svake stavke predmeta, dodati dva pod‑linka (uvučena, manja ikona):
+  - `Mentalne mape` → `/subject/{cat.id}/mind-maps` (ikona `Map`)
+  - `Memorizacija` → `/subject/{cat.id}/mnemonics` (ikona `Brain`)
+- Pod‑linkovi se prikazuju samo kada sidebar nije `collapsed`.
+- Glavni link predmeta ostaje `/subject/{cat.id}` (Subject Dashboard).
 
-## Što ostaje van obima
+### 2. `src/components/Breadcrumbs.tsx`
+- Ukloniti zastarele globalne unose `/mnemonics` i `/mind-map` iz mape ruta i iz `LAB_ROUTES` skupa, jer te rute više ne postoje. Per‑predmet rute već se rješavaju kroz postojeću logiku.
 
-- `masteryFilter` se već pamti na višem nivou (ne resetuje se).
-- `searchQuery` i `sourceFilter` su već u snapshotu.
-- Bez perzistencije u localStorage (snapshot je per-edit-session, čisti se sam — to je željeno ponašanje).
+### 3. `src/contexts/routing/useCurrentView.ts`
+- Ukloniti `mnemonic: "/mnemonics"` iz `VIEW_TO_PATH` (i odgovarajući unos u `VIEW_ACTIVITY_MAP` ako referenciše `mnemonic`) jer odgovarajući globalni view više ne postoji. Ovo sprečava buduće slučajne navigacije na nepostojeću rutu.
+
+# Rezultat
+
+- Nestaju 404 greške za `/mind-map` i `/mnemonics`.
+- Bočni panel jasno prikazuje da su ovi alati per‑predmet (što je arhitekturna istina projekta).
+- Korisnik iz sidebara može direktno otvoriti Mentalne mape ili Memorizaciju za bilo koji predmet u jednom kliku.

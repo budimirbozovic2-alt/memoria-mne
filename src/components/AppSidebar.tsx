@@ -15,9 +15,9 @@ const STATIC_NAV = [
   { path: "/", icon: Home, label: "Početna tabla" },
 ];
 
-const TOOLS_NAV = [
-  { path: "/mnemonics", icon: Brain, label: "Memorizacija" },
-  { path: "/mind-map", icon: Map, label: "Mentalne mape" },
+const SUBJECT_TOOLS = [
+  { suffix: "/mind-maps", icon: Map, label: "Mentalne mape" },
+  { suffix: "/mnemonics", icon: Brain, label: "Memorizacija" },
 ];
 
 
@@ -95,33 +95,26 @@ export default function AppSidebar() {
                         )}
                       </NavLink>
                     </SidebarMenuButton>
+                    {!collapsed && SUBJECT_TOOLS.map(({ suffix, icon: Icon, label }) => (
+                      <SidebarMenuButton
+                        key={suffix}
+                        asChild
+                        tooltip={label}
+                        className="pl-8 h-7"
+                      >
+                        <NavLink
+                          to={`/subject/${cat.id}${suffix}`}
+                          className="hover:bg-sidebar-accent/50 text-muted-foreground"
+                          activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
+                        >
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate text-[12px]">{label}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    ))}
                   </SidebarMenuItem>
                 );
               })}
-            </SidebarMenu>
-            </nav>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Alati</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <nav aria-label="Alati">
-            <SidebarMenu>
-              {TOOLS_NAV.map(({ path, icon: Icon, label }) => (
-                <SidebarMenuItem key={path}>
-                  <SidebarMenuButton asChild tooltip={label}>
-                    <NavLink
-                      to={path}
-                      className="hover:bg-sidebar-accent/50"
-                      activeClassName="bg-sidebar-accent text-sidebar-primary font-medium"
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span className="truncate">{label}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
             </SidebarMenu>
             </nav>
           </SidebarGroupContent>
