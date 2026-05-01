@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FileText, Upload, Loader2, Eye, Pencil, Trash2, Map as MapIcon, Plus, GitBranch, Workflow } from "lucide-react";
+import { FileText, Loader2, Eye, Pencil, Trash2, Map as MapIcon, Plus, GitBranch, Workflow } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SourceEditor from "@/components/category/SourceEditor";
@@ -132,27 +132,13 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
               </Badge>
             </TabsTrigger>
           </TabsList>
-          {activeSourceTab !== "mape" && (
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".docx"
-                className="hidden"
-                onChange={handleDocxImport}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={importing}
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-2"
-              >
-                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {importing ? "Importujem…" : "Importuj DOCX"}
-              </Button>
-            </div>
-          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".docx"
+            className="hidden"
+            onChange={handleDocxImport}
+          />
         </div>
 
         {(["propis", "skripta"] as const).map(kind => {
@@ -165,7 +151,7 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
                   <p className="text-sm text-muted-foreground">
                     Nema {kind === "propis" ? "propisa" : "skripti"} u ovoj kategoriji.
                   </p>
-                  <p className="text-xs text-muted-foreground">Kliknite "Importuj DOCX" da biste započeli.</p>
+                  <p className="text-xs text-muted-foreground">Kliknite "Dodaj dokument" da biste započeli.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -199,6 +185,21 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
                   ))}
                 </div>
               )}
+
+              <div className="mt-4 flex justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={importing}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  {importing
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Plus className="h-4 w-4" />}
+                  {importing ? "Importujem…" : "Dodaj dokument"}
+                </Button>
+              </div>
             </TabsContent>
           );
         })}
