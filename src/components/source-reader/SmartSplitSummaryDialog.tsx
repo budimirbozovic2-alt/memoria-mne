@@ -223,6 +223,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
       const afterText = parts.slice(paraIdx + 1).join("\n\n");
 
       const newModule: SelectionModule = {
+        articleNum: "",
         title: newTitle,
         contentText: afterText,
         contentHtml: plainTextToHtml(afterText),
