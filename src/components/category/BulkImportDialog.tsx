@@ -71,14 +71,28 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
     onOpenChange(false);
   }, [parsed, categoryId, addFlashCard, onOpenChange]);
 
+  const isDirty = raw.trim().length > 0 || (parsed?.length ?? 0) > 0;
+
+  const performClose = useCallback(() => {
+    setRaw("");
+    setParsed(null);
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const { pendingClose, requestClose, cancelClose, confirmDiscard } = useDirtyDialog(isDirty, performClose);
+
   const handleClose = (v: boolean) => {
-    if (!v) { setParsed(null); }
+    if (!v) { requestClose(); return; }
     onOpenChange(v);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        className="max-w-lg"
+        onPointerDownOutside={(e) => { if (isDirty) { e.preventDefault(); requestClose(); } }}
+        onEscapeKeyDown={(e) => { if (isDirty) { e.preventDefault(); requestClose(); } }}
+      >
         <DialogHeader>
           <DialogTitle className="imperial-title text-lg">Masovni import blic pitanja</DialogTitle>
         </DialogHeader>
