@@ -96,10 +96,10 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
       // Yield to UI
       await new Promise(r => setTimeout(r, 50));
 
-      const parsed = JSON.parse(jsonText);
+      const parsed = JSON.parse(jsonText) as Record<string, unknown>;
       const errors: string[] = [];
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isValidUUID = (id: any) => typeof id === 'string' && uuidRegex.test(id);
+      const isValidUUID = (id: unknown): id is string => typeof id === 'string' && uuidRegex.test(id);
 
       // Validate structure
       if (!parsed || typeof parsed !== "object") {
@@ -121,7 +121,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
       }
 
       // Validate Cards Schema (sanitization happens in useCardImport)
-      const importedCards: any[] = parsed.cards || [];
+      const importedCards: Array<Record<string, unknown>> = (parsed.cards as Array<Record<string, unknown>>) || [];
 
       if (importedCards.length > 0) {
         for (let i = 0; i < importedCards.length; i++) {
@@ -173,7 +173,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
           if (isLegacyCategoryFormat) {
             // Legacy string[] — skip FK check for categories (no UUIDs to validate against)
           } else {
-            parsed.categories.forEach((cat: any) => validCategoryIds.add(cat.id));
+            (parsed.categories as Array<{ id: string }>).forEach((cat) => validCategoryIds.add(cat.id));
           }
         }
         existingCats.forEach(cat => validCategoryIds.add(cat.id));
@@ -211,8 +211,9 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
       const existingCatIds = new Set(existingCats.map(c => c.id));
       const existingCatNames = new Set(existingCats.map(c => c.name.toLowerCase()));
       const duplicateCategoryCount = Array.isArray(parsed.categories)
-        ? parsed.categories.filter((c: any) =>
-            existingCatIds.has(c.id) || (c.name && existingCatNames.has(c.name.toLowerCase()))
+        ? (parsed.categories as Array<{ id?: string; name?: string }>).filter((c) =>
+            (c.id !== undefined && existingCatIds.has(c.id)) ||
+            (c.name !== undefined && existingCatNames.has(c.name.toLowerCase()))
           ).length
         : 0;
 
