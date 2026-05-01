@@ -151,7 +151,7 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
                   <p className="text-sm text-muted-foreground">
                     Nema {kind === "propis" ? "propisa" : "skripti"} u ovoj kategoriji.
                   </p>
-                  <p className="text-xs text-muted-foreground">Kliknite "Importuj DOCX" da biste započeli.</p>
+                  <p className="text-xs text-muted-foreground">Kliknite "Dodaj dokument" da biste započeli.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -185,6 +185,21 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
                   ))}
                 </div>
               )}
+
+              <div className="mt-4 flex justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={importing}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  {importing
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Plus className="h-4 w-4" />}
+                  {importing ? "Importujem…" : "Dodaj dokument"}
+                </Button>
+              </div>
             </TabsContent>
           );
         })}
