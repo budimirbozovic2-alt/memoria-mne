@@ -80,11 +80,22 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
   );
   const chapters = selectedSubcategory?.chapters ?? [];
 
+  const performClose = useCallback(() => {
+    setSplitSummaryOpen(false);
+    setSplitResult(null);
+  }, [setSplitSummaryOpen, setSplitResult]);
+
+  // Wizard is "dirty" while user has an unsaved configuration in flight —
+  // i.e. modules exist, but cards have not yet been imported.
+  const isWizardDirty = !!splitResult && !splitDone;
+
+  const { pendingClose, requestClose, cancelClose, confirmDiscard } = useDirtyDialog(
+    isWizardDirty,
+    performClose,
+  );
+
   const handleOpenChange = (o: boolean) => {
-    if (!o) {
-      setSplitSummaryOpen(false);
-      setSplitResult(null);
-    }
+    if (!o) requestClose();
   };
 
   const total = splitModules.length;
