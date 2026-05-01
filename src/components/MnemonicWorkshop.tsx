@@ -2,7 +2,7 @@ import { Brain, Wrench, FolderOpen, Search, Sparkles, ArrowUpDown, CheckCircle2 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { MnemonicCard, MnemonicStatus, loadMajorSystem } from "@/lib/mnemonic-storage";
 import { type CategoryRecord } from "@/lib/db";
-import { List, type RowComponentProps } from "react-window";
+import { List, type RowComponentProps, type ListImperativeAPI } from "react-window";
 
 import InfoPanel from "@/components/InfoPanel";
 import WorkshopCardItem from "@/components/workshop/WorkshopCardItem";
@@ -135,7 +135,7 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
     setExpandedId(prev => prev === id ? null : id);
   }, []);
 
-  const listRef = useRef<any>(null);
+  const listRef = useRef<ListImperativeAPI | null>(null);
 
   const getRowHeight = useCallback((index: number) => {
     const card = filtered[index];
@@ -154,12 +154,15 @@ export default function MnemonicWorkshop({ cards, onUpdateCard, onDeleteCard, ca
     majorSystem,
   }), [filtered, expandedId, handleToggle, onUpdateCard, onDeleteCard, majorSystem]);
 
-  // Reset list when expanded card changes (row heights change)
+  // Reset list when expanded card changes (row heights change).
+  // The new react-window API recomputes row heights automatically when the
+  // `rowHeight` callback identity changes; nudging via `scrollToRow` is enough.
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.resetAfterIndex(0);
+    if (listRef.current && expandedId) {
+      const idx = filtered.findIndex(c => c.id === expandedId);
+      if (idx >= 0) listRef.current.scrollToRow({ index: idx, align: "smart" });
     }
-  }, [expandedId]);
+  }, [expandedId, filtered]);
 
   const statusCounts = useMemo(() => ({
     all: cards.length,

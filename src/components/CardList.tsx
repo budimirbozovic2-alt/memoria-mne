@@ -2,7 +2,7 @@ import { GripVertical } from "lucide-react";
 import { Card } from "@/lib/spaced-repetition";
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useCategoryData, useCardData } from "@/contexts/AppContext";
-import { List, type RowComponentProps } from "react-window";
+import { List, type RowComponentProps, type ListImperativeAPI } from "react-window";
 import CardRow, { type CardRowProps } from "./card-list/CardRow";
 import { useCardListFilters } from "@/hooks/useCardListFilters";
 import { useCardListDnd } from "@/hooks/useCardListDnd";
@@ -101,7 +101,7 @@ export default function CardList({
   onMoveCategory, onAssignChapter, onCloneToMnemonic, availableChapters, onAddKeyPart,
 }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const listRef = useRef<any>(null);
+  const listRef = useRef<ListImperativeAPI | null>(null);
   const { categoryRecords: allCats } = useCategoryData();
   const { buckets } = useCardData();
 
