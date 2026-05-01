@@ -155,6 +155,17 @@ export default function SubjectDashboard() {
           <div className="flex items-center gap-1.5 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9" asChild>
+                  <Link to={`/subject/${categoryId}/diagnostics`} aria-label="Najčešće greške">
+                    <AlertTriangle className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Najčešće greške</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
