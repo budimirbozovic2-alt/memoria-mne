@@ -17,7 +17,7 @@ export const EVENT_TYPES = {
 
 export type EventType = typeof EVENT_TYPES[keyof typeof EVENT_TYPES];
 
-export interface EventMessage<T = any> {
+export interface EventMessage<T = unknown> {
   type: EventType;
   payload?: T;
   timestamp: number;
@@ -30,7 +30,7 @@ const CHANNEL_NAME = "codex_event_bus";
 
 class EventBus {
   private channel: BroadcastChannel | null = null;
-  private listeners: Map<EventType, Set<(payload: any) => void>> = new Map();
+  private listeners: Map<EventType, Set<(payload: unknown) => void>> = new Map();
   private activeTabs: Map<string, number> = new Map();
   private heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
   private _beforeUnloadHandler: (() => void) | null = null;

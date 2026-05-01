@@ -6,7 +6,7 @@
 export function parseDocxInWorker(arrayBuffer: ArrayBuffer): Promise<string> {
   return new Promise((resolve, reject) => {
     let settled = false;
-    const settle = (fn: typeof resolve | typeof reject, val: any) => {
+    const settle = (fn: typeof resolve | typeof reject, val: unknown) => {
       if (settled) return;
       settled = true;
       fn(val);
