@@ -34,6 +34,11 @@ interface EditReturnSnapshot extends BaseEditReturnSnapshot {
   manageMode?: ManageMode;
   searchQuery?: string;
   sourceFilter?: string;
+  /** CardViewMode internal filters — restored after edit-and-return. */
+  cvSubcategory?: string;
+  cvChapter?: string;
+  cvType?: CardViewFiltersSnapshot["type"];
+  cvTag?: string | null;
 }
 
 export default function SubjectCardsView() {
