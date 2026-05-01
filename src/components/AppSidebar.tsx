@@ -15,9 +15,9 @@ const STATIC_NAV = [
   { path: "/", icon: Home, label: "Početna tabla" },
 ];
 
-const TOOLS_NAV = [
-  { path: "/mnemonics", icon: Brain, label: "Memorizacija" },
-  { path: "/mind-map", icon: Map, label: "Mentalne mape" },
+const SUBJECT_TOOLS = [
+  { suffix: "/mind-maps", icon: Map, label: "Mentalne mape" },
+  { suffix: "/mnemonics", icon: Brain, label: "Memorizacija" },
 ];
 
 
