@@ -436,3 +436,14 @@ export function isMinimalBackup(json: unknown): json is MinimalBackup {
 export function normalizeName(s: string | undefined): string {
   return (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
+
+/**
+ * Strict type-guard wrapper around `BackupSchema.safeParse`.
+ *
+ * `useCardImport` calls `safeParse` directly so it can surface per-field error
+ * paths in toasts. This export exists for callers that just need a boolean
+ * predicate (drag-and-drop dropzones, restore preview, tests).
+ */
+export function isValidBackupPayload(data: unknown): data is ParsedBackup {
+  return BackupSchema.safeParse(data).success;
+}
