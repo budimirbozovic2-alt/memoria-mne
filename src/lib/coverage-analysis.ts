@@ -38,14 +38,6 @@ function getCoverageSnippets(card: Card): { id: string; question: string; snippe
   return [{ id: card.id, question: card.question, snippet: card.originalSourceSnippet }];
 }
 
-/**
- * Strip HTML tags to get plain text for matching.
- */
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'").replace(/\s+/g, " ").trim();
-}
 
 /**
  * Normalize text for fuzzy matching: lowercase, collapse whitespace, trim.
