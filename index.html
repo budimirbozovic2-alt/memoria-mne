@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- CSP applied only in Electron production build via main.cjs -->
+    <!-- Defense-in-depth CSP. Production Electron also sets this via response headers in main.cjs.
+         'unsafe-inline' for scripts is required by the inline boot/retry script below;
+         ws:/wss: are required by Vite HMR + Lovable preview. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; script-src 'self' 'unsafe-inline' app:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https: app:; font-src 'self' data: app: https://fonts.gstatic.com; connect-src 'self' blob: app: ws: wss: https://fonts.gstatic.com https://fonts.googleapis.com; media-src 'self' blob: app:; object-src 'none'; base-uri 'self'; frame-ancestors 'none';">
     <title>CODEX — Sistem za memorizaciju</title>
     <meta name="description" content="Aplikacija za učenje esejskih pitanja pomoću SM-2 algoritma sa praćenjem znanja po cjelinama">
     <link rel="manifest" href="./manifest.json" />
