@@ -89,7 +89,7 @@ export function computeAdaptiveModifiers(ctx?: AdaptiveContext): AdaptiveModifie
   }
 
   return {
-    retentionBoost,
+    retentionBoost: clamp(retentionBoost, -RETENTION_BOOST_LIMIT, RETENTION_BOOST_LIMIT),
     intervalMultiplier: clamp(intervalMultiplier, INTERVAL_MULT_MIN, INTERVAL_MULT_MAX),
     reasons,
   };
