@@ -140,6 +140,10 @@ export default function SubjectCardsView() {
     navigate("/edit");
   };
 
+  const handleCardViewFiltersChange = useCallback((snap: CardViewFiltersSnapshot) => {
+    cardViewFiltersRef.current = snap;
+  }, []);
+
   const handlePassiveRead = (card: Card) => {
     setPendingPassiveCardId(card.id);
     setTab("read");
