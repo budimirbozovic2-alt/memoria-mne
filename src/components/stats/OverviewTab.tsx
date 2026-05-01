@@ -23,9 +23,39 @@ const MASTERY_COLORS = [
   "hsl(var(--success))",
 ];
 
+// ─── Chart data shapes (typed instead of any[]) ──────────
+
+export interface ActivityPoint {
+  name: string;
+  Ponavljanja: number;
+  "Nove kartice": number;
+}
+
+export interface CategoryBarPoint {
+  name: string;
+  Znanje: number;
+}
+
+export interface RatioHistoryPoint {
+  name: string;
+  "Stvarni ponavljanje": number | null;
+  "Stvarni učenje"?: number | null;
+  [key: string]: string | number | null | undefined;
+}
+
+export interface TodayTimeStat {
+  totalMs: number;
+  cognitiveMs: number;
+  cognitivePct: number;
+  review: number;
+  learning: number;
+  creative: number;
+  analysis: number;
+}
+
 // ─── Memoized chart components ───────────────────────────
 
-const ActivityChart = memo(function ActivityChart({ data }: { data: any[] }) {
+const ActivityChart = memo(function ActivityChart({ data }: { data: ActivityPoint[] }) {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card rounded-xl p-5 space-y-4">
       <div className="flex items-center gap-2">
@@ -93,7 +123,7 @@ const MasteryPieChart = memo(function MasteryPieChart({ data }: { data: { name: 
   );
 });
 
-const CategoryBarChart = memo(function CategoryBarChart({ data }: { data: any[] }) {
+const CategoryBarChart = memo(function CategoryBarChart({ data }: { data: CategoryBarPoint[] }) {
   if (data.length === 0) return null;
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="glass-card rounded-xl p-5 space-y-4 md:col-span-2">
@@ -119,12 +149,12 @@ interface OverviewTabProps {
   cards: Card[];
   categories: string[];
   reviewLog: ReviewLogEntry[];
-  activityData: any[];
+  activityData: ActivityPoint[];
   masteryData: { name: string; value: number }[];
-  categoryChartData: any[];
+  categoryChartData: CategoryBarPoint[];
   levelCounts: number[];
-  ratioHistory: any[] | null;
-  todayTime: any | null;
+  ratioHistory: RatioHistoryPoint[] | null;
+  todayTime: TodayTimeStat | null;
   focusRatio: { progress: number; targetReviewPct: number };
 }
 
