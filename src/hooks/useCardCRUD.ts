@@ -1,5 +1,4 @@
-import { useCallback, useRef } from "react";
-import { idbDeleteCard } from "@/lib/db";
+import { useCallback } from "react";
 import { invalidateCoverageCache } from "@/lib/coverage-analysis";
 import { toast } from "sonner";
 import {
@@ -150,7 +149,8 @@ export function useCardCRUD({
     [patchCard],
   );
 
-  // H5 fix: IDB delete with retry on failure
+  // Routes deletion through the persist queue so it can coalesce with any
+  // pending writes for the same id and flush atomically. No hand-rolled retry.
   const deleteCard = useCallback((id: string) => {
     const card = cardMapRef.current[id];
     if (card?.sourceId) invalidateCoverageCache(card.sourceId);
@@ -161,15 +161,13 @@ export function useCardCRUD({
       return next;
     });
     bumpMapVersion();
-    idbDeleteCard(id).catch(e => {
-      console.error("[deleteCard] IDB delete failed, retrying...", e);
-      // Retry once after 1s
-      setTimeout(() => idbDeleteCard(id).catch(e2 => console.error("[deleteCard] IDB retry also failed", e2)), 1000);
-    });
+    schedulePersist({ type: "delete", id });
     toast.success("Kartica obrisana.");
   }, [setCardMapState, cardMapRef]);
 
-  // Split card — Ref-Delta: read from ref, pre-compute new cards, persist surgically
+  // Split card — Ref-Delta: read from ref, pre-compute new cards, persist surgically.
+  // Both the bulk insert and the original-card deletion go through the persist
+  // queue so the queue can serialize/coalesce them atomically.
   const splitCard = useCallback((id: string) => {
     const card = cardMapRef.current![id];
     if (!card || card.sections.length <= 1) return;
@@ -186,7 +184,7 @@ export function useCardCRUD({
     // Sync ref before state update
     delete cardMapRef.current[id]; for (const c of newCards) cardMapRef.current[c.id] = c; // In-place ref delta
     schedulePersist({ type: "bulk", cards: newCards });
-    idbDeleteCard(id).catch(e => console.error("[splitCard] IDB delete failed", e));
+    schedulePersist({ type: "delete", id });
     setCardMapState(prev => {
       const next = { ...prev };
       delete next[id];

@@ -312,7 +312,10 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
       categoryStats: finalCatStats,
       cardCountByCategory: countByCategory,
     };
-  }, [cards, categories, categoryRecords]);
+  // NOTE: Intentionally excludes `categoryRecords` — derivation only depends on
+  // the UUID list. Including category records caused renames to re-derive every
+  // due card and re-bucket the entire app. (Audit: perf bottleneck #2)
+  }, [cards, categories]);
 
   const cardState = useMemo<CardStateContextValue>(() => ({
     cards, dueCards, stats, cardCountByCategory, buckets, ready, dbError,

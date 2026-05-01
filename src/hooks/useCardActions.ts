@@ -3,6 +3,7 @@ import type { CategoryRecord, SubcategoryNode } from "@/lib/db";
 import { Card, FrequencyTag, CardSourceType } from "@/lib/spaced-repetition";
 import { toast } from "sonner";
 import { useCardDraftAutosave, loadCardDraft, buildDraftKey, type CardDraftSnapshot } from "./useCardDraftAutosave";
+import { stripHtmlText } from "@/lib/sanitize";
 
 // ─── Types ──────────────────────────────────────────────
 export interface SectionInput {
@@ -32,7 +33,7 @@ interface UseCardActionsProps {
 }
 
 // ─── Helpers ────────────────────────────────────────────
-const stripHtml = (html: string) => html.replace(/<[^>]*>/g, "").trim();
+// Local `stripHtml` removed — use canonical `stripHtmlText` from @/lib/sanitize.
 
 export function parseHtmlToParagraphs(html: string): string[] {
   const div = document.createElement("div");
@@ -76,15 +77,15 @@ function validate(
   sections: SectionInput[],
 ): ValidationErrors {
   const errors: ValidationErrors = {};
-  if (!stripHtml(question)) {
+  if (!stripHtmlText(question)) {
     errors.question = "Pitanje ne smije biti prazno.";
   }
   if (cardType === "flash") {
-    if (!stripHtml(flashAnswer)) {
+    if (!stripHtmlText(flashAnswer)) {
       errors.flashAnswer = "Odgovor ne smije biti prazan.";
     }
   } else {
-    if (sections.some(s => !stripHtml(s.content))) {
+    if (sections.some(s => !stripHtmlText(s.content))) {
       errors.sections = "Sve cjeline moraju imati sadržaj.";
     }
   }
