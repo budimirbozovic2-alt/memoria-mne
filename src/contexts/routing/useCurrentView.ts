@@ -19,7 +19,7 @@ export function useCurrentView(): View {
 }
 
 export const VIEW_ACTIVITY_MAP: Partial<Record<View, ActivityType>> = {
-  review: "review", learn: "learn-active", mnemonic: "mnemonic-workshop",
+  review: "review", learn: "learn-active",
   create: "admin", edit: "admin", categories: "admin",
   stats: "analysis", planner: "analysis",
 };
