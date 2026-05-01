@@ -69,6 +69,15 @@ export default tseslint.config(
     },
   },
 
+  // Tests: partial mocks legitimately need `any` for constructing
+  // simplified fixtures without satisfying full domain interfaces.
+  {
+    files: ["src/test/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+
   // View-layer hardening: views must consume domain providers, not raw db.
   // Sanctioned exceptions: source/mindmap-heavy views still call db directly
   // because no dedicated provider exists for those domains yet.
