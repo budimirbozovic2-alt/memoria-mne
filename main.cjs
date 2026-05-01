@@ -1,6 +1,7 @@
 const { app, session, ipcMain, protocol, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 
 const isDev = !app.isPackaged;
 
@@ -25,15 +26,75 @@ const configPath = path.join(app.getPath('userData'), 'window-state.json');
 const crashLogPath = path.join(app.getPath('userData'), 'crash.log');
 const rendererLogPath = path.join(app.getPath('userData'), 'renderer-errors.log');
 
+// ── Log rotation (5 MB cap, single .old.log archive) ──
+const LOG_ROTATE_BYTES = 5 * 1024 * 1024;
+const _rotating = new Set(); // re-entrancy guard per file path
+async function rotateLogIfNeeded(targetPath) {
+  if (_rotating.has(targetPath)) return;
+  _rotating.add(targetPath);
+  try {
+    let size = 0;
+    try {
+      const stat = await fsp.stat(targetPath);
+      size = stat.size;
+    } catch {
+      return; // file does not exist yet — nothing to rotate
+    }
+    if (size < LOG_ROTATE_BYTES) return;
+    const oldPath = targetPath + '.old.log';
+    try { await fsp.unlink(oldPath); } catch {}
+    try { await fsp.rename(targetPath, oldPath); } catch {}
+  } catch {
+    // best-effort; never throw from log rotation
+  } finally {
+    _rotating.delete(targetPath);
+  }
+}
+
+async function appendLogLine(targetPath, line) {
+  try {
+    await rotateLogIfNeeded(targetPath);
+    await fsp.appendFile(targetPath, line);
+  } catch {
+    // best-effort
+  }
+}
+
 // ── Global Error Handler ──
+// Note: process-level handlers must remain synchronous-safe, but the actual IO
+// is dispatched async (fire-and-forget) so we do not block the event loop.
 function logCrash(label, err) {
   const timestamp = new Date().toISOString();
   const msg = `[${timestamp}] ${label}: ${err?.stack || err}\n`;
-  try { fs.appendFileSync(crashLogPath, msg); } catch (_) {}
+  appendLogLine(crashLogPath, msg);
 }
 
 process.on('uncaughtException', (err) => logCrash('uncaughtException', err));
 process.on('unhandledRejection', (reason) => logCrash('unhandledRejection', reason));
+
+// ── IPC Origin Validation (Defense in Depth) ──
+// Every ipcMain.handle / ipcMain.on callback in the main process must call
+// assertTrustedSender(event) at its top. Rejects any frame whose URL is not
+// our packaged app:// origin (production) or the Vite dev server.
+function isTrustedSender(event) {
+  try {
+    const frame = event && event.senderFrame;
+    const url = frame && frame.url;
+    if (typeof url !== 'string' || url.length === 0) return false;
+    if (url.startsWith('app://localhost')) return true;
+    if (url.startsWith('http://localhost:')) return true; // Vite dev server
+    return false;
+  } catch {
+    return false;
+  }
+}
+function assertTrustedSender(event) {
+  if (!isTrustedSender(event)) {
+    const url = (event && event.senderFrame && event.senderFrame.url) || '<unknown>';
+    logCrash('ipc-origin-blocked', `Untrusted IPC sender: ${url}`);
+    throw new Error('Unauthorized IPC origin');
+  }
+}
 
 // ── Single Instance Lock ──
 const gotLock = app.requestSingleInstanceLock();
@@ -54,6 +115,7 @@ const backup = setupBackupSystem({
   getMainWindow,
   logCrash,
   isDev,
+  assertTrustedSender,
 });
 
 // ── K1 Fix: Path validation helper ──
@@ -94,21 +156,24 @@ function sanitizeDialogOptions(options) {
 }
 
 // ── Renderer error logging IPC ──
-ipcMain.handle('log-error', (_event, message) => {
+ipcMain.handle('log-error', async (event, message) => {
+  assertTrustedSender(event);
   const timestamp = new Date().toISOString();
   const line = `[${timestamp}] ${typeof message === 'string' ? message : JSON.stringify(message)}\n`;
-  try { fs.appendFileSync(rendererLogPath, line); } catch (_) {}
+  await appendLogLine(rendererLogPath, line);
   return true;
 });
 
 // ── Native file dialogs (K2: sanitized options) ──
-ipcMain.handle('show-save-dialog', async (_event, options) => {
+ipcMain.handle('show-save-dialog', async (event, options) => {
+  assertTrustedSender(event);
   const win = getMainWindow();
   if (!win) return { canceled: true };
   return dialog.showSaveDialog(win, sanitizeDialogOptions(options));
 });
 
-ipcMain.handle('show-open-dialog', async (_event, options) => {
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  assertTrustedSender(event);
   const win = getMainWindow();
   if (!win) return { canceled: true, filePaths: [] };
   return dialog.showOpenDialog(win, sanitizeDialogOptions(options));
@@ -120,7 +185,8 @@ const MAX_SAVE_FILE_BYTES = 100 * 1024 * 1024; // 100 MB raw
 const MAX_SAVE_FILE_BASE64_LEN = Math.ceil((MAX_SAVE_FILE_BYTES * 4) / 3) + 64;
 const BASE64_RE = /^[A-Za-z0-9+/=\r\n]+$/;
 
-ipcMain.handle('save-file', async (_event, filePath, base64Data) => {
+ipcMain.handle('save-file', async (event, filePath, base64Data) => {
+  assertTrustedSender(event);
   try {
     if (!isPathAllowed(filePath)) {
       logCrash('save-file-blocked', `Path not allowed: ${filePath}`);
@@ -135,7 +201,7 @@ ipcMain.handle('save-file', async (_event, filePath, base64Data) => {
       logCrash('save-file-invalid-payload', 'Payload is not valid base64');
       return false;
     }
-    await fs.promises.writeFile(filePath, Buffer.from(cleanBase64, 'base64'));
+    await fsp.writeFile(filePath, Buffer.from(cleanBase64, 'base64'));
     return true;
   } catch (err) {
     logCrash('save-file', err);
@@ -143,13 +209,14 @@ ipcMain.handle('save-file', async (_event, filePath, base64Data) => {
   }
 });
 
-ipcMain.handle('read-file', async (_event, filePath) => {
+ipcMain.handle('read-file', async (event, filePath) => {
+  assertTrustedSender(event);
   try {
     if (!isPathAllowed(filePath)) {
       logCrash('read-file-blocked', `Path not allowed: ${filePath}`);
       return null;
     }
-    const data = await fs.promises.readFile(filePath);
+    const data = await fsp.readFile(filePath);
     return { data: data.toString('base64'), name: path.basename(filePath) };
   } catch (err) {
     logCrash('read-file', err);
@@ -169,7 +236,7 @@ app.whenReady().then(() => {
       '.ttf': 'font/ttf', '.otf': 'font/otf',
     };
     const serveIndex = async () => {
-      const indexData = await fs.promises.readFile(path.join(distPath, 'index.html'));
+      const indexData = await fsp.readFile(path.join(distPath, 'index.html'));
       return new Response(indexData, {
         status: 200,
         headers: { 'Content-Type': 'text/html' },
@@ -191,7 +258,7 @@ app.whenReady().then(() => {
         const ext = path.extname(resolved).toLowerCase();
         const mime = MIME_TYPES[ext] || 'application/octet-stream';
         try {
-          const data = await fs.promises.readFile(resolved);
+          const data = await fsp.readFile(resolved);
           return new Response(data, {
             status: 200,
             headers: { 'Content-Type': mime },
@@ -260,6 +327,7 @@ app.whenReady().then(() => {
     logCrash,
     splash,
     onMainWindow: setMainWindow,
+    assertTrustedSender,
   });
 });
 

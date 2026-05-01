@@ -1,8 +1,12 @@
 const { BrowserWindow, Menu, ipcMain, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const fsp = fs.promises;
 
 // ── Resolve preload path for both dev and packaged builds ──
+// Note: this runs synchronously during BrowserWindow construction (Electron's
+// `webPreferences.preload` is evaluated synchronously), so we keep `existsSync`
+// here. Surrounding window setup is otherwise async.
 function resolvePreloadPath(isDev, baseDir) {
   if (isDev) {
     return path.join(baseDir, 'preload.cjs');
@@ -30,21 +34,21 @@ function getPublicPath(isDev, baseDir, ...segments) {
   return path.join(baseDir, 'dist', ...segments);
 }
 
-// ── Window State Persistence ──
-function loadWindowState(configPath) {
+// ── Window State Persistence (async I/O) ──
+async function loadWindowState(configPath) {
   try {
-    if (fs.existsSync(configPath)) {
-      return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    }
-  } catch (_) {}
-  return { width: 1200, height: 800 };
+    const raw = await fsp.readFile(configPath, 'utf-8');
+    return JSON.parse(raw);
+  } catch (_) {
+    return { width: 1200, height: 800 };
+  }
 }
 
-function saveWindowState(win, configPath) {
+async function saveWindowState(win, configPath) {
   if (!win || win.isDestroyed()) return;
   const bounds = win.getBounds();
   try {
-    fs.writeFileSync(configPath, JSON.stringify({
+    await fsp.writeFile(configPath, JSON.stringify({
       x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
     }));
   } catch (_) {}
@@ -88,9 +92,23 @@ function shouldAllowRecovery() {
   return !tooMany;
 }
 
+// ── Default origin assertion (used when caller does not inject one) ──
+function defaultAssertTrustedSender(event) {
+  try {
+    const url = event && event.senderFrame && event.senderFrame.url;
+    if (typeof url !== 'string') throw new Error('Unauthorized IPC origin');
+    if (url.startsWith('app://localhost')) return;
+    if (url.startsWith('http://localhost:')) return;
+    throw new Error('Unauthorized IPC origin');
+  } catch (e) {
+    throw e instanceof Error ? e : new Error('Unauthorized IPC origin');
+  }
+}
+
 // ── Main Window ──
-function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWindow }) {
-  const saved = loadWindowState(configPath);
+async function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWindow, assertTrustedSender }) {
+  const guard = assertTrustedSender || defaultAssertTrustedSender;
+  const saved = await loadWindowState(configPath);
 
   const win = new BrowserWindow({
     width: saved.width,
@@ -114,19 +132,29 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
     },
   });
 
-  // ── Window control IPC handlers ──
-  const onMinimize = () => { if (!win.isDestroyed()) win.minimize(); };
-  const onMaximize = () => {
+  // ── Window control IPC handlers (origin-validated) ──
+  const onMinimize = (event) => {
+    try { guard(event); } catch { return; }
+    if (!win.isDestroyed()) win.minimize();
+  };
+  const onMaximize = (event) => {
+    try { guard(event); } catch { return; }
     if (!win.isDestroyed()) {
       if (win.isMaximized()) win.unmaximize();
       else win.maximize();
     }
   };
-  const onClose = () => { if (!win.isDestroyed()) win.close(); };
+  const onClose = (event) => {
+    try { guard(event); } catch { return; }
+    if (!win.isDestroyed()) win.close();
+  };
   ipcMain.on('window-minimize', onMinimize);
   ipcMain.on('window-maximize', onMaximize);
   ipcMain.on('window-close', onClose);
-  ipcMain.handle('window-is-maximized', () => !win.isDestroyed() && win.isMaximized());
+  ipcMain.handle('window-is-maximized', (event) => {
+    guard(event);
+    return !win.isDestroyed() && win.isMaximized();
+  });
 
   // Notify renderer when maximize state changes
   win.on('maximize', () => { if (!win.isDestroyed()) win.webContents.send('window-maximized-changed', true); });
@@ -195,7 +223,7 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
         clearTimeout(fallbackTimer);
         win.destroy();
         const newSplash = createSplashWindow(isDev, baseDir);
-        createWindow({ isDev, baseDir, configPath, logCrash, splash: newSplash, onMainWindow });
+        createWindow({ isDev, baseDir, configPath, logCrash, splash: newSplash, onMainWindow, assertTrustedSender });
       } else {
         logCrash('crash-loop-detected', 'Too many crashes, not recovering');
         const { dialog } = require('electron');
@@ -213,17 +241,21 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
     logCrash('unresponsive', 'Window became unresponsive');
   });
 
-  // Save window state on move/resize (debounced)
+  // Save window state on move/resize (debounced, async)
   let saveTimeout = null;
   const debouncedSave = () => {
     clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(() => saveWindowState(win, configPath), 500);
+    saveTimeout = setTimeout(() => { saveWindowState(win, configPath); }, 500);
   };
   win.on('resize', debouncedSave);
   win.on('move', debouncedSave);
 
   // Show window when renderer signals ready (or fallback timeout)
-  const showWindow = () => {
+  const showWindow = (event) => {
+    // `event` is provided when called via IPC; fallback timer passes none.
+    if (event) {
+      try { guard(event); } catch { return; }
+    }
     if (appReady) return;
     appReady = true;
     if (splash && !splash.isDestroyed()) splash.destroy();
@@ -233,7 +265,7 @@ function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMainWind
   ipcMain.once('renderer-ready', showWindow);
 
   // ── G2 Fix: Removed confusing ready-to-show handler — renderer-ready + 6s fallback suffice ──
-  const fallbackTimer = setTimeout(showWindow, 6000);
+  const fallbackTimer = setTimeout(() => showWindow(), 6000);
 
   // Cleanup IPC listeners on normal window close
   win.on('closed', () => {
