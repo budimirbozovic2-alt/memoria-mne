@@ -328,6 +328,13 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
               Sačuvaj
             </Button>
           </div>
+
+          <DirtyConfirmBar
+            open={pendingClose}
+            onCancel={cancelClose}
+            onDiscard={() => { setDirty(false); setNewText(""); confirmDiscard(); }}
+            onSave={async () => { await handleSave(); }}
+          />
         </DialogContent>
       </Dialog>
 
