@@ -21,6 +21,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ChevronRight } from "lucide-react";
 import SourceDiffPreview from "@/components/source-reader/SourceDiffPreview";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
 interface Props {
   source: Source;
