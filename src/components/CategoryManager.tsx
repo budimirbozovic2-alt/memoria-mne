@@ -156,7 +156,7 @@ export default function CategoryManager({
                           <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          onClick={() => count > 0 ? setConfirmDelete(cat) : onDelete(cat)}
+                          onClick={() => setConfirmDelete(cat)}
                           className="p-1.5 hover:bg-destructive/10 rounded-lg"
                           title={count > 0 ? `${count} kartica` : "Obriši kategoriju"}
                         >
