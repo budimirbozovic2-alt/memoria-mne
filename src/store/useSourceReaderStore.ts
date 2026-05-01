@@ -47,8 +47,6 @@ interface SourceReaderState {
   headingMenu: HeadingMenuState | null;
 
   // Dialog state
-  essayDialogOpen: boolean;
-  essayQuestion: string;
   selectedText: string;
   selectedHtml: string;
   autoSplitOpen: boolean;
