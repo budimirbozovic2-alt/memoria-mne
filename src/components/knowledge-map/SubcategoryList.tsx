@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, type Variants, type Transition } from "framer-motion";
 import { Card } from "@/lib/spaced-repetition";
 import type { Source, CategoryRecord } from "@/lib/db";
 import { getCardMasteryLevel } from "@/lib/mastery";
@@ -20,9 +20,9 @@ interface Props {
   onBack: () => void;
   onSelectSubcategory: (sub: string) => void;
   onReorderSubcategories?: (category: string, ordered: string[]) => void;
-  slideVariants: any;
+  slideVariants: Variants;
   direction: number;
-  transition: any;
+  transition: Transition;
   embedded?: boolean;
 }
 
