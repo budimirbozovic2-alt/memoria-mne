@@ -36,9 +36,10 @@ interface SearchResult {
   mindmapId?: string;
 }
 
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
-}
+// stripHtml: thin wrapper that drops trailing whitespace; uses canonical
+// regex stripper from sanitize.ts (collapses whitespace + decodes entities).
+import { stripHtmlText as _stripHtml } from "@/lib/sanitize";
+function stripHtml(html: string): string { return _stripHtml(html); }
 
 function highlightMatch(text: string, query: string): string {
   if (!query) return sanitizeHtml(text);

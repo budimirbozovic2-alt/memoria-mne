@@ -1,6 +1,6 @@
 import type { Card } from "@/lib/spaced-repetition";
 import type { Source } from "@/lib/sources-storage";
-import DOMPurify from "dompurify";
+import { stripHtml } from "@/lib/sanitize";
 
 export const WPM_OPTIONS = [100, 150, 200, 250, 300, 400, 500];
 export const FONT_SIZES = [
@@ -28,11 +28,7 @@ export interface WordEntry {
   segmentIdx: number;
 }
 
-export function stripHtml(html: string): string {
-  const div = document.createElement("div");
-  div.innerHTML = DOMPurify.sanitize(html);
-  return div.textContent || div.innerText || "";
-}
+export { stripHtml } from "@/lib/sanitize";
 
 export function cleanForTTS(text: string): string {
   return text
