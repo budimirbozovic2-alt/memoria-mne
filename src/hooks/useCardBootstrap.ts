@@ -16,6 +16,7 @@ import {
 } from "@/lib/db";
 import { checkInterruptedFlush } from "@/lib/persist-queue";
 import { stableLegacyId } from "@/lib/stable-id";
+import { scheduleLogPrune } from "@/lib/log-retention";
 
 async function withTimeout<T>(task: Promise<T>, timeoutMs: number, label: string, fallback: T): Promise<T> {
   try {
@@ -86,6 +87,7 @@ export function useCardBootstrap(setters: BootSetters) {
         if (import.meta.env.DEV) console.log("[boot:diag] step 1: ensureDbOpen");
         const dbOk = await ensureDbOpen(6000);
         markBootStep("cards:db-open-done", dbOk ? "ok" : "failed");
+        if (dbOk) scheduleLogPrune();
         if (!dbOk) {
           const errState = getDbErrorState();
           if (errState) {

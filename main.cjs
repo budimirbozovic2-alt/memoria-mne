@@ -206,6 +206,12 @@ app.whenReady().then(() => {
     });
   }
 
+  // ── Permission lockdown: deny all default Chromium permission requests ──
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
+    callback(false);
+  });
+  session.defaultSession.setPermissionCheckHandler(() => false);
+
   // ── CSP headers in production ──
   if (!isDev) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
