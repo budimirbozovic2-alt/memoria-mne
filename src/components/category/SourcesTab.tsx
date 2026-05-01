@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FileText, Upload, Loader2, Eye, Pencil, Trash2, Map as MapIcon, Plus, GitBranch, Workflow } from "lucide-react";
+import { FileText, Loader2, Eye, Pencil, Trash2, Map as MapIcon, Plus, GitBranch, Workflow } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SourceEditor from "@/components/category/SourceEditor";
