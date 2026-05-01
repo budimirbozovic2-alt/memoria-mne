@@ -144,6 +144,21 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
             </div>
           </div>
         )}
+
+        <DirtyConfirmBar
+          open={pendingClose}
+          onCancel={cancelClose}
+          onDiscard={confirmDiscard}
+          onSave={async () => {
+            if (parsed && parsed.length > 0) {
+              confirmImport();
+            } else {
+              toast.message("Nema parsiranih pitanja", { description: "Kliknite Analiziraj prije snimanja." });
+              cancelClose();
+            }
+          }}
+          saveLabel={parsed && parsed.length > 0 ? `Uvezi ${parsed.length} i zatvori` : "Sačuvaj i zatvori"}
+        />
       </DialogContent>
     </Dialog>
   );
