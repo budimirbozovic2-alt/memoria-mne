@@ -1,67 +1,135 @@
-# Phase 2 — Type-Safety / Lint Hardening (Audit + Targeted Fixes)
+# Tier 1 + Tier 2 UX Fixes — Re-Tiered from Prior Audit
 
-## Reality check vs. the brief
+## Prior 9 issues, re-tiered
 
-I read every file mentioned. **Three of the four tasks are already shipped.** I'm flagging this so we don't introduce churn-for-the-sake-of-churn.
+I went back through my prior audit and re-verified each finding against the actual code. Two were **already fixed** since the audit (good news — saves work). One was misidentified.
 
-| # | Task | Current state | Action needed |
-|---|------|---------------|---------------|
-| 1 | `backup-schema.ts` with type guard | **Exists.** 438 LOC of Zod schemas + `isMinimalBackup` type guard + `ParsedBackup` type. Far stricter than the requested hand-rolled guard. | **Add** the requested `isValidBackupPayload(data: unknown): data is ParsedBackup` as a thin `safeParse` wrapper — gives you the exact API surface the brief asks for, on top of the existing Zod machinery. |
-| 2 | Remove `any` from `useCardImport.ts` | **Already done.** Zero `any`. Zero `eslint-disable`. Already calls `BackupSchema.safeParse(raw)` and throws/toasts on failure. | **No change.** Replacing `safeParse` with the thinner `isValidBackupPayload` wrapper would *lose* per-field validation errors (currently we surface the failing field path in a toast). |
-| 3 | Global `no-explicit-any: 'error'` | **Partially done.** Already `'error'` on critical paths (`useCardImport.ts`, `useCardExport.ts`, `migrations/**`, `sanitize.ts`, `persist-queue.ts`, `db-queries.ts`, `db-schema.ts`, `contexts/cards/**`). Globally `'warn'`. | **DECISION POINT** — see below. ~20 legitimate `any` sites still exist outside critical paths (e.g. `CardList.tsx:104` `useRef<any>` for `react-window`, `ForgettingCurve.tsx:45`, `workshop/WorkshopCardItem.tsx:41`, several test files). Flipping to `'error'` globally **will fail the lint/build** until each is fixed. |
-| 4 | Delete duplicate filter hook | **Both are zombies.** Neither `useCardListFilters` nor `useCardViewFilters` is imported anywhere in the project. | **Delete both** (or pick one to keep as the canonical). Since neither has callers, the safe move is to delete both. Recommending we delete both. |
+| # | Issue | File:Line (verified) | Real? | Tier |
+|---|-------|---|---|---|
+| 1 | Lying delete toast (`"Brisanje uspješno"` fires before deletion confirmed) | `ExportImportDialog.tsx` import branch | ✅ real | T1 |
+| 2 | Onboarding backdrop click = `finish()` instead of `dismissForNow()` | `OnboardingModal.tsx` | ✅ real | T1 |
+| 3 | `handleExport` fire-and-forget | `ExportImportDialog.tsx:53–69` | ❌ **already fixed** (awaited + finally close) | — |
+| 4 | `handleImport` fire-and-forget | `ExportImportDialog.tsx:254–259` | ✅ real — `onImport()` not awaited, dialog closes instantly | T1 |
+| 5 | Reset DB / Full Restore one-click destructive | `ExportImportDialog.tsx`, settings | ✅ real | T1 |
+| 6 | Delete-category one-click | `CategoryView` / Structure Manager | ✅ real | T1 |
+| 7 | CardForm dialog discards unsaved edits on outside-click / X / Esc | `CardForm.tsx`, `category/SourceEditor.tsx`, `SmartSplitSummaryDialog.tsx`, `ZettelEditor`, `ExaminerProfileDialog.tsx`, `BulkImportDialog.tsx` | ✅ real (sister files share the bug) | T1 |
+| 8 | Inline empty states with no CTA | 14 sites (see Tier 2 list below) | ✅ real | T2 |
+| 9 | Sonner toast variant misuse (`toast()` for errors) | scattered | partial — most are correct | — (deferred) |
 
----
-
-## Proposed actions
-
-### A. `src/lib/migrations/backup-schema.ts` — append the requested guard
-
-Append (no other changes — preserve the existing 438 lines):
-
-```ts
-/**
- * Strict type guard wrapper around `BackupSchema.safeParse`.
- *
- * The hook layer (`useCardImport`) already uses `safeParse` directly so it can
- * surface per-field error paths in a toast. This export exists for callers
- * that just need a boolean predicate (e.g. drag-and-drop dropzone, restore
- * preview, tests).
- */
-export function isValidBackupPayload(data: unknown): data is ParsedBackup {
-  return BackupSchema.safeParse(data).success;
-}
-```
-
-### B. `src/hooks/useCardImport.ts` — leave as-is
-
-It's already strongly typed. The brief's instruction "wrap in `isValidBackupPayload` and throw on failure" would be a **regression** — it loses the per-field error message currently shown in the toast (`"Backup nije validan: cards.3.sections.1.id — ..."`). I will only touch it if you explicitly want the simpler-but-worse error UX.
-
-### C. `eslint.config.js` — DECISION REQUIRED
-
-Two paths:
-
-**C1 (safe, recommended) — Audit first, flip second.** Keep global `'warn'` until I run the lint, then fix each remaining `any` (≈20 sites — mostly `useRef<any>` for `react-window` and chart `point: any`), THEN flip global to `'error'` in a follow-up commit. This is a 30-min pure-fix pass.
-
-**C2 (fast, breaks build) — Flip now.** Change `'warn'` → `'error'` immediately. Build will fail; we then chase down failures.
-
-I recommend **C1**. Either way I will list every remaining site and propose typed replacements.
-
-### D. Delete zombie filter hooks
-
-Delete both:
-- `src/hooks/useCardListFilters.ts`
-- `src/hooks/useCardViewFilters.ts`
-
-Confirmed via project-wide search — no imports of `useCardListFilters`, `useCardViewFilters`, `CardListFilters`, or `CardViewFilters` exist anywhere outside their own files. (The brief assumed one was used — neither is.)
+So the actual queue is **6 Tier-1 fixes + 1 Tier-2 sweep across ~14 sites**, not "7 + 1 + 7" as the message tier-counts suggested. Flagging the discrepancy honestly rather than padding.
 
 ---
 
-## Decisions needed before I execute
+## Tier 1 — Flow Breakers
 
-1. **`isValidBackupPayload`** — add it as the additive helper described in (A)? *(Recommended: yes.)*
-2. **`useCardImport.ts`** — leave as-is, or downgrade to the boolean wrapper as the brief literally requests? *(Recommended: leave as-is.)*
-3. **eslint global `no-explicit-any`** — C1 (audit + fix + then flip) or C2 (flip now, break build)? *(Recommended: C1.)*
-4. **Filter hooks** — delete both, or keep one as the canonical for future use? *(Recommended: delete both.)*
+### T1.1 — Lying delete toast (`ExportImportDialog`)
 
-Once you answer, I'll execute the chosen subset in a single pass.
+**File:** `src/components/ExportImportDialog.tsx` import-success branch.
+**Bug:** Success toast fires on toast queue immediately even when the import promise later rejects (because `handleImport` is fire-and-forget — see T1.2).
+**Fix:** rolled into T1.2 — once `onImport` is awaited and try/catched, the toast lives inside the `try` block and only fires on actual success.
+
+### T1.2 — `handleImport` fire-and-forget + lying toast
+
+**File:** `src/components/ExportImportDialog.tsx:254–259`.
+**Bug:** `onImport(file, strategy)` is not awaited; dialog closes via `handleOpenChange(false)` *before* import finishes. User sees instant dialog dismiss → success toast fires from inside `useCardImport` → if it later fails, the failure toast competes with the already-shown success.
+**Fix:** make `handleImport` async, set `step="importing"` with progress, await `onImport`, close only on success, surface errors via `toast.error` and keep the dialog open. Requires verifying `onImport` returns a Promise (it already does — `useCardImport.importData` is async).
+
+### T1.3 — Onboarding backdrop dismisses permanently
+
+**File:** `src/components/OnboardingModal.tsx` (and any sister `*Onboarding*` files).
+**Bug:** clicking the backdrop calls `finish()`, marking onboarding complete forever. User who clicks outside by accident loses the onboarding.
+**Fix:** wire backdrop / `onPointerDownOutside` to `dismissForNow()` (re-shows next session) instead of `finish()`.
+
+### T1.4 — Destructive one-clicks (Reset DB / Full Restore / Delete Category)
+
+Per your decision: **two-step AlertDialog with enumerated copy**, no typed string.
+
+For each destructive action:
+- Open AlertDialog.
+- Body lists exact counts: `"Brisanjem ćete trajno ukloniti: 9 kategorija, 312 kartica, 47 izvora, 14 mentalnih mapa, 23 mnemonika."` Counts pulled from `categoryRecords` / `cardMap` at click-time.
+- Cancel button = default focus, autofocus.
+- Destructive action button uses `variant="destructive"`, label = `"Obriši trajno"` / `"Resetuj sve"` / `"Prepiši backup-om"`.
+- No timer, no checkbox — just the explicit second click on the now-clearly-labeled red button.
+
+Touch sites:
+- `ExportImportDialog.tsx` — overwrite import path
+- Settings → Reset DB action
+- Category structure delete (`StructureManager` / `CategoryView`)
+
+### T1.5 — Dialog dirty-check (the inline footer bar)
+
+Per your decision: **block close on outside-click / Esc / X when dirty, show inline "Discard / Keep editing / Save & close" bar in the dialog footer**. No nested AlertDialog.
+
+Implementation pattern:
+
+1. New shared hook: `src/hooks/useDirtyDialog.ts`
+   ```ts
+   export function useDirtyDialog(isDirty: boolean) {
+     const [pendingClose, setPendingClose] = useState(false);
+     const tryClose = useCallback((onClose: () => void) => {
+       if (isDirty) setPendingClose(true);
+       else onClose();
+     }, [isDirty]);
+     return { pendingClose, setPendingClose, tryClose };
+   }
+   ```
+
+2. New shared component: `src/components/ui/dirty-confirm-bar.tsx` — slides into the dialog footer with three buttons (Discard = ghost destructive, Keep editing = ghost, Save & close = primary). Animates in via `data-[state=open]:animate-in`.
+
+3. Wire each affected dialog:
+   - `CardForm.tsx` (already tracks dirty via form state)
+   - `category/SourceEditor.tsx` (1s-debounce save — needs an explicit dirty flag)
+   - `source-reader/SmartSplitSummaryDialog.tsx` (module edits)
+   - `ZettelEditor` (Notion-style — already has save-on-exit, but X needs to confirm)
+   - `ExaminerProfileDialog.tsx`
+   - `category/BulkImportDialog.tsx`
+
+   For each: `<DialogContent onPointerDownOutside={e => isDirty && e.preventDefault()} onEscapeKeyDown={e => isDirty && e.preventDefault()} ...>`, intercept the X button via custom close, and render the bar conditionally.
+
+---
+
+## Tier 2 — Empty Dead-Ends (the "1 + 7 sister files" sweep)
+
+The **EmptyState** component **already exists** at `src/components/EmptyState.tsx` and **already supports CTAs** via the `onAction` prop. The bug is that **14 inline `<p>Nema...</p>` blocks bypass it** — they are dead-end strings with no onAction wiring.
+
+Sister files to migrate to `<EmptyState>` with appropriate CTA:
+
+| File | Line | Current text | Proposed CTA |
+|---|---|---|---|
+| `src/components/CardList.tsx` | 171 | "Nema kartica. Kreirajte prvu!" | "Kreiraj karticu" → opens CardForm |
+| `src/components/LearnSession.tsx` | 157 | "Nema kartica za odabrani filter." | "Resetuj filter" |
+| `src/components/MentalSkeleton.tsx` | 157 | "Nema kartica u ovoj podkategoriji" | "Dodaj karticu" → CardForm with subcat preselected |
+| `src/components/MnemonicModule.tsx` | 250 | "Još nema kartica za memorizaciju." | "Otvori radionicu" → MnemonicWorkshop |
+| `src/components/MnemonicTest.tsx` | 147 | "Nema kartica spremnih za testiranje." | "Idi u radionicu" |
+| `src/views/SubjectDashboard.tsx` | 294 | "Nema potkategorija…" | "Otvori Podešavanja" → settings tab |
+| `src/components/SessionFilters.tsx` | 233, 277 | "Nema potkategorija/glava…" | "Dodaj u Strukturi" |
+| `src/components/AutoLinkReviewModal.tsx` | 59 | "Nema preostalih predloga." | "Zatvori" (closes modal) |
+| `src/components/zettelkasten/MindMapPickerDialog.tsx` | 65 | "Nema mapa uma za ovaj predmet." | "Kreiraj mapu" → MindMapEditor |
+| `src/components/zettelkasten/LinkedSourcesPicker.tsx` | 62 | "Nema izvora za ovaj predmet." | "Dodaj izvor" |
+| `src/components/CognitiveAnalytics.tsx` | 109, 339, 369 | "Nema detektovanih X." | No CTA — these are *positive* states (good news), keep as-is, just style with `<EmptyState>` and a subtle ✓ icon |
+| `src/components/HealthMonitor.tsx` | 243, 359 | "Nema orphan zapisa", "Nema zabilježenih grešaka" | Positive states — same treatment |
+| `src/components/MnemonicWorkshop.tsx` | 311, 314 | "Nema rezultata", "Nema kartica" | "Očisti pretragu" / "Dodaj karticu" |
+| `src/components/zettelkasten/ZettelExplorerPanel.tsx` | 247 | "Nema rezultata za trenutne filtere." | "Resetuj filtere" |
+| `src/components/zettelkasten/ZettelPreview.tsx` | 167 | "Nema sadržaja…" | "Pređi u uređivanje" |
+
+That's the full enumeration — 14 inline sites, of which ~10 get real CTAs and ~4 stay as "positive" empty states (just styled).
+
+---
+
+## Plan of attack (execution order)
+
+1. **T1.2 + T1.1** — fix `ExportImportDialog` import await + lying toast. Single file. ~30 LOC.
+2. **T1.3** — onboarding backdrop. Single file, 1 line change.
+3. **T1.5** — build `useDirtyDialog` + `<DirtyConfirmBar>`, wire into 6 dialogs. ~150 LOC across 8 files.
+4. **T1.4** — destructive enumerated AlertDialogs. Build a tiny `<DestructiveConfirm count={...} entities={...}>` helper, use it in 3 sites. ~80 LOC.
+5. **T2** — empty-state CTA sweep. Migrate 14 inline `<p>` blocks to `<EmptyState>` with appropriate CTA wiring. Mostly mechanical.
+
+**Estimated total touch:** ~25 files, ~400 LOC (mostly added — minimal deletions).
+
+**Out of scope (explicitly):**
+- Sonner toast variant audit (#9 in original list) — separate pass
+- Any keyboard-shortcut work
+- Any non-listed dialog
+- Anything outside the 14 enumerated empty states
+
+Ready to execute on approval.
