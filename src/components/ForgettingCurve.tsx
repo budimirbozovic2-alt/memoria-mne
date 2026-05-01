@@ -42,7 +42,7 @@ export default function ForgettingCurve({ cards, categories }: Props) {
     const days = Array.from({ length: 31 }, (_, i) => i);
 
     return days.map((day) => {
-      const point: any = { day };
+      const point: Record<string, number> = { day };
 
       // Overall retention
       const retentions = reviewedSections.map((s) => {

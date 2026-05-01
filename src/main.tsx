@@ -104,7 +104,7 @@ markBootStep("main:error-handlers-registered");
         const subcategories: Record<string, string[]> = {};
         categories.forEach(r => {
           if (r.subcategories?.length > 0) {
-            subcategories[r.id] = r.subcategories.map((s: any) => typeof s === "string" ? s : s.name);
+            subcategories[r.id] = r.subcategories.map((s: { name: string } | string) => typeof s === "string" ? s : s.name);
           }
         });
 
