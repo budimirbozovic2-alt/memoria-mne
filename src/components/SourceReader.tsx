@@ -121,11 +121,6 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
         )}
       </div>
 
-      <EssayCreationDialog
-        source={source}
-        onCreateEssay={actions.handleCreateEssay}
-      />
-
       <SmartSplitSummaryDialog
         source={source}
         onSmartSplitConfirm={actions.handleSmartSplitConfirm}
