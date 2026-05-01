@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { type Card } from "@/lib/spaced-repetition";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
 interface Props {
   open: boolean;
