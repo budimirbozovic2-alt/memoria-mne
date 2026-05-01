@@ -92,7 +92,7 @@ export default function SubjectDashboard() {
     {
       to: `/subject/${categoryId}/zettelkasten`,
       icon: Network,
-      title: "Zettelkasten",
+      title: "Lokalni Wiki",
       desc: "Baza znanja i mentalne mape",
     },
     {
@@ -106,12 +106,6 @@ export default function SubjectDashboard() {
       icon: Layers,
       title: "Kartice",
       desc: "Uređivanje i raspored kartica",
-    },
-    {
-      to: `/subject/${categoryId}/diagnostics`,
-      icon: AlertTriangle,
-      title: "Najčešće greške",
-      desc: "Dijagnostika slabih tačaka i lapsusa",
     },
   ], [categoryId]);
 
