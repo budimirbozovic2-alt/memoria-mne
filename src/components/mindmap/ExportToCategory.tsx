@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCategoryData } from "@/contexts/AppContext";
 import { saveMindMap } from "@/lib/mindmap-storage";
-import { MindMapDoc, type MindMapNodeRecord, type MindMapEdgeRecord } from "@/lib/db";
+import { MindMapDoc } from "@/lib/db";
+import type { Node, Edge } from "@xyflow/react";
 import { toast } from "sonner";
 import { FolderDown } from "lucide-react";
 
@@ -14,8 +15,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentTitle: string;
-  currentNodes: MindMapNodeRecord[];
-  currentEdges: MindMapEdgeRecord[];
+  currentNodes: Node[];
+  currentEdges: Edge[];
   mode: "hierarchy" | "procedure";
 }
 
