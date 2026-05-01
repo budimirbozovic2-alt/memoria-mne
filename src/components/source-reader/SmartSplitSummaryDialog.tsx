@@ -314,43 +314,45 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
           </>
         ) : splitResult && currentModule && currentEdit ? (
           <>
-            {/* ── Top: mode toggle + summary ─────────────────────────────── */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
-                <button
-                  type="button"
-                  onClick={() => setSplitMode("separate")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-                    splitMode === "separate"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  title="Svaki član postaje zasebna kartica"
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  Zasebne kartice
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSplitMode("combined")}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-                    splitMode === "combined"
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                  title="Jedan esej sa modulima (cjelinama)"
-                >
-                  <Layers className="h-3.5 w-3.5" />
-                  Jedan esej + moduli
-                </button>
+            {/* ── Top: mode toggle + summary (hidden when N=1) ───────────── */}
+            {!isSingleModule && (
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode("separate")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                      splitMode === "separate"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title="Svaki član postaje zasebna kartica"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    Zasebne kartice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSplitMode("combined")}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                      splitMode === "combined"
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title="Jedan esej sa modulima (cjelinama)"
+                  >
+                    <Layers className="h-3.5 w-3.5" />
+                    Jedan esej + moduli
+                  </button>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">{keptCount}</strong> / {total} odabrano
+                  {" • "}{splitResult.rangeLabel}
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground">
-                <strong className="text-foreground">{keptCount}</strong> / {total} odabrano
-                {" • "}{splitResult.rangeLabel}
-              </div>
-            </div>
+            )}
 
             {/* ── Combined-mode parent name ─────────────────────────────── */}
             {splitMode === "combined" && (
