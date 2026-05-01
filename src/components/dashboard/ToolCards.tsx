@@ -25,7 +25,7 @@ export const ToolCards = memo(function ToolCards() {
         <Link
           key={to}
           to={to}
-          className="glass-card rounded-xl p-5 flex items-start gap-4 hover:border-primary/40 transition-all group"
+          className="glass-card rounded-xl p-5 flex items-start gap-4 hover:border-primary/40 transition-all group h-full"
         >
           <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
             <Icon className="h-5 w-5" />
