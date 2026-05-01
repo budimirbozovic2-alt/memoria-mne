@@ -21,6 +21,8 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { normalizeTag, TAG_LIMITS } from "@/lib/zettelkasten-tags";
 import { unfinishedIndices, buildSeparatePlans, buildCombinedPlan, defaultEdit } from "@/lib/split-wizard-build";
 import { createEmptyModule, splitModuleByDelimiter, type SelectionModule } from "@/lib/selection-split-engine";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
 interface Props {
   source: Source;
@@ -78,11 +80,22 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
   );
   const chapters = selectedSubcategory?.chapters ?? [];
 
+  const performClose = useCallback(() => {
+    setSplitSummaryOpen(false);
+    setSplitResult(null);
+  }, [setSplitSummaryOpen, setSplitResult]);
+
+  // Wizard is "dirty" while user has an unsaved configuration in flight —
+  // i.e. modules exist, but cards have not yet been imported.
+  const isWizardDirty = !!splitResult && !splitDone;
+
+  const { pendingClose, requestClose, cancelClose, confirmDiscard } = useDirtyDialog(
+    isWizardDirty,
+    performClose,
+  );
+
   const handleOpenChange = (o: boolean) => {
-    if (!o) {
-      setSplitSummaryOpen(false);
-      setSplitResult(null);
-    }
+    if (!o) requestClose();
   };
 
   const total = splitModules.length;
@@ -252,7 +265,11 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[88vh] overflow-hidden flex flex-col">
+      <DialogContent
+        className="max-w-4xl max-h-[88vh] overflow-hidden flex flex-col"
+        onPointerDownOutside={(e) => { if (isWizardDirty) { e.preventDefault(); requestClose(); } }}
+        onEscapeKeyDown={(e) => { if (isWizardDirty) { e.preventDefault(); requestClose(); } }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
@@ -854,6 +871,20 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
             </div>
           </>
         ) : null}
+
+        <DirtyConfirmBar
+          open={pendingClose}
+          onCancel={cancelClose}
+          onDiscard={confirmDiscard}
+          onSave={async () => {
+            // "Save & close" in wizard context = jump to final preview so the
+            // user can confirm the import (the only valid persistence path).
+            setPreviewAll(true);
+            cancelClose();
+          }}
+          message="Imate nesačuvan čarobnjak. Kartice još nisu kreirane."
+          saveLabel="Pregled za import"
+        />
       </DialogContent>
     </Dialog>
   );

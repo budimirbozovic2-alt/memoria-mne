@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { type Card } from "@/lib/spaced-repetition";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
 interface Props {
   open: boolean;
@@ -69,14 +71,28 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
     onOpenChange(false);
   }, [parsed, categoryId, addFlashCard, onOpenChange]);
 
+  const isDirty = raw.trim().length > 0 || (parsed?.length ?? 0) > 0;
+
+  const performClose = useCallback(() => {
+    setRaw("");
+    setParsed(null);
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const { pendingClose, requestClose, cancelClose, confirmDiscard } = useDirtyDialog(isDirty, performClose);
+
   const handleClose = (v: boolean) => {
-    if (!v) { setParsed(null); }
+    if (!v) { requestClose(); return; }
     onOpenChange(v);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        className="max-w-lg"
+        onPointerDownOutside={(e) => { if (isDirty) { e.preventDefault(); requestClose(); } }}
+        onEscapeKeyDown={(e) => { if (isDirty) { e.preventDefault(); requestClose(); } }}
+      >
         <DialogHeader>
           <DialogTitle className="imperial-title text-lg">Masovni import blic pitanja</DialogTitle>
         </DialogHeader>
@@ -128,6 +144,21 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
             </div>
           </div>
         )}
+
+        <DirtyConfirmBar
+          open={pendingClose}
+          onCancel={cancelClose}
+          onDiscard={confirmDiscard}
+          onSave={async () => {
+            if (parsed && parsed.length > 0) {
+              confirmImport();
+            } else {
+              toast.message("Nema parsiranih pitanja", { description: "Kliknite Analiziraj prije snimanja." });
+              cancelClose();
+            }
+          }}
+          saveLabel={parsed && parsed.length > 0 ? `Uvezi ${parsed.length} i zatvori` : "Sačuvaj i zatvori"}
+        />
       </DialogContent>
     </Dialog>
   );
