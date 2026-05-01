@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft, Layers, BookOpen, Settings, Search, X, Pencil, Sparkles, Zap,
+  ArrowLeft, Layers, BookOpen, Settings, Search, X, Pencil, Sparkles, Zap, Brain,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -193,6 +193,18 @@ export default function SubjectCardsView() {
             </p>
           </div>
         </div>
+        <Button
+          asChild
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+          title="Memorizacija"
+          aria-label="Memorizacija"
+        >
+          <Link to={`/subject/${categoryId}/mnemonics`}>
+            <Brain className="h-4 w-4" />
+          </Link>
+        </Button>
         {(tab === "read" || tab === "speed") && (
           <Button variant="outline" size="sm" onClick={() => setTab("manage")} className="gap-1.5 h-8 text-xs">
             <Pencil className="h-3.5 w-3.5" /> Nazad na uređivanje
