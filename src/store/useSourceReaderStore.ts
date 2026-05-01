@@ -47,8 +47,6 @@ interface SourceReaderState {
   headingMenu: HeadingMenuState | null;
 
   // Dialog state
-  selectedText: string;
-  selectedHtml: string;
   autoSplitOpen: boolean;
   splitSummaryOpen: boolean;
   splitResult: SplitResultState | null;
@@ -75,8 +73,6 @@ interface SourceReaderState {
   setExamOpen: (v: boolean) => void;
   setSelection: (s: SelectionState | null) => void;
   setHeadingMenu: (m: HeadingMenuState | null) => void;
-  setSelectedText: (v: string) => void;
-  setSelectedHtml: (v: string) => void;
   setAutoSplitOpen: (v: boolean) => void;
   setSplitSummaryOpen: (v: boolean) => void;
   setSplitResult: (v: SplitResultState | null) => void;
