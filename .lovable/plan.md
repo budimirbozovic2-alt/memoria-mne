@@ -1,53 +1,35 @@
-# Plan: Diskretnija integracija Mentalnih mapa i Memorizacije unutar predmeta
+# Plan: Ujednačiti layout dugmeta za dodavanje u Izvorima
 
 ## Cilj
-- Ukloniti podstavke "Mentalne mape" i "Memorizacija" iz bočnog navigacionog panela ispod svakog predmeta.
-- **Memorizaciju** dodati kao suptilnu malu ikonicu u zaglavlju stranice kartica (desni kraj reda sa naslovom predmeta), bez narušavanja postojeće strukture.
-- **Mentalne mape** integrisati kao novi tab unutar `SourcesTab` pored "Propisi" i "Skripte", sa listom postojećih mapa za predmet i dugmetom za kreiranje na dnu (vodi na postojeću stranicu).
+Primijeniti isti layout kao kod tab-a "Mentalne mape" (centrirano dugme na dnu) i na tabove **Propisi** i **Skripte**, sa preimenovanjem dugmeta iz "Importuj DOCX" u **"Dodaj dokument"**.
 
-## Izmjene po fajlovima
+## Izmjene u `src/components/category/SourcesTab.tsx`
 
-### 1. `src/components/AppSidebar.tsx`
-- Ukloniti `SUBJECT_TOOLS` konstantu i `Map`/`Brain` importe.
-- Ukloniti blok koji renderuje podstavke (linije ~98–114) ispod svakog predmeta.
-- Sidebar predmeta vraća se na čistu listu — samo naziv + due badge.
+1. **Ukloniti gornje-desno dugme "Importuj DOCX"** iz toolbar-a iznad tabova. `<input type="file" ref={fileInputRef}>` ostaje u DOM-u (skriven), samo se uklanja vidljivo `<Button>` i okolni `<div>`.
 
-### 2. `src/views/SubjectCardsView.tsx` (Memorizacija — diskretna ikonica)
-- U header redu (gdje se nalazi naslov, esej/blic badge-ovi i "Nazad na uređivanje" dugme), na **suprotnoj strani** od naslova dodati malu ikonicu-link:
-  - Lucide `Brain` ikonica, `size-4`, `variant="ghost"` `size="icon"`, `h-8 w-8`.
-  - `tooltip`/`title="Memorizacija"`, `aria-label="Memorizacija"`.
-  - Link na `/subject/${categoryId}/mnemonics`.
-- Postavlja se prije postojećeg "Nazad na uređivanje" dugmeta (ili na samom kraju reda kad smo u `manage` tabu, jer tada to dugme nije prisutno) — u oba slučaja `ml-auto` raspored ostaje očuvan jer je `flex-1 min-w-0` blok već gura na desno.
+2. **Dodati centrirano dugme "Dodaj dokument" na dno** svakog `TabsContent` za `propis` i `skripta` tabove — identičan layout kao kod Mentalnih mapa:
+   ```tsx
+   <div className="mt-4 flex justify-center">
+     <Button
+       variant="outline"
+       size="sm"
+       disabled={importing}
+       onClick={() => fileInputRef.current?.click()}
+       className="gap-2"
+     >
+       {importing
+         ? <Loader2 className="h-4 w-4 animate-spin" />
+         : <Plus className="h-4 w-4" />}
+       {importing ? "Importujem…" : "Dodaj dokument"}
+     </Button>
+   </div>
+   ```
+   - Ikonica `Plus` (već importovana) zamjenjuje `Upload` radi vizuelne konzistentnosti sa "Kreiraj mentalnu mapu".
+   - Dugme se dodaje **i u empty state granu i u listing granu** unutar `TabsContent` mapper-a, tako da je uvijek dostupno.
 
-### 3. `src/components/category/SourcesTab.tsx` (novi tab "Mentalne mape")
-- Dodati `"mape"` kao treću vrijednost `activeSourceTab` state-a (`"propis" | "skripta" | "mape"`).
-- U `TabsList` dodati `<TabsTrigger value="mape">Mentalne mape</TabsTrigger>` sa Badge brojačem mapa.
-- Dodati `useEffect` za učitavanje mapa za `categoryId` preko `loadMindMaps()` iz `@/lib/mindmap-storage`, filtrirane po `d.categoryId === categoryId`.
-- Dodati novi `<TabsContent value="mape">` koji:
-  - Prikazuje listu mapa istim vizuelnim stilom kao izvore (red sa ikonom Map, naslovom, modom i datumom).
-  - Klik na red navigira na `/subject/${categoryId}/mind-maps` i otvara mapu (preko `sessionStorage` flag-a, vidi sljedeću tačku) — ili jednostavnije, samo navigira na `/subject/${categoryId}/mind-maps` sa `?open={id}` query-jem.
-  - Ako nema mapa: empty state sa Map ikonicom i porukom.
-  - **Na dnu**, ispod liste, veliko centrirano dugme `<Plus/> Kreiraj mentalnu mapu` koje vodi na `/subject/${categoryId}/mind-maps`.
-- "Importuj DOCX" dugme u toolbar-u sakriti (ili `disabled`) kad je aktivni tab `"mape"` — nije primjenjivo.
-
-### 4. `src/views/SubjectMindMapPage.tsx` (opciono, za otvaranje mape iz tab-a)
-- Pročitati `?open={id}` query parametar pri mountu i, ako mapa postoji u učitanim mapama, automatski je postaviti kao `activeDoc`. Ovo daje korisniku besprekoran prelaz iz `SourcesTab` direktno u canvas mape.
-
-## Tehnički detalji
-
-```text
-Header kartica (SubjectCardsView):
-[<- Back] [Layers] Naslov + badges ............. [Brain ikonica] [Nazad na uređivanje?]
-
-SourcesTab tabovi:
-[Propisi (3)] [Skripte (1)] [Mentalne mape (5)]              [Importuj DOCX]
-```
-
-- `MindMapDoc` već ima polje `categoryId` (vidljivo u `MindMapSidePanel.tsx`), tako da je filtriranje trivijalno.
-- Ikonica Brain u headeru karta ne narušava postojeći layout jer header već koristi `flex items-center gap-3` sa `flex-1` blokom za naslov.
-- Sve postojeće rute (`/subject/:id/mnemonics`, `/subject/:id/mind-maps`) ostaju netaknute — samo se mijenjaju ulazne tačke.
+3. **Empty state poruka**: ažurirati tekst "Kliknite \"Importuj DOCX\" da biste započeli." → "Kliknite \"Dodaj dokument\" da biste započeli."
 
 ## Šta se NE mijenja
-- `Breadcrumbs.tsx`, `useCurrentView.ts` — ostaju kako jesu (rute i dalje postoje).
-- Same stranice `SubjectMnemonicPage` i `MindMapCanvas` ostaju netaknute.
-- `MindMapSidePanel` u `PassiveReader`-u ostaje kao zaseban entry-point i nije zahvaćen.
+- Logika `handleDocxImport` ostaje netaknuta — i dalje prima samo `.docx` i koristi aktivni tab za `sourceKind`.
+- Tab "Mentalne mape" ostaje kako jest.
+- Skriveni `<input type="file">` ostaje u istom roditeljskom kontejneru kako bi `fileInputRef` bio validan kad korisnik klikne dugme na dnu.

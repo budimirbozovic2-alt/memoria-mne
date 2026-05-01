@@ -132,27 +132,13 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
               </Badge>
             </TabsTrigger>
           </TabsList>
-          {activeSourceTab !== "mape" && (
-            <div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".docx"
-                className="hidden"
-                onChange={handleDocxImport}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={importing}
-                onClick={() => fileInputRef.current?.click()}
-                className="gap-2"
-              >
-                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {importing ? "Importujem…" : "Importuj DOCX"}
-              </Button>
-            </div>
-          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".docx"
+            className="hidden"
+            onChange={handleDocxImport}
+          />
         </div>
 
         {(["propis", "skripta"] as const).map(kind => {
