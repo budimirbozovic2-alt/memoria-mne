@@ -254,23 +254,30 @@ export default function ReviewCard({
                 Pokušaj odgovoriti na glas prije otkrivanja.
               </p>
 
-              {/* Confidence selector */}
+              {/* Confidence selector — metakognitivna kalibracija (NIJE FSRS ocjena).
+                  Koristi slova A–E da se vizualno razlikuje od 1–4 grading skale. */}
               <div className="rounded-lg border bg-secondary/30 p-3 space-y-2">
-                <p className="text-xs text-muted-foreground text-center">Koliko si siguran/na u odgovor?</p>
+                <p className="text-xs text-muted-foreground text-center">
+                  Procjena sigurnosti <span className="opacity-60">(opciono, prije otkrivanja)</span>
+                </p>
                 <div className="flex justify-center gap-1.5">
-                  {[1, 2, 3, 4, 5].map(level => (
-                    <button
-                      key={level}
-                      onClick={() => setConfidence(level)}
-                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
-                        confidence === level
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "bg-secondary text-secondary-foreground hover:bg-accent"
-                      }`}
-                    >
-                      {level}
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4, 5].map(level => {
+                    const letter = ["A", "B", "C", "D", "E"][level - 1];
+                    return (
+                      <button
+                        key={level}
+                        onClick={() => setConfidence(level)}
+                        className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${
+                          confidence === level
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "bg-secondary text-secondary-foreground hover:bg-accent"
+                        }`}
+                        aria-label={`Sigurnost nivo ${level}`}
+                      >
+                        {letter}
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className="flex justify-between text-[10px] text-muted-foreground px-1">
                   <span>Nimalo</span>
