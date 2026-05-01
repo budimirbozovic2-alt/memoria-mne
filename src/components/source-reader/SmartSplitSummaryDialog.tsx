@@ -21,6 +21,8 @@ import { sanitizeHtml } from "@/lib/sanitize";
 import { normalizeTag, TAG_LIMITS } from "@/lib/zettelkasten-tags";
 import { unfinishedIndices, buildSeparatePlans, buildCombinedPlan, defaultEdit } from "@/lib/split-wizard-build";
 import { createEmptyModule, splitModuleByDelimiter, type SelectionModule } from "@/lib/selection-split-engine";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
 interface Props {
   source: Source;
