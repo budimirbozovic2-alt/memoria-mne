@@ -44,7 +44,7 @@ function isStructuralLine(text: string): boolean {
 }
 
 /** Extract first N words from text for fallback title */
-function firstWords(text: string, n = 7): string {
+export function firstWords(text: string, n = 7): string {
   const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
   if (words.length === 0) return "";
   const slice = words.slice(0, n).join(" ");
