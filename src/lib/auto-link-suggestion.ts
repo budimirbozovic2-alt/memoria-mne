@@ -1,15 +1,16 @@
 import type { Card } from "@/lib/spaced-repetition";
 import type { Source } from "@/lib/db";
 import { loadSourcesByCategory } from "@/lib/sources-storage";
+import { stripHtmlText } from "@/lib/sanitize";
 
 export interface AutoLinkPair {
   card: Card;
   suggestedSource: Source;
 }
 
-/** Strip HTML tags for plain-text matching */
+/** Lowercase plain-text projection for fuzzy matching. */
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  return stripHtmlText(html).toLowerCase();
 }
 
 /**
