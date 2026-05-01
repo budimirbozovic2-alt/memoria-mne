@@ -1,11 +1,12 @@
 import {
-  Wand2, PenSquare, ChevronLeft, ChevronRight, SkipForward,
-  X, Tag as TagIcon, Plus, Trash2, Scissors, FolderTree,
+  Wand2, PenSquare, X, Tag as TagIcon, Plus, Trash2, Scissors,
+  ChevronUp, ChevronDown, FileText, FolderTree,
 } from "lucide-react";
-import { useCallback, useMemo, useState, useEffect, useRef } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -25,24 +26,19 @@ interface Props {
 }
 
 /**
- * Esej čarobnjak (jedan ekran)
- * ────────────────────────────
- * Korisnik selektuje tekst u SourceReader-u → otvara se jedan dijalog sa:
- *  - Lokacijom u predmetu (Potkategorija + Glava)
- *  - Naslovom nadređenog eseja
- *  - Lijevim rail-om sa modulima (klik za skok, "+ Dodaj modul", trash)
- *  - Editorom modula (Pitanje + plain text sadržaj + tagovi + live pregled)
- *  - Inline "Podijeli modul" dugmetom (popover) za ručnu podjelu
- *
- * Bez automatske detekcije "Član X" — wizard uvijek startuje sa JEDNIM
- * modulom; korisnik ručno odlučuje da li i kako će ga dijeliti. Bez zasebnog
- * "preview prije importa" ekrana — pregled je ugrađen u editor.
- *
- * Output: jedan esej (combined mode) sa N modula → sekcija. Kreira se
- * direktno klikom na "Kreiraj esej" — bez međukoraka.
+ * Esej čarobnjak — layout po uzoru na CardForm/EditorSection.
+ * ──────────────────────────────────────────────────────────
+ * Stacked struktura (single column), identična mentalna mapa kao editor:
+ *   1. Header (naslov dijaloga + zatvaranje)
+ *   2. Tip pitanja (toggle, samo Esej je aktivno — wizard pravi eseje)
+ *   3. Naslov eseja (parent name)
+ *   4. Cjeline odgovora = moduli (kartice sa: move ↑↓, naslov, scissors, delete, sadržaj)
+ *   5. Metapodaci (potkategorija + glava)
+ *   6. Submit (Kreiraj esej)
+ * Bez bočnog rail-a, bez "preview" panela. Maksimalan prostor za uređivanje
+ * i ručno splitovanje teksta — što je glavna funkcija wizard-a.
  */
 
-/** Zaštićeni HTML escape (textarea → siguran <p>). */
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -52,7 +48,6 @@ function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-/** Plain tekst → siguran HTML (paragrafi po praznom redu, br po single newline). */
 function plainTextToHtml(text: string): string {
   const trimmed = text.trim();
   if (!trimmed) return "";
@@ -60,6 +55,61 @@ function plainTextToHtml(text: string): string {
     .split(/\n{2,}/)
     .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br/>")}</p>`)
     .join("");
+}
+
+function splitTextByParagraphs(text: string): string[] {
+  return text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+}
+
+/** Inline cutting view — kopija ponašanja iz EditorSection.CuttingView, nad plain-text paragrafima. */
+function CuttingView({
+  text, onCut, onCancel,
+}: { text: string; onCut: (paragraphIndex: number) => void; onCancel: () => void }) {
+  const paragraphs = splitTextByParagraphs(text);
+  if (paragraphs.length <= 1) {
+    return (
+      <div className="rounded-md border border-warning/30 bg-warning/5 p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-warning">Režim rezanja</span>
+          <button type="button" onClick={onCancel} className="text-xs text-muted-foreground hover:text-foreground">
+            Otkaži
+          </button>
+        </div>
+        <div className="text-sm text-muted-foreground text-center py-4">
+          Nema dovoljno paragrafa za rezanje. Razdvojte tekst praznim redom.
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-md border border-warning/30 bg-warning/5 p-3 space-y-0">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-medium text-warning">
+          Kliknite na makazice da izrežete — prvi red poslije reza postaje naslov novog modula
+        </span>
+        <button type="button" onClick={onCancel} className="text-xs text-muted-foreground hover:text-foreground">
+          Otkaži
+        </button>
+      </div>
+      {paragraphs.map((p, idx) => (
+        <div key={idx}>
+          {idx > 0 && (
+            <button
+              type="button"
+              onClick={() => onCut(idx)}
+              className="w-full flex items-center gap-2 py-1.5 group hover:bg-warning/10 rounded transition-colors my-0.5"
+              title="Podijeli ovdje"
+            >
+              <div className="flex-1 h-px bg-warning/30 group-hover:bg-warning" />
+              <Scissors className="h-3.5 w-3.5 text-warning/50 group-hover:text-warning transition-colors rotate-90" />
+              <div className="flex-1 h-px bg-warning/30 group-hover:bg-warning" />
+            </button>
+          )}
+          <div className="text-sm px-2 py-1 rounded whitespace-pre-wrap">{p}</div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) {
@@ -72,8 +122,6 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
   const splitModules = useSourceReaderStore((s) => s.splitModules);
   const splitEdits = useSourceReaderStore((s) => s.splitEdits);
   const setSplitEdits = useSourceReaderStore((s) => s.setSplitEdits);
-  const stepIndex = useSourceReaderStore((s) => s.splitStepIndex);
-  const setStepIndex = useSourceReaderStore((s) => s.setSplitStepIndex);
   const setSplitSummaryOpen = useSourceReaderStore((s) => s.setSplitSummaryOpen);
   const setSplitResult = useSourceReaderStore((s) => s.setSplitResult);
   const setSplitModules = useSourceReaderStore((s) => s.setSplitModules);
@@ -82,7 +130,6 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
   const setWizardSubcategoryId = useSourceReaderStore((s) => s.setWizardSubcategoryId);
   const setWizardChapterId = useSourceReaderStore((s) => s.setWizardChapterId);
 
-  // ── Subject taxonomy: subcategories + chapters scoped to source.categoryId ─
   const { categoryRecords } = useCategoryData();
   const categoryRecord = useMemo(
     () => categoryRecords.find((c) => c.id === source.categoryId),
@@ -100,7 +147,6 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
     setSplitResult(null);
   }, [setSplitSummaryOpen, setSplitResult]);
 
-  // Wizard is "dirty" while user has an unsaved configuration in flight.
   const isWizardDirty = !!splitResult && !splitDone;
 
   const { pendingClose, requestClose, cancelClose, confirmDiscard } = useDirtyDialog(
@@ -113,57 +159,13 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
   };
 
   const total = splitModules.length;
-  const safeIndex = Math.min(stepIndex, Math.max(0, total - 1));
-  const currentModule = splitModules[safeIndex];
-  const currentEdit = splitEdits[safeIndex];
 
   const keptCount = useMemo(
     () => splitEdits.filter((e) => !e.skipped).length,
     [splitEdits],
   );
 
-  const updateEdit = useCallback(
-    (i: number, patch: Partial<typeof currentEdit>) => {
-      setSplitEdits((prev) => prev.map((e, j) => (j === i ? { ...e, ...patch } : e)));
-    },
-    [setSplitEdits],
-  );
-
-  const goPrev = useCallback(() => setStepIndex((s) => Math.max(0, s - 1)), [setStepIndex]);
-  const goNext = useCallback(
-    () => setStepIndex((s) => Math.min(total - 1, s + 1)),
-    [setStepIndex, total],
-  );
-
-  // ── Tag chip-input local state ────────────────────────────────────────────
-  const [tagDraft, setTagDraft] = useState("");
-  useEffect(() => { setTagDraft(""); }, [safeIndex]);
-
-  const commitTag = useCallback(() => {
-    if (!currentEdit) return;
-    const t = normalizeTag(tagDraft);
-    if (!t) { setTagDraft(""); return; }
-    if (currentEdit.tags.includes(t)) { setTagDraft(""); return; }
-    if (currentEdit.tags.length >= TAG_LIMITS.maxPerArticle) { setTagDraft(""); return; }
-    updateEdit(safeIndex, { tags: [...currentEdit.tags, t] });
-    setTagDraft("");
-  }, [tagDraft, currentEdit, safeIndex, updateEdit]);
-
-  const removeTag = useCallback(
-    (t: string) => {
-      if (!currentEdit) return;
-      updateEdit(safeIndex, { tags: currentEdit.tags.filter((x) => x !== t) });
-    },
-    [currentEdit, safeIndex, updateEdit],
-  );
-
-  // Auto-focus the question textarea on step change to keep flow keyboard-driven.
-  const questionRef = useRef<HTMLTextAreaElement | null>(null);
-  useEffect(() => {
-    if (open && !splitDone) questionRef.current?.focus();
-  }, [open, safeIndex, splitDone]);
-
-  // ── Module management (manual add / delete / split) ──────────────────────
+  // ── Section/module mutations ──────────────────────────────────────────────
   const updateModule = useCallback(
     (i: number, patch: Partial<SelectionModule>) => {
       setSplitModules((prev) => prev.map((m, j) => (j === i ? { ...m, ...patch } : m)));
@@ -171,49 +173,56 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
     [setSplitModules],
   );
 
+  const updateEditAt = useCallback(
+    (i: number, patch: Partial<ReturnType<typeof defaultEdit>>) => {
+      setSplitEdits((prev) => prev.map((e, j) => (j === i ? { ...e, ...patch } : e)));
+    },
+    [setSplitEdits],
+  );
+
   const addNewModule = useCallback(() => {
     const fresh = createEmptyModule(`Novi modul ${total + 1}`);
     setSplitModules((prev) => [...prev, fresh]);
     setSplitEdits((prev) => [...prev, defaultEdit(fresh)]);
-    setStepIndex(total); // jump to the new one (its index = old total)
-  }, [total, setSplitModules, setSplitEdits, setStepIndex]);
+  }, [total, setSplitModules, setSplitEdits]);
 
   const deleteModule = useCallback(
     (i: number) => {
-      if (total <= 1) return; // never let it go to zero
+      if (total <= 1) return;
       setSplitModules((prev) => prev.filter((_, j) => j !== i));
       setSplitEdits((prev) => prev.filter((_, j) => j !== i));
-      setStepIndex((s) => Math.max(0, s >= i ? s - 1 : s));
     },
-    [total, setSplitModules, setSplitEdits, setStepIndex],
+    [total, setSplitModules, setSplitEdits],
   );
 
-  // ── Manual paragraph-scissors cutting (mirrors card editor CuttingView) ──
-  const [cutting, setCutting] = useState(false);
-  // Reset cutting mode on module change so it doesn't persist across nav.
-  useEffect(() => { setCutting(false); }, [safeIndex]);
-
-  /** Plain-text → array of paragraphs (split on blank lines, trimmed, non-empty). */
-  const splitTextByParagraphs = useCallback((text: string): string[] => {
-    return text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-  }, []);
-
-  const currentParagraphs = useMemo(
-    () => (currentModule ? splitTextByParagraphs(currentModule.contentText) : []),
-    [currentModule, splitTextByParagraphs],
+  const moveModule = useCallback(
+    (from: number, to: number) => {
+      if (to < 0 || to >= total || from === to) return;
+      setSplitModules((prev) => {
+        const arr = [...prev];
+        const [it] = arr.splice(from, 1);
+        arr.splice(to, 0, it);
+        return arr;
+      });
+      setSplitEdits((prev) => {
+        const arr = [...prev];
+        const [it] = arr.splice(from, 1);
+        arr.splice(to, 0, it);
+        return arr;
+      });
+    },
+    [total, setSplitModules, setSplitEdits],
   );
 
-  /**
-   * Manual split at paragraph index `paraIdx`:
-   *  - paragraphs [0, paraIdx)  → stay in current module
-   *  - paragraphs[paraIdx]      → becomes the NEW module's title
-   *  - paragraphs (paraIdx, end)→ become the new module's content
-   * Mirrors `handleCut` in src/hooks/useCardActions.ts (~line 269).
-   */
+  // ── Cutting state — per-module index (kao u editoru: jedan aktivan u trenutku) ─
+  const [cuttingIndex, setCuttingIndex] = useState<number | null>(null);
+  useEffect(() => { setCuttingIndex(null); }, [total]);
+
   const performManualCut = useCallback(
-    (paraIdx: number) => {
-      if (!currentModule) return;
-      const parts = splitTextByParagraphs(currentModule.contentText);
+    (moduleIdx: number, paraIdx: number) => {
+      const mod = splitModules[moduleIdx];
+      if (!mod) return;
+      const parts = splitTextByParagraphs(mod.contentText);
       if (paraIdx <= 0 || paraIdx >= parts.length) return;
 
       const beforeText = parts.slice(0, paraIdx).join("\n\n");
@@ -231,27 +240,25 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
 
       setSplitModules((prev) => {
         const out = [...prev];
-        out[safeIndex] = {
-          ...out[safeIndex],
+        out[moduleIdx] = {
+          ...out[moduleIdx],
           contentText: beforeText,
           contentHtml: plainTextToHtml(beforeText),
-          plainSnippet: beforeText.trim() || out[safeIndex].title,
+          plainSnippet: beforeText.trim() || out[moduleIdx].title,
         };
-        out.splice(safeIndex + 1, 0, newModule);
+        out.splice(moduleIdx + 1, 0, newModule);
         return out;
       });
       setSplitEdits((prev) => {
         const out = [...prev];
-        out.splice(safeIndex + 1, 0, defaultEdit(newModule));
+        out.splice(moduleIdx + 1, 0, defaultEdit(newModule));
         return out;
       });
-      setStepIndex(safeIndex + 1);
-      setCutting(false);
+      setCuttingIndex(null);
     },
-    [currentModule, safeIndex, setSplitModules, setSplitEdits, setStepIndex, splitTextByParagraphs],
+    [splitModules, setSplitModules, setSplitEdits],
   );
 
-  const showNav = total > 1;
   const confirmLabel = total > 1
     ? `Kreiraj esej (${keptCount} ${keptCount === 1 ? "modul" : "modula"})`
     : "Kreiraj esej";
@@ -259,14 +266,14 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-4xl max-h-[88vh] overflow-hidden flex flex-col"
+        className="max-w-3xl max-h-[90vh] overflow-y-auto"
         onPointerDownOutside={(e) => { if (isWizardDirty) { e.preventDefault(); requestClose(); } }}
         onEscapeKeyDown={(e) => { if (isWizardDirty) { e.preventDefault(); requestClose(); } }}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wand2 className="h-5 w-5 text-primary" />
-            {splitDone ? "Esej kreiran" : "Kreiranje eseja"}
+            {splitDone ? "Esej kreiran" : "Novi esej iz izvora"}
           </DialogTitle>
         </DialogHeader>
 
@@ -289,60 +296,187 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
               Zatvori
             </Button>
           </div>
-        ) : splitResult && currentModule && currentEdit ? (
-          <>
-            {/* ── Info linija ──────────────────────────────────────────── */}
-            <div className="text-xs text-muted-foreground">
-              <strong className="text-foreground">{keptCount}</strong> / {total} {total === 1 ? "modul odabran" : "modula odabrano"}
-              {splitResult.rangeLabel && <> • {splitResult.rangeLabel}</>}
+        ) : splitResult ? (
+          <div className="space-y-6">
+            {/* ── Tip pitanja (kao u editoru) ─────────────────────────── */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors flex-1 justify-center bg-primary text-primary-foreground"
+                aria-pressed="true"
+              >
+                <FileText className="h-4 w-4" />
+                Esejsko pitanje
+              </button>
             </div>
 
-            {/* ── Lokacija u predmetu (potkategorija + glava) ────────────── */}
-            <div className="rounded-lg border bg-muted/20 p-2.5 space-y-2">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <FolderTree className="h-3.5 w-3.5" />
-                Lokacija u predmetu
-                <span className="text-[10px] font-normal text-muted-foreground/70">
-                  (vrijedi za sve kartice)
-                </span>
+            {/* ── Naslov eseja (parent question) ───────────────────────── */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">Naslov eseja</label>
+              <Input
+                value={splitParentName}
+                onChange={(e) => setSplitParentName(e.target.value)}
+                placeholder="Unesite naslov eseja..."
+                className="bg-background"
+              />
+            </div>
+
+            {/* ── Cjeline odgovora (moduli) ───────────────────────────── */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-muted-foreground">
+                  Cjeline odgovora
+                  <span className="ml-2 text-xs text-muted-foreground/70">
+                    ({keptCount} / {total})
+                  </span>
+                </label>
+                <Button type="button" variant="outline" size="sm" onClick={addNewModule}>
+                  <Plus className="h-3 w-3 mr-1" /> Dodaj cjelinu
+                </Button>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Potkategorija
-                  </label>
-                  <Select
-                    value={wizardSubcategoryId || "__none__"}
-                    onValueChange={(v) => setWizardSubcategoryId(v === "__none__" ? "" : v)}
+
+              {splitModules.map((mod, i) => {
+                const edit = splitEdits[i];
+                if (!edit) return null;
+                const isCutting = cuttingIndex === i;
+                const paragraphCount = splitTextByParagraphs(mod.contentText).length;
+                return (
+                  <div
+                    key={`mod-${i}`}
+                    className={cn(
+                      "rounded-xl border bg-card p-4 space-y-3",
+                      edit.skipped && "opacity-60",
+                    )}
                   >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Direktno u predmet" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— direktno u predmet —</SelectItem>
-                      {subcategories.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Glava
-                  </label>
+                    {/* Header: move + title + scissors + delete */}
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] flex-shrink-0">
+                        Modul {i + 1}
+                      </Badge>
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          disabled={i === 0}
+                          onClick={() => moveModule(i, i - 1)}
+                          className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20 transition-colors"
+                          title="Pomjeri gore"
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={i === total - 1}
+                          onClick={() => moveModule(i, i + 1)}
+                          className="h-4 w-4 flex items-center justify-center rounded hover:bg-muted disabled:opacity-20 transition-colors"
+                          title="Pomjeri dolje"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <Input
+                        value={edit.question}
+                        onChange={(e) => updateEditAt(i, { question: e.target.value })}
+                        placeholder={mod.title || "Naziv cjeline..."}
+                        disabled={edit.skipped}
+                        className="bg-background font-medium text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCuttingIndex(isCutting ? null : i)}
+                        disabled={edit.skipped || paragraphCount < 2}
+                        className={cn(
+                          "p-1 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
+                          isCutting
+                            ? "bg-warning/20 text-warning"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary",
+                        )}
+                        title={
+                          paragraphCount < 2
+                            ? "Nema dovoljno paragrafa za rezanje"
+                            : "Režim rezanja"
+                        }
+                        aria-label="Režim rezanja"
+                      >
+                        <Scissors className="h-4 w-4" />
+                      </button>
+                      {total > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => deleteModule(i)}
+                          className="text-muted-foreground hover:text-destructive p-1"
+                          title="Obriši cjelinu"
+                          aria-label={`Obriši cjelinu ${i + 1}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Content: cutting view OR textarea */}
+                    {isCutting ? (
+                      <CuttingView
+                        text={mod.contentText}
+                        onCut={(pIdx) => performManualCut(i, pIdx)}
+                        onCancel={() => setCuttingIndex(null)}
+                      />
+                    ) : (
+                      <textarea
+                        value={mod.contentText}
+                        onChange={(e) => {
+                          const text = e.target.value;
+                          updateModule(i, {
+                            contentText: text,
+                            contentHtml: plainTextToHtml(text),
+                            plainSnippet: text.trim(),
+                          });
+                        }}
+                        disabled={edit.skipped}
+                        rows={10}
+                        className="w-full px-3 py-2 rounded-md border bg-background text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y disabled:opacity-50"
+                        placeholder="Sadržaj ove cjeline odgovora..."
+                      />
+                    )}
+
+                    {/* Tags chip-input */}
+                    <ModuleTags edit={edit} onUpdate={(patch) => updateEditAt(i, patch)} />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Metapodaci (lokacija u predmetu) ────────────────────── */}
+            <div className="space-y-4 rounded-xl border bg-card/50 p-4">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium flex items-center gap-1.5">
+                <FolderTree className="h-3.5 w-3.5" />
+                Metapodaci
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-muted-foreground">Podkategorija (opciono)</label>
+                <Select
+                  value={wizardSubcategoryId || "__none__"}
+                  onValueChange={(v) => setWizardSubcategoryId(v === "__none__" ? "" : v)}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Direktno u predmet" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— direktno u predmet —</SelectItem>
+                    {subcategories.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {wizardSubcategoryId && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground">Glava (opciono)</label>
                   <Select
                     value={wizardChapterId || "__none__"}
                     onValueChange={(v) => setWizardChapterId(v === "__none__" ? "" : v)}
-                    disabled={!wizardSubcategoryId || chapters.length === 0}
+                    disabled={chapters.length === 0}
                   >
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder={
-                        !wizardSubcategoryId
-                          ? "Prvo izaberi potkategoriju"
-                          : chapters.length === 0
-                            ? "(nema glave)"
-                            : "Bez glave"
-                      } />
+                    <SelectTrigger className="bg-background">
+                      <SelectValue placeholder={chapters.length === 0 ? "(nema glave)" : "Bez glave"} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">— bez glave —</SelectItem>
@@ -352,315 +486,18 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-            </div>
-
-            {/* ── Naslov eseja ─────────────────────────────────────────── */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Naslov eseja
-              </label>
-              <input
-                value={splitParentName}
-                onChange={(e) => setSplitParentName(e.target.value)}
-                className="w-full px-3 py-2 rounded-md border bg-background text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                placeholder="Unesite naslov eseja..."
-              />
-            </div>
-
-            {/* ── Body: rail (uvijek vidljiv) + editor ──────────────────── */}
-            <div className="flex-1 min-h-0 grid gap-3 overflow-hidden grid-cols-[220px_1fr]">
-              <div className="overflow-y-auto border rounded-lg bg-muted/30 p-1.5 flex flex-col">
-                <div className="space-y-0.5 flex-1">
-                  {splitModules.map((mod, i) => {
-                    const edit = splitEdits[i];
-                    const isActive = i === safeIndex;
-                    const isSkipped = edit?.skipped;
-                    const isPersonalized =
-                      edit && !isSkipped && edit.question.trim() !== mod.title.trim();
-                    return (
-                      <div
-                        key={`mod-${i}`}
-                        className={cn(
-                          "group rounded-md text-xs transition-colors flex items-center gap-1 pr-1",
-                          isActive
-                            ? "bg-primary/15 ring-1 ring-primary/40"
-                            : "hover:bg-muted",
-                        )}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setStepIndex(i)}
-                          className={cn(
-                            "flex-1 min-w-0 text-left px-2 py-1.5 flex items-center gap-2",
-                            isActive ? "text-foreground" : "text-muted-foreground",
-                            isSkipped && "opacity-50 line-through",
-                          )}
-                        >
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-[9px] h-4 px-1 flex-shrink-0",
-                              isPersonalized && "border-primary/50 text-primary",
-                            )}
-                          >
-                            {i + 1}
-                          </Badge>
-                          <span className="truncate flex-1">{edit?.question || mod.title}</span>
-                          {edit?.tags.length ? (
-                            <TagIcon className="h-2.5 w-2.5 flex-shrink-0 text-primary" />
-                          ) : null}
-                        </button>
-                        {total > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => deleteModule(i)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                            title="Obriši modul"
-                            aria-label={`Obriši modul ${i + 1}`}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <button
-                  type="button"
-                  onClick={addNewModule}
-                  className="mt-1.5 w-full text-xs px-2 py-1.5 rounded-md border border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1.5 transition-colors"
-                >
-                  <Plus className="h-3 w-3" />
-                  Dodaj modul
-                </button>
-              </div>
-
-              {/* Right pane — editor for the active module */}
-              <div className="overflow-y-auto pr-1 space-y-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">
-                      Modul {safeIndex + 1} / {total}
-                    </Badge>
-                    {currentEdit.skipped && (
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                        preskočeno
-                      </Badge>
-                    )}
-                  </div>
-                  {total > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => updateEdit(safeIndex, { skipped: !currentEdit.skipped })}
-                      className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-                    >
-                      <SkipForward className="h-3 w-3" />
-                      {currentEdit.skipped ? "Vrati u import" : "Preskoči"}
-                    </button>
-                  )}
-                </div>
-
-                {/* Question editor */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">
-                    Pitanje (kako će biti zapamćeno)
-                  </label>
-                  <textarea
-                    ref={questionRef}
-                    value={currentEdit.question}
-                    onChange={(e) => updateEdit(safeIndex, { question: e.target.value })}
-                    disabled={currentEdit.skipped}
-                    className="w-full min-h-[60px] px-3 py-2 rounded-md border bg-background text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none disabled:opacity-50"
-                    placeholder={currentModule.title}
-                  />
-                </div>
-
-                {/* Module content (plain text + manual paragraph scissors) */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-medium text-muted-foreground">
-                      Sadržaj modula
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setCutting((v) => !v)}
-                      disabled={currentEdit.skipped || currentParagraphs.length < 2}
-                      className={cn(
-                        "p-1 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
-                        cutting
-                          ? "bg-warning/20 text-warning"
-                          : "text-muted-foreground hover:text-foreground hover:bg-secondary",
-                      )}
-                      title={
-                        currentParagraphs.length < 2
-                          ? "Nema dovoljno paragrafa za rezanje"
-                          : "Režim rezanja: ručno podijeli modul"
-                      }
-                      aria-label="Režim rezanja"
-                    >
-                      <Scissors className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {cutting ? (
-                    <div className="rounded-md border border-warning/30 bg-warning/5 p-3 space-y-0">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-medium text-warning">
-                          Kliknite na makazice da izrežete — prvi red poslije reza postaje naslov novog modula
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setCutting(false)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Otkaži
-                        </button>
-                      </div>
-                      {currentParagraphs.length <= 1 ? (
-                        <div className="text-sm text-muted-foreground text-center py-4">
-                          Nema dovoljno paragrafa za rezanje. Razdvojte tekst praznim redom.
-                        </div>
-                      ) : (
-                        currentParagraphs.map((para, idx) => (
-                          <div key={idx}>
-                            {idx > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => performManualCut(idx)}
-                                className="w-full flex items-center gap-2 py-1.5 group hover:bg-warning/10 rounded transition-colors my-0.5"
-                                title="Podijeli ovdje"
-                              >
-                                <div className="flex-1 h-px bg-warning/30 group-hover:bg-warning" />
-                                <Scissors className="h-3.5 w-3.5 text-warning/50 group-hover:text-warning transition-colors rotate-90" />
-                                <div className="flex-1 h-px bg-warning/30 group-hover:bg-warning" />
-                              </button>
-                            )}
-                            <div className="text-sm px-2 py-1 rounded whitespace-pre-wrap">
-                              {para}
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <textarea
-                        value={currentModule.contentText}
-                        onChange={(e) => {
-                          const text = e.target.value;
-                          const html = plainTextToHtml(text);
-                          updateModule(safeIndex, {
-                            contentHtml: html,
-                            contentText: text,
-                            plainSnippet: text.trim(),
-                          });
-                        }}
-                        disabled={currentEdit.skipped}
-                        rows={8}
-                        className="w-full px-3 py-2 rounded-md border bg-background text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y disabled:opacity-50"
-                        placeholder="Unesite ili prepravite tekst modula..."
-                      />
-                      <p className="text-[10px] text-muted-foreground pt-1">
-                        Prazan red razdvaja paragrafe. Tekst se sanitizuje prije snimanja. Za podjelu na više modula koristite makazice iznad.
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                {/* Tags */}
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <TagIcon className="h-3 w-3" />
-                    Tagovi (opcionalno) — {currentEdit.tags.length}/{TAG_LIMITS.maxPerArticle}
-                  </label>
-                  <div
-                    className={cn(
-                      "min-h-[38px] flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-md border bg-background",
-                      currentEdit.skipped && "opacity-50 pointer-events-none",
-                    )}
-                  >
-                    {currentEdit.tags.map((t) => (
-                      <span
-                        key={t}
-                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px]"
-                      >
-                        #{t}
-                        <button
-                          type="button"
-                          onClick={() => removeTag(t)}
-                          className="hover:text-foreground"
-                          aria-label={`Ukloni tag ${t}`}
-                        >
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                      </span>
-                    ))}
-                    <input
-                      value={tagDraft}
-                      onChange={(e) => setTagDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === ",") {
-                          e.preventDefault();
-                          commitTag();
-                        } else if (
-                          e.key === "Backspace" &&
-                          tagDraft === "" &&
-                          currentEdit.tags.length > 0
-                        ) {
-                          removeTag(currentEdit.tags[currentEdit.tags.length - 1]);
-                        }
-                      }}
-                      onBlur={commitTag}
-                      disabled={
-                        currentEdit.skipped ||
-                        currentEdit.tags.length >= TAG_LIMITS.maxPerArticle
-                      }
-                      placeholder={
-                        currentEdit.tags.length >= TAG_LIMITS.maxPerArticle
-                          ? "Limit dosegnut"
-                          : "Dodaj tag (Enter)..."
-                      }
-                      className="flex-1 min-w-[100px] bg-transparent text-[12px] focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* ── Footer: navigation + actions ──────────────────────────── */}
-            <div className="flex items-center gap-2 pt-2 border-t">
-              {showNav && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={goPrev}
-                    disabled={safeIndex === 0}
-                    className="gap-1"
-                  >
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Nazad
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={goNext}
-                    disabled={safeIndex === total - 1}
-                    className="gap-1"
-                  >
-                    Naprijed
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </>
               )}
-              <div className="flex-1" />
+            </div>
+
+            {/* ── Footer actions ───────────────────────────────────────── */}
+            <div className="flex items-center gap-2 pt-2 border-t">
+              <div className="flex-1 text-xs text-muted-foreground">
+                {splitResult.rangeLabel && <span>{splitResult.rangeLabel}</span>}
+              </div>
               <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
                 Otkaži
               </Button>
               <Button
-                size="sm"
                 onClick={onSmartSplitConfirm}
                 className="gap-1.5"
                 disabled={keptCount === 0 || !splitParentName.trim()}
@@ -676,7 +513,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                 {confirmLabel}
               </Button>
             </div>
-          </>
+          </div>
         ) : null}
 
         <DirtyConfirmBar
@@ -684,7 +521,6 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
           onCancel={cancelClose}
           onDiscard={confirmDiscard}
           onSave={async () => {
-            // "Sačuvaj i zatvori" = direktno kreiraj esej.
             cancelClose();
             onSmartSplitConfirm();
           }}
@@ -693,5 +529,81 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
         />
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Per-module tags chip-input — same UX as before, extracted for clarity. */
+function ModuleTags({
+  edit,
+  onUpdate,
+}: {
+  edit: ReturnType<typeof defaultEdit>;
+  onUpdate: (patch: Partial<ReturnType<typeof defaultEdit>>) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const commit = useCallback(() => {
+    const t = normalizeTag(draft);
+    if (!t) { setDraft(""); return; }
+    if (edit.tags.includes(t)) { setDraft(""); return; }
+    if (edit.tags.length >= TAG_LIMITS.maxPerArticle) { setDraft(""); return; }
+    onUpdate({ tags: [...edit.tags, t] });
+    setDraft("");
+  }, [draft, edit.tags, onUpdate]);
+
+  const removeTag = useCallback(
+    (t: string) => onUpdate({ tags: edit.tags.filter((x) => x !== t) }),
+    [edit.tags, onUpdate],
+  );
+
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+        <TagIcon className="h-3 w-3" />
+        Tagovi (opcionalno) — {edit.tags.length}/{TAG_LIMITS.maxPerArticle}
+      </label>
+      <div
+        className={cn(
+          "min-h-[38px] flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded-md border bg-background",
+          edit.skipped && "opacity-50 pointer-events-none",
+        )}
+      >
+        {edit.tags.map((t) => (
+          <span
+            key={t}
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[11px]"
+          >
+            #{t}
+            <button
+              type="button"
+              onClick={() => removeTag(t)}
+              className="hover:text-foreground"
+              aria-label={`Ukloni tag ${t}`}
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          </span>
+        ))}
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              commit();
+            } else if (e.key === "Backspace" && draft === "" && edit.tags.length > 0) {
+              removeTag(edit.tags[edit.tags.length - 1]);
+            }
+          }}
+          onBlur={commit}
+          disabled={edit.skipped || edit.tags.length >= TAG_LIMITS.maxPerArticle}
+          placeholder={
+            edit.tags.length >= TAG_LIMITS.maxPerArticle
+              ? "Limit dosegnut"
+              : "Dodaj tag (Enter)..."
+          }
+          className="flex-1 min-w-[100px] bg-transparent text-[12px] focus:outline-none"
+        />
+      </div>
+    </div>
   );
 }
