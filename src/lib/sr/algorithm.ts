@@ -58,20 +58,35 @@ export function calculateNextReview(
   targetRetention?: number,
   ctx?: AdaptiveContext,
 ): Partial<Section> {
+  const isNew = section.state === SectionState.New;
+  const isPendingFirstReview = section.firstReviewPending === true;
+
+  // ── Cramming guard ─────────────────────────────────────────────
+  // If a section is graded BEFORE its scheduled time and is neither New
+  // nor in a learning step (firstReviewPending), do NOT mutate FSRS
+  // parameters. Otherwise re-grading "Good" on a 95%-retrievability card
+  // would inflate stability (S → S*3+1) and corrupt the schedule.
+  // We only refresh `lastReviewed` so the UI reflects the touch.
+  // Single source of truth — every caller (Review, Learn, future modes)
+  // is automatically protected.
+  if (!isNew && !isPendingFirstReview && Date.now() < section.nextReview) {
+    return { lastReviewed: Date.now() };
+  }
+
   let newStability: number;
   let newDifficulty: number;
   let newLapses = section.lapses || 0;
   const elapsed = getElapsedDays(section);
 
-  const isNew = section.state === SectionState.New;
   const newState = nextState(section.state, grade);
-  const isPendingFirstReview = section.firstReviewPending === true;
 
   if (isNew) {
     const init = INITIAL_VALUES[grade] || INITIAL_VALUES[3];
     newStability = init.stability;
     newDifficulty = init.difficulty;
-    if (grade === 1) newLapses += 1;
+    // NOTE: do NOT increment lapses on first exposure of a New card.
+    // Lapses must only count Review → Relearning transitions, otherwise
+    // hard-to-onboard cards trip the Leech threshold prematurely.
   } else {
     const { stability, difficulty } = section;
     switch (grade) {
