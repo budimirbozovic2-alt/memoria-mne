@@ -1,6 +1,6 @@
 import {
   Wand2, PenSquare, ChevronLeft, ChevronRight, SkipForward,
-  X, Tag as TagIcon, Eye, Plus, Trash2, Scissors, FolderTree,
+  X, Tag as TagIcon, Plus, Trash2, Scissors, FolderTree,
 } from "lucide-react";
 import { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,9 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/sources-storage";
 import { useSourceReaderStore } from "@/store/useSourceReaderStore";
@@ -19,7 +16,7 @@ import { useCategoryData } from "@/contexts/AppContext";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { normalizeTag, TAG_LIMITS } from "@/lib/zettelkasten-tags";
 import { unfinishedIndices, defaultEdit } from "@/lib/split-wizard-build";
-import { createEmptyModule, splitModuleByDelimiter, type SelectionModule } from "@/lib/selection-split-engine";
+import { createEmptyModule, type SelectionModule } from "@/lib/selection-split-engine";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
