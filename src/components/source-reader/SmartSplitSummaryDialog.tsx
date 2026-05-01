@@ -575,6 +575,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                 <Wand2 className="h-3 w-3" />
                 Sljedeći needitovan
               </Button>
+              </>)}
               <div className="flex-1" />
               <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
                 Otkaži
@@ -584,10 +585,12 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                 onClick={() => setPreviewAll(true)}
                 className="gap-1.5"
                 disabled={keptCount === 0}
-                title="Vidi kako će sve kartice izgledati u učenju prije importa"
+                title="Vidi kako će kartica izgledati u učenju prije importa"
               >
                 <Eye className="h-3.5 w-3.5" />
-                Pregled svih ({splitMode === "separate" ? `${keptCount} kartica` : `1 esej, ${keptCount} modula`})
+                {isSingleModule
+                  ? "Pregled kartice"
+                  : `Pregled svih (${splitMode === "separate" ? `${keptCount} kartica` : `1 esej, ${keptCount} modula`})`}
               </Button>
             </div>
           </>
