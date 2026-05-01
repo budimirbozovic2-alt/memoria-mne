@@ -60,6 +60,10 @@ interface SourceReaderState {
   splitMode: WizardMode;
   /** Wizard: index of the module currently being edited (0-based). */
   splitStepIndex: number;
+  /** Wizard: target subcategory UUID for ALL cards (empty = direct in subject). */
+  wizardSubcategoryId: string;
+  /** Wizard: target chapter UUID (empty = no chapter). Cleared when subcategory changes. */
+  wizardChapterId: string;
   linkModalOpen: boolean;
   linkSelectedText: string;
   linkSelectedHtml: string;
