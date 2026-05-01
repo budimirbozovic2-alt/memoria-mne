@@ -431,6 +431,64 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
               </div>
             )}
 
+            {/* ── Lokacija u predmetu (potkategorija + glava) ────────────── */}
+            <div className="rounded-lg border bg-muted/20 p-2.5 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <FolderTree className="h-3.5 w-3.5" />
+                Lokacija u predmetu
+                <span className="text-[10px] font-normal text-muted-foreground/70">
+                  (vrijedi za sve kartice)
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Potkategorija
+                  </label>
+                  <Select
+                    value={wizardSubcategoryId || "__none__"}
+                    onValueChange={(v) => setWizardSubcategoryId(v === "__none__" ? "" : v)}
+                  >
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder="Direktno u predmet" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— direktno u predmet —</SelectItem>
+                      {subcategories.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Glava
+                  </label>
+                  <Select
+                    value={wizardChapterId || "__none__"}
+                    onValueChange={(v) => setWizardChapterId(v === "__none__" ? "" : v)}
+                    disabled={!wizardSubcategoryId || chapters.length === 0}
+                  >
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder={
+                        !wizardSubcategoryId
+                          ? "Prvo izaberi potkategoriju"
+                          : chapters.length === 0
+                            ? "(nema glava)"
+                            : "Bez glave"
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">— bez glave —</SelectItem>
+                      {chapters.map((ch) => (
+                        <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
             {/* ── Combined-mode parent name ─────────────────────────────── */}
             {splitMode === "combined" && (
               <div className="space-y-1">
