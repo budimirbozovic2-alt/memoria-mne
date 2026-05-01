@@ -1,6 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import ExamSidebar from "@/components/ExamSidebar";
-import CoverageArticleList from "@/components/source-reader/CoverageArticleList";
 import { cn } from "@/lib/utils";
 import type { Source } from "@/lib/sources-storage";
 import { useSourceReaderStore, WIDTH_CLASSES } from "@/store/useSourceReaderStore";
@@ -8,7 +7,6 @@ import { useSourceReaderActions } from "@/hooks/useSourceReaderActions";
 import { SourceToolbar } from "@/components/source-reader/SourceToolbar";
 import { SourceContent } from "@/components/source-reader/SourceContent";
 import { SourceNavigation } from "@/components/source-reader/SourceNavigation";
-import { CoverageStatsBar } from "@/components/source-reader/CoverageStatsBar";
 import { SourceContextMenu } from "@/components/source-reader/SourceContextMenu";
 import { SourceTooltip } from "@/components/source-reader/SourceTooltip";
 import { SmartSplitSummaryDialog } from "@/components/source-reader/SmartSplitSummaryDialog";
