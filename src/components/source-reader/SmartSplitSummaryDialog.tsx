@@ -419,26 +419,32 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
               <div className="overflow-y-auto pr-1 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-[10px]">
-                      Korak {safeIndex + 1} / {total}
-                    </Badge>
-                    <Badge variant="secondary" className="text-[10px]">
-                      Član {currentModule.articleNum}
-                    </Badge>
+                    {!isSingleModule && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Korak {safeIndex + 1} / {total}
+                      </Badge>
+                    )}
+                    {currentModule.articleNum && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Član {currentModule.articleNum}
+                      </Badge>
+                    )}
                     {currentEdit.skipped && (
                       <Badge variant="outline" className="text-[10px] text-muted-foreground">
                         preskočeno
                       </Badge>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => updateEdit(safeIndex, { skipped: !currentEdit.skipped })}
-                    className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-                  >
-                    <SkipForward className="h-3 w-3" />
-                    {currentEdit.skipped ? "Vrati u import" : "Preskoči ovaj član"}
-                  </button>
+                  {!isSingleModule && (
+                    <button
+                      type="button"
+                      onClick={() => updateEdit(safeIndex, { skipped: !currentEdit.skipped })}
+                      className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                    >
+                      <SkipForward className="h-3 w-3" />
+                      {currentEdit.skipped ? "Vrati u import" : "Preskoči ovaj član"}
+                    </button>
+                  )}
                 </div>
 
                 {/* Question editor */}
