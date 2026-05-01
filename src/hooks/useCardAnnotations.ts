@@ -5,6 +5,9 @@ import {
   getCachedRetention,
   computeAdaptiveModifiers,
   AdaptiveContext,
+  clamp,
+  RETENTION_MIN,
+  RETENTION_MAX,
 } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
@@ -57,7 +60,7 @@ export function useCardAnnotations({
         if (mods.reasons.length > 0) {
           entry.reasons = mods.reasons.map(r => ({ code: r.code, label: r.label }));
         }
-        entry.effectiveRetention = Math.max(0.80, Math.min(0.98, cachedRetention + mods.retentionBoost));
+        entry.effectiveRetention = clamp(cachedRetention + mods.retentionBoost, RETENTION_MIN, RETENTION_MAX);
         entry.intervalMultiplier = mods.intervalMultiplier;
 
         return {

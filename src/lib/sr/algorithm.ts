@@ -58,20 +58,35 @@ export function calculateNextReview(
   targetRetention?: number,
   ctx?: AdaptiveContext,
 ): Partial<Section> {
+  const isNew = section.state === SectionState.New;
+  const isPendingFirstReview = section.firstReviewPending === true;
+
+  // ── Cramming guard ─────────────────────────────────────────────
+  // If a section is graded BEFORE its scheduled time and is neither New
+  // nor in a learning step (firstReviewPending), do NOT mutate FSRS
+  // parameters. Otherwise re-grading "Good" on a 95%-retrievability card
+  // would inflate stability (S → S*3+1) and corrupt the schedule.
+  // We only refresh `lastReviewed` so the UI reflects the touch.
+  // Single source of truth — every caller (Review, Learn, future modes)
+  // is automatically protected.
+  if (!isNew && !isPendingFirstReview && Date.now() < section.nextReview) {
+    return { lastReviewed: Date.now() };
+  }
+
   let newStability: number;
   let newDifficulty: number;
   let newLapses = section.lapses || 0;
   const elapsed = getElapsedDays(section);
 
-  const isNew = section.state === SectionState.New;
   const newState = nextState(section.state, grade);
-  const isPendingFirstReview = section.firstReviewPending === true;
 
   if (isNew) {
     const init = INITIAL_VALUES[grade] || INITIAL_VALUES[3];
     newStability = init.stability;
     newDifficulty = init.difficulty;
-    if (grade === 1) newLapses += 1;
+    // NOTE: do NOT increment lapses on first exposure of a New card.
+    // Lapses must only count Review → Relearning transitions, otherwise
+    // hard-to-onboard cards trip the Leech threshold prematurely.
   } else {
     const { stability, difficulty } = section;
     switch (grade) {
@@ -116,11 +131,17 @@ export function calculateNextReview(
     finalNextReview = Date.now() + Math.min(calcMs, maxMs);
   }
 
-  if (isNew && grade >= 3) {
-    const delayMs = grade === 3 ? 15 * 60 * 1000 : 20 * 60 * 1000;
-    finalNextReview = Date.now() + delayMs;
+  if (isNew && grade === 3) {
+    // Good on a New card → short learning step (15 min) before graduating.
+    finalNextReview = Date.now() + 15 * 60 * 1000;
     finalState = SectionState.Learning;
     finalFirstReviewPending = true;
+  } else if (isNew && grade === 4) {
+    // Easy on a New card → graduate immediately to Review using
+    // INITIAL_VALUES[4] (stability=7d). Skip the learning phase entirely.
+    finalNextReview = Date.now() + interval * 24 * 60 * 60 * 1000;
+    finalState = SectionState.Review;
+    finalFirstReviewPending = false;
   } else if (isPendingFirstReview && grade >= 3) {
     finalState = SectionState.Review;
     finalFirstReviewPending = false;

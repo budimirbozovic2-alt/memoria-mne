@@ -26,6 +26,7 @@ export interface AdaptiveModifiers {
 
 export const RETENTION_MIN = 0.80;
 export const RETENTION_MAX = 0.98;
+export const RETENTION_BOOST_LIMIT = 0.05; // ±5pp absolute cap on combined adaptive boost
 export const INTERVAL_MULT_MIN = 0.5;
 export const INTERVAL_MULT_MAX = 1.5;
 
@@ -88,7 +89,7 @@ export function computeAdaptiveModifiers(ctx?: AdaptiveContext): AdaptiveModifie
   }
 
   return {
-    retentionBoost,
+    retentionBoost: clamp(retentionBoost, -RETENTION_BOOST_LIMIT, RETENTION_BOOST_LIMIT),
     intervalMultiplier: clamp(intervalMultiplier, INTERVAL_MULT_MIN, INTERVAL_MULT_MAX),
     reasons,
   };

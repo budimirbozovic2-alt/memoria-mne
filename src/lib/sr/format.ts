@@ -33,7 +33,8 @@ export const CARD_TAGS = [
 
 export function formatInterval(interval: number): string {
   if (interval < 1 / 24) {
-    return `${Math.round(interval * 24 * 60)}min`;
+    // Floor to 1min so sub-30s intervals don't render as "0min".
+    return `${Math.max(1, Math.round(interval * 24 * 60))}min`;
   } else if (interval < 1) {
     return `${Math.round(interval * 24)}h`;
   } else if (interval < 30) {
@@ -47,9 +48,13 @@ export function formatInterval(interval: number): string {
 export function previewIntervals(section: Section, ctx?: AdaptiveContext): Record<number, string> {
   const cachedRetention = getCachedRetention();
   const result: Record<number, string> = {};
+  // If the section is being re-graded before its scheduled time (cramming
+  // guard active), the algorithm returns only `lastReviewed` — `interval`
+  // would be undefined. Show "—" so the UI doesn't suggest a misleading
+  // 0-minute schedule.
   for (const grade of [1, 2, 3, 4]) {
     const next = calculateNextReview(section, grade, cachedRetention, ctx);
-    result[grade] = formatInterval(next.interval || 0);
+    result[grade] = next.interval == null ? "—" : formatInterval(next.interval);
   }
   return result;
 }
