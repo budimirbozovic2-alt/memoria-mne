@@ -188,7 +188,7 @@ export function useCardActions({ categories, subcategories, categoryRecords, edi
   const availableSubs: { id: string; name: string }[] = useMemo(() => {
     const catRec = categoryRecords?.find(r => r.id === categoryId);
     if (!catRec) return [];
-    return (catRec.subcategories || []).map((n: any) =>
+    return (catRec.subcategories || []).map((n: SubcategoryNode | string) =>
       typeof n === "string" ? { id: n, name: n } : { id: n.id, name: n.name }
     );
   }, [categoryId, categoryRecords]);

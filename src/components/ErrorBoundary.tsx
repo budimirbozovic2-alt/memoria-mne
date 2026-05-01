@@ -92,7 +92,7 @@ export class ErrorBoundary extends Component<Props, State> {
       const subcategories: Record<string, string[]> = {};
       categories.forEach(r => {
         if (r.subcategories && r.subcategories.length > 0) {
-          subcategories[r.name] = r.subcategories.map((s: any) => typeof s === "string" ? s : s.name);
+          subcategories[r.name] = r.subcategories.map((s: { name: string } | string) => typeof s === "string" ? s : s.name);
         }
       });
 

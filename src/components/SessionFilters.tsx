@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 
 import ScrollableRow from "@/components/ScrollableRow";
 import type { Card } from "@/lib/spaced-repetition";
-import type { CategoryRecord } from "@/lib/db";
+import type { CategoryRecord, ChapterNode } from "@/lib/db";
 
 export interface SortControlOption<T extends string = string> {
   key: T;
@@ -91,7 +91,7 @@ export default function SessionFilters({
     for (const r of (categoryRecords || [])) {
       for (const sub of (r.subcategories || [])) {
         if (typeof sub === 'object' && sub.chapters) {
-          sub.chapters.forEach((ch: any, i: number) => {
+          sub.chapters.forEach((ch: ChapterNode | string, i: number) => {
             const id = typeof ch === 'string' ? ch : ch.id;
             const order = typeof ch === 'string' ? i : (ch.sortOrder ?? i);
             m[id] = order;

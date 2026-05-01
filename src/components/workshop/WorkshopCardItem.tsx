@@ -38,7 +38,7 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
     if (!catRecord) return card.subcategoryId || "";
     const sid = card.subcategoryId;
     if (!sid) return "";
-    const node = (catRecord.subcategories || []).find((s: any) => s.id === sid || s.name === sid);
+    const node = (catRecord.subcategories || []).find((s: { id: string; name: string }) => s.id === sid || s.name === sid);
     return node?.name ?? sid;
   }, [catRecord, card.subcategoryId]);
   const [editMode, setEditMode] = useState(false);
