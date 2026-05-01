@@ -33,7 +33,6 @@ export default function SourceReader({ source, onBack, onSourceUpdated }: Props)
   const editMode = useSourceReaderStore(s => s.editMode);
   const selection = useSourceReaderStore(s => s.selection);
   const headingMenu = useSourceReaderStore(s => s.headingMenu);
-  const essayDialogOpen = useSourceReaderStore(s => s.essayDialogOpen);
   const splitSummaryOpen = useSourceReaderStore(s => s.splitSummaryOpen);
   const autoSplitOpen = useSourceReaderStore(s => s.autoSplitOpen);
   const linkModalOpen = useSourceReaderStore(s => s.linkModalOpen);
