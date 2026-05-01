@@ -75,8 +75,6 @@ interface SourceReaderState {
   setExamOpen: (v: boolean) => void;
   setSelection: (s: SelectionState | null) => void;
   setHeadingMenu: (m: HeadingMenuState | null) => void;
-  setEssayDialogOpen: (v: boolean) => void;
-  setEssayQuestion: (v: string) => void;
   setSelectedText: (v: string) => void;
   setSelectedHtml: (v: string) => void;
   setAutoSplitOpen: (v: boolean) => void;
