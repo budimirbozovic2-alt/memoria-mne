@@ -156,7 +156,7 @@ export default function CategoryManager({
                           <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
                         </button>
                         <button
-                          onClick={() => count > 0 ? setConfirmDelete(cat) : onDelete(cat)}
+                          onClick={() => setConfirmDelete(cat)}
                           className="p-1.5 hover:bg-destructive/10 rounded-lg"
                           title={count > 0 ? `${count} kartica` : "Obriši kategoriju"}
                         >
@@ -278,26 +278,34 @@ export default function CategoryManager({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setConfirmDelete(null)}>
           <div className="bg-card border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="font-semibold text-lg">Obriši kategoriju</h3>
-            <p className="text-sm text-muted-foreground">
-              Kategorija "{nameMap[confirmDelete] || confirmDelete}" sadrži {cardCountByCategory[confirmDelete] ?? 0} kartica. Šta želite?
-            </p>
-            <div className="flex flex-col gap-2">
-              <Button
-                variant="outline"
-                onClick={() => { onDelete(confirmDelete, false); setConfirmDelete(null); }}
-              >
-                Prebaci kartice u drugu kategoriju
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => { onDelete(confirmDelete, true); setConfirmDelete(null); }}
-              >
-                Obriši sve kartice ({cardCountByCategory[confirmDelete] ?? 0})
-              </Button>
-              <Button variant="ghost" onClick={() => setConfirmDelete(null)}>
-                Otkaži
-              </Button>
-            </div>
+            {(cardCountByCategory[confirmDelete] ?? 0) > 0 ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Kategorija "{nameMap[confirmDelete] || confirmDelete}" sadrži {cardCountByCategory[confirmDelete] ?? 0} kartica. Šta želite?
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Button variant="outline" onClick={() => { onDelete(confirmDelete, false); setConfirmDelete(null); }}>
+                    Prebaci kartice u drugu kategoriju
+                  </Button>
+                  <Button variant="destructive" onClick={() => { onDelete(confirmDelete, true); setConfirmDelete(null); }}>
+                    Obriši sve kartice ({cardCountByCategory[confirmDelete] ?? 0})
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirmDelete(null)}>Otkaži</Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Trajno ćete ukloniti kategoriju "{nameMap[confirmDelete] || confirmDelete}". Ova radnja se ne može poništiti.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Button variant="destructive" onClick={() => { onDelete(confirmDelete, false); setConfirmDelete(null); }}>
+                    Obriši trajno
+                  </Button>
+                  <Button variant="ghost" onClick={() => setConfirmDelete(null)} autoFocus>Otkaži</Button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
