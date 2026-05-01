@@ -77,14 +77,14 @@ Implementation pattern:
 2. New shared component: `src/components/ui/dirty-confirm-bar.tsx` — slides into the dialog footer with three buttons (Discard = ghost destructive, Keep editing = ghost, Save & close = primary). Animates in via `data-[state=open]:animate-in`.
 
 3. Wire each affected dialog:
-   - `CardForm.tsx` (already tracks dirty via form state)
-   - `category/SourceEditor.tsx` (1s-debounce save — needs an explicit dirty flag)
-   - `source-reader/SmartSplitSummaryDialog.tsx` (module edits)
-   - `ZettelEditor` (Notion-style — already has save-on-exit, but X needs to confirm)
-   - `ExaminerProfileDialog.tsx`
-   - `category/BulkImportDialog.tsx`
+   - `CardForm.tsx` — **deferred** (routed page, not a dialog)
+   - `category/SourceEditor.tsx` — ✅ wired (dirty = `dirty || newText.trim()`)
+   - `source-reader/SmartSplitSummaryDialog.tsx` — ✅ wired (dirty = `splitResult && !splitDone`; Save = jump to preview)
+   - `ZettelEditor` — N/A (textarea component, not a dialog; parent owns close)
+   - `ExaminerProfileDialog.tsx` — ✅ wired (dirty = field diffs vs initial)
+   - `category/BulkImportDialog.tsx` — ✅ wired (dirty = `raw.trim() || parsed`; Save = confirmImport when parsed)
 
-   For each: `<DialogContent onPointerDownOutside={e => isDirty && e.preventDefault()} onEscapeKeyDown={e => isDirty && e.preventDefault()} ...>`, intercept the X button via custom close, and render the bar conditionally.
+   Pattern applied: `<DialogContent onPointerDownOutside={e => isDirty && (e.preventDefault(), requestClose())} onEscapeKeyDown={...}>` + bar rendered after `DialogFooter`.
 
 ---
 
