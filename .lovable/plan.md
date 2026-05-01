@@ -1,137 +1,67 @@
-# Phase 1 — Release Safeguards
+# Phase 2 — Type-Safety / Lint Hardening (Audit + Targeted Fixes)
 
-Three surgical changes. No refactors, no touches outside the listed lines.
+## Reality check vs. the brief
+
+I read every file mentioned. **Three of the four tasks are already shipped.** I'm flagging this so we don't introduce churn-for-the-sake-of-churn.
+
+| # | Task | Current state | Action needed |
+|---|------|---------------|---------------|
+| 1 | `backup-schema.ts` with type guard | **Exists.** 438 LOC of Zod schemas + `isMinimalBackup` type guard + `ParsedBackup` type. Far stricter than the requested hand-rolled guard. | **Add** the requested `isValidBackupPayload(data: unknown): data is ParsedBackup` as a thin `safeParse` wrapper — gives you the exact API surface the brief asks for, on top of the existing Zod machinery. |
+| 2 | Remove `any` from `useCardImport.ts` | **Already done.** Zero `any`. Zero `eslint-disable`. Already calls `BackupSchema.safeParse(raw)` and throws/toasts on failure. | **No change.** Replacing `safeParse` with the thinner `isValidBackupPayload` wrapper would *lose* per-field validation errors (currently we surface the failing field path in a toast). |
+| 3 | Global `no-explicit-any: 'error'` | **Partially done.** Already `'error'` on critical paths (`useCardImport.ts`, `useCardExport.ts`, `migrations/**`, `sanitize.ts`, `persist-queue.ts`, `db-queries.ts`, `db-schema.ts`, `contexts/cards/**`). Globally `'warn'`. | **DECISION POINT** — see below. ~20 legitimate `any` sites still exist outside critical paths (e.g. `CardList.tsx:104` `useRef<any>` for `react-window`, `ForgettingCurve.tsx:45`, `workshop/WorkshopCardItem.tsx:41`, several test files). Flipping to `'error'` globally **will fail the lint/build** until each is fixed. |
+| 4 | Delete duplicate filter hook | **Both are zombies.** Neither `useCardListFilters` nor `useCardViewFilters` is imported anywhere in the project. | **Delete both** (or pick one to keep as the canonical). Since neither has callers, the safe move is to delete both. Recommending we delete both. |
 
 ---
 
-## 1. Dexie Log Retention (QuotaExceededError prevention)
+## Proposed actions
 
-**File:** `src/hooks/useCardBootstrap.ts` — schedule the prune once per session, after `ensureDbOpen` succeeds (line 87 area). Wrapped in `requestIdleCallback` (with `setTimeout` fallback) so it never blocks boot.
+### A. `src/lib/migrations/backup-schema.ts` — append the requested guard
 
-**Helper file (new):** `src/lib/log-retention.ts` — keeps the pruning logic isolated and unit-testable. Targets the five append-only logs the user specified: `reviewLog`, `latencyLog`, `calibrationLog`, `activityLog`, `pomodoroLog`. Cap = **10,000** newest entries each.
+Append (no other changes — preserve the existing 438 lines):
 
 ```ts
-// src/lib/log-retention.ts  (NEW)
-import { db } from "./db-schema";
-
-const MAX_RETAIN = 10_000;
-const LOG_TABLES = ["reviewLog", "latencyLog", "calibrationLog", "activityLog", "pomodoroLog"] as const;
-let didRunThisSession = false;
-
-export async function pruneAppendOnlyLogs(): Promise<void> {
-  if (didRunThisSession) return;
-  didRunThisSession = true;
-  try {
-    await db.transaction("rw", LOG_TABLES.map(n => db.table(n)), async () => {
-      for (const name of LOG_TABLES) {
-        const tbl = db.table(name);
-        const count = await tbl.count();
-        if (count <= MAX_RETAIN) continue;
-        const toDelete = count - MAX_RETAIN;
-        // Auto-incrementing PK ⇒ ordering by primary key === chronological.
-        const oldestKeys = await tbl.toCollection().primaryKeys();
-        await tbl.bulkDelete(oldestKeys.slice(0, toDelete));
-      }
-    });
-  } catch (err) {
-    if (import.meta.env.DEV) console.warn("[log-retention] prune failed", err);
-  }
-}
-
-export function scheduleLogPrune(): void {
-  const run = () => { void pruneAppendOnlyLogs(); };
-  const ric = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
-  if (typeof ric === "function") ric(run, { timeout: 8000 });
-  else setTimeout(run, 4000);
+/**
+ * Strict type guard wrapper around `BackupSchema.safeParse`.
+ *
+ * The hook layer (`useCardImport`) already uses `safeParse` directly so it can
+ * surface per-field error paths in a toast. This export exists for callers
+ * that just need a boolean predicate (e.g. drag-and-drop dropzone, restore
+ * preview, tests).
+ */
+export function isValidBackupPayload(data: unknown): data is ParsedBackup {
+  return BackupSchema.safeParse(data).success;
 }
 ```
 
-**Insertion in `src/hooks/useCardBootstrap.ts`:**
-- Add import at the top of the existing import block.
-- Call `scheduleLogPrune()` immediately after the `ensureDbOpen` success branch (right after line 87, inside the same `if (dbOk)` flow that already exists in the bootstrap).
+### B. `src/hooks/useCardImport.ts` — leave as-is
 
-```ts
-// near existing imports
-import { scheduleLogPrune } from "@/lib/log-retention";
+It's already strongly typed. The brief's instruction "wrap in `isValidBackupPayload` and throw on failure" would be a **regression** — it loses the per-field error message currently shown in the toast (`"Backup nije validan: cards.3.sections.1.id — ..."`). I will only touch it if you explicitly want the simpler-but-worse error UX.
 
-// after: const dbOk = await ensureDbOpen(6000);
-if (dbOk) scheduleLogPrune();
-```
+### C. `eslint.config.js` — DECISION REQUIRED
 
----
+Two paths:
 
-## 2. Strict CSP — IMPORTANT DEVIATION REQUIRED
+**C1 (safe, recommended) — Audit first, flip second.** Keep global `'warn'` until I run the lint, then fix each remaining `any` (≈20 sites — mostly `useRef<any>` for `react-window` and chart `point: any`), THEN flip global to `'error'` in a follow-up commit. This is a 30-min pure-fix pass.
 
-The user asked to drop this exact meta into `index.html <head>`:
+**C2 (fast, breaks build) — Flip now.** Change `'warn'` → `'error'` immediately. Build will fail; we then chase down failures.
 
-```
-default-src 'self' app:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' app:;
-```
+I recommend **C1**. Either way I will list every remaining site and propose typed replacements.
 
-**This will hard-break the web/preview build and dev mode**, because:
+### D. Delete zombie filter hooks
 
-- `index.html` lines **92–117** contain an **inline `<script>`** (boot retry + 10s safety timer). `script-src 'self'` blocks it → no retry, no fallback UI.
-- Vite dev/HMR injects inline scripts and connects via `ws://` → blocked by `connect-src 'self' app:`.
-- The `<div id="app-splash">` and fallback UI use **inline `style="…"` attributes** (lines 34–85). These need `'unsafe-inline'` in `style-src` (already present — fine).
-- `og:image` / `twitter:image` reference an external R2 URL — fine (it's an OG meta, not an `<img>`).
-- The `app:` scheme is unknown to browsers; harmless in web but adds nothing there.
+Delete both:
+- `src/hooks/useCardListFilters.ts`
+- `src/hooks/useCardViewFilters.ts`
 
-Production Electron **already has a strict CSP** applied via `main.cjs:211–223` over the `app://` protocol, which is the deployment target. Adding the same restriction as a meta tag in `index.html` provides defense-in-depth there but breaks the web preview.
-
-**Two safe options — pick one:**
-
-**Option A (recommended) — Electron-only meta, injected at runtime:**
-Add a tiny inline script (which itself needs to be allowed) before the boot `<script>` that injects the CSP meta only when running under `app://`. Trade-off: the inline injector itself violates `script-src 'self'`, so the meta must be injected *before* it takes effect — which means the meta must allow inline at insertion time. Net result: Option A doesn't actually tighten Electron beyond what `main.cjs` already does.
-
-**Option B (recommended, cleaner) — keep the strict CSP only on the HTTP response header path in `main.cjs` and ALSO add a slightly relaxed meta to `index.html` that survives the inline boot script.** This adds defense-in-depth in case the header is ever stripped:
-
-```html
-<!-- insert at index.html line 7, replacing the comment on line 6 -->
-<meta http-equiv="Content-Security-Policy"
-      content="default-src 'self' app:; script-src 'self' 'unsafe-inline' app:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: app:; font-src 'self' data: app:; connect-src 'self' blob: app: ws: wss: https://fonts.gstatic.com https://fonts.googleapis.com;">
-```
-
-This mirrors the production header in `main.cjs:218–219` and keeps preview functional. **Strictness vs. user's literal request:** allows `'unsafe-inline'` for scripts (required by the boot retry script) and allows `ws:`/`wss:` (required by Vite HMR + Lovable preview).
-
-**If you insist on the literal strict CSP from the brief**, the only safe path is to also:
-1. Move the inline boot script (lines 92–117) into a separate `./boot-retry.js` file served from the same origin, and
-2. Skip injecting the meta in dev (Vite plugin gating), keeping it only in the production build.
-
-That's a 30-line refactor, not a one-liner. Flagging it as a decision point.
-
-**Default I'll execute unless you say otherwise:** Option B (the relaxed meta above), inserted at `index.html` line 7.
+Confirmed via project-wide search — no imports of `useCardListFilters`, `useCardViewFilters`, `CardListFilters`, or `CardViewFilters` exist anywhere outside their own files. (The brief assumed one was used — neither is.)
 
 ---
 
-## 3. Electron Permission Lockdown
+## Decisions needed before I execute
 
-**File:** `main.cjs` — inside the existing `app.whenReady().then(() => { … })` block. Insert **immediately after line 207** (right after the `app://` protocol handler registration block closes) and **before** the existing CSP header block starts at line 209. This keeps it grouped with other session-level lockdowns.
+1. **`isValidBackupPayload`** — add it as the additive helper described in (A)? *(Recommended: yes.)*
+2. **`useCardImport.ts`** — leave as-is, or downgrade to the boolean wrapper as the brief literally requests? *(Recommended: leave as-is.)*
+3. **eslint global `no-explicit-any`** — C1 (audit + fix + then flip) or C2 (flip now, break build)? *(Recommended: C1.)*
+4. **Filter hooks** — delete both, or keep one as the canonical for future use? *(Recommended: delete both.)*
 
-```js
-// ── Permission lockdown: deny all default Chromium permission requests ──
-session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => {
-  callback(false);
-});
-session.defaultSession.setPermissionCheckHandler(() => false);
-```
-
-The second line (`setPermissionCheckHandler`) is the silent-check counterpart — without it, code can probe permissions via the synchronous Permissions API without ever firing a request handler. Standard hardening pair.
-
----
-
-## Files touched
-
-| File | Change |
-|---|---|
-| `src/lib/log-retention.ts` | NEW — prune helper |
-| `src/hooks/useCardBootstrap.ts` | +1 import, +1 call after `ensureDbOpen` |
-| `index.html` | +1 `<meta>` at line 7 (Option B) |
-| `main.cjs` | +4 lines after line 207 |
-
-No tests are required by the brief, but I'll add a short smoke test for `pruneAppendOnlyLogs` against a fake-indexeddb instance if you want — say the word.
-
----
-
-## Decision needed before I implement
-
-**CSP path**: confirm **Option B (relaxed meta matching `main.cjs` header, preview stays alive)**, OR ask for the literal strict CSP plus the boot-script extraction refactor. Everything else (log retention + permission lockdown) I'll ship as-is.
+Once you answer, I'll execute the chosen subset in a single pass.
