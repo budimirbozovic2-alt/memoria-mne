@@ -1,5 +1,9 @@
 import type { Card, SourceModule } from "@/lib/spaced-repetition";
 import { detectArticles } from "@/lib/auto-split-engine";
+import { stripHtmlText } from "@/lib/sanitize";
+
+// Re-exported so existing imports from "@/lib/source-coverage" keep working.
+export { stripHtmlText };
 
 export interface CoverageModuleRef {
   id: string;
@@ -22,18 +26,6 @@ export interface CoveredSourceArticle {
   linkedCardIds: string[];
 }
 
-export function stripHtmlText(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 export function normalizeMatchText(text: string): string {
   return stripHtmlText(text).toLowerCase().replace(/\s+/g, " ").trim();
