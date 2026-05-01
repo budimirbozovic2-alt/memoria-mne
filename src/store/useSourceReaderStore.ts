@@ -38,7 +38,6 @@ export interface SplitResultState {
 
 interface SourceReaderState {
   // UI state
-  viewMode: "standard" | "coverage";
   editMode: boolean;
   readerWidth: ReaderWidth;
   outlineOpen: boolean;
