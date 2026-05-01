@@ -439,8 +439,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
         e.preventDefault();
         s.setExamOpen(!s.examOpen);
       } else if (e.key === "Escape") {
-        if (s.essayDialogOpen) s.setEssayDialogOpen(false);
-        else if (s.splitSummaryOpen) { s.setSplitSummaryOpen(false); s.setSplitResult(null); }
+        if (s.splitSummaryOpen) { s.setSplitSummaryOpen(false); s.setSplitResult(null); }
         else if (s.autoSplitOpen) s.setAutoSplitOpen(false);
         else if (s.selection) s.setSelection(null);
       }
