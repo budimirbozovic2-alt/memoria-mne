@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { ExaminerProfile, ExaminerDifficulty, PreferredAnswerType } from "@/lib/db";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
 const NONE = "__none__";
 const NOTES_MAX = 500;
