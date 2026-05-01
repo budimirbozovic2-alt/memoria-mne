@@ -11,11 +11,21 @@ export function getRetrievability(section: Section): number {
   return Math.round(Math.max(0, Math.min(100, r * 100)));
 }
 
+/**
+ * Card-level retrievability surfaces the WORST (lowest) section, not the
+ * mean. A card with sections [95, 95, 20] reports 20 — the failing module
+ * is the actual risk. Averaging hides it.
+ */
 export function getCardRetrievability(card: Card): number {
   if (card.sections.length === 0) return 0;
   const reviewed = card.sections.filter((s) => s.state !== SectionState.New);
   if (reviewed.length === 0) return 0;
-  return Math.round(reviewed.reduce((sum, s) => sum + getRetrievability(s), 0) / reviewed.length);
+  let min = Infinity;
+  for (const s of reviewed) {
+    const r = getRetrievability(s);
+    if (r < min) min = r;
+  }
+  return min === Infinity ? 0 : min;
 }
 
 export function getSectionScore(section: Section): number {
