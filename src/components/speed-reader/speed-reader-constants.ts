@@ -28,11 +28,7 @@ export interface WordEntry {
   segmentIdx: number;
 }
 
-export function stripHtml(html: string): string {
-  const div = document.createElement("div");
-  div.innerHTML = DOMPurify.sanitize(html);
-  return div.textContent || div.innerText || "";
-}
+export { stripHtml } from "@/lib/sanitize";
 
 export function cleanForTTS(text: string): string {
   return text
