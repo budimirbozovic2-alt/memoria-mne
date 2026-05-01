@@ -5,6 +5,9 @@ import {
   getCachedRetention,
   computeAdaptiveModifiers,
   AdaptiveContext,
+  clamp,
+  RETENTION_MIN,
+  RETENTION_MAX,
 } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
