@@ -4,7 +4,7 @@ import { createTextAnchor, type Source } from "@/lib/sources-storage";
 import { incrementDailyMapped } from "@/lib/planner-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { createSection } from "@/lib/spaced-repetition";
-import { analyzeCoverage } from "@/lib/coverage-analysis";
+import { splitSelection, firstWords, type SelectionModule } from "@/lib/selection-split-engine";
 import { splitSelection, firstWords, type SelectionModule } from "@/lib/selection-split-engine";
 import { toast } from "sonner";
 import { useSourceReaderStore } from "@/store/useSourceReaderStore";
