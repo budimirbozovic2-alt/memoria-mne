@@ -407,15 +407,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
-  // ─── Navigate to covered card ───
-  const handleOpenCoveredCard = useCallback((cardId: string) => {
-    const card = cards.find(c => c.id === cardId);
-    if (card) {
-      sessionStorage.setItem("sr-scroll-to-card", cardId);
-      window.location.hash = `#/category/${card.categoryId}`;
-    }
-  }, [cards]);
-
+ 
   // ─── Keyboard shortcuts ───
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
