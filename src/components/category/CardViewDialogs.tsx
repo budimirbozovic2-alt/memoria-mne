@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { type CategoryRecord } from "@/lib/db";
+import type { Card } from "@/lib/spaced-repetition";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import BulkImportDialog from "./BulkImportDialog";
@@ -15,8 +16,8 @@ interface AddDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categoryId: string;
-  addCard: (question: string, sections: { title: string; content: string }[], category: string, subcategory?: string, chapter?: string) => any;
-  addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => any;
+  addCard: (question: string, sections: { title: string; content: string }[], category: string, subcategory?: string, chapter?: string) => Card;
+  addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => Card;
 }
 
 export function AddCardDialog({ open, onOpenChange, categoryId, addCard, addFlashCard }: AddDialogProps) {
@@ -135,7 +136,7 @@ interface BulkImportProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categoryId: string;
-  addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => any;
+  addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => Card;
 }
 
 export function BulkImportWrapper({ open, onOpenChange, categoryId, addFlashCard }: BulkImportProps) {
