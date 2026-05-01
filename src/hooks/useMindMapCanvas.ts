@@ -43,10 +43,10 @@ export function useMindMapCanvas(doc: MindMapDoc) {
     onDuplicateRef.current(id);
   }, []);
 
-  const initialNodes = useMemo(() => doc.nodes.map((n: MindMapNodeRecord) => ({
-    ...n,
+  const initialNodes: Node[] = useMemo(() => doc.nodes.map((n) => ({
+    ...(n as unknown as Node),
     type: "mindMapNode",
-    data: { ...n.data, onUpdate: stableOnUpdate, onDuplicate: stableOnDuplicate },
+    data: { ...(n.data as object), onUpdate: stableOnUpdate, onDuplicate: stableOnDuplicate },
   })), [doc.nodes, stableOnUpdate, stableOnDuplicate]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
