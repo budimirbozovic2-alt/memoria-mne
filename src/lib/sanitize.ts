@@ -8,5 +8,4 @@ export function sanitizeHtml(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [
       "p", "br", "b", "i", "u", "em", "strong", "s", "sub", "sup",
-      "h1", "h2", "h3", "h4", "h5", "h6",
-      "ul", "
+      "h1", "h2", "h3
