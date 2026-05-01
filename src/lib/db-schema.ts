@@ -79,12 +79,17 @@ export interface MindMapNodeData {
   [key: string]: unknown;
 }
 
+// `style` and `label` widened to match @xyflow/react's `Node` / `Edge` shapes
+// so persisted records and live canvas state are mutually assignable without
+// `as any` casts at the IDB boundary.
+import type { CSSProperties, ReactNode } from "react";
+
 export interface MindMapNodeRecord {
   id: string;
   type?: string;
   position: { x: number; y: number };
   data: MindMapNodeData;
-  style?: Record<string, unknown>;
+  style?: CSSProperties;
   [key: string]: unknown;
 }
 
@@ -93,8 +98,8 @@ export interface MindMapEdgeRecord {
   source: string;
   target: string;
   type?: string;
-  label?: string;
-  style?: Record<string, unknown>;
+  label?: ReactNode;
+  style?: CSSProperties;
   animated?: boolean;
   data?: Record<string, unknown>;
   [key: string]: unknown;
