@@ -109,7 +109,7 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
 
   return (
     <>
-      <Tabs value={activeSourceTab} onValueChange={(v) => setActiveSourceTab(v as "propis" | "skripta")} className="w-full">
+      <Tabs value={activeSourceTab} onValueChange={(v) => setActiveSourceTab(v as SourceTabValue)} className="w-full">
         <div className="flex items-center justify-between mb-3">
           <TabsList>
             <TabsTrigger value="propis" className="gap-1.5">
@@ -124,26 +124,35 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
                 {skriptaSources.length}
               </Badge>
             </TabsTrigger>
+            <TabsTrigger value="mape" className="gap-1.5">
+              <MapIcon className="h-3.5 w-3.5" />
+              Mentalne mape
+              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                {mindMaps.length}
+              </Badge>
+            </TabsTrigger>
           </TabsList>
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".docx"
-              className="hidden"
-              onChange={handleDocxImport}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={importing}
-              onClick={() => fileInputRef.current?.click()}
-              className="gap-2"
-            >
-              {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {importing ? "Importujem…" : "Importuj DOCX"}
-            </Button>
-          </div>
+          {activeSourceTab !== "mape" && (
+            <div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx"
+                className="hidden"
+                onChange={handleDocxImport}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={importing}
+                onClick={() => fileInputRef.current?.click()}
+                className="gap-2"
+              >
+                {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {importing ? "Importujem…" : "Importuj DOCX"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {(["propis", "skripta"] as const).map(kind => {
