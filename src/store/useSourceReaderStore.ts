@@ -93,6 +93,8 @@ interface SourceReaderState {
   setLinkSelectedText: (v: string) => void;
   setLinkSelectedHtml: (v: string) => void;
   setExamQuestions: (v: ExamQuestion[] | ((prev: ExamQuestion[]) => ExamQuestion[])) => void;
+  setWizardSubcategoryId: (v: string) => void;
+  setWizardChapterId: (v: string) => void;
   reset: () => void;
 }
 
