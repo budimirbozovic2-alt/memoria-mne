@@ -11,7 +11,6 @@ import { SourceNavigation } from "@/components/source-reader/SourceNavigation";
 import { CoverageStatsBar } from "@/components/source-reader/CoverageStatsBar";
 import { SourceContextMenu } from "@/components/source-reader/SourceContextMenu";
 import { SourceTooltip } from "@/components/source-reader/SourceTooltip";
-import { EssayCreationDialog } from "@/components/source-reader/EssayCreationDialog";
 import { SmartSplitSummaryDialog } from "@/components/source-reader/SmartSplitSummaryDialog";
 
 const AutoSplitDialog = lazy(() => import("@/components/AutoSplitDialog"));
