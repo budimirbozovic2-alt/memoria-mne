@@ -194,11 +194,61 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
     if (open && !splitDone) questionRef.current?.focus();
   }, [open, safeIndex, splitDone]);
 
-  // Single-module synthetic flow: when there are no detected articles, the
-  // wizard shows a streamlined UI (no mode toggle, no module rail, no "Član X"
-  // badge) but still keeps the full preview pipeline.
-  const isSingleModule = total === 1;
-  const isSyntheticSingle = isSingleModule && !!currentModule && !currentModule.articleNum;
+  // Auto-focus the question textarea on step change to keep flow keyboard-driven.
+  // (questionRef declared above)
+
+  // ── Module management (manual add / delete / split) ──────────────────────
+  const updateModule = useCallback(
+    (i: number, patch: Partial<SelectionModule>) => {
+      setSplitModules((prev) => prev.map((m, j) => (j === i ? { ...m, ...patch } : m)));
+    },
+    [setSplitModules],
+  );
+
+  const addNewModule = useCallback(() => {
+    const fresh = createEmptyModule(`Novi modul ${total + 1}`);
+    setSplitModules((prev) => [...prev, fresh]);
+    setSplitEdits((prev) => [...prev, defaultEdit(fresh)]);
+    setStepIndex(total); // jump to the new one (its index = old total)
+  }, [total, setSplitModules, setSplitEdits, setStepIndex]);
+
+  const deleteModule = useCallback(
+    (i: number) => {
+      if (total <= 1) return; // never let it go to zero
+      setSplitModules((prev) => prev.filter((_, j) => j !== i));
+      setSplitEdits((prev) => prev.filter((_, j) => j !== i));
+      setStepIndex((s) => Math.max(0, s >= i ? s - 1 : s));
+    },
+    [total, setSplitModules, setSplitEdits, setStepIndex],
+  );
+
+  const [splitPopoverOpen, setSplitPopoverOpen] = useState(false);
+  const [customDelimiter, setCustomDelimiter] = useState("---");
+
+  const performSplit = useCallback(
+    (mode: "blank-line" | "article" | "custom") => {
+      if (!currentModule) return;
+      const delim = mode === "custom" ? { custom: customDelimiter } : mode;
+      const pieces = splitModuleByDelimiter(currentModule, delim);
+      if (pieces.length <= 1) return;
+      setSplitModules((prev) => {
+        const out = [...prev];
+        out.splice(safeIndex, 1, ...pieces);
+        return out;
+      });
+      setSplitEdits((prev) => {
+        const out = [...prev];
+        out.splice(safeIndex, 1, ...pieces.map((p) => defaultEdit(p)));
+        return out;
+      });
+      setSplitPopoverOpen(false);
+    },
+    [currentModule, customDelimiter, safeIndex, setSplitModules, setSplitEdits],
+  );
+
+  // Rail is always shown so the user can add modules even when starting from
+  // a single synthetic module. Mode toggle only appears once N > 1.
+  const showModeToggle = total > 1;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
