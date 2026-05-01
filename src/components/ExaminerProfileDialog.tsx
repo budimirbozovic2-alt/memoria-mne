@@ -34,6 +34,20 @@ export default function ExaminerProfileDialog({ open, onOpenChange, categoryName
     }
   }, [open, initialProfile]);
 
+  const initialDifficulty = initialProfile?.difficulty ?? NONE;
+  const initialAnswerType = initialProfile?.preferredAnswerType ?? NONE;
+  const initialNotes = initialProfile?.notes ?? "";
+
+  const isDirty = useMemo(
+    () => difficulty !== initialDifficulty || answerType !== initialAnswerType || notes !== initialNotes,
+    [difficulty, answerType, notes, initialDifficulty, initialAnswerType, initialNotes],
+  );
+
+  const { pendingClose, requestClose, cancelClose, confirmDiscard } = useDirtyDialog(
+    isDirty,
+    () => onOpenChange(false),
+  );
+
   const handleSave = () => {
     const trimmed = notes.trim().slice(0, NOTES_MAX);
     const profile: ExaminerProfile = {
@@ -47,8 +61,12 @@ export default function ExaminerProfileDialog({ open, onOpenChange, categoryName
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={(o) => { if (!o) requestClose(); else onOpenChange(true); }}>
+      <DialogContent
+        className="sm:max-w-md"
+        onPointerDownOutside={(e) => { if (isDirty) { e.preventDefault(); requestClose(); } }}
+        onEscapeKeyDown={(e) => { if (isDirty) { e.preventDefault(); requestClose(); } }}
+      >
         <DialogHeader>
           <DialogTitle>Informacije o predmetu</DialogTitle>
           <DialogDescription>
@@ -100,9 +118,16 @@ export default function ExaminerProfileDialog({ open, onOpenChange, categoryName
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Otkaži</Button>
+          <Button variant="ghost" onClick={() => requestClose()}>Otkaži</Button>
           <Button onClick={handleSave}>Sačuvaj</Button>
         </DialogFooter>
+
+        <DirtyConfirmBar
+          open={pendingClose}
+          onCancel={cancelClose}
+          onDiscard={confirmDiscard}
+          onSave={async () => { handleSave(); }}
+        />
       </DialogContent>
     </Dialog>
   );
