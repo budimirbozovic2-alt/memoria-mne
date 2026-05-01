@@ -201,10 +201,17 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
     onClose();
   }, [diffPending, bulkFlagNeedsReview, onSourceUpdated, onClose]);
 
+  const isDirty = dirty || newText.trim().length > 0;
+  const { pendingClose, requestClose, cancelClose, confirmDiscard } = useDirtyDialog(isDirty, onClose);
+
   return (
     <>
-      <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-        <DialogContent className="max-w-lg">
+      <Dialog open onOpenChange={(open) => { if (!open) requestClose(); }}>
+        <DialogContent
+          className="max-w-lg"
+          onPointerDownOutside={(e) => { if (isDirty) { e.preventDefault(); requestClose(); } }}
+          onEscapeKeyDown={(e) => { if (isDirty) { e.preventDefault(); requestClose(); } }}
+        >
           <DialogHeader>
             <DialogTitle>Uredi metapodatke izvora</DialogTitle>
           </DialogHeader>
