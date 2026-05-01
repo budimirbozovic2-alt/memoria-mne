@@ -130,8 +130,8 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
             errors.push(`Kartica na indeksu ${i} nema validan UUID (id).`);
             break;
           }
-          if (c.categoryId && !isValidUUID(c.categoryId)) {
-            errors.push(`Kartica '${c.question?.substring(0, 15)}...' ima neispravan categoryId UUID.`);
+          if (c.categoryId !== undefined && !isValidUUID(c.categoryId)) {
+            errors.push(`Kartica '${String(c.question ?? '').substring(0, 15)}...' ima neispravan categoryId UUID.`);
             break;
           }
           if (!Array.isArray(c.sections)) {
@@ -183,8 +183,8 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
         if (!skipFKCheck && importedCards.length > 0) {
           for (let i = 0; i < importedCards.length; i++) {
             const c = importedCards[i];
-            if (c.categoryId && !validCategoryIds.has(c.categoryId)) {
-              errors.push(`Kartica '${c.question?.substring(0,15)}...' pripada predmetu koji ne postoji u bazi ni u fajlu.`);
+            if (typeof c.categoryId === 'string' && !validCategoryIds.has(c.categoryId)) {
+              errors.push(`Kartica '${String(c.question ?? '').substring(0,15)}...' pripada predmetu koji ne postoji u bazi ni u fajlu.`);
               break;
             }
           }
@@ -205,7 +205,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
 
       const freshCards = await db.cards.toArray();
       const existingIds = new Set(freshCards.map(c => c.id));
-      const duplicateCount = importedCards.filter(c => existingIds.has(c.id)).length;
+      const duplicateCount = importedCards.filter(c => typeof c.id === 'string' && existingIds.has(c.id)).length;
 
       // Category conflict detection (reuse existingCats from above)
       const existingCatIds = new Set(existingCats.map(c => c.id));
@@ -222,7 +222,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
         totalCards: importedCards.length,
         totalCategories: Array.isArray(parsed.categories) ? parsed.categories.length : 0,
         hasProgress: parsed.type === "full",
-        type: parsed.type || "unknown",
+        type: (typeof parsed.type === 'string' ? parsed.type : "unknown"),
         fileSizeKB: Math.round(file.size / 1024),
         duplicateCount,
         duplicateCategoryCount,
