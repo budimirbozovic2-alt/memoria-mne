@@ -516,7 +516,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
       handleFormatSelectionAs,
       handleContextMenu,
       scrollToHeading,
-      handleOpenCoveredCard,
+      
       handleInlineFormat,
       handleEditInput,
       handleAutoFormatArticles,
