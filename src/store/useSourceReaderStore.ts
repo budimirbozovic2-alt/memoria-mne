@@ -143,8 +143,6 @@ export const useSourceReaderStore = create<SourceReaderState>((set, get) => ({
   setExamOpen: (v) => set({ examOpen: v }),
   setSelection: (s) => set({ selection: s }),
   setHeadingMenu: (m) => set({ headingMenu: m }),
-  setEssayDialogOpen: (v) => set({ essayDialogOpen: v }),
-  setEssayQuestion: (v) => set({ essayQuestion: v }),
   setSelectedText: (v) => set({ selectedText: v }),
   setSelectedHtml: (v) => set({ selectedHtml: v }),
   setAutoSplitOpen: (v) => set({ autoSplitOpen: v }),
