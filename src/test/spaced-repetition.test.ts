@@ -66,12 +66,13 @@ describe("calculateInterval", () => {
 // ─── calculateNextReview (state machine) ─────────────────
 
 describe("calculateNextReview", () => {
-  it("New + grade 1 → Learning, stability 0.1, lapses +1", () => {
+  it("New + grade 1 → Learning, stability 0.1, lapses NOT incremented (first exposure)", () => {
     const s = makeSection({ state: SectionState.New });
     const r = calculateNextReview(s, 1, 0.9);
     expect(r.state).toBe(SectionState.Learning);
     expect(r.stability).toBe(0.1);
-    expect(r.lapses).toBe(1);
+    // Lapses must only count Review→Relearning. New cards get a free pass.
+    expect(r.lapses).toBe(0);
   });
 
   it("New + grade 3 → Learning + firstReviewPending, 15min delay", () => {
@@ -86,15 +87,16 @@ describe("calculateNextReview", () => {
     expect(delayMs).toBeLessThanOrEqual(16 * 60 * 1000);
   });
 
-  it("New + grade 4 → Learning + firstReviewPending, 20min delay", () => {
+  it("New + grade 4 → graduates immediately to Review (no learning step)", () => {
     const s = makeSection({ state: SectionState.New });
     const before = Date.now();
     const r = calculateNextReview(s, 4, 0.9);
-    expect(r.state).toBe(SectionState.Learning);
-    expect(r.firstReviewPending).toBe(true);
+    expect(r.state).toBe(SectionState.Review);
+    expect(r.firstReviewPending).toBe(false);
+    expect(r.stability).toBe(7); // INITIAL_VALUES[4]
+    // Interval should be multiple days, not 20min.
     const delayMs = r.nextReview! - before;
-    expect(delayMs).toBeGreaterThanOrEqual(19 * 60 * 1000);
-    expect(delayMs).toBeLessThanOrEqual(21 * 60 * 1000);
+    expect(delayMs).toBeGreaterThan(24 * 60 * 60 * 1000);
   });
 
   it("Learning + grade 1 → stays Learning", () => {
