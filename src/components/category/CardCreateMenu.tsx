@@ -60,6 +60,7 @@ export default function CardCreateMenu({
   allCategoryNames,
   addCard,
   addFlashCard,
+  bulkAddFlashCards,
   importEssays,
   size = "compact",
 }: Props) {
