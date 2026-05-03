@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card } from "@/lib/spaced-repetition";
 import { recordAppEntry } from "@/lib/metacognitive-storage";
 import { useCardOnlyActions } from "../cards/CardProvider";
 import { useCurrentView, VIEW_TO_PATH, type View } from "../routing/useCurrentView";
@@ -10,8 +9,9 @@ import { useActivityTracker } from "./useActivityTracker";
 interface UIContextValue {
   view: View;
   setView: (v: View) => void;
-  editingCard: Card | null;
-  setEditingCard: (c: Card | null) => void;
+  /** UUID-only edit target. EditPage resolves the live Card from cardMap on render. */
+  editingCardId: string | null;
+  setEditingCardId: (id: string | null) => void;
   handleToggleTag: (cardId: string, tag: string) => void;
 }
 
@@ -20,8 +20,8 @@ const UIContext = createContext<UIContextValue | null>(null);
 const UI_FALLBACK: UIContextValue = {
   view: "dashboard" as View,
   setView: () => {},
-  editingCard: null,
-  setEditingCard: () => {},
+  editingCardId: null,
+  setEditingCardId: () => {},
   handleToggleTag: () => {},
 };
 
