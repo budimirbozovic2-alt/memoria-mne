@@ -297,7 +297,9 @@ export function useCardBootstrap(setters: BootSetters) {
         markBootStep("cards:data-load-done", `${c.length} cards`);
 
         if (import.meta.env.DEV) console.log("[boot:diag] setting state — cards:", c.length, "categories:", finalRecords.length);
-        setCardMapState(arrayToMap(c));
+        const initialMap = arrayToMap(c);
+        cardMapRef.current = initialMap; // Seed Ref-Delta mirror once at boot
+        setCardMapState(initialMap);
         bumpMapVersion();
         setCategoryRecordsState(finalRecords);
         setReviewLogState(log);
