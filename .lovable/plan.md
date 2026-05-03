@@ -1,184 +1,161 @@
 ## Cilj
 
-Razdvojiti **kreiranje kartica** od **filtera/pregleda** u "Pregled i uređivanje kartica", i centralizovati 4 creation flow-a u jedan **Dodaj** dropdown postavljen pored segmentnog prekidača "Pregled i uređivanje" / "Struktura i raspored".
+Dodati parser za masovni uvoz jednostranih blic kartica koji koristi `P:` / `O:` prefikse, sa potpunim multi-line podrškom za odgovore, i integrisati ga u postojeći `BulkImportDialog` (target koji `MassFlashImportTrigger` već adresira).
 
-## Fajlovi koji se mijenjaju / kreiraju
+## Fajlovi
 
-1. **NOVO** `src/components/category/CardCreateMenu.tsx` — `DropdownMenu` sa 4 stavke; renderuje sve potrebne dijaloge interno; kontroliše svoj state.
-2. **NOVO** `src/components/category/MassFlashImportTrigger.tsx` — tanki wrapper oko `BulkImportDialog`. Modularna izolacija da se u sljedećoj iteraciji target lako zamijeni "Wizardom" — `CardCreateMenu` zna samo za ovaj wrapper, ne za `BulkImportDialog`.
-3. **EDIT** `src/components/category/CardViewFilterBar.tsx` — uklanja se `Plus`/`Upload` ikone, props `onBulkImport`, `onAddCard`, i oba dugmeta ("Nova kartica", "Masovni Import"). Filter postaje strogo read-only/filter površina.
-4. **EDIT** `src/components/category/CardViewMode.tsx` — uklanjaju se `addDialogOpen`, `bulkImportOpen`, `AddCardDialog`, `BulkImportWrapper` render i odgovarajući props na `CardViewFilterBar`. Ostaje samo "empty-state" CTA (jedno dugme, otvara `AddCardDialog` lokalno) — ovo je read-only fallback i nije u filter baru.
-5. **EDIT** `src/components/category/CardViewDialogs.tsx` — `AddCardDialog` dobija opcioni `defaultMode?: "essay" | "flash"` (default ostaje `"flash"`) da bi "Dodaj esej" odmah otvorio dijalog u esej-modu, "Dodaj blic pitanje" u flash-modu.
-6. **EDIT** `src/views/SubjectCardsView.tsx` — između segmentnog prekidača (`MANAGE_MODES`) i dugmeta "Uredi potkategorije i glave" ubacuje `<CardCreateMenu categoryId=... addCard=... addFlashCard=... allCategoryNames=... importCards=... />`. Ovo je vidljivo u oba moda (Edit i Structure), pošto je primarna akcija na nivou tab-a.
+1. **NOVO** `src/lib/flashcard-parser.ts` — čista utility funkcija `parseFlashcards`, bez React zavisnosti, lako testabilna i kasnije iskoristiva u Wizardu.
+2. **NOVO** `src/lib/__tests__/flashcard-parser.test.ts` — Vitest testovi za sve ključne slučajeve (case-insensitivity, multi-line, prazni blokovi, missing P/O).
+3. **EDIT** `src/components/category/BulkImportDialog.tsx` — dodaje treći "P:/O:" format kao **primarni** put (auto-detect), zadržava postojeća dva (`;` i prazan-red) radi backward kompatibilnosti. Auto-detekcija: ako tekst sadrži marker `^\s*[Pp]\s*:` i `^\s*[Oo]\s*:` u multilineu → koristi `parseFlashcards`. Inače fallback na trenutnu heuristiku.
 
-## CardCreateMenu — struktura
+## Parser — `src/lib/flashcard-parser.ts`
 
-```tsx
-// src/components/category/CardCreateMenu.tsx
-import { useState } from "react";
-import { Plus, Pencil, Sparkles, FileText, Upload, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { AddCardDialog } from "./CardViewDialogs";
-import MassFlashImportTrigger from "./MassFlashImportTrigger";
-import DocxImporter from "@/components/DocxImporter";
-import type { Card } from "@/lib/spaced-repetition";
-
-interface Props {
-  categoryId: string;
-  allCategoryNames: string[];
-  addCard: (q: string, sections: { title: string; content: string }[], cat: string, sub?: string, ch?: string) => Card;
-  addFlashCard: (q: string, a: string, cat: string, sub?: string) => Card;
-  importEssays: (cards: { question: string; sections: { title: string; content: string }[] }[], category: string) => void;
+```ts
+/**
+ * Mass-import parser for single-sided flashcards using P:/O: prefixes.
+ *   P: Pitanje (Question)
+ *   O: Odgovor (Answer)
+ *
+ * Rules:
+ *   1. Prefixes are stripped from the output (case-insensitive).
+ *   2. Answer bodies span multiple lines until the next P: marker or EOF.
+ *   3. question/answer are .trim()-ed.
+ *   4. Blocks missing either side are silently skipped.
+ */
+export interface ParsedFlashcard {
+  question: string;
+  answer: string;
 }
 
-export default function CardCreateMenu({
-  categoryId, allCategoryNames, addCard, addFlashCard, importEssays,
-}: Props) {
-  const [addOpen, setAddOpen]   = useState(false);
-  const [addMode, setAddMode]   = useState<"essay" | "flash">("flash");
-  const [docxOpen, setDocxOpen] = useState(false);
-  const [bulkFlashOpen, setBulkFlashOpen] = useState(false);
+const MARKER_RE = /^[ \t]*([PpOo])[ \t]*:[ \t]*(.*)$/;
 
-  const open = (mode: "essay" | "flash") => { setAddMode(mode); setAddOpen(true); };
+export function parseFlashcards(input: string): ParsedFlashcard[] {
+  if (!input || typeof input !== "string") return [];
+
+  const lines = input.split(/\r?\n/);
+  const out: ParsedFlashcard[] = [];
+
+  let curQ: string[] | null = null;
+  let curA: string[] | null = null;
+  let mode: "q" | "a" | null = null;
+
+  const flush = () => {
+    if (curQ && curA) {
+      const q = curQ.join("\n").trim();
+      const a = curA.join("\n").trim();
+      if (q && a) out.push({ question: q, answer: a });
+    }
+    curQ = null; curA = null; mode = null;
+  };
+
+  for (const rawLine of lines) {
+    const m = MARKER_RE.exec(rawLine);
+    if (m) {
+      const kind = m[1].toLowerCase() as "p" | "o";
+      const rest = m[2];
+      if (kind === "p") {
+        flush();                  // close previous pair (if any)
+        curQ = [rest];
+        mode = "q";
+      } else {
+        if (curQ === null) continue;   // stray O: without preceding P:
+        curA = [rest];
+        mode = "a";
+      }
+      continue;
+    }
+    // Continuation line → append verbatim to active buffer (preserves
+    // internal blank lines inside multi-paragraph answers).
+    if (mode === "a" && curA) curA.push(rawLine);
+    else if (mode === "q" && curQ) curQ.push(rawLine);
+  }
+  flush();
+  return out;
+}
+```
+
+### Edge cases pokriveni testovima
+
+- `P: ...\nO: ...` jedan par → 1 rezultat, bez prefixa
+- `p:` / `o:` lowercase → radi
+- `O:` višeparagrafni odgovor sa praznim redovima i `\n` unutar → očuvano
+- `P:` bez pratećeg `O:` → ignorisano
+- Tekst prije prvog `P:` → ignorisan
+- Stray `O:` bez prethodnog `P:` → ignorisan
+- Whitespace oko prefiksa (` P: `, `P :`) → tolerisano
+
+## Stand-alone komponenta (po specifikaciji)
+
+Dodatno, kao referentna mini-komponenta koju možemo lako prebaciti u budući Wizard:
+
+```tsx
+// src/components/category/FlashcardImportPanel.tsx
+import { useState } from "react";
+import { Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { parseFlashcards, type ParsedFlashcard } from "@/lib/flashcard-parser";
+
+interface Props {
+  onImport: (cards: ParsedFlashcard[]) => void;
+}
+
+export default function FlashcardImportPanel({ onImport }: Props) {
+  const [raw, setRaw] = useState("");
+
+  const handleImport = () => {
+    const parsed = parseFlashcards(raw);
+    if (parsed.length === 0) return;
+    onImport(parsed);
+    setRaw("");
+  };
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="sm" className="h-8 gap-1.5 text-xs">
-            <Plus className="h-3.5 w-3.5" /> Dodaj
-            <ChevronDown className="h-3 w-3 opacity-70" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">
-            Pojedinačno
-          </DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => open("essay")}>
-            <Pencil className="h-3.5 w-3.5 mr-2" /> Dodaj esej
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => open("flash")}>
-            <Sparkles className="h-3.5 w-3.5 mr-2" /> Dodaj blic pitanje
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuLabel className="text-[10px] uppercase tracking-wider">
-            Masovni uvoz
-          </DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => setDocxOpen(true)}>
-            <FileText className="h-3.5 w-3.5 mr-2" /> Masovni uvoz eseja
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setBulkFlashOpen(true)}>
-            <Upload className="h-3.5 w-3.5 mr-2" /> Masovni uvoz blic pitanja
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      <AddCardDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        categoryId={categoryId}
-        addCard={addCard}
-        addFlashCard={addFlashCard}
-        defaultMode={addMode}
+    <div className="space-y-3">
+      <Textarea
+        value={raw}
+        onChange={e => setRaw(e.target.value)}
+        rows={12}
+        placeholder={"P: Šta je ugovor?\nO: Saglasnost volja dviju strana...\n\nP: Šta je hipoteka?\nO: Založno pravo na nekretnini."}
+        className="font-mono text-xs"
       />
-
-      {docxOpen && (
-        <DocxImporter
-          open={docxOpen}
-          onClose={() => setDocxOpen(false)}
-          categories={allCategoryNames}
-          onImport={(cards, cat, type) => {
-            if (type === "flash") {
-              cards.forEach(c =>
-                addFlashCard(c.question, c.sections.map(s => s.content).join("\n"), cat),
-              );
-            } else {
-              importEssays(cards, cat);
-            }
-            setDocxOpen(false);
-          }}
-        />
-      )}
-
-      <MassFlashImportTrigger
-        open={bulkFlashOpen}
-        onOpenChange={setBulkFlashOpen}
-        categoryId={categoryId}
-        addFlashCard={addFlashCard}
-      />
-    </>
+      <Button onClick={handleImport} disabled={!raw.trim()} className="w-full gap-2">
+        <Upload className="h-4 w-4" /> Uvezi
+      </Button>
+    </div>
   );
 }
 ```
 
-`MassFlashImportTrigger` je trivijalan re-export sloj:
-```tsx
-// src/components/category/MassFlashImportTrigger.tsx
-import BulkImportDialog from "./BulkImportDialog";
-// Buduća iteracija: zamijeniti BulkImportDialog višestepenim Wizardom.
-export default function MassFlashImportTrigger(props) { return <BulkImportDialog {...props} />; }
+## Integracija u `BulkImportDialog`
+
+Unutar `analyze()` callback-a, dodati prvo granu:
+
+```ts
+// 0) P:/O: prefiksni format — najprecizniji, primarni put
+if (/^[ \t]*[Pp][ \t]*:/m.test(trimmed) && /^[ \t]*[Oo][ \t]*:/m.test(trimmed)) {
+  setParsed(parseFlashcards(trimmed));
+  return;
+}
+// 1) ... postojeći semicolon path
+// 2) ... postojeći blank-line path
 ```
 
-## Diff za `CardViewFilterBar.tsx` (dokaz dekupliranja)
-
-```diff
--import { Filter, X, Plus, Upload, CheckSquare } from "lucide-react";
-+import { Filter, X, CheckSquare } from "lucide-react";
-@@
- interface Props {
-   ...
-   selectionMode: boolean;
-   onToggleSelectionMode: () => void;
--  onBulkImport: () => void;
--  onAddCard: () => void;
-   onDelete?: (id: string) => void;
- }
-@@
--  selectionMode, onToggleSelectionMode,
--  onBulkImport, onAddCard, onDelete,
-+  selectionMode, onToggleSelectionMode, onDelete,
- }: Props) {
-@@
-         {onDelete && ( ... selekcija ... )}
--        <Button variant="outline" size="sm" onClick={onBulkImport} className="h-7 gap-1.5 text-xs">
--          <Upload className="h-3.5 w-3.5" /> Masovni Import
--        </Button>
--        <Button variant="default" size="sm" onClick={onAddCard} className="h-7 gap-1.5 text-xs">
--          <Plus className="h-3.5 w-3.5" /> Nova kartica
--        </Button>
-       </div>
-```
-
-## Integracija u `SubjectCardsView.tsx`
-
-Pored postojećeg `inline-flex` segmented switcha (linija ~265) i dugmeta "Uredi potkategorije i glave", umetnuti:
+Placeholder textarea ažurirati da promovira novi format kao preporučeni:
 
 ```tsx
-<CardCreateMenu
-  categoryId={categoryId!}
-  allCategoryNames={categoryRecords.map(c => c.name)}
-  addCard={addCard}
-  addFlashCard={addFlashCard}
-  importEssays={(cards, cat) => importCards(cards, cat)}
-/>
+placeholder={"P: Šta je ugovor?\nO: Saglasnost volja dviju strana o nastanku, izmjeni ili prestanku obligacionog odnosa.\n\nP: Šta je hipoteka?\nO: Založno pravo na nekretnini."}
 ```
 
-`importCards` se uzima iz `useBackupActions()` (isti pattern kao postojeći `DocxImporterWrapper` u `MainLayout`). Time se DocxImporter više ne zove iz `MainLayout` u kontekstu predmeta — `MainLayout` instanca se može sačuvati za globalni uvoz iz sidebar-a (van scope-a ovog refactora).
+I dodati red u "format" hint:
 
-## Cleanup u `CardViewMode.tsx`
-
-- Obrisati state `addDialogOpen`, `bulkImportOpen`.
-- Obrisati `<AddCardDialog />` i `<BulkImportWrapper />` na dnu.
-- Obrisati `onBulkImport` / `onAddCard` props na `<CardViewFilterBar />`.
-- Empty-state CTA: zadržati JEDNO "Nova kartica" dugme koje renderuje lokalni `AddCardDialog` samo kada je lista prazna (UX: korisnik bez kartica ne mora prvo otvarati gornji meni).
+```tsx
+Format (preporučeno): redovi koji počinju sa <code>P:</code> (pitanje) i <code>O:</code> (odgovor); odgovor može imati više pasusa.
+```
 
 ## Verifikacija
 
-- Filter bar nema više `Plus`/`Upload` ikone niti props (`rg "onAddCard|onBulkImport" src` → 0 hitova).
-- "Dodaj" dropdown ima tačno 4 stavke; svaka pokreće postojeći flow.
-- `MassFlashImportTrigger` je jedina tačka koja zna za `BulkImportDialog` — buduća zamjena je 1-line edit.
-- Provjera: render `SubjectCardsView`, kliknuti svaku od 4 stavke, potvrditi da se otvara odgovarajući dijalog/komponenta.
+- `npm run test -- flashcard-parser` zelen
+- Ručno: nalijepiti uzorak sa 3 P:/O: para gdje 2. odgovor ima prazan red i grafički zalomljen tekst → prikazano 3 kartice, prefiksi nigdje ne ostaju
+- `rg "P:|O:" ` u rezultatima `parsed` → 0 hitova (grep test)
+- Backward compat: `;`-format i blank-line format i dalje rade neizmijenjeno
