@@ -75,9 +75,8 @@ export interface DiaryEntry {
 //                                      htjeli ručno snimiti samoprocjenu); trenutno NEMA aktivnog pozivaoca
 //   - `getCalibrationStats(entries)` — agregacija za prikaz
 //
-// UKLONJENO (nemoj ih ponovo uvoditi bez jasne potrebe):
-//   - `loadCalibrationForCardIds(ids)` — filtriranje keša po ID-evima kartica
-//   - `saveCalibration(entries)`       — bulk overwrite keša/baze
+// (Ranije uklonjeni bulk/per-card calibration helperi su namjerno izostavljeni
+// iz dokumentacije da ne posluže kao "podsjetnik" za reintrodukciju.)
 
 /**
  * Zapis o kalibraciji samoprocjene (confidence) vs. stvarne ocjene (actualGrade).
