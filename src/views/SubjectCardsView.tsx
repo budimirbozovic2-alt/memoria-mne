@@ -55,7 +55,7 @@ export default function SubjectCardsView() {
     reorderSubcategories, reorderChapters,
   } = useCategoryActions();
   const { setEditingCard } = useUIContext();
-  const { importCards } = useBackupActions();
+  
 
   const category = useMemo(
     () => categoryRecords.find(c => c.id === categoryId) ?? null,
