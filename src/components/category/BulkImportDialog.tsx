@@ -37,6 +37,46 @@ interface ParsedPair { question: string; answer: string }
 export default function BulkImportDialog({ open, onOpenChange, categoryId, addFlashCard }: Props) {
   const [raw, setRaw] = useState("");
   const [parsed, setParsed] = useState<ParsedPair[] | null>(null);
+  const [templates, setTemplates] = useState<FlashcardImportTemplate[]>([]);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+
+  // Refresh template list whenever the dialog opens.
+  useEffect(() => {
+    if (open) setTemplates(listTemplates());
+  }, [open]);
+
+  // P:/O: shape detector — controls visibility of the "Sačuvaj šablon" action.
+  const looksLikePOFormat = useMemo(
+    () =>
+      /^[ \t]*[Pp][ \t]*:/m.test(raw) && /^[ \t]*[Oo][ \t]*:/m.test(raw),
+    [raw],
+  );
+
+  const handleLoadTemplate = useCallback((tpl: FlashcardImportTemplate) => {
+    setRaw(tpl.body);
+    setParsed(null);
+    toast.success(`Učitan šablon "${tpl.name}"`);
+  }, []);
+
+  const handleSaveTemplate = useCallback(() => {
+    const rec = saveTemplate(saveName, raw);
+    if (!rec) {
+      toast.error("Nije moguće sačuvati", { description: "Naziv i tekst su obavezni." });
+      return;
+    }
+    setTemplates(listTemplates());
+    setSaveName("");
+    setSaveOpen(false);
+    toast.success(`Šablon "${rec.name}" sačuvan`);
+  }, [saveName, raw]);
+
+  const handleDeleteTemplate = useCallback((id: string, name: string) => {
+    deleteTemplate(id);
+    setTemplates(listTemplates());
+    toast.message(`Obrisan šablon "${name}"`);
+  }, []);
+
 
   const analyze = useCallback(() => {
     // Supported formats (auto-detected, in priority order):
