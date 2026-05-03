@@ -54,16 +54,9 @@ export interface DiaryEntry {
   createdAt: number;
 }
 
-export function loadDiary(): DiaryEntry[] {
-  return _diaryCache;
-}
-
-export function saveDiary(entries: DiaryEntry[]) {
-  _diaryCache = entries;
-  if (entries.length > 0) {
-    db.diary.bulkPut(entries).catch((e) => console.warn("[silent]", e));
-  }
-}
+// NOTE: `loadDiary` / `saveDiary` su uklonjeni 2026-05 — nisu imali pozivaoca.
+// `DiaryEntry` interfejs i `_diaryCache` su zadržani jer ih `db-schema.ts`
+// koristi za tipiziranje `db.diary` tabele i očuvanje istorijskih zapisa.
 
 
 // ─── Calibration (confidence before reveal) ──────────────
