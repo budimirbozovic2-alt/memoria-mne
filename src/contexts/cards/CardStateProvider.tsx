@@ -90,7 +90,7 @@ export function useCategoryStatsData() {
 // ─── Internals exposed to action providers ───
 interface CardStateInternals {
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
-  cardMapRef: React.MutableRefObject<CardMap>;
+  cardMapRef: CardMapRefFacade;
   /** Canonical review log mutation: updates state AND queues DB persist */
   commitReviewEntry: (entry: ReviewLogEntry) => void;
   /** Bulk commit for multiple entries (e.g., session flush) */
