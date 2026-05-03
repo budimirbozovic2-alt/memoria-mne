@@ -3,12 +3,13 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Card } from "@/lib/spaced-repetition";
 import { type CategoryRecord, type SubcategoryNode } from "@/lib/db";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import CardViewTable from "./CardViewTable";
 import CardViewFilterBar from "./CardViewFilterBar";
 import SubjectHierarchyTree from "./SubjectHierarchyTree";
-import { AddCardDialog, MoveCardDialog } from "./CardViewDialogs";
+import { MoveCardDialog } from "./CardViewDialogs";
+import CardCreateMenu from "./CardCreateMenu";
+import { useBackupActions } from "@/contexts/AppContext";
 import { useCardViewFilters, type FilterTypeValue } from "@/hooks/useCardViewFilters";
 
 export interface CardViewFiltersSnapshot {
