@@ -197,7 +197,9 @@ export function recordFirstAction() {
     const slippageEntry: SlippageEntry = { date: today, appEntryTime: _appEntry.time, firstActionTime: Date.now(), slippageMs };
     _slippageCache = [..._slippageCache, slippageEntry];
     db.slippageLog.add(slippageEntry).catch((e) => console.warn("[silent]", e));
-  } catch {}
+  } catch (err) {
+    console.warn("[metacognitive] recordFirstAction failed", err);
+  }
 }
 
 export function loadSlippageLog(): SlippageEntry[] {
