@@ -127,6 +127,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
           allCategoryNames={allCategoryNames}
           addCard={addCard}
           addFlashCard={addFlashCard}
+          bulkAddFlashCards={bulkAddFlashCards}
           importEssays={importCards}
         />
       </div>
