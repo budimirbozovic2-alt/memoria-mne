@@ -103,6 +103,16 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
     }
   }, [restoreSnapshot?.cardId, sortedCards, currentIndex]);
 
+  // Publish state to parent for edit-return snapshot building.
+  useEffect(() => {
+    onSessionStateChange?.({
+      started, selectedCategory, selectedSubcategory, selectedChapter,
+      sortMode, filterType, frequencyFilter, filterExamFrequent,
+      currentIndex, viewWidth,
+      cardId: card?.id,
+    });
+  }, [onSessionStateChange, started, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterType, frequencyFilter, filterExamFrequent, currentIndex, viewWidth, card?.id]);
+
   const updateProgress = useCallback((cardId: string, update: Partial<LearnCardProgress>) => {
     setProgress(prev => {
       const existing = prev[cardId] || { mode: "active-recall" as const, currentModule: 0, completedModules: [], chainPosition: 0, phase: "preview" as const, completed: false };
