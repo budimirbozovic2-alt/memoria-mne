@@ -207,32 +207,32 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
   useEffect(() => { setCuttingIndex(null); }, [total]);
 
   const performManualCut = useCallback(
-    (moduleIdx: number, paraIdx: number) => {
+    (moduleIdx: number, blockIdx: number) => {
       const mod = splitModules[moduleIdx];
       if (!mod) return;
-      const parts = splitTextByParagraphs(mod.contentText);
-      if (paraIdx <= 0 || paraIdx >= parts.length) return;
+      const blocks = splitHtmlIntoBlocks(mod.contentHtml);
+      if (blockIdx <= 0 || blockIdx >= blocks.length) return;
 
-      const beforeText = parts.slice(0, paraIdx).join("\n\n");
+      const beforeHtml = joinHtmlBlocks(blocks.slice(0, blockIdx));
+      const afterHtml = joinHtmlBlocks(blocks.slice(blockIdx));
       const newTitle =
-        parts[paraIdx].replace(/\s+/g, " ").trim().slice(0, 200) || "Novi modul";
-      const afterText = parts.slice(paraIdx + 1).join("\n\n");
+        htmlToPlain(blocks[blockIdx]).replace(/\s+/g, " ").trim().slice(0, 200) || "Novi modul";
 
       const newModule: SelectionModule = {
         articleNum: "",
         title: newTitle,
-        contentText: afterText,
-        contentHtml: plainTextToHtml(afterText),
-        plainSnippet: afterText.trim() || newTitle,
+        contentText: htmlToPlain(afterHtml),
+        contentHtml: afterHtml,
+        plainSnippet: htmlToPlain(afterHtml).trim() || newTitle,
       };
 
       setSplitModules((prev) => {
         const out = [...prev];
         out[moduleIdx] = {
           ...out[moduleIdx],
-          contentText: beforeText,
-          contentHtml: plainTextToHtml(beforeText),
-          plainSnippet: beforeText.trim() || out[moduleIdx].title,
+          contentText: htmlToPlain(beforeHtml),
+          contentHtml: beforeHtml,
+          plainSnippet: htmlToPlain(beforeHtml).trim() || out[moduleIdx].title,
         };
         out.splice(moduleIdx + 1, 0, newModule);
         return out;
