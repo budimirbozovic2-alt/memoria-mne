@@ -359,8 +359,8 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   }, [aggregate.perCatAccum, categories]);
 
   const cardState = useMemo<CardStateContextValue>(() => ({
-    cards, dueCards, stats, cardCountByCategory, buckets, ready, dbError,
-  }), [cards, dueCards, stats, cardCountByCategory, buckets, ready, dbError]);
+    cards, dueCards, stats, cardCountByCategory, buckets, ready,
+  }), [cards, dueCards, stats, cardCountByCategory, buckets, ready]);
 
   const reviewState = useMemo<ReviewStateContextValue>(() => ({
     reviewLog, srSettings,
@@ -382,16 +382,14 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <DbErrorContext.Provider value={dbError}>
-      <CardStateInternalsContext.Provider value={internals}>
-        <CardStateContext.Provider value={cardState}>
-          <ReviewStateContext.Provider value={reviewState}>
-            <CategoryStatsContext.Provider value={categoryStatsValue}>
-              {children}
-            </CategoryStatsContext.Provider>
-          </ReviewStateContext.Provider>
-        </CardStateContext.Provider>
-      </CardStateInternalsContext.Provider>
-    </DbErrorContext.Provider>
+    <CardStateInternalsContext.Provider value={internals}>
+      <CardStateContext.Provider value={cardState}>
+        <ReviewStateContext.Provider value={reviewState}>
+          <CategoryStatsContext.Provider value={categoryStatsValue}>
+            {children}
+          </CategoryStatsContext.Provider>
+        </ReviewStateContext.Provider>
+      </CardStateContext.Provider>
+    </CardStateInternalsContext.Provider>
   );
 }
