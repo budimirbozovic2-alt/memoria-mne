@@ -45,7 +45,8 @@ interface Props {
 }
 
 export default function CardViewMode({ cards, categoryId, allCategories, subcategoryNodes, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId, initialSubcategory, initialChapter, initialType, initialTag, onFiltersChange }: Props) {
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const { importCards } = useBackupActions();
+  const allCategoryNames = useMemo(() => allCategories.map(c => c.name), [allCategories]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
