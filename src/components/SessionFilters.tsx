@@ -1,5 +1,7 @@
 import { Flame, Lock, type LucideIcon } from "lucide-react";
 import { useMemo, type ComponentType } from "react";
+import { FREQUENCY_TAGS } from "@/lib/sr/format";
+import type { FrequencyTag } from "@/lib/sr/types";
 import { motion } from "framer-motion";
 
 import ScrollableRow from "@/components/ScrollableRow";
