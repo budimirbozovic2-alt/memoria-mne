@@ -357,6 +357,7 @@ export default function SubjectCardsView() {
                 setFrequency={setFrequency}
                 addCard={addCard}
                 addFlashCard={addFlashCard}
+                bulkAddFlashCards={bulkAddFlashCards}
                 onDelete={deleteCard}
                 onEdit={handleEdit}
                 onPassiveRead={handlePassiveRead}
