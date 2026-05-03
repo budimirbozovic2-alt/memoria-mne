@@ -131,14 +131,13 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, bulkA
 
   const confirmImport = useCallback(() => {
     if (!parsed || parsed.length === 0) return;
-    for (const p of parsed) {
-      addFlashCard(p.question, p.answer, categoryId);
-    }
+    // Single batched commit: one setCardMapState + one IDB transaction.
+    bulkAddFlashCards(parsed, categoryId);
     toast.success(`Uspješno uvezeno ${parsed.length} blic pitanja`);
     setRaw("");
     setParsed(null);
     onOpenChange(false);
-  }, [parsed, categoryId, addFlashCard, onOpenChange]);
+  }, [parsed, categoryId, bulkAddFlashCards, onOpenChange]);
 
   const isDirty = raw.trim().length > 0 || (parsed?.length ?? 0) > 0;
 
