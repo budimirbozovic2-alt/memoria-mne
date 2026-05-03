@@ -1,118 +1,142 @@
-# Uzrok freeze-a kod masovnog importa i `addCard`
+# SSOT AUDIT REPORT — Memoria Codex
 
-## Šta sam analizirao
-- `src/components/category/BulkImportDialog.tsx` (`confirmImport`)
-- `src/components/category/CardCreateMenu.tsx` (DOCX import grana)
-- `src/hooks/useCardCRUD.ts` (`addCard`, `addFlashCard`, `bulkAddCards`)
-- `src/contexts/cards/CardStateProvider.tsx` (sync ref/state, aggregate)
-- `src/lib/persist-queue.ts` (debounced flush)
-- `src/lib/db-queries.ts` (`idbBulkApply`)
-- `src/lib/card-buckets.ts` (rebuild + fingerprint)
+Scope: `src/contexts/**`, `src/hooks/**`, `src/store/**`, `src/views/**`, `src/components/**`, `src/lib/**`. Read-only architectural audit, no code changes performed.
 
-## Glavni uzroci
-
-### 1. (KRITIČNO) Bulk import zove `addFlashCard` jedan-po-jedan
-`BulkImportDialog.confirmImport`:
-```ts
-for (const p of parsed) addFlashCard(p.question, p.answer, categoryId);
-```
-i ista grana u `CardCreateMenu` za DOCX flash karte:
-```ts
-cards.forEach(c => addFlashCard(...))
-```
-
-Svaki `addFlashCard` poziv interno radi:
-```ts
-setCardMapState(prev => ({ ...prev, [card.id]: card }))
-```
-React 18 batchuje pozive, ali updater funkcije se i dalje izvršavaju **sekvencijalno** u commit fazi. Za N novih kartica i M postojećih dobijamo **N × O(M+N) = O(N²)** kloniranja samog `CardMap` objekta. Pri 200 importovanih + 1500 postojećih = ~340.000 property-copy operacija prije nego što render može da krene. Glavni razlog blokiranog UI-a.
-
-Plus N pojedinačnih `schedulePersist({type:"put"})` poziva — flush je debounced 16ms pa se sve sliva u jedan `idbBulkApply`, ali samo enqueue petlja na 200+ stavki nije problem; problem je state updater.
-
-### 2. (BITNO) `cardMapRef` sinhronizacioni `useEffect` briše ref-delta i ponovo klonira O(N)
-`CardStateProvider.tsx:134`:
-```ts
-useEffect(() => { cardMapRef.current = { ...cardMap }; }, [cardMap]);
-```
-Nakon svakog batched commita ref se kompletno re-klonira. Za 2000 kartica nakon importa to je još jedna sinhrona O(N) alokacija na main threadu — odmah nakon već skupog state commita. Takođe potire smisao "Ref-Delta" obrasca jer CRUD je već sam upisao identičan objekat u ref pre `setCardMapState`.
-
-### 3. (BITNO) Posledične O(N) derivacije nakon importa
-Nakon commita pokreću se:
-- `cards = mapToArray(cardMap)` — O(N) kada se `_mapVersion` promijeni (a `bumpMapVersion()` se zove N puta tokom petlje, što nije problem za cache, ali jeste u sinhronoj petlji ukoliko bi neko čitao međurezultat).
-- `aggregate` useMemo — O(total sections).
-- `bucketFingerprint` + eventualni `buildCardBuckets` — O(N) (taxonomy se mijenja jer se ubacuju novi `categoryId`-evi, pa fingerprint puca i radi se rebuild).
-- `cardCountByCategory`, `categoryStats` — O(C).
-
-To je sve neizbježno, ali kad ide na "tail" iza O(N²) iz #1 efekat je vidljiv freeze.
-
-### 4. (Manje, ali doprinosi) `addCard`/`addFlashCard` toast nije problem; **ali** `updateCard` zove `toast.success` po pozivu — nije relevantno za import, samo napomena za pojedinačni "addCard" (jedan novi esej ne bi trebao da kočI; ako kočI, krivac je #2 + #3 nakon ponovnog mountanja "Manage" taba).
-
-### 5. Pojedinačni `addCard` (jedna nova kartica) zašto kočI?
-Sam state update je O(M) (jedna kopija `cardMap`). To je trivijalno. Ono što ipak troši je:
-- `useEffect` clone iz #2 (još jedan O(M) clone),
-- `aggregate` koji prolazi kroz **sve** kartice i **sve** sekcije,
-- `buildCardBuckets` jer se fingerprint promijenio (dodali smo novi `categoryId` ili nije postojao taj chapterId — često rebuilduje),
-- Re-render svih konzumera `useCardData()` (CategoryView, Dashboard widgets, GlobalSearch invalidation, itd.).
-
-Kod velikih biblioteka (5000+ kartica) jedan `addCard` već može da napravi 50–150 ms zastoj na slabijem hardveru. Cilj je svesti to na <5 ms.
+Legend: 🔴 Critical · 🟡 Warning · 🔵 Refactor
 
 ---
 
-# Plan ispravki
+## 🔴 CRITICAL — Direct SSOT Violations
 
-## Korak 1 — Bulk path u BulkImportDialog (KRITIČNO)
-**Fajlovi:** `src/components/category/BulkImportDialog.tsx`, `src/components/category/CardCreateMenu.tsx` (i `MassFlashImportTrigger.tsx` props), `src/contexts/cards/CardActionsProvider.tsx` već exportuje `bulkAddCards`.
+### C1. `Sources` cached in 4 independent places, no event-bus invalidation contract
+**Files:**
+- `src/lib/sources-storage.ts:23,55-71` — module-level `_cache: Source[] | null` + `_listeners` set, only invalidated when callers manually call `invalidateSourcesCache()`.
+- `src/views/CategoryView.tsx:31,32-41` — local `useState<Source[]>` re-fetched per-category via `loadSourcesByCategory`.
+- `src/views/SubjectCardsView.tsx:119,127-132` — independent local `useState<Source[]>`, **does NOT subscribe to `onSourcesChanged`** (CategoryView does, this view does not). After a source rename/delete from another route, this list stays stale.
+- `src/components/GlobalSearch.tsx:15-18,72,84-101` — third copy: module-level `cachedSources` + 60s TTL + a CARDS_UPDATED-driven invalidator that **does not fire for source-only changes** (saveSource emits `_notify`, not the eventBus).
 
-- Promijeniti prop `addFlashCard` u `BulkImportDialog`/`MassFlashImportTrigger` na `bulkAddFlashCards: (pairs: {question:string;answer:string}[], categoryId, subcategoryId?) => void` **ili** dodati `bulkAddCards` prop i lokalno konstruisati `Card[]` koristeći `createFlashCard` iz `@/lib/spaced-repetition`.
-- `confirmImport` sklapa cijeli `Card[]` jednim mapiranjem i poziva `bulkAddCards(newCards)` jednom.
-- DOCX flash grana u `CardCreateMenu.onImport` se tretira isto: pretvori sve u `Card[]` i pozovi `bulkAddCards` jednom.
-- Toast ostaje jedan ("Uvezeno N kartica").
+**Why it violates SSOT:** Three orthogonal cache layers (module cache in storage, module cache in GlobalSearch, per-view useState) with three different invalidation triggers. A `saveSource()` in `SourcesTab` clears `sources-storage._cache` and notifies `onSourcesChanged` listeners, but nothing flips `GlobalSearch.cachedSources`. `SubjectCardsView` won't refresh until remount.
 
-Rezultat: jedan `setCardMapState`, jedan `schedulePersist({type:"bulk"})`, jedan flush u `idbBulkApply`.
+### C2. `MindMaps` loaded from IDB in 7 components without any cache or shared store
+**Files:** `src/views/SubjectMindMapPage.tsx:21`, `src/components/zettelkasten/MindMapPickerDialog.tsx:30`, `src/components/zettelkasten/EmbeddedMindMap.tsx:20`, `src/components/category/SourcesTab.tsx:36,46`, `src/components/mindmap/MindMapList.tsx:25`, `src/components/subject-cards/MindMapSidePanel.tsx:29`, `src/components/GlobalSearch.tsx:8,73,95`.
 
-## Korak 2 — Eliminisati skupi `cardMapRef` sync useEffect
-**Fajl:** `src/contexts/cards/CardStateProvider.tsx` (linija 133–134, plus svi CRUD-ovi koji već održavaju ref).
+**Why it violates SSOT:** No central provider/store — each consumer reads `db.mindmaps` and stores its own copy in `useState`. There is no `onMindMapsChanged` listener (the pattern that exists for sources). After save/delete in `MindMapList`, every other open consumer is stale until manually remounted. Every embed (`EmbeddedMindMap`) re-fetches per-id with no de-dup.
 
-Trenutno: `useEffect(() => { cardMapRef.current = { ...cardMap }; }, [cardMap]);` — bezuslovno kopira čitav `cardMap`.
+### C3. `editingCard` SSOT split between `UIProvider` and `useEditReturn` snapshot path
+**Files:** `src/contexts/ui/UIProvider.tsx:45,61` (`editingCard: Card | null` in context), `src/views/EditPage.tsx:11`, `src/views/SubjectCardsView.tsx:88,146-149` (`editingCardRef.current = card; setEditingCard(card)`), `src/views/LearnPage.tsx:76,86-91`.
 
-Plan:
-- Inicijalizovati `cardMapRef` iz prvog "load" outputa (`useCardBootstrap` već postavlja `cardMap` — proširiti ga da zajedno sa `setCardMapState(map)` postavi i `cardMapRef.current = map`). Tada inicijalna sinhronizacija ne treba useEffect.
-- CRUD hookovi već održavaju ref u sinhronu (Ref-Delta) prije svakog `setCardMapState`. Isto važi za `onCardLinksCleared`, `onCardReviewConfirmed`, `CARDS_UPDATED` listener (provjeriti i tamo).
-- Zameniti useEffect "best-effort guardom" koji se okida samo ako referenca odstupa **i** veličine se razlikuju (defensive sync), bez kopiranja čitavog objekta — npr. petlja koja dodaje samo missing keys i briše stale; ili još jednostavnije: ukloniti useEffect kompletno jer su svi mutator paths već Ref-Delta-aware. Zadržati developer assert u DEV build-u koji upozorava ako veličine ne odgovaraju (postavlja `cardMapRef.current = cardMap` samo u tom slučaju).
+**Why it violates SSOT:** Each orchestrator keeps a local `useRef<Card>` in parallel with `setEditingCard(...)` because `useEditReturn.buildExtras` runs lazily and needs the most recent value. The card identity is now stored in: (a) `UIContext.editingCard`, (b) per-view `editingCardRef`, (c) sessionStorage payload via `useEditReturn`, (d) URL via `EditPage`. If a card mutates (rename, source change) while the user is on `/edit`, the context still references the *old* `Card` object — `EditPage` will not see the freshest version because it consumes `editingCard` directly instead of looking it up by id in the live `cardMap`.
 
-Rezultat: jedan put kod importa nestaje O(N) clone na svakoj promjeni state-a.
+### C4. `cardMapRef` decoupled from `cardMap` state — defensive resync admits the contract is unsafe
+**File:** `src/contexts/cards/CardStateProvider.tsx:141-155`.
 
-## Korak 3 — Smanjiti broj `bumpMapVersion()` + `mapToArray` kod bulk-a
-**Fajl:** `src/hooks/useCardCRUD.ts` (`bulkAddCards`).
-
-Trenutno (već dobro): `bulkAddCards` radi jedan setState i jedan bumpMapVersion. Provjeriti da li se to poštuje i u svim drugim "bulk" call sajtovima (DocxImporter, AutoSplitDialog već koristi `bulkAddCards`). Ako negdje petlja zove `addCard` umjesto `bulkAddCards`, prebaciti.
-
-Dodatno: dodati javni `bulkAddFlashCards` helper u `useCardCRUD` koji prima Q/A parove i interno konstruise `Card[]` — da consumere ne tjeramo da importuju `createFlashCard`.
-
-## Korak 4 — Lazy/deferred derivacije velikih lista (poboljšanje)
-**Fajl:** `src/contexts/cards/CardStateProvider.tsx`.
-
-Za biblioteke s >2000 kartica:
-- `aggregate` ostaje sinhron (potreban za stats), ali eventualno premjestiti `bucketFingerprint`+`buildCardBuckets` iza `requestIdleCallback` ili svesti rebuild na throttling kada je import-batch veći od 100 kartica (npr. via mikro-flag "bulk in progress" koji ostavi `EMPTY_BUCKETS` ili keširanu vrijednost dok flush ne završi).
-- Alternativno: izolovati `buckets` u zaseban context (`CardBucketsContext`) tako da widgeti koji ne trebaju buckete (npr. SettingsPage, BackupCard) ne re-renderuju kad se buckets promijeni.
-
-Ovaj korak je opcioni; ako su koraci 1+2 dovoljni za fluentnost, preskačemo ga.
-
-## Korak 5 — Sigurnosna mreža: chunkovani persist za vrlo velike importe
-**Fajl:** `src/lib/persist-queue.ts` (ili u `idbBulkApply`).
-
-Ako bulk ima >1000 kartica, podijeliti `bulkPut` u chunkove od po ~500 unutar iste rw transakcije, sa `await Promise.resolve()` između chunkova da se main thread odblokira. Sprječava dugačku IDB transakciju koja blokira renderer.
+**Why it violates SSOT:** The ref is the SSoT for in-place CRUD writes (Ref-Delta) while `cardMap` state is the SSoT for rendering. The provider explicitly relies on every mutator (CRUD hooks, `onCardLinksCleared`, `CARDS_UPDATED` listener, bootstrap, import) to synchronously update both. Any forgotten path leaks silently — the DEV-only size-mismatch warning (lines 144-153) is a tacit acknowledgement that this invariant is not enforceable. With `setCardMapState` also driven by an async event-bus listener on lines 232-269, the two stores can briefly disagree on identity (`prev[id]` may be a stale reference compared to `cardMapRef.current[id]`).
 
 ---
 
-# Verifikacija
-- Ručni test: import 200 P:/O: parova u kategoriju s 1000+ postojećih kartica — UI mora ostati responzivan (nema duže od 100 ms blokade).
-- Ručni test: pojedinačni "Dodaj esej" u istoj kategoriji — instantan close dijaloga.
-- Postojeći testovi: `bun test` (unit), posebno `zettelkasten-bulk-create.test.ts`.
-- DEV console: tražiti `[persistQueue] flush ok puts=… ms` — trebalo bi da bude **jedan** flush po importu, ne N.
+## 🟡 WARNING — Parallel Systems / Architectural Complexity
 
-# Redoslijed implementacije
-1. Korak 1 (najveći win, mali rizik).
-2. Korak 2 (rizičnije, treba pažljivo provjeriti sve mutator pateve).
-3. Korak 3 (niska rizik).
-4. Korak 4–5 samo ako mjerenja nakon 1–3 i dalje pokazuju zastoj.
+### W1. `LearnSession` keeps two parallel frequency filters (`filterExamFrequent` + `frequencyFilter`)
+**File:** `src/components/LearnSession.tsx:18,20,71,74,88,110,114`.
+
+`filterExamFrequent: boolean` is a strict subset of `frequencyFilter === "često"`. Both are persisted in the snapshot (`learn/types.ts:60` + `:59`), forwarded to `SessionFilters.tsx:34,121`, and applied **sequentially** in `sortedCards`. State can be `{filterExamFrequent: true, frequencyFilter: "rijetko"}` → empty list, no UI guard. Identified for refactor in the prior loop but still in code.
+
+### W2. `LearnSession.currentIndex` mirrored in React state AND `sessionStorage`
+**File:** `src/components/LearnSession.tsx:23-27,102,125,167`.
+
+`sessionStorage["sr-learn-current-index"]` is written every navigation but `restoreSnapshot.currentIndex` (from `useEditReturn`) is the formal restore path. Two truth sources for the same cursor — they can disagree if the user opens two routes or if `useEditReturn` returns a different index than sessionStorage.
+
+### W3. `ExamQuestions` lives in Zustand store but is **never persisted**
+**Files:** `src/store/useSourceReaderStore.ts:69,127,187-193`, `src/hooks/useSourceReaderActions.ts:208,212`.
+
+`examQuestions` is treated like first-class data (CRUD UI in `ExamSidebar`), but reset on every `useSourceReaderStore` reset (`reset()` line 194 and `initSplitWizard`). No DB table, no persistence. Either it should be ephemeral UI-state (then prune the action surface) or a real entity (then move to a Dexie table behind a storage helper).
+
+### W4. `SourceEditor` derives `dirty` via `useEffect` chain instead of comparing on render
+**File:** `src/components/category/SourceEditor.tsx:42,61-65`.
+
+`dirty` is a computed boolean of "any field ≠ source.X" but stored in `useState` and synced via `useEffect`. This is the canonical "syncing state via useEffect" anti-pattern — `dirty` should be a derived expression. Bonus bug: once `setDirty(true)` fires it never goes back to `false` if the user reverts edits.
+
+### W5. `CategoryView` and `SubjectCardsView` both fetch sources for the same `categoryId` independently
+**Files:** `src/views/CategoryView.tsx:31-41`, `src/views/SubjectCardsView.tsx:119,127-132`.
+
+Two routes, two `useState<Source[]>`, two `loadSourcesByCategory` calls, divergent invalidation (CategoryView subscribes to `onSourcesChanged`, SubjectCardsView does not). Should be a single `useCategorySources(categoryId)` hook backed by the storage cache + listener.
+
+### W6. `GlobalSearch` invalidation listens for `CARDS_UPDATED` to clear `cachedSources`/`cachedMindMaps`
+**File:** `src/components/GlobalSearch.tsx:75-81`.
+
+Wrong event domain. `saveSource` / `deleteSource` / `saveMindMap` do not emit `CARDS_UPDATED`; they fire their own listener sets (`onSourcesChanged` only). The cache here only gets cleared when *cards* change. Stale source/mindmap results until 60s TTL.
+
+### W7. `URL searchParams` and `useState(initial = searchParams.get(...))` snapshot pattern
+**Files:** `src/components/SRSettingsPanel.tsx:31-34`, `src/views/LearnPage.tsx:32-46`.
+
+`initialTab` is computed from `searchParams` once and stored in `useMemo`, but the active tab inside the Settings tabs component is then driven by its own `useState`. After mount, `?tab=workflow` navigation will not switch the panel — URL and local state diverge.
+
+---
+
+## 🔵 REFACTOR — Anti-Patterns
+
+### R1. `setCardMapState` re-clones map on event-bus surgical merge
+**File:** `src/contexts/cards/CardStateProvider.tsx:248-253`.
+
+`setCardMapState((prev) => { const next = { ...prev }; ... })` is invoked from inside an async event-bus callback that also mutates `cardMapRef.current` first. This is two writes to the same store from two paths and risks staleness if multiple `CARDS_UPDATED` events arrive between renders.
+
+### R2. `cardCountByCategory` and `categoryStats` re-derived per `categories` change
+**File:** `src/contexts/cards/CardStateProvider.tsx:386-406`.
+
+These memos depend on `categories` (the array reference), but `categories` is itself a derived `useMemo` (`CategoryStateProvider:65`) — its reference changes whenever `categoryRecords` changes (renames, reorderings) even though the *id list* may be identical. Recommend memoizing `categories` by content (e.g. join hash) or moving aggregation off `categories` entirely.
+
+### R3. Dialog open-state reset via `useEffect`
+**Files:**
+- `src/components/learn/MatrixFilterDialog.tsx:43-45` — reset filters on `open=true`.
+- `src/components/category/CardViewDialogs.tsx:29-31` — reset `addMode` on `open`.
+- `src/components/ExaminerProfileDialog.tsx:29-32` — reseed local state from `initialProfile` on `open`.
+- `src/components/source-reader/SmartSplitSummaryDialog.tsx:207` — reset `cuttingIndex` on total change.
+
+Pattern: derived/initial state syncing via effect. Idiomatic React replacement: `key={open ? 'a' : 'b'}` to remount dialog body, or move state into the open-trigger callback.
+
+### R4. `DocxImporter` — `useState(categories[0] ?? "")`
+**File:** `src/components/DocxImporter.tsx:47`.
+
+Stale closure on initial render. If `categories` arrives async after first paint, the select stays empty. Use derived value with controlled fallback during render.
+
+### R5. `MnemonicTest` resets timer state via effect cascade
+**File:** `src/components/MnemonicTest.tsx:82-91`.
+
+Multiple `setX` calls inside `useEffect` triggered by `timerActive` flag. Reads as a state machine; should be a `useReducer` or a single derived "timer phase" state.
+
+### R6. `recordsRef.current = categoryRecords` written outside an effect
+**File:** `src/contexts/cards/CategoryStateProvider.tsx:61-62`.
+
+Direct assignment during render is allowed for refs but bypasses the explicit Ref-Delta contract used elsewhere. Marginal correctness risk under concurrent rendering — recommend `useEffect(() => { recordsRef.current = categoryRecords; }, [categoryRecords])` or document the deliberate exception in the file header.
+
+---
+
+## Summary table
+
+| ID | Severity | Domain | Headline |
+|----|----------|--------|----------|
+| C1 | 🔴 | Persistence | 3 independent `Source[]` caches with divergent invalidation |
+| C2 | 🔴 | Persistence | `MindMaps` loaded ad-hoc in 7 components, no central store |
+| C3 | 🔴 | UI State | `editingCard` exists in context + ref + sessionStorage + URL |
+| C4 | 🔴 | Card State | `cardMapRef` ↔ `cardMap` invariant enforced only by convention |
+| W1 | 🟡 | Filters | `filterExamFrequent` parallel to `frequencyFilter` triple |
+| W2 | 🟡 | Navigation | Learn `currentIndex` in state + sessionStorage |
+| W3 | 🟡 | Domain Model | `examQuestions` first-class in store, never persisted |
+| W4 | 🟡 | Local State | `dirty` flag synced via useEffect (one-way, never resets) |
+| W5 | 🟡 | Persistence | CategoryView vs SubjectCardsView duplicate source fetching |
+| W6 | 🟡 | Events | GlobalSearch invalidates on wrong event type |
+| W7 | 🟡 | Routing | URL params snapshotted into local state, drift on navigation |
+| R1-R6 | 🔵 | Various | Effect-driven derivations, init-from-props, refs-in-render |
+
+---
+
+## Recommended remediation order (when build mode resumes)
+
+1. **C1 + C2 + W5 + W6** — introduce `SourcesProvider` and `MindMapsProvider` (mirroring `CardProvider`'s decomposition), expose `useSources(categoryId)` / `useMindMaps(categoryId)` hooks, route all writes through the provider, emit a single `RESOURCE_CHANGED` event-bus signal. Removes 4 caches and ~7 ad-hoc `useEffect+useState` pairs.
+2. **C3** — change `EditPage` and `useEditReturn` to store *only* `cardId: string`, lookup the live `Card` from `cardMap` on render. Remove `editingCard: Card` from `UIContext`.
+3. **C4** — collapse Ref-Delta by replacing `cardMapRef` with a Zustand store (already approved as Step A1 in earlier plan); ref and state become the same atom.
+4. **W1 + W2** — finish the triple-frequency migration in Learn flow per the prior approved-then-postponed plan.
+5. **W3** — decide ExamQuestions fate (Dexie table or pure session).
+6. **R1–R6** — mechanical cleanups during the above touch-ups.
+
+This report is read-only output. No files were modified.
