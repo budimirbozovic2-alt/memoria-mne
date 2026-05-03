@@ -1,14 +1,29 @@
-import { useState, useCallback } from "react";
-import { Upload, FileText } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { Upload, FileText, Bookmark, Save, Trash2, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { type Card } from "@/lib/spaced-repetition";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 import { parseFlashcards } from "@/lib/flashcard-parser";
+import {
+  listTemplates,
+  saveTemplate,
+  deleteTemplate,
+  type FlashcardImportTemplate,
+} from "@/lib/flashcard-import-templates";
 
 interface Props {
   open: boolean;
