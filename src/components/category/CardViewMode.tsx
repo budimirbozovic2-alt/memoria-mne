@@ -189,11 +189,28 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
               Označi sve ({filters.filteredCards.length})
             </Button>
             {selectedIds.size > 0 && (
-              <Button variant="destructive" size="sm" onClick={handleBatchDelete} className="h-7 gap-1.5 text-xs">
-                <Trash2 className="h-3.5 w-3.5" /> Obriši izabrane
-              </Button>
+              <>
+                <span className="h-4 w-px bg-border" aria-hidden />
+                <span className="text-xs text-muted-foreground">Označi kao:</span>
+                <Button variant="default" size="sm" onClick={() => handleBatchSetFrequency("često")} className="h-7 text-xs" aria-label="Označi kao često">
+                  Često
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleBatchSetFrequency("rijetko")} className="h-7 text-xs" aria-label="Označi kao rijetko">
+                  Rijetko
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleBatchSetFrequency("nikad")} className="h-7 text-xs" aria-label="Označi kao nikad">
+                  Nikad
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => handleBatchSetFrequency(null)} className="h-7 text-xs" aria-label="Ukloni tag">
+                  Bez taga
+                </Button>
+                <span className="h-4 w-px bg-border" aria-hidden />
+                <Button variant="destructive" size="sm" onClick={handleBatchDelete} className="h-7 gap-1.5 text-xs">
+                  <Trash2 className="h-3.5 w-3.5" /> Obriši izabrane
+                </Button>
+              </>
             )}
-            <Button variant="ghost" size="sm" onClick={exitSelectionMode} className="h-7 text-xs">
+            <Button variant="ghost" size="sm" onClick={exitSelectionMode} className="h-7 text-xs ml-auto">
               Otkaži
             </Button>
           </div>
