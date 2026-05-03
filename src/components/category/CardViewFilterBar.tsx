@@ -2,8 +2,10 @@ import { Filter, X, CheckSquare } from "lucide-react";
 import { MASTERY_LEVELS } from "@/lib/mastery";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CARD_TAGS } from "@/lib/spaced-repetition";
+import { FREQUENCY_TAGS } from "@/lib/sr/format";
 import { cn } from "@/lib/utils";
+
+export type FrequencyFilterValue = "all" | "često" | "rijetko" | "nikad" | "none";
 
 /**
  * Filter/list-only surface for the "Pregled i uređivanje kartica" view.
@@ -17,8 +19,8 @@ import { cn } from "@/lib/utils";
 interface Props {
   filterType: "all" | "essay" | "flash" | "mnemonic";
   onChangeType: (v: "all" | "essay" | "flash" | "mnemonic") => void;
-  filterTag: string;
-  onChangeTag: (v: string) => void;
+  filterFrequency: FrequencyFilterValue;
+  onChangeFrequency: (v: FrequencyFilterValue) => void;
   masteryFilter?: number | null;
   onClearMasteryFilter?: () => void;
   hasActiveFilters: boolean;
@@ -32,7 +34,7 @@ interface Props {
 
 export default function CardViewFilterBar({
   filterType, onChangeType,
-  filterTag, onChangeTag,
+  filterFrequency, onChangeFrequency,
   masteryFilter, onClearMasteryFilter,
   hasActiveFilters, onResetFilters,
   filteredCount, totalCount,
@@ -57,15 +59,16 @@ export default function CardViewFilterBar({
         ))}
       </div>
 
-      <Select value={filterTag} onValueChange={onChangeTag}>
-        <SelectTrigger className="h-7 w-auto min-w-[110px] text-xs">
-          <SelectValue placeholder="Tag" />
+      <Select value={filterFrequency} onValueChange={(v) => onChangeFrequency(v as FrequencyFilterValue)}>
+        <SelectTrigger className="h-7 w-auto min-w-[130px] text-xs">
+          <SelectValue placeholder="Frekventnost" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">Svi tagovi</SelectItem>
-          {CARD_TAGS.map(tag => (
-            <SelectItem key={tag.id} value={tag.id} className="text-xs">{tag.label}</SelectItem>
+          <SelectItem value="all" className="text-xs">Sve frekventnosti</SelectItem>
+          {FREQUENCY_TAGS.map(tag => (
+            <SelectItem key={tag.value} value={tag.value} className="text-xs">{tag.label}</SelectItem>
           ))}
+          <SelectItem value="none" className="text-xs">Bez oznake</SelectItem>
         </SelectContent>
       </Select>
 
