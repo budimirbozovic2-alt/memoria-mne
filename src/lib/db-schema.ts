@@ -7,8 +7,16 @@ import { eventBus, EVENT_TYPES } from "./event-bus";
 import { MnemonicCard, MnemonicTestLogEntry } from "./mnemonic-storage";
 
 // ─── Global DB error state (reactive signal for UI) ─────
-export let dbErrorState: { type: "version" | "timeout"; message: string } | null = null;
-export function getDbErrorState() { return dbErrorState; }
+// Module-level snapshot for early-boot async callers (no React context yet).
+// All set/clear operations MUST go through `setDbErrorState` so that the
+// React-side `DbErrorProvider` (subscribed to DB_ERROR_CHANGED) stays in sync.
+export type DbErrorState = { type: "version" | "timeout"; message: string } | null;
+export let dbErrorState: DbErrorState = null;
+export function getDbErrorState(): DbErrorState { return dbErrorState; }
+export function setDbErrorState(next: DbErrorState): void {
+  dbErrorState = next;
+  try { eventBus.emit(EVENT_TYPES.DB_ERROR_CHANGED, next); } catch { /* noop */ }
+}
 
 // ─── Database Schema ────────────────────────────────────
 
