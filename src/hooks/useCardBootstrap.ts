@@ -37,7 +37,6 @@ interface BootSetters {
 export function useCardBootstrap(setters: BootSetters) {
   const { setCardMapState, setCategoryRecordsState, setReviewLogState, setSrSettingsState } = setters;
   const [ready, setReady] = useState(false);
-  const [dbError, setDbError] = useState<{ type: "version" | "timeout"; message: string } | null>(null);
   const initialLoadDone = useRef(false);
 
   useEffect(() => {
