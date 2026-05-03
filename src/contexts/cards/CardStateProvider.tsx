@@ -1,5 +1,5 @@
 import {
-  createContext, useContext, useMemo, useState, useEffect, useRef, useCallback,
+  createContext, useContext, useMemo, useState, useEffect, useCallback,
   type ReactNode,
 } from "react";
 import {
@@ -7,6 +7,9 @@ import {
 } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, mapToArray, persistQueue, schedulePersist, bumpMapVersion } from "@/lib/persist-queue";
+import {
+  useCardMap, setCardMap, cardMapRefFacade, type CardMapRefFacade,
+} from "@/store/useCardMapStore";
 import { idbSaveSettings, idbAddReviewLogEntry } from "@/lib/db";
 import { onCardLinksCleared, onCardReviewConfirmed } from "@/lib/sources-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
