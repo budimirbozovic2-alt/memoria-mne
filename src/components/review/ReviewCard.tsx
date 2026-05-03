@@ -1,8 +1,7 @@
 import { ArrowLeft, Eye, ChevronRight, AlertTriangle, Pause, Scale, Clock } from "lucide-react";
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { Card, Section, isLeech, formatInterval, getCachedRetention, SRSettings } from "@/lib/spaced-repetition";
+import { Card, Section, isLeech, formatInterval, SRSettings } from "@/lib/spaced-repetition";
 import { isEarlyReview } from "@/lib/review-mode-builder";
-import AdaptiveReasonPanel from "./AdaptiveReasonPanel";
 import { useCategoryData } from "@/contexts/AppContext";
 import { HighlightedSection } from "@/lib/highlight-key-parts";
 import { motion, AnimatePresence } from "framer-motion";
@@ -233,15 +232,6 @@ export default function ReviewCard({
               </div>
             )}
           </div>
-
-          <AdaptiveReasonPanel
-            ctx={{
-              frequencyTag: card.frequencyTag,
-              sourceType: card.sourceType,
-              examinerProfile: catRecord?.examinerProfile,
-            }}
-            baseRetention={getCachedRetention()}
-          />
 
           {!showAnswer ? (
             <div className="space-y-4">

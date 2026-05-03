@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ChevronLeft, ChevronRight, BookOpen, FileText, Map as MapIcon,
+  ChevronLeft, ChevronRight, BookOpen,
   Pencil, Activity, Sparkles, AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,8 @@ import {
 import {
   type Card, SectionState, getCardRetrievability,
 } from "@/lib/spaced-repetition";
-import type { SubcategoryNode, Source } from "@/lib/db";
+import type { SubcategoryNode } from "@/lib/db";
 import { sanitizeHtml } from "@/lib/sanitize";
-import { getSource } from "@/lib/sources-storage";
-import SourceSidePanel from "@/components/zettelkasten/SourceSidePanel";
-import MindMapSidePanel from "@/components/subject-cards/MindMapSidePanel";
 
 interface Props {
   cards: Card[];
@@ -29,8 +26,6 @@ interface Props {
   /** Called once the initialCardId has been honored, so the parent can clear it. */
   onInitialConsumed?: () => void;
 }
-
-type SidePanel = "source" | "mindmap" | null;
 
 function retentionColor(pct: number): string {
   if (pct >= 80) return "text-success";
@@ -73,9 +68,6 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
   const [chapterFilter, setChapterFilter] = useState<string>(() => loadPersistedFilters(categoryId).chapterFilter);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>(() => loadPersistedFilters(categoryId).typeFilter);
   const [index, setIndex] = useState(0);
-  const [sidePanel, setSidePanel] = useState<SidePanel>(null);
-  const [linkedSource, setLinkedSource] = useState<Source | null>(null);
-  const [sourceLoading, setSourceLoading] = useState(false);
 
   // Validate persisted filters against the current taxonomy — drop stale IDs.
   useEffect(() => {
@@ -167,26 +159,6 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
 
   const current = filtered[index];
 
-  // Reset side panel + clear cached source when active card changes
-  useEffect(() => {
-    setSidePanel(null);
-    setLinkedSource(null);
-  }, [current?.id]);
-
-  // Lazy-load the linked source when source side panel opens
-  useEffect(() => {
-    if (sidePanel !== "source" || !current?.sourceId) return;
-    if (linkedSource && linkedSource.id === current.sourceId) return;
-    let cancelled = false;
-    setSourceLoading(true);
-    getSource(current.sourceId).then(s => {
-      if (cancelled) return;
-      setLinkedSource(s ?? null);
-      setSourceLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [sidePanel, current?.sourceId, linkedSource]);
-
   // ── FSRS stats for current card ──
   const stats = useMemo(() => {
     if (!current) return null;
@@ -206,9 +178,6 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
       allNew,
     };
   }, [current]);
-
-  const sourceDisabled = !current?.sourceId;
-  const showSidePanel = sidePanel !== null;
 
   return (
     <div className="space-y-4">
@@ -256,43 +225,9 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
         </div>
       </div>
 
-      {/* Side-panel toggles + Edit shortcut */}
+      {/* Edit shortcut */}
       {current && (
         <div className="flex flex-wrap items-center gap-2">
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    type="button"
-                    variant={sidePanel === "source" ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1.5 h-8 text-xs"
-                    disabled={sourceDisabled}
-                    onClick={() => setSidePanel(p => p === "source" ? null : "source")}
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                    Izvor
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {sourceDisabled ? "Kartica nije povezana ni sa jednim izvorom." : "Otvori izvor uporedo"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <Button
-            type="button"
-            variant={sidePanel === "mindmap" ? "default" : "outline"}
-            size="sm"
-            className="gap-1.5 h-8 text-xs"
-            onClick={() => setSidePanel(p => p === "mindmap" ? null : "mindmap")}
-          >
-            <MapIcon className="h-3.5 w-3.5" />
-            Mapa uma
-          </Button>
-
           <div className="ml-auto">
             <Button
               type="button"
@@ -316,7 +251,7 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
           Nema kartica za prikaz uz odabrane filtere.
         </div>
       ) : (
-        <div className={`grid gap-4 ${showSidePanel ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+        <div className="grid gap-4 grid-cols-1">
           {/* Card column */}
           <article className="glass-card rounded-2xl p-6 md:p-8 space-y-5">
             <header className="space-y-2">
@@ -402,31 +337,6 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
             </div>
           </article>
 
-          {/* Side panel column */}
-          {sidePanel === "source" && (
-            sourceLoading ? (
-              <div className="border border-border rounded-md bg-card flex items-center justify-center min-h-[420px] text-xs text-muted-foreground">
-                Učitavanje izvora…
-              </div>
-            ) : linkedSource ? (
-              <SourceSidePanel
-                source={linkedSource}
-                categoryId={categoryId}
-                onClose={() => setSidePanel(null)}
-              />
-            ) : (
-              <div className="border border-border rounded-md bg-card flex items-center justify-center min-h-[420px] text-xs text-muted-foreground">
-                Izvor nije dostupan.
-              </div>
-            )
-          )}
-
-          {sidePanel === "mindmap" && (
-            <MindMapSidePanel
-              categoryId={categoryId}
-              onClose={() => setSidePanel(null)}
-            />
-          )}
         </div>
       )}
 
