@@ -141,7 +141,6 @@ export default function Dashboard({ stats, categoryStats, categories, categoryRe
             />
           )}
 
-          {wc.showHeatmap && <ActivityHeatmap reviewLog={reviewLog} />}
         </div>
 
         {/* Action rail — locked, sticky, never pushed off-screen */}
@@ -152,6 +151,7 @@ export default function Dashboard({ stats, categoryStats, categories, categoryRe
           <QuickActions dueCount={stats.due} hasCards={cards.length > 0} />
           <ToolCards />
           <BackupCard />
+          {wc.showHeatmap && <ActivityHeatmap reviewLog={reviewLog} />}
         </aside>
       </div>
     </div>
