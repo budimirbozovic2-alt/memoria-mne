@@ -57,7 +57,6 @@ export interface LearnSessionSnapshot {
   sortMode?: SortMode;
   filterType?: "all" | "essay" | "flash";
   frequencyFilter?: "all" | FrequencyTag;
-  filterExamFrequent?: boolean;
   currentIndex?: number;
   viewWidth?: ViewWidth;
   /** Card the user was editing — used to re-anchor currentIndex if list changed. */

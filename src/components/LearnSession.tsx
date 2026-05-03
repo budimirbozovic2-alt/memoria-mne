@@ -15,7 +15,6 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(restoreSnapshot?.selectedSubcategory ?? initialFilters?.subcategoryId ?? null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(restoreSnapshot?.selectedChapter ?? null);
   const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">(restoreSnapshot?.sortMode ?? initialFilters?.sortMode ?? "order");
-  const [filterExamFrequent, setFilterExamFrequent] = useState(restoreSnapshot?.filterExamFrequent ?? false);
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash">(restoreSnapshot?.filterType ?? initialFilters?.type ?? "all");
   const [frequencyFilter, setFrequencyFilter] = useState<"all" | FrequencyTag>(restoreSnapshot?.frequencyFilter ?? initialFilters?.frequencyTag ?? "all");
   const [started, setStarted] = useState(isStrictRecall || (restoreSnapshot?.started ?? false));
@@ -62,13 +61,18 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   }, [cards, categories]);
 
   const availableSubs = selectedCategory ? (subcategories[selectedCategory] || []) : [];
-  const examFrequentCount = useMemo(() => cards.filter(c => c.frequencyTag === "često").length, [cards]);
+  const frequencyCounts = useMemo(() => {
+    const counts: Record<FrequencyTag, number> = { "često": 0, "rijetko": 0, "nikad": 0 };
+    for (const c of cards) {
+      if (c.frequencyTag) counts[c.frequencyTag] = (counts[c.frequencyTag] ?? 0) + 1;
+    }
+    return counts;
+  }, [cards]);
 
   const sortedCards = useMemo(() => {
     let filtered = selectedCategory ? cards.filter(c => c.categoryId === selectedCategory) : [...cards];
     if (selectedSubcategory) filtered = filtered.filter(c => c.subcategoryId === selectedSubcategory);
     if (selectedChapter) filtered = filtered.filter(c => c.chapterId === selectedChapter);
-    if (filterExamFrequent) filtered = filtered.filter(c => c.frequencyTag === "često");
     if (filterType === "essay") filtered = filtered.filter(c => c.type === "essay");
     else if (filterType === "flash") filtered = filtered.filter(c => c.type === "flash");
     if (frequencyFilter !== "all") filtered = filtered.filter(c => c.frequencyTag === frequencyFilter);
@@ -85,7 +89,7 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
         );
       }
     }
-  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterExamFrequent, filterType, frequencyFilter, positionMaps]);
+  }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterType, frequencyFilter, positionMaps]);
 
   const card = sortedCards[currentIndex];
 
@@ -107,11 +111,11 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   useEffect(() => {
     onSessionStateChange?.({
       started, selectedCategory, selectedSubcategory, selectedChapter,
-      sortMode, filterType, frequencyFilter, filterExamFrequent,
+      sortMode, filterType, frequencyFilter,
       currentIndex, viewWidth,
       cardId: card?.id,
     });
-  }, [onSessionStateChange, started, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterType, frequencyFilter, filterExamFrequent, currentIndex, viewWidth, card?.id]);
+  }, [onSessionStateChange, started, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterType, frequencyFilter, currentIndex, viewWidth, card?.id]);
 
   const updateProgress = useCallback((cardId: string, update: Partial<LearnCardProgress>) => {
     setProgress(prev => {
@@ -152,14 +156,14 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
         selectedCategory={selectedCategory}
         selectedSubcategory={selectedSubcategory}
         selectedChapter={selectedChapter}
-        filterExamFrequent={filterExamFrequent}
-        examFrequentCount={examFrequentCount}
+        frequencyFilter={frequencyFilter}
+        frequencyCounts={frequencyCounts}
         filterType={filterType}
         sortMode={sortMode}
         onSelectCategory={cat => { setSelectedCategory(cat); setSelectedSubcategory(null); setSelectedChapter(null); }}
         onSelectSubcategory={sub => { setSelectedSubcategory(sub); setSelectedChapter(null); }}
         onSelectChapter={setSelectedChapter}
-        onToggleExamFrequent={() => setFilterExamFrequent(!filterExamFrequent)}
+        onFrequencyFilterChange={setFrequencyFilter}
         onFilterTypeChange={setFilterType}
         onSortModeChange={setSortMode}
         onStart={() => {
