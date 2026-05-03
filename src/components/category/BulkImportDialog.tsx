@@ -1,14 +1,29 @@
-import { useState, useCallback } from "react";
-import { Upload, FileText } from "lucide-react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { Upload, FileText, Bookmark, Save, Trash2, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { type Card } from "@/lib/spaced-repetition";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 import { parseFlashcards } from "@/lib/flashcard-parser";
+import {
+  listTemplates,
+  saveTemplate,
+  deleteTemplate,
+  type FlashcardImportTemplate,
+} from "@/lib/flashcard-import-templates";
 
 interface Props {
   open: boolean;
@@ -22,6 +37,46 @@ interface ParsedPair { question: string; answer: string }
 export default function BulkImportDialog({ open, onOpenChange, categoryId, addFlashCard }: Props) {
   const [raw, setRaw] = useState("");
   const [parsed, setParsed] = useState<ParsedPair[] | null>(null);
+  const [templates, setTemplates] = useState<FlashcardImportTemplate[]>([]);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+
+  // Refresh template list whenever the dialog opens.
+  useEffect(() => {
+    if (open) setTemplates(listTemplates());
+  }, [open]);
+
+  // P:/O: shape detector — controls visibility of the "Sačuvaj šablon" action.
+  const looksLikePOFormat = useMemo(
+    () =>
+      /^[ \t]*[Pp][ \t]*:/m.test(raw) && /^[ \t]*[Oo][ \t]*:/m.test(raw),
+    [raw],
+  );
+
+  const handleLoadTemplate = useCallback((tpl: FlashcardImportTemplate) => {
+    setRaw(tpl.body);
+    setParsed(null);
+    toast.success(`Učitan šablon "${tpl.name}"`);
+  }, []);
+
+  const handleSaveTemplate = useCallback(() => {
+    const rec = saveTemplate(saveName, raw);
+    if (!rec) {
+      toast.error("Nije moguće sačuvati", { description: "Naziv i tekst su obavezni." });
+      return;
+    }
+    setTemplates(listTemplates());
+    setSaveName("");
+    setSaveOpen(false);
+    toast.success(`Šablon "${rec.name}" sačuvan`);
+  }, [saveName, raw]);
+
+  const handleDeleteTemplate = useCallback((id: string, name: string) => {
+    deleteTemplate(id);
+    setTemplates(listTemplates());
+    toast.message(`Obrisan šablon "${name}"`);
+  }, []);
+
 
   const analyze = useCallback(() => {
     // Supported formats (auto-detected, in priority order):
@@ -112,6 +167,98 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
               Alt 1: <code className="bg-muted px-1 rounded">Pitanje;Odgovor</code> — jedan par po redu.<br/>
               Alt 2: Pitanje u prvom redu, odgovor u sljedećim redovima, prazan red razdvaja parove.
             </p>
+
+            {/* Templates toolbar — load any saved P:/O: boilerplate, or save the
+                current textarea as a reusable template. Stored in localStorage. */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs" disabled={templates.length === 0}>
+                    <Bookmark className="h-3.5 w-3.5" />
+                    Šabloni
+                    {templates.length > 0 && (
+                      <span className="text-muted-foreground">({templates.length})</span>
+                    )}
+                    <ChevronDown className="h-3 w-3 opacity-70" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72 max-h-72 overflow-y-auto">
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Sačuvani šabloni
+                  </DropdownMenuLabel>
+                  {templates.length === 0 ? (
+                    <div className="px-2 py-3 text-xs text-muted-foreground">
+                      Nema sačuvanih šablona.
+                    </div>
+                  ) : (
+                    templates.map(tpl => (
+                      <DropdownMenuItem
+                        key={tpl.id}
+                        onSelect={(e) => { e.preventDefault(); handleLoadTemplate(tpl); }}
+                        className="flex items-center gap-2 text-xs"
+                      >
+                        <span className="flex-1 truncate">{tpl.name}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tpl.id, tpl.name); }}
+                          className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                          aria-label={`Obriši šablon ${tpl.name}`}
+                          title="Obriši šablon"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                  <DropdownMenuSeparator />
+                  <p className="px-2 py-1.5 text-[10px] text-muted-foreground">
+                    Šabloni se čuvaju lokalno na ovom uređaju.
+                  </p>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={() => setSaveOpen(v => !v)}
+                disabled={!looksLikePOFormat || !raw.trim()}
+                title={
+                  !raw.trim()
+                    ? "Unesite tekst da biste sačuvali šablon"
+                    : !looksLikePOFormat
+                      ? "Šabloni su podržani samo za P:/O: format"
+                      : "Sačuvaj trenutni unos kao šablon"
+                }
+              >
+                <Save className="h-3.5 w-3.5" />
+                {saveOpen ? "Otkaži" : "Sačuvaj kao šablon"}
+              </Button>
+            </div>
+
+            {saveOpen && (
+              <div className="flex items-center gap-2 rounded-md border bg-muted/30 p-2">
+                <Input
+                  autoFocus
+                  value={saveName}
+                  onChange={e => setSaveName(e.target.value)}
+                  placeholder="Naziv šablona (npr. Obligaciono — sedmica 3)"
+                  className="h-8 text-xs"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && saveName.trim()) { e.preventDefault(); handleSaveTemplate(); }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={handleSaveTemplate}
+                  disabled={!saveName.trim()}
+                >
+                  Sačuvaj
+                </Button>
+              </div>
+            )}
+
             <Textarea
               value={raw}
               onChange={e => setRaw(e.target.value)}
