@@ -164,6 +164,35 @@ function CardContextMenuInner({ card, categories, subcategories, availableChapte
               <button onClick={(e) => { e.stopPropagation(); setSubmenu(null); }} className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left">← Nazad</button>
             </div>
           )}
+
+          {submenu === "frequency" && (
+            <div className="p-1">
+              <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Frekventnost na ispitu</p>
+              {FREQUENCY_VALUES.map((v) => {
+                const m = getFrequencyMeta(v);
+                const active = card.frequencyTag === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={(e) => { e.stopPropagation(); setFrequency(card.id, v); setOpen(false); setSubmenu(null); }}
+                    className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left text-sm transition-colors ${active ? "bg-primary/5" : "hover:bg-secondary"}`}
+                  >
+                    <Flame className={`h-3.5 w-3.5 flex-shrink-0 ${m.iconClass}`} />
+                    <span className="truncate flex-1">{m.label}</span>
+                    {active && <Check className="h-3 w-3 ml-auto text-primary flex-shrink-0" />}
+                  </button>
+                );
+              })}
+              <button
+                onClick={(e) => { e.stopPropagation(); setFrequency(card.id, null); setOpen(false); setSubmenu(null); }}
+                disabled={!card.frequencyTag}
+                className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left text-sm text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                Ukloni oznaku
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); setSubmenu(null); }} className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left">← Nazad</button>
+            </div>
+          )}
         </div>
       )}
     </div>
