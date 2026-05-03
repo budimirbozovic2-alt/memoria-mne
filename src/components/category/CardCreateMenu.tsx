@@ -148,12 +148,13 @@ export default function CardCreateMenu({
             categories={allCategoryNames}
             onImport={(cards, cat, type) => {
               if (type === "flash") {
-                cards.forEach((c) =>
-                  addFlashCard(
-                    c.question,
-                    c.sections.map((s) => s.content).join("\n"),
-                    cat,
-                  ),
+                // Single batched commit instead of N×addFlashCard.
+                bulkAddFlashCards(
+                  cards.map((c) => ({
+                    question: c.question,
+                    answer: c.sections.map((s) => s.content).join("\n"),
+                  })),
+                  cat,
                 );
               } else {
                 importEssays(cards, cat);
@@ -168,7 +169,7 @@ export default function CardCreateMenu({
         open={bulkFlashOpen}
         onOpenChange={setBulkFlashOpen}
         categoryId={categoryId}
-        addFlashCard={addFlashCard}
+        bulkAddFlashCards={bulkAddFlashCards}
       />
     </>
   );
