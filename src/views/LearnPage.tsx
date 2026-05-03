@@ -88,7 +88,7 @@ export default function LearnPage() {
     stashEditReturn();
     setEditingCardId(card.id);
     setView("edit");
-  }, [stashEditReturn, setEditingCard, setView]);
+  }, [stashEditReturn, setEditingCardId, setView]);
 
   if (!ready) {
     return (
