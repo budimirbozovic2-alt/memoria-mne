@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCardData, useCategoryData, useCardOnlyActions, useCategoryActions, useUIContext } from "@/contexts/AppContext";
+import { useCardData, useCategoryData, useCardOnlyActions, useCategoryActions, useUIContext, useBackupActions } from "@/contexts/AppContext";
 import type { SubcategoryNode } from "@/lib/db";
 import type { Card } from "@/lib/spaced-repetition";
 import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
@@ -17,6 +17,7 @@ import type { BaseEditReturnSnapshot } from "@/lib/edit-return";
 import CardViewMode, { type CardViewFiltersSnapshot } from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
+import CardCreateMenu from "@/components/category/CardCreateMenu";
 import PassiveReader from "@/components/subject-cards/PassiveReader";
 import LocalSpeedReader from "@/components/subject-cards/LocalSpeedReader";
 import {
@@ -54,6 +55,7 @@ export default function SubjectCardsView() {
     reorderSubcategories, reorderChapters,
   } = useCategoryActions();
   const { setEditingCard } = useUIContext();
+  const { importCards } = useBackupActions();
 
   const category = useMemo(
     () => categoryRecords.find(c => c.id === categoryId) ?? null,
@@ -288,17 +290,29 @@ export default function SubjectCardsView() {
               })}
             </div>
 
-            {manageMode === MANAGE_MODE.Structure && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                onClick={() => setStructureOpen(true)}
-              >
-                <Settings className="h-3.5 w-3.5" />
-                Uredi potkategorije i glave
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {manageMode === MANAGE_MODE.Structure && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 h-8 text-xs"
+                  onClick={() => setStructureOpen(true)}
+                >
+                  <Settings className="h-3.5 w-3.5" />
+                  Uredi potkategorije i glave
+                </Button>
+              )}
+
+              {/* Single primary entry point for ALL card creation flows.
+                  Filter bar is intentionally stripped of creation logic. */}
+              <CardCreateMenu
+                categoryId={categoryId!}
+                allCategoryNames={categoryRecords.map(c => c.name)}
+                addCard={addCard}
+                addFlashCard={addFlashCard}
+                importEssays={(cards, cat) => importCards(cards, cat)}
+              />
+            </div>
           </div>
 
           {manageMode === MANAGE_MODE.Edit ? (
