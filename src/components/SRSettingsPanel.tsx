@@ -84,7 +84,7 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
     return () => observer.disconnect();
   }, []);
 
-  const { cards, cardCountByCategory } = useCardData();
+  const { cardCountByCategory } = useCardData();
   const { categories, subcategories } = useCategoryData();
   const { addCategory, renameCategory, deleteCategory } = useCategoryActions();
   const [tts, setTts] = useState<TTSSettings>(initialTtsRef.current);
