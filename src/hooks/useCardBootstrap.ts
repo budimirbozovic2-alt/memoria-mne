@@ -32,10 +32,12 @@ interface BootSetters {
   setCategoryRecordsState: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
   setReviewLogState: React.Dispatch<React.SetStateAction<ReviewLogEntry[]>>;
   setSrSettingsState: React.Dispatch<React.SetStateAction<SRSettings>>;
+  /** Ref-Delta mirror — synced once at boot to seed CRUD's in-place writes. */
+  cardMapRef: React.MutableRefObject<CardMap>;
 }
 
 export function useCardBootstrap(setters: BootSetters) {
-  const { setCardMapState, setCategoryRecordsState, setReviewLogState, setSrSettingsState } = setters;
+  const { setCardMapState, setCategoryRecordsState, setReviewLogState, setSrSettingsState, cardMapRef } = setters;
   const [ready, setReady] = useState(false);
   const initialLoadDone = useRef(false);
 
