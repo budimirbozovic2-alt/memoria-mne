@@ -111,11 +111,11 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   useEffect(() => {
     onSessionStateChange?.({
       started, selectedCategory, selectedSubcategory, selectedChapter,
-      sortMode, filterType, frequencyFilter, filterExamFrequent,
+      sortMode, filterType, frequencyFilter,
       currentIndex, viewWidth,
       cardId: card?.id,
     });
-  }, [onSessionStateChange, started, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterType, frequencyFilter, filterExamFrequent, currentIndex, viewWidth, card?.id]);
+  }, [onSessionStateChange, started, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterType, frequencyFilter, currentIndex, viewWidth, card?.id]);
 
   const updateProgress = useCallback((cardId: string, update: Partial<LearnCardProgress>) => {
     setProgress(prev => {
