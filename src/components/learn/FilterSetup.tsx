@@ -1,5 +1,6 @@
 import { BookOpen, ArrowLeft, ListOrdered, TrendingDown, Eye } from "lucide-react";
 import { Card } from "@/lib/spaced-repetition";
+import type { FrequencyTag } from "@/lib/sr/types";
 import { motion } from "framer-motion";
 import SessionFilters from "@/components/SessionFilters";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,14 @@ interface Props {
   selectedCategory: string | null;
   selectedSubcategory: string | null;
   selectedChapter: string | null;
-  filterExamFrequent: boolean;
-  examFrequentCount: number;
+  frequencyFilter: "all" | FrequencyTag;
+  frequencyCounts: Record<FrequencyTag, number>;
   filterType: "all" | "essay" | "flash";
   sortMode: SortMode;
   onSelectCategory: (cat: string | null) => void;
   onSelectSubcategory: (sub: string | null) => void;
   onSelectChapter: (ch: string | null) => void;
-  onToggleExamFrequent: () => void;
+  onFrequencyFilterChange: (next: "all" | FrequencyTag) => void;
   onFilterTypeChange: (t: "all" | "essay" | "flash") => void;
   onSortModeChange: (s: SortMode) => void;
   onStart: () => void;
@@ -38,9 +39,9 @@ const SORT_OPTIONS = [
 export default function FilterSetup({
   cards, sortedCardsCount, categories, categoryRecords, subcategories,
   selectedCategory, selectedSubcategory, selectedChapter,
-  filterExamFrequent, examFrequentCount, filterType, sortMode,
+  frequencyFilter, frequencyCounts, filterType, sortMode,
   onSelectCategory, onSelectSubcategory, onSelectChapter,
-  onToggleExamFrequent, onFilterTypeChange, onSortModeChange,
+  onFrequencyFilterChange, onFilterTypeChange, onSortModeChange,
   onStart, onBack,
 }: Props) {
   return (
@@ -56,11 +57,15 @@ export default function FilterSetup({
       <SessionFilters
         layoutPrefix="learn" cards={cards} categories={categories} categoryRecords={categoryRecords} subcategories={subcategories}
         selectedCategory={selectedCategory} selectedSubcategory={selectedSubcategory} selectedChapter={selectedChapter}
-        filterExamFrequent={filterExamFrequent} examFrequentCount={examFrequentCount} filterType={filterType}
+        filterExamFrequent={false} examFrequentCount={0}
+        frequencyFilter={frequencyFilter}
+        onFrequencyFilterChange={onFrequencyFilterChange}
+        frequencyCounts={frequencyCounts}
+        filterType={filterType}
         onSelectCategory={onSelectCategory}
         onSelectSubcategory={onSelectSubcategory}
         onSelectChapter={onSelectChapter}
-        onToggleExamFrequent={onToggleExamFrequent}
+        onToggleExamFrequent={() => { /* legacy no-op in triple mode */ }}
         onFilterTypeChange={onFilterTypeChange}
         sortControl={{
           value: sortMode,
