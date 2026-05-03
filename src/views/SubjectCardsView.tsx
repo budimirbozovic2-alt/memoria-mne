@@ -12,7 +12,6 @@ import { useCardData, useCategoryData, useCardOnlyActions, useCategoryActions, u
 import CardCreateMenu from "@/components/category/CardCreateMenu";
 import type { SubcategoryNode } from "@/lib/db";
 import type { Card } from "@/lib/spaced-repetition";
-import type { Source } from "@/lib/sources-storage";
 import { useCategorySources } from "@/hooks/useCategorySources";
 import { useEditReturn } from "@/hooks/useEditReturn";
 import type { BaseEditReturnSnapshot } from "@/lib/edit-return";
