@@ -157,16 +157,6 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
       </aside>
 
       <div className="space-y-3 min-w-0">
-        <div className="flex justify-center pb-1">
-          <CardCreateMenu
-            categoryId={categoryId}
-            allCategoryNames={allCategoryNames}
-            addCard={addCard}
-            addFlashCard={addFlashCard}
-            bulkAddFlashCards={bulkAddFlashCards}
-            importEssays={importCards}
-          />
-        </div>
         <CardViewFilterBar
           filterType={filters.filterType}
           onChangeType={filters.setFilterType}

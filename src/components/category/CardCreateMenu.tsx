@@ -43,8 +43,8 @@ interface Props {
   ) => void;
   /** Bulk essay import (from useBackupActions().importCards). */
   importEssays: (cards: ParsedEssay[], category: string) => void;
-  /** Visual variant — `compact` for inline toolbar, `prominent` for empty-state CTA. */
-  size?: "compact" | "prominent";
+  /** Visual variant — `compact` inline, `prominent` empty-state CTA, `icon` ghost icon-only buttons. */
+  size?: "compact" | "prominent" | "icon";
 }
 
 /**
@@ -75,25 +75,44 @@ export default function CardCreateMenu({
   };
 
   const isProminent = size === "prominent";
+  const isIcon = size === "icon";
   const btnClass = isProminent
     ? "h-10 gap-2 text-sm px-4"
-    : "h-8 gap-1.5 text-xs";
-  const iconClass = isProminent ? "h-4 w-4" : "h-3.5 w-3.5";
+    : isIcon
+      ? "h-8 w-8 text-muted-foreground hover:text-foreground"
+      : "h-8 gap-1.5 text-xs";
+  const iconClass = isProminent ? "h-4 w-4" : "h-4 w-4";
   const chevronClass = isProminent ? "h-3.5 w-3.5 opacity-70" : "h-3 w-3 opacity-70";
-  const btnSize = isProminent ? "default" : "sm";
+  const btnSize = isProminent ? "default" : isIcon ? "icon" : "sm";
+  const btnVariant = isIcon ? "ghost" : undefined;
+  const outlineVariant = isIcon ? "ghost" : "outline";
+  const wrapperClass = isIcon
+    ? "flex items-center gap-1"
+    : "flex items-center justify-center gap-2 flex-wrap";
 
   return (
     <>
-      <div className="flex items-center justify-center gap-2 flex-wrap">
+      <div className={wrapperClass}>
         {/* Nova kartica — single-card creation */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size={btnSize} className={btnClass} aria-label="Nova kartica">
-              <Plus className={iconClass} /> Nova kartica
-              <ChevronDown className={chevronClass} />
+            <Button
+              size={btnSize}
+              variant={btnVariant}
+              className={btnClass}
+              aria-label="Nova kartica"
+              title={isIcon ? "Nova kartica" : undefined}
+            >
+              <Plus className={iconClass} />
+              {!isIcon && (
+                <>
+                  Nova kartica
+                  <ChevronDown className={chevronClass} />
+                </>
+              )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-56">
+          <DropdownMenuContent align={isIcon ? "end" : "center"} className="w-56">
             <DropdownMenuItem onClick={() => openAdd("essay")} className="gap-2 text-xs">
               <Pencil className="h-3.5 w-3.5" />
               Dodaj esej
@@ -109,16 +128,22 @@ export default function CardCreateMenu({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="outline"
+              variant={outlineVariant}
               size={btnSize}
               className={btnClass}
               aria-label="Masovni uvoz"
+              title={isIcon ? "Masovni uvoz" : undefined}
             >
-              <Upload className={iconClass} /> Masovni uvoz
-              <ChevronDown className={chevronClass} />
+              <Upload className={iconClass} />
+              {!isIcon && (
+                <>
+                  Masovni uvoz
+                  <ChevronDown className={chevronClass} />
+                </>
+              )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="w-64">
+          <DropdownMenuContent align={isIcon ? "end" : "center"} className="w-64">
             <DropdownMenuItem onClick={() => setDocxOpen(true)} className="gap-2 text-xs">
               <FileText className="h-3.5 w-3.5" />
               Masovni uvoz esejskih pitanja
