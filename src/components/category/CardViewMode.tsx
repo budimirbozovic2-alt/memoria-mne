@@ -128,17 +128,10 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
 
   if (cards.length === 0) {
     return (
-      <div className="text-center py-16 space-y-4">
-        <p className="text-sm text-muted-foreground">Nema kartica u ovoj kategoriji.</p>
-        <CardCreateMenu
-          size="prominent"
-          categoryId={categoryId}
-          allCategoryNames={allCategoryNames}
-          addCard={addCard}
-          addFlashCard={addFlashCard}
-          bulkAddFlashCards={bulkAddFlashCards}
-          importEssays={importCards}
-        />
+      <div className="text-center py-16">
+        <p className="text-sm text-muted-foreground">
+          Nema kartica u ovoj kategoriji. Koristi dugme „Dodaj" u zaglavlju.
+        </p>
       </div>
     );
   }
