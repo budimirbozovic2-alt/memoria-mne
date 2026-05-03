@@ -169,13 +169,68 @@ export function createEmptyModule(title = "Novi modul"): SelectionModule {
 }
 
 /** Strip HTML tags to get plain text fallback (used after manual edits). */
-function htmlToPlain(html: string): string {
+export function htmlToPlain(html: string): string {
   return html
     .replace(/<\/(p|div|li|h[1-6])>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** Top-level block tags considered as standalone units in the wizard. */
+const BLOCK_TAGS = new Set([
+  "P", "H1", "H2", "H3", "H4", "H5", "H6",
+  "UL", "OL", "BLOCKQUOTE", "PRE", "TABLE", "FIGURE", "HR",
+]);
+
+/**
+ * Parse HTML into an ordered list of top-level block HTML strings.
+ * Inline content between blocks is collected into <p> wrappers so nothing is lost.
+ * Falls back to a single <p> wrap when DOMParser is unavailable.
+ */
+export function splitHtmlIntoBlocks(html: string): string[] {
+  const trimmed = (html || "").trim();
+  if (!trimmed) return [];
+  if (typeof DOMParser === "undefined") return [trimmed];
+  try {
+    const doc = new DOMParser().parseFromString(`<div id="__root">${trimmed}</div>`, "text/html");
+    const root = doc.getElementById("__root");
+    if (!root) return [trimmed];
+    const out: string[] = [];
+    let inlineBuffer = "";
+    const flushInline = () => {
+      const t = inlineBuffer.trim();
+      if (t) out.push(`<p>${t}</p>`);
+      inlineBuffer = "";
+    };
+    root.childNodes.forEach((node) => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element;
+        if (BLOCK_TAGS.has(el.tagName)) {
+          flushInline();
+          out.push(el.outerHTML);
+        } else {
+          inlineBuffer += (el as HTMLElement).outerHTML;
+        }
+      } else if (node.nodeType === Node.TEXT_NODE) {
+        const t = node.textContent || "";
+        if (t.trim()) inlineBuffer += t;
+      }
+    });
+    flushInline();
+    return out.length > 0 ? out : [`<p>${trimmed}</p>`];
+  } catch {
+    return [`<p>${trimmed}</p>`];
+  }
+}
+
+export function joinHtmlBlocks(blocks: string[]): string {
+  return blocks.join("\n");
 }
 
 /**
