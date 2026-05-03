@@ -1,4 +1,4 @@
-import { X, FileText, Loader2, Scissors, Save, RotateCcw } from "lucide-react";
+import { X, FileText, Loader2, Scissors, Save, RotateCcw, ArrowLeft } from "lucide-react";
 import { lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/lib/spaced-repetition";
@@ -66,8 +66,16 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
         </div>
       )}
       {/* ── Header ─────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <h2 className="imperial-title">{editCard ? "Uredi modul" : "Novi modul"}</h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          {editCard && (
+            <Button type="button" variant="outline" size="sm" onClick={onCancel} className="gap-1.5">
+              <ArrowLeft className="h-4 w-4" />
+              Vrati me nazad
+            </Button>
+          )}
+          <h2 className="imperial-title">{editCard ? "Uredi modul" : "Novi modul"}</h2>
+        </div>
         <div className="flex items-center gap-2">
           {editCard?.sourceId && (
             <button
@@ -105,8 +113,7 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
               </button>
             ))}
           </div>
-          <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
-            {editCard && <span className="text-xs">Vrati me nazad</span>}
+          <button type="button" onClick={onCancel} aria-label="Zatvori" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
             <X className="h-5 w-5" />
           </button>
         </div>

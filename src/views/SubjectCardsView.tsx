@@ -40,6 +40,8 @@ interface EditReturnSnapshot extends BaseEditReturnSnapshot {
   cvChapter?: string;
   cvType?: CardViewFiltersSnapshot["type"];
   cvTag?: string | null;
+  /** When tab is "read" or "speed", re-anchor reader to this card on return. */
+  readerCardId?: string;
 }
 
 export default function SubjectCardsView() {
@@ -100,6 +102,7 @@ export default function SubjectCardsView() {
       cvChapter: cardViewFiltersRef.current?.chapter,
       cvType: cardViewFiltersRef.current?.type,
       cvTag: cardViewFiltersRef.current?.tag ?? null,
+      readerCardId: editingCardRef.current?.id,
     }),
   });
 
@@ -114,8 +117,12 @@ export default function SubjectCardsView() {
   const [searchQuery, setSearchQuery] = useState(initialSnapshot?.searchQuery ?? "");
   const [sourceFilter, setSourceFilter] = useState<string>(initialSnapshot?.sourceFilter ?? "__all__");
   const [sources, setSources] = useState<Source[]>([]);
-  const [pendingPassiveCardId, setPendingPassiveCardId] = useState<string | null>(null);
-  const [pendingSpeedCardId, setPendingSpeedCardId] = useState<string | null>(null);
+  const [pendingPassiveCardId, setPendingPassiveCardId] = useState<string | null>(
+    () => (initialSnapshot?.tab === "read" ? initialSnapshot.readerCardId ?? null : null)
+  );
+  const [pendingSpeedCardId, setPendingSpeedCardId] = useState<string | null>(
+    () => (initialSnapshot?.tab === "speed" ? initialSnapshot.readerCardId ?? null : null)
+  );
 
   useEffect(() => {
     if (!categoryId) return;

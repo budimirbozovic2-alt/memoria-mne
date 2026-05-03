@@ -7,9 +7,12 @@ import LearnSession from "@/components/LearnSession";
 import { Card } from "@/lib/spaced-repetition";
 import { FREQUENCY_TAGS } from "@/lib/sr/format";
 import type { FrequencyTag } from "@/lib/sr/types";
-import type { InitialFilters } from "@/components/learn/types";
+import type { InitialFilters, LearnSessionSnapshot } from "@/components/learn/types";
 import { useEditReturn } from "@/hooks/useEditReturn";
+import type { BaseEditReturnSnapshot } from "@/lib/edit-return";
 import { getParam } from "@/lib/url-params";
+
+interface LearnEditReturnSnapshot extends BaseEditReturnSnapshot, LearnSessionSnapshot {}
 
 export default function LearnPage() {
   const { cards, stats, ready } = useCardData();
@@ -71,9 +74,14 @@ export default function LearnPage() {
   }, [session, setView]);
 
   const editingCardRef = useRef<Card | null>(null);
-  const { stash: stashEditReturn } = useEditReturn({
+  const sessionStateRef = useRef<LearnSessionSnapshot | null>(null);
+  const handleSessionStateChange = useCallback((snap: LearnSessionSnapshot) => {
+    sessionStateRef.current = snap;
+  }, []);
+  const { initialSnapshot, stash: stashEditReturn } = useEditReturn<LearnEditReturnSnapshot>({
     path: "/learn",
     cardId: () => editingCardRef.current?.id ?? null,
+    buildExtras: () => ({ ...(sessionStateRef.current ?? {}) }),
   });
   const handleEdit = useCallback((card: Card) => {
     editingCardRef.current = card;
@@ -106,6 +114,8 @@ export default function LearnPage() {
         dueCount={stats.due}
         reviewLog={reviewLog}
         initialFilters={initialFilters}
+        restoreSnapshot={initialSnapshot ?? undefined}
+        onSessionStateChange={handleSessionStateChange}
       />
     </ErrorBoundary>
   );

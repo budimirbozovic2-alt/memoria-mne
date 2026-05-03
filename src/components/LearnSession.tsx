@@ -9,22 +9,23 @@ import { LearnSessionProps, ViewWidth } from "./learn/types";
 
 const StudyModeRecall = lazy(() => import("./learn/StudyModeRecall"));
 
-export default function LearnSession({ cards, categories, categoryRecords, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0, reviewLog: reviewLogProp = [], initialFilters }: LearnSessionProps) {
+export default function LearnSession({ cards, categories, categoryRecords, subcategories, onMarkRead, onReviewSection, onBack, onEdit, onAddKeyPart, dueCount = 0, reviewLog: reviewLogProp = [], initialFilters, restoreSnapshot, onSessionStateChange }: LearnSessionProps) {
   const isStrictRecall = initialFilters?.mode === "strict-recall";
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialFilters?.categoryId ?? null);
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(initialFilters?.subcategoryId ?? null);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
-  const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">(initialFilters?.sortMode ?? "order");
-  const [filterExamFrequent, setFilterExamFrequent] = useState(false);
-  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">(initialFilters?.type ?? "all");
-  const [frequencyFilter, setFrequencyFilter] = useState<"all" | FrequencyTag>(initialFilters?.frequencyTag ?? "all");
-  const [started, setStarted] = useState(isStrictRecall);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(restoreSnapshot?.selectedCategory ?? initialFilters?.categoryId ?? null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(restoreSnapshot?.selectedSubcategory ?? initialFilters?.subcategoryId ?? null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(restoreSnapshot?.selectedChapter ?? null);
+  const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">(restoreSnapshot?.sortMode ?? initialFilters?.sortMode ?? "order");
+  const [filterExamFrequent, setFilterExamFrequent] = useState(restoreSnapshot?.filterExamFrequent ?? false);
+  const [filterType, setFilterType] = useState<"all" | "essay" | "flash">(restoreSnapshot?.filterType ?? initialFilters?.type ?? "all");
+  const [frequencyFilter, setFrequencyFilter] = useState<"all" | FrequencyTag>(restoreSnapshot?.frequencyFilter ?? initialFilters?.frequencyTag ?? "all");
+  const [started, setStarted] = useState(isStrictRecall || (restoreSnapshot?.started ?? false));
 
   const [currentIndex, setCurrentIndex] = useState(() => {
+    if (typeof restoreSnapshot?.currentIndex === "number") return restoreSnapshot.currentIndex;
     const saved = sessionStorage.getItem("sr-learn-current-index");
     return saved ? parseInt(saved, 10) || 0 : 0;
   });
-  const [viewWidth, setViewWidth] = useState<ViewWidth>("normal");
+  const [viewWidth, setViewWidth] = useState<ViewWidth>(restoreSnapshot?.viewWidth ?? "normal");
   const [readCards, setReadCards] = useState<Set<string>>(new Set());
   const [completedCards, setCompletedCards] = useState<Set<string>>(new Set());
   const [chainCompletedCards] = useState<Set<string>>(new Set());
@@ -87,6 +88,30 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   }, [cards, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterExamFrequent, filterType, frequencyFilter, positionMaps]);
 
   const card = sortedCards[currentIndex];
+
+  // Re-anchor to the card user was editing (one-shot on mount with restoreSnapshot).
+  const reanchorRef = useRef(false);
+  useEffect(() => {
+    if (reanchorRef.current) return;
+    const targetId = restoreSnapshot?.cardId;
+    if (!targetId || sortedCards.length === 0) return;
+    reanchorRef.current = true;
+    const idx = sortedCards.findIndex(c => c.id === targetId);
+    if (idx >= 0 && idx !== currentIndex) {
+      setCurrentIndex(idx);
+      sessionStorage.setItem("sr-learn-current-index", String(idx));
+    }
+  }, [restoreSnapshot?.cardId, sortedCards, currentIndex]);
+
+  // Publish state to parent for edit-return snapshot building.
+  useEffect(() => {
+    onSessionStateChange?.({
+      started, selectedCategory, selectedSubcategory, selectedChapter,
+      sortMode, filterType, frequencyFilter, filterExamFrequent,
+      currentIndex, viewWidth,
+      cardId: card?.id,
+    });
+  }, [onSessionStateChange, started, selectedCategory, selectedSubcategory, selectedChapter, sortMode, filterType, frequencyFilter, filterExamFrequent, currentIndex, viewWidth, card?.id]);
 
   const updateProgress = useCallback((cardId: string, update: Partial<LearnCardProgress>) => {
     setProgress(prev => {
