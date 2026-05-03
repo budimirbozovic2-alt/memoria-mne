@@ -42,7 +42,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const view = useCurrentView();
 
-  const [editingCard, setEditingCard] = useState<Card | null>(null);
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
   useEffect(() => { recordAppEntry(); }, []);
 
@@ -58,8 +58,8 @@ export function UIProvider({ children }: { children: ReactNode }) {
   }, [toggleTag]);
 
   const value = useMemo<UIContextValue>(() => ({
-    view, setView, editingCard, setEditingCard, handleToggleTag,
-  }), [view, setView, editingCard, handleToggleTag]);
+    view, setView, editingCardId, setEditingCardId, handleToggleTag,
+  }), [view, setView, editingCardId, handleToggleTag]);
 
   return <UIContext.Provider value={value}>{children}</UIContext.Provider>;
 }
