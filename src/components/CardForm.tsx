@@ -66,8 +66,16 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
         </div>
       )}
       {/* ── Header ─────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <h2 className="imperial-title">{editCard ? "Uredi modul" : "Novi modul"}</h2>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          {editCard && (
+            <Button type="button" variant="outline" size="sm" onClick={onCancel} className="gap-1.5">
+              <ArrowLeft className="h-4 w-4" />
+              Vrati me nazad
+            </Button>
+          )}
+          <h2 className="imperial-title">{editCard ? "Uredi modul" : "Novi modul"}</h2>
+        </div>
         <div className="flex items-center gap-2">
           {editCard?.sourceId && (
             <button
