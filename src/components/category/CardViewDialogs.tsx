@@ -10,7 +10,7 @@ import { type CategoryRecord } from "@/lib/db";
 import type { Card } from "@/lib/spaced-repetition";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import BulkImportDialog from "./BulkImportDialog";
+
 
 interface AddDialogProps {
   open: boolean;
@@ -139,13 +139,6 @@ export function MoveCardDialog({ open, onOpenChange, otherCategories, onConfirm 
   );
 }
 
-interface BulkImportProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  categoryId: string;
-  addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => Card;
-}
+// `BulkImportWrapper` was removed — mass flashcard import is now triggered
+// exclusively via `MassFlashImportTrigger` from `CardCreateMenu`.
 
-export function BulkImportWrapper({ open, onOpenChange, categoryId, addFlashCard }: BulkImportProps) {
-  return <BulkImportDialog open={open} onOpenChange={onOpenChange} categoryId={categoryId} addFlashCard={addFlashCard} />;
-}
