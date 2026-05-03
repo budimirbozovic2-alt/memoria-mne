@@ -167,8 +167,8 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
         <CardViewFilterBar
           filterType={filters.filterType}
           onChangeType={filters.setFilterType}
-          filterTag={filters.filterTag}
-          onChangeTag={filters.setFilterTag}
+          filterFrequency={filters.filterFrequency}
+          onChangeFrequency={filters.setFilterFrequency}
           masteryFilter={masteryFilter}
           onClearMasteryFilter={onClearMasteryFilter}
           hasActiveFilters={filters.hasActiveFilters}
@@ -205,7 +205,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
           selectionMode={selectionMode}
           selectedIds={selectedIds}
           onToggleSelection={toggleSelection}
-          toggleTag={toggleTag}
+          setFrequency={setFrequency}
           onEdit={onEdit}
           onPassiveRead={onPassiveRead}
           onDelete={onDelete}
