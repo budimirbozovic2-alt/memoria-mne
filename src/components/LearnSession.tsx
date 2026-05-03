@@ -15,7 +15,6 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(restoreSnapshot?.selectedSubcategory ?? initialFilters?.subcategoryId ?? null);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(restoreSnapshot?.selectedChapter ?? null);
   const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">(restoreSnapshot?.sortMode ?? initialFilters?.sortMode ?? "order");
-  const [filterExamFrequent, setFilterExamFrequent] = useState(restoreSnapshot?.filterExamFrequent ?? false);
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash">(restoreSnapshot?.filterType ?? initialFilters?.type ?? "all");
   const [frequencyFilter, setFrequencyFilter] = useState<"all" | FrequencyTag>(restoreSnapshot?.frequencyFilter ?? initialFilters?.frequencyTag ?? "all");
   const [started, setStarted] = useState(isStrictRecall || (restoreSnapshot?.started ?? false));
