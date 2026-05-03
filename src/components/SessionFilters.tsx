@@ -118,7 +118,7 @@ export default function SessionFilters({
       if (selectedChapter && c.chapterId !== selectedChapter) return false;
       if (filterType === "essay" && c.type !== "essay") return false;
       if (filterType === "flash" && c.type !== "flash") return false;
-      if (filterExamFrequent && !c.tags?.includes("exam-frequent")) return false;
+      if (filterExamFrequent && c.frequencyTag !== "često") return false;
       return true;
     }).length;
   }, [cards, selectedCategory, selectedSubcategory, selectedChapter, filterType, filterExamFrequent]);

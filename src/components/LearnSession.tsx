@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
-import { Card, getCardScore, EXAM_FREQUENT_TAG } from "@/lib/spaced-repetition";
+import { Card, getCardScore } from "@/lib/spaced-repetition";
 import type { FrequencyTag } from "@/lib/sr/types";
 import { LearnCardProgress, loadLearnProgress } from "@/lib/storage";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
@@ -62,13 +62,13 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
   }, [cards, categories]);
 
   const availableSubs = selectedCategory ? (subcategories[selectedCategory] || []) : [];
-  const examFrequentCount = useMemo(() => cards.filter(c => c.tags?.includes(EXAM_FREQUENT_TAG)).length, [cards]);
+  const examFrequentCount = useMemo(() => cards.filter(c => c.frequencyTag === "često").length, [cards]);
 
   const sortedCards = useMemo(() => {
     let filtered = selectedCategory ? cards.filter(c => c.categoryId === selectedCategory) : [...cards];
     if (selectedSubcategory) filtered = filtered.filter(c => c.subcategoryId === selectedSubcategory);
     if (selectedChapter) filtered = filtered.filter(c => c.chapterId === selectedChapter);
-    if (filterExamFrequent) filtered = filtered.filter(c => c.tags?.includes(EXAM_FREQUENT_TAG));
+    if (filterExamFrequent) filtered = filtered.filter(c => c.frequencyTag === "često");
     if (filterType === "essay") filtered = filtered.filter(c => c.type === "essay");
     else if (filterType === "flash") filtered = filtered.filter(c => c.type === "flash");
     if (frequencyFilter !== "all") filtered = filtered.filter(c => c.frequencyTag === frequencyFilter);

@@ -39,7 +39,7 @@ interface EditReturnSnapshot extends BaseEditReturnSnapshot {
   cvSubcategory?: string;
   cvChapter?: string;
   cvType?: CardViewFiltersSnapshot["type"];
-  cvTag?: string | null;
+  cvFrequency?: CardViewFiltersSnapshot["frequency"];
   /** When tab is "read" or "speed", re-anchor reader to this card on return. */
   readerCardId?: string;
 }
@@ -50,7 +50,7 @@ export default function SubjectCardsView() {
 
   const { cards: allCards, ready } = useCardData();
   const { categoryRecords } = useCategoryData();
-  const { addCard, addFlashCard, patchCard, toggleTag, deleteCard } = useCardOnlyActions();
+  const { addCard, addFlashCard, patchCard, setFrequency, deleteCard } = useCardOnlyActions();
   const {
     addSubcategory, renameSubcategory, deleteSubcategory,
     addChapter, renameChapter, deleteChapter,
@@ -101,7 +101,7 @@ export default function SubjectCardsView() {
       cvSubcategory: cardViewFiltersRef.current?.subcategory,
       cvChapter: cardViewFiltersRef.current?.chapter,
       cvType: cardViewFiltersRef.current?.type,
-      cvTag: cardViewFiltersRef.current?.tag ?? null,
+      cvFrequency: cardViewFiltersRef.current?.frequency,
       readerCardId: editingCardRef.current?.id,
     }),
   });
@@ -354,7 +354,7 @@ export default function SubjectCardsView() {
                 allCategories={categoryRecords}
                 subcategoryNodes={subcategoryNodes}
                 patchCard={patchCard}
-                toggleTag={toggleTag}
+                setFrequency={setFrequency}
                 addCard={addCard}
                 addFlashCard={addFlashCard}
                 onDelete={deleteCard}
@@ -365,7 +365,7 @@ export default function SubjectCardsView() {
                 initialSubcategory={initialSnapshot?.cvSubcategory}
                 initialChapter={initialSnapshot?.cvChapter}
                 initialType={initialSnapshot?.cvType}
-                initialTag={initialSnapshot?.cvTag ?? null}
+                initialFrequency={initialSnapshot?.cvFrequency}
                 onFiltersChange={handleCardViewFiltersChange}
               />
             </>

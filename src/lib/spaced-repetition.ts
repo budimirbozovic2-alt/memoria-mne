@@ -8,3 +8,4 @@ export * from "./sr/algorithm";
 export * from "./sr/retrievability";
 export * from "./sr/factories";
 export * from "./sr/format";
+export * from "./sr/frequency";

@@ -1,6 +1,8 @@
 import { MoreVertical, FolderOpen, BookOpen, Flame, Brain, Check, ChevronRight } from "lucide-react";
 import React, { useState, useRef, useEffect } from "react";
-import { Card, EXAM_FREQUENT_TAG, MNEMONIC_TAG } from "@/lib/spaced-repetition";
+import { Card, MNEMONIC_TAG } from "@/lib/spaced-repetition";
+import type { FrequencyTag } from "@/lib/sr/types";
+import { FREQUENCY_VALUES, getFrequencyMeta } from "@/lib/sr/frequency";
 
 interface CardContextMenuProps {
   card: Card;
@@ -9,13 +11,13 @@ interface CardContextMenuProps {
   availableChapters?: string[];
   onMoveCategory?: (cardId: string, category: string, subcategory?: string) => void;
   onAssignChapter?: (cardId: string, chapter: string) => void;
-  onToggleTag: (cardId: string, tag: string) => void;
+  setFrequency: (cardId: string, value: FrequencyTag | null) => void;
   onCloneToMnemonic?: (card: Card) => void;
 }
 
-function CardContextMenuInner({ card, categories, subcategories, availableChapters, onMoveCategory, onAssignChapter, onToggleTag, onCloneToMnemonic }: CardContextMenuProps) {
+function CardContextMenuInner({ card, categories, subcategories, availableChapters, onMoveCategory, onAssignChapter, setFrequency, onCloneToMnemonic }: CardContextMenuProps) {
   const [open, setOpen] = useState(false);
-  const [submenu, setSubmenu] = useState<"category" | "subcategory" | "chapter" | null>(null);
+  const [submenu, setSubmenu] = useState<"category" | "subcategory" | "chapter" | "frequency" | null>(null);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -33,8 +35,8 @@ function CardContextMenuInner({ card, categories, subcategories, availableChapte
   }, [open]);
 
   const cardTags = card.tags || [];
-  const isFrequent = cardTags.includes(EXAM_FREQUENT_TAG);
   const hasMnemoTag = cardTags.includes(MNEMONIC_TAG);
+  const freqMeta = getFrequencyMeta(card.frequencyTag);
 
   const menuItems: { icon: typeof FolderOpen; label: string; action: () => void; active?: boolean }[] = [];
 
@@ -44,7 +46,12 @@ function CardContextMenuInner({ card, categories, subcategories, availableChapte
   if (availableChapters && availableChapters.length > 0 && onAssignChapter) {
     menuItems.push({ icon: BookOpen, label: "Dodijeli glavu", action: () => setSubmenu("chapter") });
   }
-  menuItems.push({ icon: Flame, label: isFrequent ? "Ukloni 'Često na ispitu'" : "Označi 'Često na ispitu'", action: () => { onToggleTag(card.id, EXAM_FREQUENT_TAG); setOpen(false); }, active: isFrequent });
+  menuItems.push({
+    icon: Flame,
+    label: card.frequencyTag ? `Frekventnost: ${freqMeta.shortLabel}` : "Postavi frekventnost",
+    action: () => setSubmenu("frequency"),
+    active: !!card.frequencyTag,
+  });
   if (onCloneToMnemonic) {
     menuItems.push({ icon: Brain, label: hasMnemoTag ? "Već u Mnemo radionici" : "Kloniraj u Mnemo radionicu", action: () => { if (!hasMnemoTag) { onCloneToMnemonic(card); setOpen(false); } }, active: hasMnemoTag });
   }
@@ -154,6 +161,35 @@ function CardContextMenuInner({ card, categories, subcategories, availableChapte
                   {card.chapterId === ch && <Check className="h-3 w-3 ml-auto text-primary flex-shrink-0" />}
                 </button>
               ))}
+              <button onClick={(e) => { e.stopPropagation(); setSubmenu(null); }} className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left">← Nazad</button>
+            </div>
+          )}
+
+          {submenu === "frequency" && (
+            <div className="p-1">
+              <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Frekventnost na ispitu</p>
+              {FREQUENCY_VALUES.map((v) => {
+                const m = getFrequencyMeta(v);
+                const active = card.frequencyTag === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={(e) => { e.stopPropagation(); setFrequency(card.id, v); setOpen(false); setSubmenu(null); }}
+                    className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left text-sm transition-colors ${active ? "bg-primary/5" : "hover:bg-secondary"}`}
+                  >
+                    <Flame className={`h-3.5 w-3.5 flex-shrink-0 ${m.iconClass}`} />
+                    <span className="truncate flex-1">{m.label}</span>
+                    {active && <Check className="h-3 w-3 ml-auto text-primary flex-shrink-0" />}
+                  </button>
+                );
+              })}
+              <button
+                onClick={(e) => { e.stopPropagation(); setFrequency(card.id, null); setOpen(false); setSubmenu(null); }}
+                disabled={!card.frequencyTag}
+                className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left text-sm text-muted-foreground hover:bg-secondary disabled:opacity-40 disabled:hover:bg-transparent"
+              >
+                Ukloni oznaku
+              </button>
               <button onClick={(e) => { e.stopPropagation(); setSubmenu(null); }} className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground text-left">← Nazad</button>
             </div>
           )}

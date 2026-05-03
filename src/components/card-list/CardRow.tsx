@@ -1,11 +1,13 @@
 import { memo, useState, lazy, Suspense } from "react";
-import { Edit2, Trash2, Scale, ChevronDown, ChevronRight, Zap, Flame } from "lucide-react";
-import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability, EXAM_FREQUENT_TAG } from "@/lib/spaced-repetition";
+import { Edit2, Trash2, Scale, ChevronDown, ChevronRight, Zap } from "lucide-react";
+import { Card, getCardScore, getSectionScore, getCardRetrievability, getRetrievability } from "@/lib/spaced-repetition";
+import type { FrequencyTag } from "@/lib/sr/types";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
 import { format } from "date-fns";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
 import { ScoreBadge, RetentionBadge, SectionBar } from "./CardBadges";
 import CardContextMenu from "./CardContextMenu";
+import FrequencyMenu from "./FrequencyMenu";
 
 const SourceSnippetDialog = lazy(() => import("@/components/SourceSnippetDialog"));
 
@@ -16,7 +18,7 @@ export interface CardRowProps {
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
-  onToggleTag: (cardId: string, tag: string) => void;
+  setFrequency: (cardId: string, value: FrequencyTag | null) => void;
   onExpand: (id: string | null) => void;
   onEdit: (card: Card) => void;
   onDelete: (id: string) => void;
@@ -32,7 +34,7 @@ export interface CardRowProps {
 
 const CardRow = memo(function CardRow({
   card, expanded, highlighted, selectionMode, selectedIds, onToggleSelect,
-  onToggleTag, onExpand, onEdit, onDelete,
+  setFrequency, onExpand, onEdit, onDelete,
   categories, subcategories, availableChapters,
   onMoveCategory, onAssignChapter, onCloneToMnemonic, onAddKeyPart,
   catNameMap,
@@ -40,8 +42,6 @@ const CardRow = memo(function CardRow({
   const score = getCardScore(card);
   const retention = getCardRetrievability(card);
   const isFlash = card.type === "flash";
-  const cardTags = card.tags || [];
-  const isFrequent = cardTags.includes(EXAM_FREQUENT_TAG);
   const hasSource = !!card.sourceId && !!card.originalSourceSnippet;
   const [snippetOpen, setSnippetOpen] = useState(false);
 
@@ -91,9 +91,7 @@ const CardRow = memo(function CardRow({
                 <Scale className="h-4 w-4" />
               </button>
             )}
-            <button onClick={() => onToggleTag(card.id, EXAM_FREQUENT_TAG)} className={`p-2 rounded-lg transition-colors ${isFrequent ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/40 hover:text-muted-foreground hover:bg-secondary"}`} title={isFrequent ? "Često na ispitu (klikni da ukloniš)" : "Označi kao često na ispitu"}>
-              <Flame className="h-4 w-4" />
-            </button>
+            <FrequencyMenu card={card} setFrequency={setFrequency} />
             <CardContextMenu
               card={card}
               categories={categories}
@@ -101,7 +99,7 @@ const CardRow = memo(function CardRow({
               availableChapters={availableChapters}
               onMoveCategory={onMoveCategory}
               onAssignChapter={onAssignChapter}
-              onToggleTag={onToggleTag}
+              setFrequency={setFrequency}
               onCloneToMnemonic={onCloneToMnemonic}
             />
             <button onClick={() => onExpand(expanded ? null : card.id)} className="p-2 hover:bg-secondary rounded-lg">

@@ -1,12 +1,15 @@
 import { sanitizeHtml } from "@/lib/sanitize";
-import { ChevronDown, ChevronRight, ArrowRightLeft, Star, Link2, BookOpen, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowRightLeft, Flame, Link2, BookOpen, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { type Card, CARD_TAGS, SectionState, EXAM_FREQUENT_TAG } from "@/lib/spaced-repetition";
+import { type Card, SectionState } from "@/lib/spaced-repetition";
+import type { FrequencyTag } from "@/lib/sr/types";
+import { getFrequencyMeta } from "@/lib/sr/frequency";
 import { type CategoryRecord } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import FrequencyMenu from "@/components/card-list/FrequencyMenu";
 
 function stabilityLabel(s: number): { text: string; color: string } {
   if (s >= 30) return { text: "Stabilno", color: "text-success" };
@@ -22,7 +25,7 @@ interface Props {
   selectionMode: boolean;
   selectedIds: Set<string>;
   onToggleSelection: (id: string) => void;
-  toggleTag: (cardId: string, tag: string) => void;
+  setFrequency: (cardId: string, value: FrequencyTag | null) => void;
   onEdit?: (card: Card) => void;
   onPassiveRead?: (card: Card) => void;
   onDelete?: (id: string) => void;
@@ -35,7 +38,7 @@ interface Props {
 export default function CardViewTable({
   filteredCards, allCategories, expandedId, onToggle,
   selectionMode, selectedIds, onToggleSelection,
-  toggleTag, onEdit, onPassiveRead, onDelete, onOpenMoveModal,
+  setFrequency, onEdit, onPassiveRead, onDelete, onOpenMoveModal,
   hasActiveFilters, totalCount, onResetFilters,
 }: Props) {
   return (
@@ -46,7 +49,7 @@ export default function CardViewTable({
           ? card.sections.reduce((sum, s) => sum + s.stability, 0) / card.sections.length
           : 0;
         const stab = stabilityLabel(avgStability);
-        const hasTags = card.tags && card.tags.length > 0;
+        
 
         return (
           <div key={card.id} className="rounded-lg border bg-card overflow-hidden">
@@ -65,8 +68,8 @@ export default function CardViewTable({
                 {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 <span className="text-sm text-foreground truncate flex-1">{card.question || "(Bez pitanja)"}</span>
                 <div className="flex items-center gap-2 shrink-0">
-                  {hasTags && card.tags!.includes(EXAM_FREQUENT_TAG) && (
-                    <Star className="h-3.5 w-3.5 text-destructive fill-destructive" />
+                  {card.frequencyTag && (
+                    <Flame className={cn("h-3.5 w-3.5", getFrequencyMeta(card.frequencyTag).iconClass)} />
                   )}
                   <span className={cn("text-[10px] font-medium", stab.color)}>{stab.text}</span>
                   <Badge variant="outline" className="text-[10px]">
@@ -190,21 +193,11 @@ export default function CardViewTable({
                 </div>
 
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {CARD_TAGS.map(tag => {
-                    const active = card.tags?.includes(tag.id);
-                    return (
-                      <button
-                        key={tag.id}
-                        onClick={() => toggleTag(card.id, tag.id)}
-                        className={cn(
-                          "text-[10px] px-2 py-0.5 rounded-full border transition-colors",
-                          active ? "bg-primary/10 border-primary text-primary" : "bg-transparent border-border text-muted-foreground hover:border-primary/50"
-                        )}
-                      >
-                        {tag.label}
-                      </button>
-                    );
-                  })}
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Frekventnost:</span>
+                  <FrequencyMenu card={card} setFrequency={setFrequency} size="sm" />
+                  {card.frequencyTag && (
+                    <span className="text-[10px] text-muted-foreground">{getFrequencyMeta(card.frequencyTag).label}</span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
