@@ -1,7 +1,8 @@
 /**
  * Stateful filter orchestrator for the per-category "Pregled i Uređivanje"
- * (CardViewMode) view. Owns subcategory/chapter/type/tag filter state, exposes
- * setters, derived counts, hasActiveFilters, and the filtered+sorted card list.
+ * (CardViewMode) view. Owns subcategory/chapter/type/frequency filter state,
+ * exposes setters, derived counts, hasActiveFilters, and the filtered+sorted
+ * card list.
  *
  * `masteryFilter` and `externalQuery` / `externalSourceId` are passed through
  * from the parent (the parent owns those because they're shared with the
@@ -16,8 +17,10 @@ import {
   EMPTY_HIERARCHY_ORDER,
 } from "@/lib/card-ordering";
 import { getCardMasteryLevel } from "@/lib/mastery";
+import type { FrequencyFilterValue } from "@/components/category/CardViewFilterBar";
 
 export type FilterTypeValue = "all" | "essay" | "flash" | "mnemonic";
+export type { FrequencyFilterValue };
 
 interface UseCardViewFiltersParams {
   cards: Card[];
@@ -31,7 +34,7 @@ interface UseCardViewFiltersParams {
   initialSubcategory?: string;
   initialChapter?: string;
   initialType?: FilterTypeValue;
-  initialTag?: string | null;
+  initialFrequency?: FrequencyFilterValue;
 }
 
 const ALL = "__all__";
@@ -40,6 +43,12 @@ function matchesType(card: Card, t: FilterTypeValue): boolean {
   if (t === "all") return true;
   if (t === "mnemonic") return card.type === "flash" && Array.isArray(card.tags) && card.tags.includes("mnemonic");
   return card.type === t;
+}
+
+function matchesFrequency(card: Card, f: FrequencyFilterValue): boolean {
+  if (f === "all") return true;
+  if (f === "none") return !card.frequencyTag;
+  return card.frequencyTag === f;
 }
 
 export function useCardViewFilters({
@@ -53,25 +62,23 @@ export function useCardViewFilters({
   initialSubcategory,
   initialChapter,
   initialType,
-  initialTag,
+  initialFrequency,
 }: UseCardViewFiltersParams) {
   const [filterSubcategory, setFilterSubcategory] = useState<string>(initialSubcategory ?? ALL);
   const [filterChapter, setFilterChapter] = useState<string>(initialChapter ?? ALL);
   const [filterType, setFilterType] = useState<FilterTypeValue>(initialType ?? "all");
-  const [filterTag, setFilterTag] = useState<string | null>(initialTag ?? null);
+  const [filterFrequency, setFilterFrequency] = useState<FrequencyFilterValue>(initialFrequency ?? "all");
 
   const categoryRecord = useMemo(
     () => allCategories.find((c) => c.id === categoryId) ?? null,
     [allCategories, categoryId],
   );
 
-  // Cards belonging to this category (the view is always category-scoped).
   const scoped = useMemo(
     () => cards.filter((c) => c.categoryId === categoryId),
     [cards, categoryId],
   );
 
-  // Counts for the hierarchy tree (computed on `scoped`, not on filtered).
   const subcategoryCounts = useMemo(() => {
     const m: Record<string, number> = {};
     for (const c of scoped) {
@@ -97,7 +104,7 @@ export function useCardViewFilters({
       if (filterSubcategory !== ALL && card.subcategoryId !== filterSubcategory) return false;
       if (filterChapter !== ALL && card.chapterId !== filterChapter) return false;
       if (!matchesType(card, filterType)) return false;
-      if (filterTag && (!Array.isArray(card.tags) || !card.tags.includes(filterTag))) return false;
+      if (!matchesFrequency(card, filterFrequency)) return false;
       if (sourceFilterActive && card.sourceId !== externalSourceId) return false;
       if (typeof masteryFilter === "number") {
         if (getCardMasteryLevel(card) !== masteryFilter) return false;
@@ -117,21 +124,20 @@ export function useCardViewFilters({
 
     const order = categoryRecord ? buildHierarchyOrder(categoryRecord) : EMPTY_HIERARCHY_ORDER;
     return [...list].sort((a, b) => compareCardsByHierarchy(a, b, order));
-  }, [scoped, filterSubcategory, filterChapter, filterType, filterTag, externalQuery, externalSourceId, masteryFilter, categoryRecord]);
+  }, [scoped, filterSubcategory, filterChapter, filterType, filterFrequency, externalQuery, externalSourceId, masteryFilter, categoryRecord]);
 
   const hasActiveFilters = useMemo(
     () =>
       filterSubcategory !== ALL ||
       filterChapter !== ALL ||
       filterType !== "all" ||
-      filterTag !== null ||
+      filterFrequency !== "all" ||
       typeof masteryFilter === "number" ||
       (!!externalSourceId && externalSourceId !== ALL) ||
       (!!externalQuery && externalQuery.trim().length > 0),
-    [filterSubcategory, filterChapter, filterType, filterTag, masteryFilter, externalSourceId, externalQuery],
+    [filterSubcategory, filterChapter, filterType, filterFrequency, masteryFilter, externalSourceId, externalQuery],
   );
 
-  /** Selecting a subcategory always resets the chapter scope underneath it. */
   const changeSubcategory = useCallback((id: string) => {
     setFilterSubcategory(id);
     setFilterChapter(ALL);
@@ -141,25 +147,23 @@ export function useCardViewFilters({
     setFilterSubcategory(ALL);
     setFilterChapter(ALL);
     setFilterType("all");
-    setFilterTag(null);
+    setFilterFrequency("all");
     onClearMasteryFilter?.();
   }, [onClearMasteryFilter]);
 
   return {
-    // values
     filterSubcategory,
     filterChapter,
     filterType,
-    filterTag,
+    filterFrequency,
     filteredCards,
     subcategoryCounts,
     chapterCounts,
     hasActiveFilters,
-    // setters
     setFilterSubcategory,
     setFilterChapter,
     setFilterType,
-    setFilterTag,
+    setFilterFrequency,
     changeSubcategory,
     resetFilters,
   };
