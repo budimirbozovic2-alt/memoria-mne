@@ -44,8 +44,7 @@ interface Props {
 }
 
 export default function CardViewMode({ cards, categoryId, allCategories, subcategoryNodes, patchCard, setFrequency, addCard, addFlashCard, bulkAddFlashCards, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, initialSubcategory, initialChapter, initialType, initialFrequency, onFiltersChange }: Props) {
-  const { importCards: _unusedImport } = { importCards: undefined };
-  void _unusedImport;
+  const [selectionMode, setSelectionMode] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
