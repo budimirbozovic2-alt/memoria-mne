@@ -156,16 +156,7 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
 
   // Boot — dbError now lives in DbErrorProvider (consumed by RecoveryGate).
   const { ready } = useCardBootstrap({
-    setCardMapState: (updater) => {
-      // Boot path uses replace-form (arrayToMap result). Sync ref atomically.
-      setCardMapState((prev) => {
-        const next = typeof updater === "function"
-          ? (updater as (p: CardMap) => CardMap)(prev)
-          : updater;
-        cardMapRef.current = next;
-        return next;
-      });
-    },
+    setCardMapState,
     setCategoryRecordsState,
     setReviewLogState,
     setSrSettingsState,
