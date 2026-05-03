@@ -99,7 +99,6 @@ export default function SubjectCardsView() {
       tab,
       manageMode,
       searchQuery,
-      sourceFilter,
       cvSubcategory: cardViewFiltersRef.current?.subcategory,
       cvChapter: cardViewFiltersRef.current?.chapter,
       cvType: cardViewFiltersRef.current?.type,
@@ -117,24 +116,11 @@ export default function SubjectCardsView() {
   );
   const [structureOpen, setStructureOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(initialSnapshot?.searchQuery ?? "");
-  const [sourceFilter, setSourceFilter] = useState<string>(initialSnapshot?.sourceFilter ?? "__all__");
-  const sources = useCategorySources(categoryId);
   const [pendingPassiveCardId, setPendingPassiveCardId] = useState<string | null>(
     () => (initialSnapshot?.tab === "read" ? initialSnapshot.readerCardId ?? null : null)
   );
   const [pendingSpeedCardId, setPendingSpeedCardId] = useState<string | null>(
     () => (initialSnapshot?.tab === "speed" ? initialSnapshot.readerCardId ?? null : null)
-  );
-
-  const usedSourceIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const c of cards) if (c.sourceId) set.add(c.sourceId);
-    return set;
-  }, [cards]);
-
-  const sourceOptions = useMemo(
-    () => sources.filter(s => usedSourceIds.has(s.id)),
-    [sources, usedSourceIds],
   );
 
   const handleEdit = (card: Card) => {
