@@ -9,8 +9,6 @@ import CardViewTable from "./CardViewTable";
 import CardViewFilterBar, { type FrequencyFilterValue } from "./CardViewFilterBar";
 import SubjectHierarchyTree from "./SubjectHierarchyTree";
 import { MoveCardDialog } from "./CardViewDialogs";
-import CardCreateMenu from "./CardCreateMenu";
-import { useBackupActions } from "@/contexts/AppContext";
 import { useCardViewFilters, type FilterTypeValue } from "@/hooks/useCardViewFilters";
 
 export interface CardViewFiltersSnapshot {
