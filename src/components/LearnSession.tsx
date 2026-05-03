@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef, Suspense, lazy } from "react";
-import { Card, getCardScore, EXAM_FREQUENT_TAG } from "@/lib/spaced-repetition";
+import { Card, getCardScore } from "@/lib/spaced-repetition";
 import type { FrequencyTag } from "@/lib/sr/types";
 import { LearnCardProgress, loadLearnProgress } from "@/lib/storage";
 import { addActivityEntry } from "@/lib/metacognitive-storage";
