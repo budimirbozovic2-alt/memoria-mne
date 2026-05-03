@@ -6,7 +6,7 @@ import { useCallback, useMemo, useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -16,7 +16,15 @@ import { useSourceReaderStore } from "@/store/useSourceReaderStore";
 import { useCategoryData } from "@/contexts/AppContext";
 import { normalizeTag, TAG_LIMITS } from "@/lib/zettelkasten-tags";
 import { defaultEdit } from "@/lib/split-wizard-build";
-import { createEmptyModule, type SelectionModule } from "@/lib/selection-split-engine";
+import {
+  createEmptyModule,
+  htmlToPlain,
+  splitHtmlIntoBlocks,
+  joinHtmlBlocks,
+  type SelectionModule,
+} from "@/lib/selection-split-engine";
+import RichTextEditor from "@/components/RichTextEditor";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
@@ -39,34 +47,11 @@ interface Props {
  * i ručno splitovanje teksta — što je glavna funkcija wizard-a.
  */
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-function plainTextToHtml(text: string): string {
-  const trimmed = text.trim();
-  if (!trimmed) return "";
-  return trimmed
-    .split(/\n{2,}/)
-    .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br/>")}</p>`)
-    .join("");
-}
-
-function splitTextByParagraphs(text: string): string[] {
-  return text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
-}
-
-/** Inline cutting view — kopija ponašanja iz EditorSection.CuttingView, nad plain-text paragrafima. */
+/** Inline cutting view — radi nad HTML blokovima i čuva originalni format. */
 function CuttingView({
-  text, onCut, onCancel,
-}: { text: string; onCut: (paragraphIndex: number) => void; onCancel: () => void }) {
-  const paragraphs = splitTextByParagraphs(text);
-  if (paragraphs.length <= 1) {
+  blocks, onCut, onCancel,
+}: { blocks: string[]; onCut: (blockIndex: number) => void; onCancel: () => void }) {
+  if (blocks.length <= 1) {
     return (
       <div className="rounded-md border border-warning/30 bg-warning/5 p-3">
         <div className="flex items-center justify-between mb-2">
@@ -76,7 +61,7 @@ function CuttingView({
           </button>
         </div>
         <div className="text-sm text-muted-foreground text-center py-4">
-          Nema dovoljno paragrafa za rezanje. Razdvojte tekst praznim redom.
+          Nema dovoljno blokova za rezanje. Razdvojte sadržaj na više paragrafa/naslova.
         </div>
       </div>
     );
@@ -85,13 +70,13 @@ function CuttingView({
     <div className="rounded-md border border-warning/30 bg-warning/5 p-3 space-y-0">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-medium text-warning">
-          Kliknite na makazice da izrežete — prvi red poslije reza postaje naslov novog modula
+          Kliknite na makazice — sve nakon reza postaje novi modul (format se čuva)
         </span>
         <button type="button" onClick={onCancel} className="text-xs text-muted-foreground hover:text-foreground">
           Otkaži
         </button>
       </div>
-      {paragraphs.map((p, idx) => (
+      {blocks.map((blk, idx) => (
         <div key={idx}>
           {idx > 0 && (
             <button
@@ -105,7 +90,10 @@ function CuttingView({
               <div className="flex-1 h-px bg-warning/30 group-hover:bg-warning" />
             </button>
           )}
-          <div className="text-sm px-2 py-1 rounded whitespace-pre-wrap">{p}</div>
+          <div
+            className="text-sm px-2 py-1 rounded prose prose-sm max-w-none dark:prose-invert"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(blk) }}
+          />
         </div>
       ))}
     </div>
@@ -219,32 +207,32 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
   useEffect(() => { setCuttingIndex(null); }, [total]);
 
   const performManualCut = useCallback(
-    (moduleIdx: number, paraIdx: number) => {
+    (moduleIdx: number, blockIdx: number) => {
       const mod = splitModules[moduleIdx];
       if (!mod) return;
-      const parts = splitTextByParagraphs(mod.contentText);
-      if (paraIdx <= 0 || paraIdx >= parts.length) return;
+      const blocks = splitHtmlIntoBlocks(mod.contentHtml);
+      if (blockIdx <= 0 || blockIdx >= blocks.length) return;
 
-      const beforeText = parts.slice(0, paraIdx).join("\n\n");
+      const beforeHtml = joinHtmlBlocks(blocks.slice(0, blockIdx));
+      const afterHtml = joinHtmlBlocks(blocks.slice(blockIdx));
       const newTitle =
-        parts[paraIdx].replace(/\s+/g, " ").trim().slice(0, 200) || "Novi modul";
-      const afterText = parts.slice(paraIdx + 1).join("\n\n");
+        htmlToPlain(blocks[blockIdx]).replace(/\s+/g, " ").trim().slice(0, 200) || "Novi modul";
 
       const newModule: SelectionModule = {
         articleNum: "",
         title: newTitle,
-        contentText: afterText,
-        contentHtml: plainTextToHtml(afterText),
-        plainSnippet: afterText.trim() || newTitle,
+        contentText: htmlToPlain(afterHtml),
+        contentHtml: afterHtml,
+        plainSnippet: htmlToPlain(afterHtml).trim() || newTitle,
       };
 
       setSplitModules((prev) => {
         const out = [...prev];
         out[moduleIdx] = {
           ...out[moduleIdx],
-          contentText: beforeText,
-          contentHtml: plainTextToHtml(beforeText),
-          plainSnippet: beforeText.trim() || out[moduleIdx].title,
+          contentText: htmlToPlain(beforeHtml),
+          contentHtml: beforeHtml,
+          plainSnippet: htmlToPlain(beforeHtml).trim() || out[moduleIdx].title,
         };
         out.splice(moduleIdx + 1, 0, newModule);
         return out;
@@ -313,11 +301,11 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
             {/* ── Naslov eseja (parent question) ───────────────────────── */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Naslov eseja</label>
-              <Input
+              <RichTextEditor
                 value={splitParentName}
-                onChange={(e) => setSplitParentName(e.target.value)}
+                onChange={setSplitParentName}
                 placeholder="Unesite naslov eseja..."
-                className="bg-background"
+                minimal
               />
             </div>
 
@@ -339,7 +327,7 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                 const edit = splitEdits[i];
                 if (!edit) return null;
                 const isCutting = cuttingIndex === i;
-                const paragraphCount = splitTextByParagraphs(mod.contentText).length;
+                const blockCount = splitHtmlIntoBlocks(mod.contentHtml).length;
                 return (
                   <div
                     key={`mod-${i}`}
@@ -373,17 +361,18 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                           <ChevronDown className="h-3 w-3" />
                         </button>
                       </div>
-                      <Input
-                        value={edit.question}
-                        onChange={(e) => updateEditAt(i, { question: e.target.value })}
-                        placeholder={mod.title || "Naziv cjeline..."}
-                        disabled={edit.skipped}
-                        className="bg-background font-medium text-sm"
-                      />
+                      <div className="flex-1 min-w-0">
+                        <RichTextEditor
+                          value={edit.question}
+                          onChange={(v) => updateEditAt(i, { question: v })}
+                          placeholder={mod.title || "Naziv cjeline..."}
+                          minimal
+                        />
+                      </div>
                       <button
                         type="button"
                         onClick={() => setCuttingIndex(isCutting ? null : i)}
-                        disabled={edit.skipped || paragraphCount < 2}
+                        disabled={edit.skipped || blockCount < 2}
                         className={cn(
                           "p-1 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
                           isCutting
@@ -391,8 +380,8 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                             : "text-muted-foreground hover:text-foreground hover:bg-secondary",
                         )}
                         title={
-                          paragraphCount < 2
-                            ? "Nema dovoljno paragrafa za rezanje"
+                          blockCount < 2
+                            ? "Nema dovoljno blokova za rezanje"
                             : "Režim rezanja"
                         }
                         aria-label="Režim rezanja"
@@ -412,29 +401,28 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
                       )}
                     </div>
 
-                    {/* Content: cutting view OR textarea */}
+                    {/* Content: cutting view OR rich-text editor */}
                     {isCutting ? (
                       <CuttingView
-                        text={mod.contentText}
-                        onCut={(pIdx) => performManualCut(i, pIdx)}
+                        blocks={splitHtmlIntoBlocks(mod.contentHtml)}
+                        onCut={(bIdx) => performManualCut(i, bIdx)}
                         onCancel={() => setCuttingIndex(null)}
                       />
                     ) : (
-                      <textarea
-                        value={mod.contentText}
-                        onChange={(e) => {
-                          const text = e.target.value;
-                          updateModule(i, {
-                            contentText: text,
-                            contentHtml: plainTextToHtml(text),
-                            plainSnippet: text.trim(),
-                          });
-                        }}
-                        disabled={edit.skipped}
-                        rows={10}
-                        className="w-full px-3 py-2 rounded-md border bg-background text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y disabled:opacity-50"
-                        placeholder="Sadržaj ove cjeline odgovora..."
-                      />
+                      <div className={cn(edit.skipped && "opacity-50 pointer-events-none")}>
+                        <RichTextEditor
+                          value={mod.contentHtml}
+                          onChange={(html) => {
+                            const plain = htmlToPlain(html);
+                            updateModule(i, {
+                              contentHtml: html,
+                              contentText: plain,
+                              plainSnippet: plain.trim(),
+                            });
+                          }}
+                          placeholder="Sadržaj ove cjeline odgovora..."
+                        />
+                      </div>
                     )}
 
                     {/* Tags chip-input */}
@@ -500,9 +488,9 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
               <Button
                 onClick={onSmartSplitConfirm}
                 className="gap-1.5"
-                disabled={keptCount === 0 || !splitParentName.trim()}
+                disabled={keptCount === 0 || !htmlToPlain(splitParentName).trim()}
                 title={
-                  !splitParentName.trim()
+                  !htmlToPlain(splitParentName).trim()
                     ? "Unesite naslov eseja"
                     : keptCount === 0
                       ? "Svi moduli su preskočeni"
