@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { type Card } from "@/lib/spaced-repetition";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
+import { parseFlashcards } from "@/lib/flashcard-parser";
 
 interface Props {
   open: boolean;
@@ -23,11 +24,18 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
   const [parsed, setParsed] = useState<ParsedPair[] | null>(null);
 
   const analyze = useCallback(() => {
-    // Support two formats:
-    // 1) Single-line: Question;Answer
-    // 2) Multi-line: blocks separated by blank lines, first line = question, rest = answer
+    // Supported formats (auto-detected, in priority order):
+    //   0) P:/O: prefix format — primary, supports multi-paragraph answers
+    //   1) Single-line: Question;Answer
+    //   2) Multi-line: blocks separated by blank lines, first line = question
     const trimmed = raw.trim();
     if (!trimmed) { setParsed([]); return; }
+
+    // 0) P:/O: prefix detection — both markers must appear at line starts.
+    if (/^[ \t]*[Pp][ \t]*:/m.test(trimmed) && /^[ \t]*[Oo][ \t]*:/m.test(trimmed)) {
+      setParsed(parseFlashcards(trimmed));
+      return;
+    }
 
     // Detect format: if any line has `;`, use single-line mode
     const lines = trimmed.split("\n");
@@ -100,13 +108,14 @@ export default function BulkImportDialog({ open, onOpenChange, categoryId, addFl
         {!parsed ? (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
-              Format 1: <code className="bg-muted px-1 rounded">Pitanje;Odgovor</code> — jedan par po redu.<br/>
-              Format 2: Pitanje u prvom redu, odgovor u sljedećim redovima, prazan red razdvaja parove.
+              <strong>Preporučeno:</strong> redovi sa <code className="bg-muted px-1 rounded">P:</code> (pitanje) i <code className="bg-muted px-1 rounded">O:</code> (odgovor); odgovor može imati više pasusa.<br/>
+              Alt 1: <code className="bg-muted px-1 rounded">Pitanje;Odgovor</code> — jedan par po redu.<br/>
+              Alt 2: Pitanje u prvom redu, odgovor u sljedećim redovima, prazan red razdvaja parove.
             </p>
             <Textarea
               value={raw}
               onChange={e => setRaw(e.target.value)}
-              placeholder={"Šta je ugovor?;Saglasnost volja dviju strana\nŠta je hipoteka?;Založno pravo na nekretnini"}
+              placeholder={"P: Šta je ugovor?\nO: Saglasnost volja dviju strana o nastanku, izmjeni ili prestanku obligacionog odnosa.\n\nP: Šta je hipoteka?\nO: Založno pravo na nekretnini."}
               rows={12}
               className="font-mono text-xs"
             />
