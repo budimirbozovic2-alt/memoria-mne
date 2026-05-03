@@ -18,7 +18,7 @@ export interface CardRowProps {
   selectionMode?: boolean;
   selectedIds?: Set<string>;
   onToggleSelect?: (id: string) => void;
-  onToggleTag: (cardId: string, tag: string) => void;
+  setFrequency: (cardId: string, value: FrequencyTag | null) => void;
   onExpand: (id: string | null) => void;
   onEdit: (card: Card) => void;
   onDelete: (id: string) => void;
@@ -34,7 +34,7 @@ export interface CardRowProps {
 
 const CardRow = memo(function CardRow({
   card, expanded, highlighted, selectionMode, selectedIds, onToggleSelect,
-  onToggleTag, onExpand, onEdit, onDelete,
+  setFrequency, onExpand, onEdit, onDelete,
   categories, subcategories, availableChapters,
   onMoveCategory, onAssignChapter, onCloneToMnemonic, onAddKeyPart,
   catNameMap,
@@ -42,8 +42,6 @@ const CardRow = memo(function CardRow({
   const score = getCardScore(card);
   const retention = getCardRetrievability(card);
   const isFlash = card.type === "flash";
-  const cardTags = card.tags || [];
-  const isFrequent = cardTags.includes(EXAM_FREQUENT_TAG);
   const hasSource = !!card.sourceId && !!card.originalSourceSnippet;
   const [snippetOpen, setSnippetOpen] = useState(false);
 
