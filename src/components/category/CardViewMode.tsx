@@ -116,7 +116,50 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
   const exitSelectionMode = useCallback(() => {
     setSelectionMode(false);
     setSelectedIds(new Set());
+    setTagPanelOpen(false);
+    setTagInput("");
   }, []);
+
+  const selectedTagsSummary = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const id of selectedIds) {
+      const c = cards.find(x => x.id === id);
+      for (const t of c?.tags ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([tag, count]) => ({ tag, count }));
+  }, [selectedIds, cards]);
+
+  const handleBulkAddTag = useCallback((rawTag: string) => {
+    const tag = rawTag.trim();
+    if (!tag || selectedIds.size === 0) return;
+    let added = 0;
+    selectedIds.forEach(id => {
+      patchCard(id, c => {
+        const existing = c.tags ?? [];
+        if (existing.includes(tag)) return c;
+        added++;
+        return { ...c, tags: [...existing, tag] };
+      });
+    });
+    setTagInput("");
+    toast.success(added === 0 ? `Tag „${tag}" već postoji na svim izabranima.` : `Dodan tag „${tag}" na ${added} kartica.`);
+  }, [selectedIds, patchCard]);
+
+  const handleBulkRemoveTag = useCallback((tag: string) => {
+    if (selectedIds.size === 0) return;
+    let removed = 0;
+    selectedIds.forEach(id => {
+      patchCard(id, c => {
+        const existing = c.tags ?? [];
+        if (!existing.includes(tag)) return c;
+        removed++;
+        return { ...c, tags: existing.filter(t => t !== tag) };
+      });
+    });
+    toast.success(`Uklonjen tag „${tag}" sa ${removed} kartica.`);
+  }, [selectedIds, patchCard]);
 
   const confirmMove = useCallback((targetCategoryId: string) => {
     if (!moveCardId) return;
