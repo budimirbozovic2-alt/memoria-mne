@@ -3,12 +3,13 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Card } from "@/lib/spaced-repetition";
 import { type CategoryRecord, type SubcategoryNode } from "@/lib/db";
-import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import CardViewTable from "./CardViewTable";
 import CardViewFilterBar from "./CardViewFilterBar";
 import SubjectHierarchyTree from "./SubjectHierarchyTree";
-import { AddCardDialog, MoveCardDialog } from "./CardViewDialogs";
+import { MoveCardDialog } from "./CardViewDialogs";
+import CardCreateMenu from "./CardCreateMenu";
+import { useBackupActions } from "@/contexts/AppContext";
 import { useCardViewFilters, type FilterTypeValue } from "@/hooks/useCardViewFilters";
 
 export interface CardViewFiltersSnapshot {
@@ -44,7 +45,8 @@ interface Props {
 }
 
 export default function CardViewMode({ cards, categoryId, allCategories, subcategoryNodes, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId, initialSubcategory, initialChapter, initialType, initialTag, onFiltersChange }: Props) {
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const { importCards } = useBackupActions();
+  const allCategoryNames = useMemo(() => allCategories.map(c => c.name), [allCategories]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -113,14 +115,18 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
     setMoveCardId(null);
   }, [moveCardId, patchCard]);
 
-  if (cards.length === 0 && !addDialogOpen) {
+  if (cards.length === 0) {
     return (
       <div className="text-center py-16 space-y-4">
         <p className="text-sm text-muted-foreground">Nema kartica u ovoj kategoriji.</p>
-        <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> Nova kartica
-        </Button>
-        <AddCardDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} categoryId={categoryId} addCard={addCard} addFlashCard={addFlashCard} />
+        <CardCreateMenu
+          size="prominent"
+          categoryId={categoryId}
+          allCategoryNames={allCategoryNames}
+          addCard={addCard}
+          addFlashCard={addFlashCard}
+          importEssays={importCards}
+        />
       </div>
     );
   }
@@ -148,6 +154,15 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
       </aside>
 
       <div className="space-y-3 min-w-0">
+        <div className="flex justify-center pb-1">
+          <CardCreateMenu
+            categoryId={categoryId}
+            allCategoryNames={allCategoryNames}
+            addCard={addCard}
+            addFlashCard={addFlashCard}
+            importEssays={importCards}
+          />
+        </div>
         <CardViewFilterBar
           filterType={filters.filterType}
           onChangeType={filters.setFilterType}
@@ -205,9 +220,6 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
           otherCategories={otherCategories}
           onConfirm={confirmMove}
         />
-        {/* Empty-state fallback dialog. Primary creation entry point lives in
-            `CardCreateMenu` (the "Dodaj" dropdown) inside SubjectCardsView. */}
-        <AddCardDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} categoryId={categoryId} addCard={addCard} addFlashCard={addFlashCard} />
       </div>
     </div>
   );
