@@ -205,6 +205,17 @@ export default function SubjectCardsView() {
             </p>
           </div>
         </div>
+        {tab === "manage" && (
+          <CardCreateMenu
+            size="icon"
+            categoryId={categoryId!}
+            allCategoryNames={allCategoryNames}
+            addCard={addCard}
+            addFlashCard={addFlashCard}
+            bulkAddFlashCards={bulkAddFlashCards}
+            importEssays={importCards}
+          />
+        )}
         <Button
           asChild
           variant="ghost"
