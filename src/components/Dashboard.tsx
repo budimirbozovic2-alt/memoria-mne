@@ -33,7 +33,7 @@ export default function Dashboard({ stats, categoryStats, categories, categoryRe
   const {
     wc, todayReviews, dailyGoal, goalProgress, pendingFirstReview, streak,
     focusRatio, actualRatio, autoSuggestion, storageUsage, plannerData,
-    velocityData, weakestCategories, briefText, statusIcons, statusColor, statusMessage,
+    velocityData, weakestCategories, weakestCategory, briefText, statusIcons, statusColor, statusMessage,
     studyFlowData,
   } = useDashboardData(stats, categoryStats, categories, categoryRecords, cards, reviewLog, srSettings);
   return (
