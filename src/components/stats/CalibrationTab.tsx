@@ -1,4 +1,4 @@
-import { AlertTriangle, Gauge } from "lucide-react";
+import { AlertTriangle, Archive } from "lucide-react";
 import { useMemo } from "react";
 
 
@@ -31,11 +31,11 @@ export default function CalibrationTab() {
   if (calibration.length === 0) {
     return (
       <div className="mt-8 text-center space-y-3 py-12">
-        <Gauge className="h-12 w-12 mx-auto text-muted-foreground/30" />
-        <h3 className="text-lg font-medium">Nema podataka o kalibraciji</h3>
+        <Archive className="h-12 w-12 mx-auto text-muted-foreground/30" />
+        <h3 className="text-lg font-medium">Kalibracija je arhivirana</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          Tokom ponavljanja, prije otkrivanja odgovora bićete upitani za nivo sigurnosti (1-5).
-          Podaci se automatski prikupljaju.
+          „Procjena sigurnosti (A–E)" prije otkrivanja odgovora je uklonjena iz Konsolidacije.
+          Novi kalibracioni zapisi se trenutno <strong>ne generišu</strong>, a istorijski podaci ovdje nisu pronađeni.
         </p>
       </div>
     );
@@ -43,10 +43,22 @@ export default function CalibrationTab() {
 
   return (
     <div className="space-y-6 mt-4">
+      <div className="flex items-start gap-3 p-4 rounded-xl border border-muted bg-muted/30">
+        <Archive className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium">Read-only / legacy podaci</p>
+          <p className="text-xs text-muted-foreground">
+            Prikazani zapisi su prikupljeni dok je „Procjena sigurnosti (A–E)" postojala u Konsolidaciji.
+            Funkcija je uklonjena — <strong>novi unosi se trenutno ne generišu</strong>. Statistika ispod služi
+            isključivo kao istorijski uvid (koristi se i za detekciju slijepih tačaka).
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border bg-card p-4 text-center">
           <div className="text-2xl font-bold">{stats.total}</div>
-          <div className="text-xs text-muted-foreground mt-1">Mjerenja</div>
+          <div className="text-xs text-muted-foreground mt-1">Mjerenja (arhiva)</div>
         </div>
         <div className="rounded-xl border bg-card p-4 text-center">
           <div className="text-2xl font-bold text-success">{stats.calibrated}</div>
@@ -66,10 +78,10 @@ export default function CalibrationTab() {
         <div className="flex items-center gap-3 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
           <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
           <div>
-            <p className="text-sm font-medium text-destructive">Iluzija znanja detektovana</p>
+            <p className="text-sm font-medium text-destructive">Iluzija znanja detektovana (istorijski)</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Vaša procjena sigurnosti je u prosjeku {stats.avgDelta.toFixed(1)} poena viša od stvarnog znanja.
-              Usporite i budite kritičniji pri procjeni.
+              U arhivskim podacima vaša procjena sigurnosti je u prosjeku {stats.avgDelta.toFixed(1)} poena viša
+              od stvarnog znanja. Korisno za buduće sesije: usporite i budite kritičniji pri samoprocjeni.
             </p>
           </div>
         </div>
@@ -100,7 +112,7 @@ export default function CalibrationTab() {
           </BarChart>
         </ResponsiveContainer>
         <p className="text-xs text-muted-foreground mt-2">
-          Idealno: svaki nivo sigurnosti odgovara proporcionalnoj ocjeni. Ako su "Sigurnost 5" ocjene niske — imate iluziju znanja.
+          Idealno: svaki nivo sigurnosti odgovara proporcionalnoj ocjeni. Ako su „Sigurnost 5" ocjene niske — imate iluziju znanja.
         </p>
       </div>
     </div>
