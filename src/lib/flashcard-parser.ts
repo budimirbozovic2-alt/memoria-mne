@@ -21,10 +21,38 @@ export interface ParsedFlashcard {
 /** Matches a P:/p: or O:/o: marker that starts its own (optionally indented) line. */
 const MARKER_RE = /^[ \t]*([PpOo])[ \t]*:[ \t]?(.*)$/;
 
+/**
+ * Normalize raw input so different copy-paste sources (Word, PDF, Google Docs,
+ * chat apps) yield identical parsing behavior.
+ *
+ * Steps:
+ *   - Strip UTF-8 BOM and zero-width characters.
+ *   - Convert non-breaking / ideographic spaces to regular spaces.
+ *   - Normalize CRLF / CR → LF.
+ *   - Convert tabs to single spaces.
+ *   - Trim trailing whitespace on every line.
+ *   - Collapse 3+ consecutive blank lines into exactly one blank line.
+ *   - Trim leading/trailing blank lines around the whole input.
+ */
+export function normalizeFlashcardInput(input: string): string {
+  if (!input || typeof input !== "string") return "";
+  return input
+    .replace(/^\uFEFF/, "")
+    .replace(/[\u200B-\u200D\u2060]/g, "")
+    .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, " ")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\t/g, " ")
+    .split("\n")
+    .map((l) => l.replace(/[ \t]+$/g, ""))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/^\n+|\n+$/g, "");
+}
+
 export function parseFlashcards(input: string): ParsedFlashcard[] {
   if (!input || typeof input !== "string") return [];
 
-  const lines = input.split(/\r?\n/);
+  const lines = normalizeFlashcardInput(input).split("\n");
   const out: ParsedFlashcard[] = [];
 
   let curQ: string[] | null = null;
