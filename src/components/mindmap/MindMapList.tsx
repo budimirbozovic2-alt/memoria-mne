@@ -1,7 +1,8 @@
 import { Plus, Trash2, Map, GitBranch, Workflow, HelpCircle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { MindMapDoc, MindMapMode } from "@/lib/db";
-import { loadMindMaps, deleteMindMap, saveMindMap } from "@/lib/mindmap-storage";
+import { deleteMindMap, saveMindMap } from "@/lib/mindmap-storage";
+import { useMindMaps } from "@/hooks/useMindMaps";
 import { Button } from "@/components/ui/button";
 import { AnimatePresence } from "framer-motion";
 import InfoPanel from "@/components/InfoPanel";
@@ -17,16 +18,9 @@ interface Props {
 }
 
 export default function MindMapList({ onOpen, showOnboarding, onShowOnboarding, onCloseOnboarding }: Props) {
-  const [maps, setMaps] = useState<MindMapDoc[]>([]);
+  const { mindMaps: maps, ready } = useMindMaps();
   const [showCreate, setShowCreate] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  const refresh = async () => {
-    const result = await loadMindMaps();
-    setMaps(result);
-    setLoading(false);
-  };
-  useEffect(() => { refresh(); }, []);
+  const loading = !ready;
 
   const createNew = async (mode: MindMapMode) => {
     const isHierarchy = mode === "hierarchy";
@@ -46,7 +40,7 @@ export default function MindMapList({ onOpen, showOnboarding, onShowOnboarding, 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     await deleteMindMap(id);
-    refresh();
+    // Listener auto-refreshes the list — no manual refresh() call.
   };
 
   const modeIcon = (mode?: MindMapMode) =>

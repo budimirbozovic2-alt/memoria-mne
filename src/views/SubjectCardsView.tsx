@@ -12,7 +12,7 @@ import { useCardData, useCategoryData, useCardOnlyActions, useCategoryActions, u
 import CardCreateMenu from "@/components/category/CardCreateMenu";
 import type { SubcategoryNode } from "@/lib/db";
 import type { Card } from "@/lib/spaced-repetition";
-import { loadSourcesByCategory, type Source } from "@/lib/sources-storage";
+import { useCategorySources } from "@/hooks/useCategorySources";
 import { useEditReturn } from "@/hooks/useEditReturn";
 import type { BaseEditReturnSnapshot } from "@/lib/edit-return";
 import CardViewMode, { type CardViewFiltersSnapshot } from "@/components/category/CardViewMode";
@@ -119,20 +119,13 @@ export default function SubjectCardsView() {
   const [structureOpen, setStructureOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(initialSnapshot?.searchQuery ?? "");
   const [sourceFilter, setSourceFilter] = useState<string>(initialSnapshot?.sourceFilter ?? "__all__");
-  const [sources, setSources] = useState<Source[]>([]);
+  const sources = useCategorySources(categoryId);
   const [pendingPassiveCardId, setPendingPassiveCardId] = useState<string | null>(
     () => (initialSnapshot?.tab === "read" ? initialSnapshot.readerCardId ?? null : null)
   );
   const [pendingSpeedCardId, setPendingSpeedCardId] = useState<string | null>(
     () => (initialSnapshot?.tab === "speed" ? initialSnapshot.readerCardId ?? null : null)
   );
-
-  useEffect(() => {
-    if (!categoryId) return;
-    let cancelled = false;
-    loadSourcesByCategory(categoryId).then(s => { if (!cancelled) setSources(s); });
-    return () => { cancelled = true; };
-  }, [categoryId]);
 
   const usedSourceIds = useMemo(() => {
     const set = new Set<string>();

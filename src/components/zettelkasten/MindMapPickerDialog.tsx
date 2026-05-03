@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Map as MapIcon } from "lucide-react";
 import {
   Dialog,
@@ -8,8 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { loadMindMaps } from "@/lib/mindmap-storage";
-import type { MindMapDoc } from "@/lib/db";
+import { useMindMapsByCategory } from "@/hooks/useMindMaps";
 
 interface Props {
   open: boolean;
@@ -19,21 +18,9 @@ interface Props {
 }
 
 export default function MindMapPickerDialog({ open, onOpenChange, categoryId, onPick }: Props) {
-  const [docs, setDocs] = useState<MindMapDoc[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { mindMaps: docs, ready } = useMindMapsByCategory(categoryId);
+  const loading = !ready;
   const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setLoading(true);
-    loadMindMaps().then(all => {
-      if (cancelled) return;
-      setDocs(all.filter(d => d.categoryId === categoryId));
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [open, categoryId]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

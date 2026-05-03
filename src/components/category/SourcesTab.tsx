@@ -1,12 +1,11 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { type Source } from "@/lib/db";
-import { saveSource, invalidateSourcesCache, deleteSource } from "@/lib/sources-storage";
+import { saveSource, deleteSource } from "@/lib/sources-storage";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { parseArticles } from "@/lib/article-parser";
 import { extractOutline, injectHeadingIds } from "@/lib/sources-storage";
-import { loadMindMaps } from "@/lib/mindmap-storage";
-import type { MindMapDoc } from "@/lib/db";
+import { useMindMapsByCategory } from "@/hooks/useMindMaps";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,23 +32,12 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
   const [importing, setImporting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Source | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [mindMaps, setMindMaps] = useState<MindMapDoc[]>([]);
-  const [mindMapsLoading, setMindMapsLoading] = useState(true);
+  const { mindMaps, ready: mindMapsReady } = useMindMapsByCategory(categoryId);
+  const mindMapsLoading = !mindMapsReady;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const propisSources = useMemo(() => sources.filter(s => (s.sourceKind ?? "propis") === "propis"), [sources]);
   const skriptaSources = useMemo(() => sources.filter(s => s.sourceKind === "skripta"), [sources]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setMindMapsLoading(true);
-    loadMindMaps().then(all => {
-      if (cancelled) return;
-      setMindMaps(all.filter(d => d.categoryId === categoryId));
-      setMindMapsLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [categoryId]);
 
   const handleDocxImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,7 +71,7 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
       };
 
       await saveSource(newSource);
-      invalidateSourcesCache();
+      // saveSource notifies listeners (SSOT) — no manual invalidate needed.
       toast.success(`Izvor "${title}" uspješno importovan.`);
     } catch (err) {
       toast.error(`Greška pri importu: ${err instanceof Error ? err.message : "Nepoznata greška"}`);
@@ -97,7 +85,7 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
     setDeleting(true);
     try {
       await deleteSource(deleteTarget.id);
-      invalidateSourcesCache();
+      // deleteSource notifies listeners (SSOT) — no manual invalidate needed.
       toast.success(`Izvor "${deleteTarget.title}" obrisan.`);
       setDeleteTarget(null);
     } catch {

@@ -4,18 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { useDebounce } from "@/hooks/useDebounce";
 import { Card } from "@/lib/spaced-repetition";
-import { loadSources, type Source } from "@/lib/sources-storage";
-import { loadMindMaps } from "@/lib/mindmap-storage";
-import { MindMapDoc } from "@/lib/db";
+import { type Source } from "@/lib/sources-storage";
+import { useAllSources } from "@/hooks/useCategorySources";
+import { useMindMaps } from "@/hooks/useMindMaps";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCardData, useCategoryData } from "@/contexts/AppContext";
-import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 
-// Module-level cache for sources & mind maps
-let cachedSources: Source[] | null = null;
-let cachedMindMaps: MindMapDoc[] | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 60_000; // 60s staleness check
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -69,35 +63,19 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const [sources, setSources] = useState<Source[]>([]);
-  const [mindMaps, setMindMaps] = useState<MindMapDoc[]>([]);
 
-  // Invalidate cache on CARDS_UPDATED (covers source/card changes)
-  useEffect(() => {
-    return eventBus.subscribe(EVENT_TYPES.CARDS_UPDATED, () => {
-      cachedSources = null;
-      cachedMindMaps = null;
-    });
-  }, []);
+  // SSOT subscriptions — invalidated automatically by storage listeners.
+  // Subscriptions are gated on `open` so the modal only pays the cost when shown.
+  const sources = useAllSources(open);
+  const { mindMaps } = useMindMaps(open);
 
-  // Load sources and mind maps when opened (with caching)
+  // Reset query/cursor + focus when opening
   useEffect(() => {
-    if (open) {
-      const stale = Date.now() - cacheTimestamp > CACHE_TTL;
-      if (cachedSources && !stale) {
-        setSources(cachedSources);
-      } else {
-        loadSources().then(s => { cachedSources = s; cacheTimestamp = Date.now(); setSources(s); });
-      }
-      if (cachedMindMaps && !stale) {
-        setMindMaps(cachedMindMaps);
-      } else {
-        loadMindMaps().then(m => { cachedMindMaps = m; cacheTimestamp = Date.now(); setMindMaps(m); });
-      }
-      setQuery("");
-      setSelectedIndex(0);
-      setTimeout(() => inputRef.current?.focus(), 50);
-    }
+    if (!open) return;
+    setQuery("");
+    setSelectedIndex(0);
+    const t = window.setTimeout(() => inputRef.current?.focus(), 50);
+    return () => window.clearTimeout(t);
   }, [open]);
 
   const results = useMemo<SearchResult[]>(() => {

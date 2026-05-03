@@ -1,34 +1,101 @@
-# Plan: Premjestiti "Nova kartica" i "Masovni uvoz" u header kao ikone
+
+# Konsolidacija SSOT: Sources & MindMaps (C1 + C2 + W5 + W6)
 
 ## Cilj
-Ukloniti dva široka dropdown dugmeta iz toolbara liste kartica. Premjestiti ih kao male ikone u header `SubjectCardsView`, pored postojećeg dugmeta za Memorizaciju (mozak), tako da pregled bude čistiji.
+Jedan izvor istine za `Source` i `MindMapDoc` listu, sa pull-listenerima koji invalidiraju sve potrošače pri svakoj mutaciji. Eliminisati paralelne `useState` kopije i pogrešne event-bus invalidatore.
 
-## Izmjene
+---
 
-### 1. `src/components/category/CardCreateMenu.tsx`
-- Dodati treću vrijednost `size: "icon"` pored postojećih `"compact" | "prominent"`.
-- Kada je `size="icon"`:
-  - Triggeri postaju `Button variant="ghost" size="icon" className="h-8 w-8"` — bez teksta i chevrona, samo ikone (`Plus` za nova kartica, `Upload` za masovni uvoz).
-  - `aria-label` i `title` zadržavaju "Nova kartica" / "Masovni uvoz" za pristupačnost i hover tooltip.
-  - Wrapper `div` ostaje `flex items-center gap-1` (manji razmak za ikone).
-- Empty-state (`prominent`) i compact varijante ostaju netaknute.
+## 1. `src/lib/mindmap-storage.ts` — dodati cache + listener (parnjak Sources)
 
-### 2. `src/views/SubjectCardsView.tsx` (header, ~lines 188-222)
-- Dodati `<CardCreateMenu size="icon" ... />` neposredno **prije** dugmeta Memorizacija (`Brain` link).
-- Proslijediti postojeće akcije iz konteksta: `addCard`, `addFlashCard`, `bulkAddFlashCards`, `importEssays` (preko `useBackupActions().importCards`), `categoryId`, i `allCategoryNames` izvedene iz `categoryRecords`.
-- Renderovati ga samo kada je `tab === "manage"` i `manageMode === "edit"` (ne kada smo u Pasivnom/Brzom čitanju ili Strukturi).
+Refaktor po šablonu `sources-storage.ts`:
 
-### 3. `src/components/category/CardViewMode.tsx` (lines 159-169)
-- Ukloniti `<div className="flex justify-center pb-1"><CardCreateMenu .../></div>` iz glavnog grananja (kada lista nije prazna). Time dropdown nestaje iz toolbara.
-- **Zadržati** `CardCreateMenu size="prominent"` u empty-state granu (lines 120-135) — kada nema kartica korisnik treba prominentne CTA.
-- Skinuti dovod `bulkAddFlashCards`/`addCard`/`addFlashCard` propsa iz `CardViewMode` u `SubjectCardsView` ostaje (potreban je za empty-state i za interne flowove tabele).
+- Dodati `_cache: MindMapDoc[] | null` (po-upisu invalidiran).
+- Dodati `_listeners: Set<() => void>`, export `onMindMapsChanged(fn): () => void`.
+- `loadMindMaps()` koristi `_cache`; ako je null → `db.mindMaps.orderBy("updatedAt").reverse().toArray()` i napuni cache.
+- `saveMindMap` / `deleteMindMap`: `_cache = null;` → `await db...` → notify svih listenera.
+- Dodati `invalidateMindMapsCache()` (za eksterne mutacije: import/restore).
 
-## Vizuelni rezultat
-Header reda: `[← Nazad]  [📚 Naziv predmeta] [Esej: N] [Blic: M]    [➕] [⬆️] [🧠]`
+## 2. Novi hook `src/hooks/useCategorySources.ts` (W5 fix)
 
-Sve tri ikone su `h-8 w-8 ghost` dugmad, vizuelno usklađene sa Memorizacija ikonom.
+```ts
+export function useCategorySources(categoryId: string | undefined): Source[]
+```
+
+- Interno: `useState<Source[]>([])`, `useEffect(...)` koji:
+  - poziva `loadSourcesByCategory(categoryId)` na mount/promijenjeni id,
+  - subscribe na `onSourcesChanged(reload)`,
+  - cleanup unsubscribe + `cancelled` flag.
+- Vraća uvijek svjež scope-ovan niz.
+
+## 3. Novi hook `src/hooks/useMindMaps.ts` (C2 fix)
+
+```ts
+export function useMindMaps(): { mindMaps: MindMapDoc[]; ready: boolean }
+export function useMindMapsByCategory(categoryId?: string): MindMapDoc[]
+```
+
+- `useMindMaps`: `useState<MindMapDoc[]>([])` + subscribe na `onMindMapsChanged`. Inicijalni `loadMindMaps()`.
+- `useMindMapsByCategory`: derivat preko `useMemo(filter by categoryId)`.
+- (Bez Context-a — module-level cache + listener već daje SSOT semantiku, jeftinije od dodatnog providera.)
+
+## 4. Migrirati potrošače (C2)
+
+Zamijeniti lokalni `useState<MindMapDoc[]>([])` + ručni `loadMindMaps()` poziv sa hookom u sljedećim fajlovima:
+
+- `src/views/SubjectMindMapPage.tsx`
+- `src/components/zettelkasten/MindMapPickerDialog.tsx`
+- `src/components/zettelkasten/EmbeddedMindMap.tsx` (ostaje per-id `getMindMap`, ali se i ona invalidira preko listener-a → mali helper `useMindMap(id)` koji koristi listener za reload)
+- `src/components/category/SourcesTab.tsx`
+- `src/components/mindmap/MindMapList.tsx`
+- `src/components/subject-cards/MindMapSidePanel.tsx`
+- `src/components/GlobalSearch.tsx`
+
+## 5. Migrirati potrošače Sources (W5)
+
+Zamijeniti lokalni `useState<Source[]>` + `loadSourcesByCategory` ručni `useEffect`:
+
+- `src/views/CategoryView.tsx` (linije 31-41) → `const sources = useCategorySources(categoryId);`
+- `src/views/SubjectCardsView.tsx` (linije 122, 130-135) → isto. Time `SubjectCardsView` automatski dobija invalidaciju.
+
+## 6. `src/components/GlobalSearch.tsx` — popraviti event domen (W6)
+
+- Ukloniti `cachedSources` / `cachedMindMaps` / `cacheTimestamp` / TTL i `eventBus.subscribe(CARDS_UPDATED, ...)` blok.
+- Zamijeniti sa:
+  ```ts
+  const { mindMaps } = useMindMaps();
+  // sources: jednostavan `useState` + onSourcesChanged subscribe (samo kada `open`),
+  // ili novi hook `useAllSources()` po istom šablonu kao mindmaps.
+  ```
+- Bonus: dodati `useAllSources()` (analog `useMindMaps`) u `useCategorySources.ts` da `GlobalSearch` ne mora znati za invalidate detalje.
+
+## 7. Brisanje "ručnog" `invalidateSourcesCache()` poziva nakon save-a
+
+`CategoryView` linije 58-59, 74: `handleSourceUpdated` postaje no-op (notify već šalje `saveSource`/`deleteSource`). Ostaviti samo gdje se zovu eksterne (non-`saveSource`) mutacije.
+
+---
+
+## Tehnički detalji
+
+- Bez novog Context provider-a: module-level cache + Set-listener je već utvrđen šablon (`sources-storage.ts`). Manje preklapanja sa `AppContext`.
+- Listener API je **sinkron notify** (postojeći obrazac u `_notify()`); React `setState` inside listener je siguran.
+- TTL od 60s u `GlobalSearch` se uklanja — listener garantuje svježinu, cache je permanentan dok ne stigne mutacija.
+- `EmbeddedMindMap` koristi `getMindMap(id)`; novi `useMindMap(id)` interno: subscribe na `onMindMapsChanged` → re-load po promjeni.
+- Tipovi: `MindMapDoc` već postoji (`@/lib/db`).
+
+## Rizici
+
+- **`MindMapList`** (i drugi) trenutno radi optimističke lokalne update-ove (npr. `setMindMaps(prev => [...])` poslije save). Treba ih ukloniti — listener će sam re-load-ovati. Provjera u svakoj migraciji.
+- `EmbeddedMindMap` u render listi (Zettelkasten) — listener može prouzrokovati N re-fetch-ova; mitigacija: jedan modul-cache hit po pozivu `getMindMap` ne ide u IDB ako koristimo `_cache.find(...)`. Dodati helper `getMindMapCached(id)` u `mindmap-storage.ts`.
 
 ## Bez izmjena
-- `BulkImportDialog`, `MassFlashImportTrigger`, `AddCardDialog`, `DocxImporter` — logika ostaje nepromijenjena, mijenjaju se samo trigger-i.
-- Onboarding, planner, strukturni dijalozi — nisu dirani.
-- Empty-state CTA za prazan predmet i dalje pokazuje široka prominent dugmad.
+
+- `db.ts`, schema, sync, FSRS, AppContext, CardData/CardActions provider.
+- Osim popravki `handleSourceUpdated`, semantika sačuvana 1:1.
+
+## Acceptance
+
+- Preimenovanje izvora u `SourcesTab` se vidi odmah u `SubjectCardsView` source filteru bez remount-a.
+- Brisanje mind mape u `MindMapList` nestaje iz `MindMapPickerDialog` i `MindMapSidePanel` bez zatvaranja.
+- Pretraga `Ctrl+K` poslije rename source-a vraća novi naslov bez čekanja 60s.
+- Nema više `cachedSources` / `cachedMindMaps` / `CACHE_TTL` u `GlobalSearch`.
