@@ -90,12 +90,7 @@ const SessionHeader = React.memo(function SessionHeader({
           </div>
         </div>
         {!hideQuestion && (
-          <div className="flex items-center gap-2">
-            <p className="text-xl leading-relaxed flex-1">{card.question}</p>
-            <button onClick={() => speak(card.question)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shrink-0" title="Pročitaj naglas">
-              <Volume2 className="h-4 w-4" />
-            </button>
-          </div>
+          <p className="text-xl leading-relaxed">{card.question}</p>
         )}
         {hideQuestion && (
           <p className="text-sm text-muted-foreground italic text-center py-4">
