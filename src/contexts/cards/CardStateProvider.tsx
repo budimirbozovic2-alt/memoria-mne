@@ -114,11 +114,9 @@ export function useSettingsActions() {
   return useMemo(() => ({ updateSRSettings }), [updateSRSettings]);
 }
 
-// ─── DB error broadcast (consumed by composition root for recovery panel) ───
-const DbErrorContext = createContext<DbError | null>(null);
-export function useDbError() {
-  return useContext(DbErrorContext);
-}
+// ─── DB error broadcast — moved to dedicated DbErrorProvider ─────
+// Re-exported here for backward-compatibility with `import { useDbError } from "./CardStateProvider"`.
+export { useDbError } from "@/contexts/db/DbErrorProvider";
 
 export function CardStateProvider({ children }: { children: ReactNode }) {
   const [cardMap, setCardMapState] = useState<CardMap>({});
@@ -135,8 +133,10 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   const cardMapRef = useRef<CardMap>({});
   useEffect(() => { cardMapRef.current = { ...cardMap }; }, [cardMap]);
 
-  // Boot
-  const { ready, dbError } = useCardBootstrap({
+  // Boot — dbError is no longer surfaced here; it lives in DbErrorProvider
+  // and is consumed by RecoveryGate. We still call useCardBootstrap to drive
+  // the load lifecycle (`ready`).
+  useCardBootstrap({
     setCardMapState,
     setCategoryRecordsState,
     setReviewLogState,
