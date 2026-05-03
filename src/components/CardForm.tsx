@@ -113,8 +113,7 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
               </button>
             ))}
           </div>
-          <button type="button" onClick={onCancel} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
-            {editCard && <span className="text-xs">Vrati me nazad</span>}
+          <button type="button" onClick={onCancel} aria-label="Zatvori" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
             <X className="h-5 w-5" />
           </button>
         </div>
