@@ -1,4 +1,4 @@
-import { AlertTriangle, Gauge } from "lucide-react";
+import { AlertTriangle, Gauge, Archive } from "lucide-react";
 import { useMemo } from "react";
 
 
