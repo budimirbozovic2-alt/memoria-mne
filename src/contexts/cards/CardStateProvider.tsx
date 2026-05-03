@@ -124,7 +124,7 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   const [srSettings, setSrSettingsState] = useState<SRSettings>(DEFAULT_SR_SETTINGS);
 
   // Categories live in the sibling provider; we read both the data and the setter for bootstrap.
-  const { categories, categoryRecords } = useCategoryData();
+  const { categories } = useCategoryData();
   const setCategoryRecordsState = useCategoryStateSetter();
 
   // Ref-Delta mirror — kept as an *independent* clone of state. CRUD hooks
