@@ -10,6 +10,7 @@ import {
   FrequencyTag,
   CardSourceType,
 } from "@/lib/spaced-repetition";
+import { setCardFrequency } from "@/lib/sr/frequency";
 import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
 import { sameSourceModules } from "@/lib/struct-eq";
 
