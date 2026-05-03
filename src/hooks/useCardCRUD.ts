@@ -209,5 +209,15 @@ export function useCardCRUD({
     bumpMapVersion();
   }, [setCardMapState, cardMapRef]);
 
-  return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard, bulkAddCards };
+  // O(1) frequency setter — single field, lazy-cleans legacy tags. Triple
+  // system ("često"/"rijetko"/"nikad") + null to clear.
+  const setFrequency = useCallback(
+    (id: string, value: FrequencyTag | null) => {
+      patchCard(id, (c) => setCardFrequency(c, value));
+    },
+    [patchCard],
+  );
+
+  return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard, bulkAddCards, setFrequency };
 }
+
