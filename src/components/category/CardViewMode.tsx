@@ -9,8 +9,6 @@ import CardViewTable from "./CardViewTable";
 import CardViewFilterBar, { type FrequencyFilterValue } from "./CardViewFilterBar";
 import SubjectHierarchyTree from "./SubjectHierarchyTree";
 import { MoveCardDialog } from "./CardViewDialogs";
-import CardCreateMenu from "./CardCreateMenu";
-import { useBackupActions } from "@/contexts/AppContext";
 import { useCardViewFilters, type FilterTypeValue } from "@/hooks/useCardViewFilters";
 
 export interface CardViewFiltersSnapshot {
@@ -46,8 +44,6 @@ interface Props {
 }
 
 export default function CardViewMode({ cards, categoryId, allCategories, subcategoryNodes, patchCard, setFrequency, addCard, addFlashCard, bulkAddFlashCards, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, initialSubcategory, initialChapter, initialType, initialFrequency, onFiltersChange }: Props) {
-  const { importCards } = useBackupActions();
-  const allCategoryNames = useMemo(() => allCategories.map(c => c.name), [allCategories]);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -128,17 +124,10 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
 
   if (cards.length === 0) {
     return (
-      <div className="text-center py-16 space-y-4">
-        <p className="text-sm text-muted-foreground">Nema kartica u ovoj kategoriji.</p>
-        <CardCreateMenu
-          size="prominent"
-          categoryId={categoryId}
-          allCategoryNames={allCategoryNames}
-          addCard={addCard}
-          addFlashCard={addFlashCard}
-          bulkAddFlashCards={bulkAddFlashCards}
-          importEssays={importCards}
-        />
+      <div className="text-center py-16">
+        <p className="text-sm text-muted-foreground">
+          Nema kartica u ovoj kategoriji. Koristi dugme „Dodaj" u zaglavlju.
+        </p>
       </div>
     );
   }

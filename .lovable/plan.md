@@ -1,29 +1,28 @@
 ## Cilj
-Proširiti postojeću bulk selekciju u `CardViewMode` da uz "Obriši izabrane" omogući i bulk označavanje frekvencije pitanja (`često` / `rijetko` / `nikad` / ukloni tag) za sve izabrane kartice odjednom.
+Ukloniti duplirane "Dodaj/Masovni uvoz" akcije iz centra ekrana u `CardViewMode` empty-state-u — header već ima `CardCreateMenu` dugme, pa je središnji blok suvišan.
 
 ## Trenutno stanje
-`src/components/category/CardViewMode.tsx` (linije 174–189) prikazuje selection toolbar sa samo dvije akcije: "Označi sve" i "Obriši izabrane". `setFrequency(cardId, value | null)` već postoji kao prop i koristi se per-row u `CardViewTable`.
+- `src/views/SubjectCardsView.tsx` (linije 186–196): `CardCreateMenu` u headeru (zadržati).
+- `src/components/category/CardViewMode.tsx` (linije 118–133): empty-state ponovo renderira `CardCreateMenu` u sredini ekrana (ukloniti).
 
 ## Izmjene
 
 ### `src/components/category/CardViewMode.tsx`
-1. Dodati handler `handleBatchSetFrequency(value: FrequencyTag | null)`:
-   - Iterirati `selectedIds`, pozvati `setFrequency(id, value)`.
-   - Toast `Označeno N kartica kao "često"` (ili odgovarajuće), za `null` → `Uklonjen tag sa N kartica`.
-   - NE izlaziti iz selection moda (korisnik može htjeti odmah obrisati ili re-tagovati). Ostaviti selekciju netaknutu.
-2. U toolbaru (kada je `selectedIds.size > 0`) ubaciti kompaktnu grupu dugmadi prije "Obriši izabrane":
-   - `Često` (variant `default`), `Rijetko` (variant `outline`), `Nikad` (variant `outline`), `Bez taga` (variant `ghost`).
-   - Sve `size="sm"`, `h-7 text-xs`, sa kratkim `aria-label`-om.
-   - Vizualni separator (`<span className="h-4 w-px bg-border" />`) između tag grupe i destruktivne "Obriši" akcije.
-3. Bez novih propsa — `setFrequency` je već u scope-u.
+1. Empty-state (kad `cards.length === 0`) zamijeniti samo porukom koja upućuje korisnika na header dugme:
+   ```tsx
+   <div className="text-center py-16">
+     <p className="text-sm text-muted-foreground">
+       Nema kartica u ovoj kategoriji. Koristi dugme „Dodaj" u zaglavlju.
+     </p>
+   </div>
+   ```
+2. Ukloniti import-e koji postaju neiskorišteni: `CardCreateMenu`, `useBackupActions` (i lokalna varijabla `importCards`), `allCategoryNames` memo (provjeriti druge potrošače; ako nema — ukloniti).
 
 ### Bez izmjena
-- `CardViewTable`, `CardViewFilterBar`, `useCardViewFilters` — netaknuti.
-- Per-row frequency badge ostaje funkcionalan.
-- Logika selekcije/exit-a nepromijenjena.
+- Header `CardCreateMenu` u `SubjectCardsView` ostaje jedini ulaz za "Dodaj/Masovni uvoz".
+- Props `addCard`, `addFlashCard`, `bulkAddFlashCards` ostaju u `Props` interface-u (nisu više korišteni unutar komponente, ali ih i dalje prosljeđuje roditelj — mogu se ukloniti u zasebnom cleanup-u; sada ostaviti da se izbjegne kaskadna izmjena).
 
 ## Acceptance
-- U selection modu sa ≥1 izabranom karticom prikazuju se 4 nova taga + postojeća "Obriši izabrane".
-- Klik na tag dugme primjenjuje frekvenciju na sve izabrane, prikazuje toast, selekcija ostaje aktivna.
-- Sa 0 izabranih kartica tagovi i delete su sakriveni (kao i sada).
+- Kada nema kartica, prikazana je samo poruka, bez sekundarnog "Dodaj" bloka.
+- Header dugme „Dodaj" i dalje radi kao jedini ulaz.
 - TypeScript prolazi čisto.
