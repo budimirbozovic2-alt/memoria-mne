@@ -16,7 +16,15 @@ import { useSourceReaderStore } from "@/store/useSourceReaderStore";
 import { useCategoryData } from "@/contexts/AppContext";
 import { normalizeTag, TAG_LIMITS } from "@/lib/zettelkasten-tags";
 import { defaultEdit } from "@/lib/split-wizard-build";
-import { createEmptyModule, type SelectionModule } from "@/lib/selection-split-engine";
+import {
+  createEmptyModule,
+  htmlToPlain,
+  splitHtmlIntoBlocks,
+  joinHtmlBlocks,
+  type SelectionModule,
+} from "@/lib/selection-split-engine";
+import RichTextEditor from "@/components/RichTextEditor";
+import { sanitizeHtml } from "@/lib/sanitize";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
