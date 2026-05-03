@@ -101,7 +101,7 @@ export default function SubjectCardsView() {
       cvSubcategory: cardViewFiltersRef.current?.subcategory,
       cvChapter: cardViewFiltersRef.current?.chapter,
       cvType: cardViewFiltersRef.current?.type,
-      cvTag: cardViewFiltersRef.current?.tag ?? null,
+      cvFrequency: cardViewFiltersRef.current?.frequency,
       readerCardId: editingCardRef.current?.id,
     }),
   });
