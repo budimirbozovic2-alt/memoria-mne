@@ -49,6 +49,8 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [moveCardId, setMoveCardId] = useState<string | null>(null);
+  const [tagInput, setTagInput] = useState("");
+  const [tagPanelOpen, setTagPanelOpen] = useState(false);
 
   const filters = useCardViewFilters({
     cards,
