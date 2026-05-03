@@ -1,10 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ExternalLink, Map as MapIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { loadMindMaps } from "@/lib/mindmap-storage";
-import type { MindMapDoc } from "@/lib/db";
+import { useMindMapsByCategory } from "@/hooks/useMindMaps";
 
 const MindMapViewer = lazy(() => import("@/components/category/MindMapViewer"));
 
@@ -18,21 +17,10 @@ interface Props {
  * via the lazy MindMapViewer. Used inside PassiveReader.
  */
 export default function MindMapSidePanel({ categoryId, onClose }: Props) {
-  const [docs, setDocs] = useState<MindMapDoc[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { mindMaps: docs, ready } = useMindMapsByCategory(categoryId);
+  const loading = !ready;
   const [search, setSearch] = useState("");
   const [pickedId, setPickedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    loadMindMaps().then(all => {
-      if (cancelled) return;
-      setDocs(all.filter(d => d.categoryId === categoryId));
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [categoryId]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

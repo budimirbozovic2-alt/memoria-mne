@@ -4,7 +4,7 @@ import type { MindMapDoc } from "@/lib/db";
 import MindMapList from "@/components/mindmap/MindMapList";
 import MindMapCanvas from "@/components/mindmap/MindMapCanvas";
 import { hasSeenOnboarding } from "@/components/mindmap/MindMapOnboarding";
-import { loadMindMaps } from "@/lib/mindmap-storage";
+import { useMindMaps } from "@/hooks/useMindMaps";
 import { ArrowLeft } from "lucide-react";
 
 export default function SubjectMindMapPage() {
@@ -13,24 +13,20 @@ export default function SubjectMindMapPage() {
   const [activeDoc, setActiveDoc] = useState<MindMapDoc | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(() => !hasSeenOnboarding());
 
+  const { mindMaps } = useMindMaps();
+
   // Auto-open a mind map when arriving with ?open={id}
   useEffect(() => {
     const openId = searchParams.get("open");
-    if (!openId || activeDoc) return;
-    let cancelled = false;
-    loadMindMaps().then(all => {
-      if (cancelled) return;
-      const target = all.find(d => d.id === openId);
-      if (target) {
-        setActiveDoc(target);
-        // Strip the param so back navigation behaves naturally.
-        const next = new URLSearchParams(searchParams);
-        next.delete("open");
-        setSearchParams(next, { replace: true });
-      }
-    });
-    return () => { cancelled = true; };
-  }, [searchParams, activeDoc, setSearchParams]);
+    if (!openId || activeDoc || mindMaps.length === 0) return;
+    const target = mindMaps.find(d => d.id === openId);
+    if (target) {
+      setActiveDoc(target);
+      const next = new URLSearchParams(searchParams);
+      next.delete("open");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, activeDoc, setSearchParams, mindMaps]);
 
   if (activeDoc) {
     return (

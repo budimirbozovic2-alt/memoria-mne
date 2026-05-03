@@ -1,9 +1,8 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { Map as MapIcon, ExternalLink, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getMindMap } from "@/lib/mindmap-storage";
-import type { MindMapDoc } from "@/lib/db";
+import { useMindMap } from "@/hooks/useMindMaps";
 
 const MindMapViewer = lazy(() => import("@/components/category/MindMapViewer"));
 
@@ -13,15 +12,7 @@ interface Props {
 }
 
 export default function EmbeddedMindMap({ mindMapId, categoryId }: Props) {
-  const [doc, setDoc] = useState<MindMapDoc | null | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    getMindMap(mindMapId).then(d => {
-      if (!cancelled) setDoc(d ?? null);
-    });
-    return () => { cancelled = true; };
-  }, [mindMapId]);
+  const doc = useMindMap(mindMapId);
 
   if (doc === undefined) {
     return (
