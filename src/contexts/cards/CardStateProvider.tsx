@@ -122,40 +122,19 @@ export function useSettingsActions() {
 export { useDbError } from "@/contexts/db/DbErrorProvider";
 
 export function CardStateProvider({ children }: { children: ReactNode }) {
-  const [cardMap, setCardMapState] = useState<CardMap>({});
+  // C4: cardMap is now a Zustand atom — ref and state are the same object.
+  // The setter and ref-facade both commit to the same store; mutators that
+  // previously had to keep two structures in sync now only touch one.
+  const cardMap = useCardMap();
+  const setCardMapState = setCardMap as React.Dispatch<React.SetStateAction<CardMap>>;
+  const cardMapRef = cardMapRefFacade;
+
   const [reviewLog, setReviewLogState] = useState<ReviewLogEntry[]>([]);
   const [srSettings, setSrSettingsState] = useState<SRSettings>(DEFAULT_SR_SETTINGS);
 
   // Categories live in the sibling provider; we read both the data and the setter for bootstrap.
   const { categories } = useCategoryData();
   const setCategoryRecordsState = useCategoryStateSetter();
-
-  // Ref-Delta mirror — kept as an *independent* clone of state. CRUD hooks
-  // mutate this ref in place for O(1) writes; never alias state and ref or
-  // mutations will silently corrupt the rendered map.
-  //
-  // PERF: We do NOT bezuslovno re-clone the ref on every cardMap change. All
-  // mutator paths (CRUD, import, category mgmt, event-bus listeners) already
-  // sync `cardMapRef.current` synchronously *before* calling setCardMapState
-  // ("Ref-Delta" pattern). Doing a `{...cardMap}` here was an O(N) clone on
-  // every commit — visible freeze on bulk imports. In DEV we keep a defensive
-  // size-mismatch assertion that re-syncs (and warns) if some path forgot to
-  // update the ref; in PROD we skip the check entirely.
-  const cardMapRef = useRef<CardMap>({});
-  useEffect(() => {
-    if (cardMapRef.current === cardMap) return;
-    const refSize = Object.keys(cardMapRef.current).length;
-    const stateSize = Object.keys(cardMap).length;
-    if (refSize !== stateSize) {
-      if (import.meta.env.DEV) {
-        console.warn(
-          `[CardStateProvider] cardMapRef out of sync (ref=${refSize}, state=${stateSize}); resyncing. ` +
-          "A mutator path likely forgot to update cardMapRef before setCardMapState.",
-        );
-      }
-      cardMapRef.current = { ...cardMap };
-    }
-  }, [cardMap]);
 
   // Boot — dbError now lives in DbErrorProvider (consumed by RecoveryGate).
   const { ready } = useCardBootstrap({
