@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import CardViewTable from "./CardViewTable";
 import CardViewFilterBar from "./CardViewFilterBar";
 import SubjectHierarchyTree from "./SubjectHierarchyTree";
-import { AddCardDialog, MoveCardDialog, BulkImportWrapper } from "./CardViewDialogs";
+import { AddCardDialog, MoveCardDialog } from "./CardViewDialogs";
 import { useCardViewFilters, type FilterTypeValue } from "@/hooks/useCardViewFilters";
 
 export interface CardViewFiltersSnapshot {
@@ -45,7 +45,6 @@ interface Props {
 
 export default function CardViewMode({ cards, categoryId, allCategories, subcategoryNodes, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId, initialSubcategory, initialChapter, initialType, initialTag, onFiltersChange }: Props) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -162,8 +161,6 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
           totalCount={cards.length}
           selectionMode={selectionMode}
           onToggleSelectionMode={() => selectionMode ? exitSelectionMode() : setSelectionMode(true)}
-          onBulkImport={() => setBulkImportOpen(true)}
-          onAddCard={() => setAddDialogOpen(true)}
           onDelete={onDelete}
         />
 
@@ -208,8 +205,9 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
           otherCategories={otherCategories}
           onConfirm={confirmMove}
         />
+        {/* Empty-state fallback dialog. Primary creation entry point lives in
+            `CardCreateMenu` (the "Dodaj" dropdown) inside SubjectCardsView. */}
         <AddCardDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} categoryId={categoryId} addCard={addCard} addFlashCard={addFlashCard} />
-        <BulkImportWrapper open={bulkImportOpen} onOpenChange={setBulkImportOpen} categoryId={categoryId} addFlashCard={addFlashCard} />
       </div>
     </div>
   );

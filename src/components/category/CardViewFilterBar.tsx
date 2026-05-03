@@ -1,10 +1,19 @@
-import { Filter, X, Plus, Upload, CheckSquare } from "lucide-react";
+import { Filter, X, CheckSquare } from "lucide-react";
 import { MASTERY_LEVELS } from "@/lib/mastery";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CARD_TAGS } from "@/lib/spaced-repetition";
 import { cn } from "@/lib/utils";
 
+/**
+ * Filter/list-only surface for the "Pregled i uređivanje kartica" view.
+ *
+ * IMPORTANT — Separation of Concerns:
+ *   This bar is strictly limited to filtering and selecting EXISTING cards.
+ *   Creation flows (single add, bulk import) are intentionally NOT exposed
+ *   here — they live in the dedicated `CardCreateMenu` ("Dodaj") dropdown
+ *   alongside the Edit/Structure segmented switch in `SubjectCardsView`.
+ */
 interface Props {
   filterType: "all" | "essay" | "flash" | "mnemonic";
   onChangeType: (v: "all" | "essay" | "flash" | "mnemonic") => void;
@@ -18,8 +27,6 @@ interface Props {
   totalCount: number;
   selectionMode: boolean;
   onToggleSelectionMode: () => void;
-  onBulkImport: () => void;
-  onAddCard: () => void;
   onDelete?: (id: string) => void;
 }
 
@@ -29,8 +36,7 @@ export default function CardViewFilterBar({
   masteryFilter, onClearMasteryFilter,
   hasActiveFilters, onResetFilters,
   filteredCount, totalCount,
-  selectionMode, onToggleSelectionMode,
-  onBulkImport, onAddCard, onDelete,
+  selectionMode, onToggleSelectionMode, onDelete,
 }: Props) {
   return (
     <div className="flex items-center gap-2 flex-wrap rounded-lg border bg-card p-2.5">
@@ -92,12 +98,6 @@ export default function CardViewFilterBar({
             {selectionMode ? "Otkaži" : "Izaberi"}
           </Button>
         )}
-        <Button variant="outline" size="sm" onClick={onBulkImport} className="h-7 gap-1.5 text-xs">
-          <Upload className="h-3.5 w-3.5" /> Masovni Import
-        </Button>
-        <Button variant="default" size="sm" onClick={onAddCard} className="h-7 gap-1.5 text-xs">
-          <Plus className="h-3.5 w-3.5" /> Nova kartica
-        </Button>
       </div>
     </div>
   );
