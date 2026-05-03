@@ -8,8 +8,7 @@ import { loadSubjectSettings, saveSubjectSettings, clearSubjectSettings, Subject
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InfoPanel from "@/components/InfoPanel";
-import ExportImportDialog from "@/components/ExportImportDialog";
-import { useCardData, useCategoryData, useCategoryActions, useBackupActions } from "@/contexts/AppContext";
+import { useCardData, useCategoryData, useCategoryActions } from "@/contexts/AppContext";
 import AlgorithmTab from "@/components/settings/AlgorithmTab";
 import PersonalizationTab from "@/components/settings/PersonalizationTab";
 import WorkflowTab from "@/components/settings/WorkflowTab";
@@ -85,10 +84,8 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
     return () => observer.disconnect();
   }, []);
 
-  const [exportImportOpen, setExportImportOpen] = useState(false);
-  const { cards, cardCountByCategory } = useCardData();
+  const { cardCountByCategory } = useCardData();
   const { categories, subcategories } = useCategoryData();
-  const { exportData, exportTemplate, importData } = useBackupActions();
   const { addCategory, renameCategory, deleteCategory } = useCategoryActions();
   const [tts, setTts] = useState<TTSSettings>(initialTtsRef.current);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -267,7 +264,7 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
           </TabsContent>
 
           <TabsContent value="system" className="mt-0">
-            <SystemTab onOpenExportImport={() => setExportImportOpen(true)} />
+            <SystemTab />
           </TabsContent>
         </Tabs>
       )}
@@ -283,17 +280,6 @@ export default function SRSettingsPanel({ settings, onUpdate }: Props) {
         </Button>
       </div>
       <div className="pb-8" />
-
-      {!isSubjectMode && (
-        <ExportImportDialog
-          open={exportImportOpen}
-          onOpenChange={setExportImportOpen}
-          onExportTemplate={exportTemplate}
-          onExportFull={exportData}
-          onImport={importData}
-          cards={cards}
-        />
-      )}
     </div>
   );
 }
