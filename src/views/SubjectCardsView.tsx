@@ -39,7 +39,7 @@ interface EditReturnSnapshot extends BaseEditReturnSnapshot {
   cvSubcategory?: string;
   cvChapter?: string;
   cvType?: CardViewFiltersSnapshot["type"];
-  cvTag?: string | null;
+  cvFrequency?: CardViewFiltersSnapshot["frequency"];
   /** When tab is "read" or "speed", re-anchor reader to this card on return. */
   readerCardId?: string;
 }
