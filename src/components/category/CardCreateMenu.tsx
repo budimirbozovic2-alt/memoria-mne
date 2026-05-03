@@ -6,8 +6,6 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { AddCardDialog } from "./CardViewDialogs";
 import MassFlashImportTrigger from "./MassFlashImportTrigger";
@@ -39,14 +37,17 @@ interface Props {
   ) => Card;
   /** Bulk essay import (from useBackupActions().importCards). */
   importEssays: (cards: ParsedEssay[], category: string) => void;
+  /** Visual variant — `compact` for inline toolbar, `prominent` for empty-state CTA. */
+  size?: "compact" | "prominent";
 }
 
 /**
- * Single primary action for ALL card-creation flows.
+ * Two side-by-side primary actions for ALL card-creation flows:
+ *   1. "Nova kartica" → Dodaj esej / Dodaj blic pitanje
+ *   2. "Masovni uvoz" → Masovni uvoz esejskih pitanja / Masovni uvoz blic pitanja
  *
- * Renders a "Dodaj" dropdown with exactly four entries — two single-card
- * creators and two mass-import triggers. The filter/list area is intentionally
- * stripped of any creation logic; this menu is the only entry point.
+ * The filter/list area is intentionally stripped of any creation logic; this
+ * pair of dropdowns is the only entry point.
  */
 export default function CardCreateMenu({
   categoryId,
@@ -54,6 +55,7 @@ export default function CardCreateMenu({
   addCard,
   addFlashCard,
   importEssays,
+  size = "compact",
 }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [addMode, setAddMode] = useState<"essay" | "flash">("flash");
@@ -65,43 +67,62 @@ export default function CardCreateMenu({
     setAddOpen(true);
   };
 
+  const isProminent = size === "prominent";
+  const btnClass = isProminent
+    ? "h-10 gap-2 text-sm px-4"
+    : "h-8 gap-1.5 text-xs";
+  const iconClass = isProminent ? "h-4 w-4" : "h-3.5 w-3.5";
+  const chevronClass = isProminent ? "h-3.5 w-3.5 opacity-70" : "h-3 w-3 opacity-70";
+  const btnSize = isProminent ? "default" : "sm";
+
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="sm" className="h-8 gap-1.5 text-xs" aria-label="Dodaj karticu">
-            <Plus className="h-3.5 w-3.5" /> Dodaj
-            <ChevronDown className="h-3 w-3 opacity-70" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Pojedinačno
-          </DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => openAdd("essay")} className="gap-2 text-xs">
-            <Pencil className="h-3.5 w-3.5" />
-            Dodaj esej
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => openAdd("flash")} className="gap-2 text-xs">
-            <Sparkles className="h-3.5 w-3.5" />
-            Dodaj blic pitanje
-          </DropdownMenuItem>
+      <div className="flex items-center justify-center gap-2 flex-wrap">
+        {/* Nova kartica — single-card creation */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size={btnSize} className={btnClass} aria-label="Nova kartica">
+              <Plus className={iconClass} /> Nova kartica
+              <ChevronDown className={chevronClass} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-56">
+            <DropdownMenuItem onClick={() => openAdd("essay")} className="gap-2 text-xs">
+              <Pencil className="h-3.5 w-3.5" />
+              Dodaj esej
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openAdd("flash")} className="gap-2 text-xs">
+              <Sparkles className="h-3.5 w-3.5" />
+              Dodaj blic pitanje
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-          <DropdownMenuSeparator />
-
-          <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Masovni uvoz
-          </DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => setDocxOpen(true)} className="gap-2 text-xs">
-            <FileText className="h-3.5 w-3.5" />
-            Masovni uvoz eseja
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setBulkFlashOpen(true)} className="gap-2 text-xs">
-            <Upload className="h-3.5 w-3.5" />
-            Masovni uvoz blic pitanja
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        {/* Masovni uvoz — bulk import flows */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size={btnSize}
+              className={btnClass}
+              aria-label="Masovni uvoz"
+            >
+              <Upload className={iconClass} /> Masovni uvoz
+              <ChevronDown className={chevronClass} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-64">
+            <DropdownMenuItem onClick={() => setDocxOpen(true)} className="gap-2 text-xs">
+              <FileText className="h-3.5 w-3.5" />
+              Masovni uvoz esejskih pitanja
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setBulkFlashOpen(true)} className="gap-2 text-xs">
+              <Upload className="h-3.5 w-3.5" />
+              Masovni uvoz blic pitanja
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <AddCardDialog
         open={addOpen}
