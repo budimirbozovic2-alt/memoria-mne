@@ -7,7 +7,7 @@ import {
 } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, mapToArray, persistQueue, schedulePersist, bumpMapVersion } from "@/lib/persist-queue";
-import { idbSaveSettings } from "@/lib/db";
+import { idbSaveSettings, idbAddReviewLogEntry } from "@/lib/db";
 import { onCardLinksCleared, onCardReviewConfirmed } from "@/lib/sources-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { useCardBootstrap } from "@/hooks/useCardBootstrap";
@@ -92,7 +92,11 @@ export function useCategoryStatsData() {
 interface CardStateInternals {
   setCardMapState: React.Dispatch<React.SetStateAction<CardMap>>;
   cardMapRef: React.MutableRefObject<CardMap>;
-  /** Updater-form setter (used by annotations/review). */
+  /** Canonical review log mutation: updates state AND queues DB persist */
+  commitReviewEntry: (entry: ReviewLogEntry) => void;
+  /** Bulk commit for multiple entries (e.g., session flush) */
+  commitReviewEntries: (entries: ReviewLogEntry[]) => void;
+  /** Updater-form setter for advanced mutations */
   setReviewLog: (updater: (prev: ReviewLogEntry[]) => ReviewLogEntry[]) => void;
   /** Replace-form setter (used by import to overwrite the log wholesale). */
   replaceReviewLog: (log: ReviewLogEntry[]) => void;
@@ -162,7 +166,9 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Source-link cleared sync
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FIX A3: Source-link cleared sync — NOW SCHEDULES PERSIST
+  // ═══════════════════════════════════════════════════════════════════════════
   useEffect(() => {
     return onCardLinksCleared((clearedIds) => {
       setCardMapState(prev => {
@@ -170,10 +176,16 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
         let changed = false;
         for (const id of clearedIds) {
           if (next[id]?.sourceId) {
-            next[id] = { ...next[id], sourceId: undefined, textAnchor: undefined, needsReview: undefined };
+            const updated = { ...next[id], sourceId: undefined, textAnchor: undefined, needsReview: undefined };
+            next[id] = updated;
             // Keep ref in sync as a separate object so future in-place CRUD
             // mutations don't bleed into rendered state.
-            cardMapRef.current[id] = next[id];
+            cardMapRef.current[id] = updated;
+            
+            // ✅ FIX A3: CRITICAL — Schedule DB persist for cleared link
+            schedulePersist({ type: "put", card: updated });
+            bumpMapVersion();
+            
             changed = true;
           }
         }
@@ -214,6 +226,27 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
         });
       });
     });
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FIX A2: CANONICAL REVIEW LOG MUTATION FUNCTIONS
+  // These ensure state AND DB queue are always synchronized
+  // ═══════════════════════════════════════════════════════════════════════════
+  const commitReviewEntry = useCallback((entry: ReviewLogEntry) => {
+    // 1. Update React state
+    setReviewLogState((prev) => [...prev, entry]);
+    // 2. Queue to DB (through the persist queue)
+    idbAddReviewLogEntry(entry);
+  }, []);
+
+  const commitReviewEntries = useCallback((entries: ReviewLogEntry[]) => {
+    if (entries.length === 0) return;
+    // 1. Update React state
+    setReviewLogState((prev) => [...prev, ...entries]);
+    // 2. Queue each entry to DB
+    for (const entry of entries) {
+      idbAddReviewLogEntry(entry);
+    }
   }, []);
 
   const setReviewLog = useCallback((updater: (prev: ReviewLogEntry[]) => ReviewLogEntry[]) => {
@@ -328,8 +361,16 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   const categoryStatsValue = useMemo<CategoryStatsContextValue>(() => ({ categoryStats }), [categoryStats]);
 
   const internals = useMemo<CardStateInternals>(
-    () => ({ setCardMapState, cardMapRef, setReviewLog, replaceReviewLog, updateSRSettings }),
-    [setReviewLog, replaceReviewLog, updateSRSettings],
+    () => ({
+      setCardMapState,
+      cardMapRef,
+      commitReviewEntry,
+      commitReviewEntries,
+      setReviewLog,
+      replaceReviewLog,
+      updateSRSettings,
+    }),
+    [commitReviewEntry, commitReviewEntries, setReviewLog, replaceReviewLog, updateSRSettings],
   );
 
   return (
