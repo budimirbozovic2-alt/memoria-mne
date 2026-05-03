@@ -279,7 +279,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={step === "import-conflict" ? "sm:max-w-lg" : "sm:max-w-md"}>
         {step === "menu" && (
           <>
             <DialogHeader>
@@ -484,10 +484,10 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
                   <p className="text-xs text-muted-foreground">Postojeće kartice i predmeti ostaju netaknuti, dodaju se samo nove</p>
                 </div>
               </Button>
-              <Button variant="outline" className="justify-start gap-3 h-auto py-4" onClick={() => handleImport("overwrite")}>
+              <Button variant="outline" className="justify-start gap-3 h-auto py-4 border-destructive/40 hover:bg-destructive/5" onClick={() => handleImport("overwrite")}>
                 <Download className="h-5 w-5 text-destructive" />
                 <div className="text-left">
-                  <p className="font-medium">Prepiši sve (Overwrite)</p>
+                  <p className="font-medium text-destructive">Prepiši sve (Overwrite)</p>
                   <p className="text-xs text-muted-foreground">Oprez: Duplikati i predmeti će biti prepisani podacima iz fajla</p>
                 </div>
               </Button>
