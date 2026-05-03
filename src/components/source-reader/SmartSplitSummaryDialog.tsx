@@ -301,11 +301,11 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
             {/* ── Naslov eseja (parent question) ───────────────────────── */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-muted-foreground">Naslov eseja</label>
-              <Input
+              <RichTextEditor
                 value={splitParentName}
-                onChange={(e) => setSplitParentName(e.target.value)}
+                onChange={setSplitParentName}
                 placeholder="Unesite naslov eseja..."
-                className="bg-background"
+                minimal
               />
             </div>
 
