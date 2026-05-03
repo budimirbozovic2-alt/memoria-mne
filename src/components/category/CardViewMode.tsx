@@ -65,7 +65,7 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
     initialSubcategory,
     initialChapter,
     initialType,
-    initialTag,
+    initialFrequency,
   });
 
   // Push current filter values up to the parent so they can be persisted in
@@ -75,9 +75,9 @@ export default function CardViewMode({ cards, categoryId, allCategories, subcate
       subcategory: filters.filterSubcategory,
       chapter: filters.filterChapter,
       type: filters.filterType,
-      tag: filters.filterTag,
+      frequency: filters.filterFrequency,
     });
-  }, [filters.filterSubcategory, filters.filterChapter, filters.filterType, filters.filterTag, onFiltersChange]);
+  }, [filters.filterSubcategory, filters.filterChapter, filters.filterType, filters.filterFrequency, onFiltersChange]);
 
   const otherCategories = useMemo(
     () => allCategories.filter(c => c.id !== categoryId),
