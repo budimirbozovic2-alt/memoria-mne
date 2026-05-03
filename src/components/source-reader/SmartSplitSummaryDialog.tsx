@@ -488,9 +488,9 @@ export function SmartSplitSummaryDialog({ source, onSmartSplitConfirm }: Props) 
               <Button
                 onClick={onSmartSplitConfirm}
                 className="gap-1.5"
-                disabled={keptCount === 0 || !splitParentName.trim()}
+                disabled={keptCount === 0 || !htmlToPlain(splitParentName).trim()}
                 title={
-                  !splitParentName.trim()
+                  !htmlToPlain(splitParentName).trim()
                     ? "Unesite naslov eseja"
                     : keptCount === 0
                       ? "Svi moduli su preskočeni"
