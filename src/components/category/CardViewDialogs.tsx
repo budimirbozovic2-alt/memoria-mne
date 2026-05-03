@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,10 +18,17 @@ interface AddDialogProps {
   categoryId: string;
   addCard: (question: string, sections: { title: string; content: string }[], category: string, subcategory?: string, chapter?: string) => Card;
   addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => Card;
+  /** Initial creation mode. Re-applied each time the dialog opens. */
+  defaultMode?: "essay" | "flash";
 }
 
-export function AddCardDialog({ open, onOpenChange, categoryId, addCard, addFlashCard }: AddDialogProps) {
-  const [addMode, setAddMode] = useState<"essay" | "flash">("flash");
+export function AddCardDialog({ open, onOpenChange, categoryId, addCard, addFlashCard, defaultMode = "flash" }: AddDialogProps) {
+  const [addMode, setAddMode] = useState<"essay" | "flash">(defaultMode);
+  // Re-sync the mode whenever the dialog is (re)opened so that
+  // "Dodaj esej" vs "Dodaj blic pitanje" land on the correct tab.
+  useEffect(() => {
+    if (open) setAddMode(defaultMode);
+  }, [open, defaultMode]);
   const [newQuestion, setNewQuestion] = useState("");
   const [newAnswer, setNewAnswer] = useState("");
   const [newSectionTitle, setNewSectionTitle] = useState("Odgovor");
