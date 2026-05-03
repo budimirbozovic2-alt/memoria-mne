@@ -1,12 +1,15 @@
 import { sanitizeHtml } from "@/lib/sanitize";
-import { ChevronDown, ChevronRight, ArrowRightLeft, Star, Link2, BookOpen, AlertTriangle, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, ArrowRightLeft, Flame, Link2, BookOpen, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { type Card, CARD_TAGS, SectionState, EXAM_FREQUENT_TAG } from "@/lib/spaced-repetition";
+import { type Card, SectionState } from "@/lib/spaced-repetition";
+import type { FrequencyTag } from "@/lib/sr/types";
+import { getFrequencyMeta } from "@/lib/sr/frequency";
 import { type CategoryRecord } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import FrequencyMenu from "@/components/card-list/FrequencyMenu";
 
 function stabilityLabel(s: number): { text: string; color: string } {
   if (s >= 30) return { text: "Stabilno", color: "text-success" };
