@@ -160,6 +160,7 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
     setCategoryRecordsState,
     setReviewLogState,
     setSrSettingsState,
+    cardMapRef,
   });
 
   // Quit-backup flush + unmount safety net
