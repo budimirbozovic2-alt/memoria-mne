@@ -74,9 +74,14 @@ export default function LearnPage() {
   }, [session, setView]);
 
   const editingCardRef = useRef<Card | null>(null);
-  const { stash: stashEditReturn } = useEditReturn({
+  const sessionStateRef = useRef<LearnSessionSnapshot | null>(null);
+  const handleSessionStateChange = useCallback((snap: LearnSessionSnapshot) => {
+    sessionStateRef.current = snap;
+  }, []);
+  const { initialSnapshot, stash: stashEditReturn } = useEditReturn<LearnEditReturnSnapshot>({
     path: "/learn",
     cardId: () => editingCardRef.current?.id ?? null,
+    buildExtras: () => ({ ...(sessionStateRef.current ?? {}) }),
   });
   const handleEdit = useCallback((card: Card) => {
     editingCardRef.current = card;
