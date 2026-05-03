@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Tag, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Card } from "@/lib/spaced-repetition";
 import type { FrequencyTag } from "@/lib/sr/types";
