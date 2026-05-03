@@ -2,10 +2,11 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { type Card } from "@/lib/spaced-repetition";
+import type { FrequencyTag } from "@/lib/sr/types";
 import { type CategoryRecord, type SubcategoryNode } from "@/lib/db";
 import { toast } from "sonner";
 import CardViewTable from "./CardViewTable";
-import CardViewFilterBar from "./CardViewFilterBar";
+import CardViewFilterBar, { type FrequencyFilterValue } from "./CardViewFilterBar";
 import SubjectHierarchyTree from "./SubjectHierarchyTree";
 import { MoveCardDialog } from "./CardViewDialogs";
 import CardCreateMenu from "./CardCreateMenu";
@@ -16,7 +17,7 @@ export interface CardViewFiltersSnapshot {
   subcategory: string;
   chapter: string;
   type: FilterTypeValue;
-  tag: string | null;
+  frequency: FrequencyFilterValue;
 }
 
 interface Props {
@@ -25,7 +26,7 @@ interface Props {
   allCategories: CategoryRecord[];
   subcategoryNodes: SubcategoryNode[];
   patchCard: (id: string, fn: (c: Card) => Card) => void;
-  toggleTag: (cardId: string, tag: string) => void;
+  setFrequency: (cardId: string, value: FrequencyTag | null) => void;
   addCard: (question: string, sections: { title: string; content: string }[], category: string, subcategory?: string, chapter?: string) => Card;
   addFlashCard: (question: string, answer: string, category: string, subcategory?: string) => Card;
   onDelete?: (id: string) => void;
@@ -39,12 +40,12 @@ interface Props {
   initialSubcategory?: string;
   initialChapter?: string;
   initialType?: FilterTypeValue;
-  initialTag?: string | null;
+  initialFrequency?: FrequencyFilterValue;
   /** Notified whenever any internal filter changes, so a parent can stash them. */
   onFiltersChange?: (snap: CardViewFiltersSnapshot) => void;
 }
 
-export default function CardViewMode({ cards, categoryId, allCategories, subcategoryNodes, patchCard, toggleTag, addCard, addFlashCard, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId, initialSubcategory, initialChapter, initialType, initialTag, onFiltersChange }: Props) {
+export default function CardViewMode({ cards, categoryId, allCategories, subcategoryNodes, patchCard, setFrequency, addCard, addFlashCard, onDelete, onEdit, onPassiveRead, masteryFilter, onClearMasteryFilter, externalQuery, externalSourceId, initialSubcategory, initialChapter, initialType, initialFrequency, onFiltersChange }: Props) {
   const { importCards } = useBackupActions();
   const allCategoryNames = useMemo(() => allCategories.map(c => c.name), [allCategories]);
   const [selectionMode, setSelectionMode] = useState(false);
