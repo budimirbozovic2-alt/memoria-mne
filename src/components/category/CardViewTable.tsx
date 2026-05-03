@@ -68,8 +68,8 @@ export default function CardViewTable({
                 {isExpanded ? <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 <span className="text-sm text-foreground truncate flex-1">{card.question || "(Bez pitanja)"}</span>
                 <div className="flex items-center gap-2 shrink-0">
-                  {hasTags && card.tags!.includes(EXAM_FREQUENT_TAG) && (
-                    <Star className="h-3.5 w-3.5 text-destructive fill-destructive" />
+                  {card.frequencyTag && (
+                    <Flame className={cn("h-3.5 w-3.5", getFrequencyMeta(card.frequencyTag).iconClass)} />
                   )}
                   <span className={cn("text-[10px] font-medium", stab.color)}>{stab.text}</span>
                   <Badge variant="outline" className="text-[10px]">
