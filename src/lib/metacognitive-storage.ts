@@ -140,33 +140,12 @@ export function addLatencyEntry(entry: LatencyEntry) {
 }
 
 // ─── Self-analysis reminder ─────────────────────────────
-
-export function getLastAnalysisDate(): string | null {
-  return _lastAnalysisDate;
-}
-
-export function setLastAnalysisDate(date: string) {
-  _lastAnalysisDate = date;
-  db.settings.put({ key: "lastAnalysisDate", value: date }).catch((e) => console.warn("[silent]", e));
-}
-
-export function isAnalysisNeededToday(reviewLog: ReviewLogEntry[]): boolean {
-  const today = new Date().toISOString().slice(0, 10);
-  if (_lastAnalysisDate === today) return false;
-  const todayStart = new Date(today).getTime();
-  return reviewLog.some(e => e.timestamp >= todayStart);
-}
-
-// ─── Aggregation helpers ─────────────────────────────────
-
-export function getTodayReviewStats(reviewLog: ReviewLogEntry[]) {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayStart = new Date(todayStr).getTime();
-  const todayEntries = reviewLog.filter(e => e.timestamp >= todayStart);
-  const successes = todayEntries.filter(e => e.grade === 4);
-  const lapses = todayEntries.filter(e => e.grade <= 2);
-  return { successes, lapses, total: todayEntries.length };
-}
+//
+// `getLastAnalysisDate`, `setLastAnalysisDate`, `isAnalysisNeededToday`,
+// i `getTodayReviewStats` su uklonjeni 2026-05 — ostali su bez pozivaoca
+// nakon redizajna Dashboard-a. `_lastAnalysisDate` keš i ključ
+// `settings.lastAnalysisDate` u IDB se i dalje hidriraju u `initMetacognitiveCache`
+// radi forward-compat (ako budući widget zatreba podsjetnik).
 
 export function getCalibrationStats(entries: CalibrationEntry[]) {
   if (entries.length === 0) return { overconfident: 0, underconfident: 0, calibrated: 0, total: 0, avgDelta: 0 };
