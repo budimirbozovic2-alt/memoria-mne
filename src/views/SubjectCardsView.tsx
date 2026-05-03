@@ -17,7 +17,7 @@ import type { BaseEditReturnSnapshot } from "@/lib/edit-return";
 import CardViewMode, { type CardViewFiltersSnapshot } from "@/components/category/CardViewMode";
 import CardOrgMode from "@/components/category/CardOrgMode";
 import StructureManagerDialog from "@/components/category/StructureManagerDialog";
-import CardCreateMenu from "@/components/category/CardCreateMenu";
+
 import PassiveReader from "@/components/subject-cards/PassiveReader";
 import LocalSpeedReader from "@/components/subject-cards/LocalSpeedReader";
 import {
