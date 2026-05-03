@@ -290,29 +290,17 @@ export default function SubjectCardsView() {
               })}
             </div>
 
-            <div className="flex items-center gap-2">
-              {manageMode === MANAGE_MODE.Structure && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 h-8 text-xs"
-                  onClick={() => setStructureOpen(true)}
-                >
-                  <Settings className="h-3.5 w-3.5" />
-                  Uredi potkategorije i glave
-                </Button>
-              )}
-
-              {/* Single primary entry point for ALL card creation flows.
-                  Filter bar is intentionally stripped of creation logic. */}
-              <CardCreateMenu
-                categoryId={categoryId!}
-                allCategoryNames={categoryRecords.map(c => c.name)}
-                addCard={addCard}
-                addFlashCard={addFlashCard}
-                importEssays={(cards, cat) => importCards(cards, cat)}
-              />
-            </div>
+            {manageMode === MANAGE_MODE.Structure && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 h-8 text-xs"
+                onClick={() => setStructureOpen(true)}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Uredi potkategorije i glave
+              </Button>
+            )}
           </div>
 
           {manageMode === MANAGE_MODE.Edit ? (
