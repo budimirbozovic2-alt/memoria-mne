@@ -89,6 +89,20 @@ export default function LearnSession({ cards, categories, categoryRecords, subca
 
   const card = sortedCards[currentIndex];
 
+  // Re-anchor to the card user was editing (one-shot on mount with restoreSnapshot).
+  const reanchorRef = useRef(false);
+  useEffect(() => {
+    if (reanchorRef.current) return;
+    const targetId = restoreSnapshot?.cardId;
+    if (!targetId || sortedCards.length === 0) return;
+    reanchorRef.current = true;
+    const idx = sortedCards.findIndex(c => c.id === targetId);
+    if (idx >= 0 && idx !== currentIndex) {
+      setCurrentIndex(idx);
+      sessionStorage.setItem("sr-learn-current-index", String(idx));
+    }
+  }, [restoreSnapshot?.cardId, sortedCards, currentIndex]);
+
   const updateProgress = useCallback((cardId: string, update: Partial<LearnCardProgress>) => {
     setProgress(prev => {
       const existing = prev[cardId] || { mode: "active-recall" as const, currentModule: 0, completedModules: [], chainPosition: 0, phase: "preview" as const, completed: false };
