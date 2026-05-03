@@ -1,65 +1,28 @@
-## Problem
+## Tri uklanjanja
 
-Kada korisnik tokom **aktivnog učenja** (`/learn`) ili **pasivnog čitanja** (Subject → Pasivno čitanje) klikne "Uredi karticu" i sačuva/odustane, vraća se na ekran ali **gubi flow**:
+### 1. Pasivno čitanje — ukloniti dugmad "Izvor" i "Mapa uma"
 
-- `/learn` → vraća na **filter setup** (Filteri → Pokreni), umjesto na karticu na kojoj je radio.
-- Pasivno čitanje → vraća na karticu s indeksom 0 umjesto na karticu koju je uređivao.
+`src/components/subject-cards/PassiveReader.tsx`:
+- Ukloniti cijeli blok sa `TooltipProvider`+"Izvor" i Button "Mapa uma" (linije ~262-294). Zadržati samo "Uredi karticu" u istom redu.
+- Ukloniti svu pripadajuću logiku: `sidePanel` state, `setSidePanel`, `linkedSource`, `sourceLoading`, `getSource` lazy-load `useEffect`, `sourceDisabled`, `showSidePanel`, render-blok za side-panel column (linije 406-429), grid `lg:grid-cols-2` se uvijek vraća na `grid-cols-1`.
+- Skinuti unused importe: `FileText`, `MapIcon`, `Tooltip*`, `getSource`, `SourceSidePanel`, `MindMapSidePanel`, `Source` tip, `SidePanel` tip.
 
-Razlog: `useEditReturn` snapshot ili nije bogat (LearnPage stashuje samo `path`), ili u PassiveReader/LearnSession ne postoji prop koji bi obnovio internal state (filteri, `started`, `currentIndex`, trenutni cardId).
+### 2. Konsolidacija — ukloniti "Procjena sigurnosti" prije reveal-a
 
-EditPage već ima "Vrati me nazad" link (mali X tekst), ali nije dovoljno vidljiv.
+Jedini element u `ReviewCard` koji se prikazuje prije otkrivanja odgovora i nudi FSRS procjenu/objašnjenje je **`AdaptiveReasonPanel`** ("Zašto ovaj interval?"). Ukloniti njegov render (linije 237-244) i import. Komponenta `AdaptiveReasonPanel.tsx` ostaje u kodu (može se kasnije koristiti drugdje), ali se više ne mounta u Konsolidaciji.
 
-## Rješenje
+> Ako si mislio na nešto drugo (npr. FSRS metrike u zaglavlju kartice — Stabilnost/Težina/Interval), reci pa ćemo ukloniti i to.
 
-Proširiti edit-return snapshot za oba toka i obnoviti puno stanje na povratku, plus pojačati vidljivost dugmeta "Vrati me nazad" u EditPage-u.
+### 3. Aktivno prisjećanje — ukloniti TTS dugme za pitanje
 
-### 1. LearnPage (`/learn`) — snapshot pune sesije
-
-`useEditReturn` poziv proširiti sa `buildExtras`:
-```ts
-{ started, selectedCategory, selectedSubcategory, selectedChapter,
-  sortMode, filterType, frequencyFilter, filterExamFrequent,
-  currentIndex, viewWidth }
-```
-
-`LearnSession` dobija novi prop `restoreSnapshot?: LearnSessionSnapshot`. Ako je prosljeđen, lazy-init svi `useState` hookovi koriste vrijednosti iz snapshot-a (uključujući `started=true` da preskoči FilterSetup i ode direktno na karticu na kojoj je korisnik bio).
-
-`LearnPage` čita `initialSnapshot` iz `useEditReturn` i prosljeđuje ga.
-
-`editingCardRef.current.id` se koristi da, ako je card još u listi (mogla je biti splitovana/obrisana), `currentIndex` se ažurira da pokaže baš tu karticu — fallback na sačuvani index.
-
-### 2. PassiveReader — vraćanje na uređenu karticu
-
-`SubjectCardsView` već stashuje `tab: "read"`. Dodati novi extra:
-```ts
-passiveCardId: editingCardRef.current?.id
-```
-
-`SubjectCardsView` ako je `initialSnapshot.tab === "read"` postavlja `pendingPassiveCardId = initialSnapshot.passiveCardId` (PassiveReader već ima `initialCardId` prop koji skače na tu karticu — postojeća infrastruktura).
-
-Isto za `tab: "speed"` → `pendingSpeedCardId`.
-
-### 3. EditPage — vidljivije dugme "Vrati me nazad"
-
-`CardForm` trenutno renderuje malu sivu "Vrati me nazad" labelu pored `X` ikone. Zamijeniti sa pravim **secondary button**-om (`<Button variant="outline" size="sm">` sa `ArrowLeft` ikonom + "Vrati me nazad") na lijevoj strani header-a forme, vidljivim samo kad je `editCard` prisutan. `X` ostaje za "zatvori bez snimanja".
-
-Ova promjena daje jasan vizuelni call-to-action i potvrđuje korisniku da postoji explicit povratni mehanizam (čak i kad je flow spasen automatski).
-
-### 4. Cleanup i edge-case
-
-- Snapshot za `/learn` validira `categoryId` (ako filter sesije bio scoped) — `useEditReturn` to već radi automatski preko `BaseEditReturnSnapshot.categoryId`.
-- Ako je editovana kartica obrisana ili više ne pripada filteru, `currentIndex` se klampuje na valjan opseg (već postoji defensive klamp u LearnSession).
+`src/components/learn/SessionHeader.tsx`:
+- Ukloniti `<button onClick={() => speak(card.question)}>` sa `Volume2` ikonom (linije 96-98) — ostaje samo `<p>{card.question}</p>` u flex kontejneru.
+- Skinuti `Volume2` import iz `lucide-react` i `speak` import iz `@/lib/tts` ako više nigdje nisu korišteni u fajlu.
 
 ## Fajlovi koji se mijenjaju
 
-- `src/views/LearnPage.tsx` — prošireni `useEditReturn` sa `buildExtras` i prosljeđivanje `restoreSnapshot`.
-- `src/components/LearnSession.tsx` — novi prop `restoreSnapshot`, lazy-init hookova iz snapshot-a.
-- `src/components/learn/types.ts` — tip `LearnSessionSnapshot` + dodavanje u `LearnSessionProps`.
-- `src/views/SubjectCardsView.tsx` — `buildExtras` dobija `passiveCardId`/`speedCardId`; useEffect koji postavlja `pendingPassiveCardId`/`pendingSpeedCardId` iz `initialSnapshot` na mount.
-- `src/components/CardForm.tsx` — istaknuto "Vrati me nazad" dugme u header-u.
+- `src/components/subject-cards/PassiveReader.tsx` — uklanjanje side-panel toggle-a i sve prateće logike/importa.
+- `src/components/review/ReviewCard.tsx` — uklanjanje `AdaptiveReasonPanel` rendera + importa.
+- `src/components/learn/SessionHeader.tsx` — uklanjanje TTS dugmeta + importa `Volume2`/`speak`.
 
-## Šta korisnik dobija
-
-- Iz aktivnog učenja: edituje karticu → klikne "Vrati me nazad" (ili "Sačuvaj izmjene") → **odmah se vraća na istu karticu, isti filter, isti recall ekran**.
-- Iz pasivnog čitanja: isti princip — vraća se na **istu karticu** unutar Pasivnog čitanja taba, sa svim filterima netaknutim.
-- Vidljivo, eksplicitno dugme "Vrati me nazad" — više se ne oslanja na malu labelu kraj X-a.
+Nema novih komponenti niti promjene API-ja.
