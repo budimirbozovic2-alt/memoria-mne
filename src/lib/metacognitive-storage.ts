@@ -54,16 +54,9 @@ export interface DiaryEntry {
   createdAt: number;
 }
 
-export function loadDiary(): DiaryEntry[] {
-  return _diaryCache;
-}
-
-export function saveDiary(entries: DiaryEntry[]) {
-  _diaryCache = entries;
-  if (entries.length > 0) {
-    db.diary.bulkPut(entries).catch((e) => console.warn("[silent]", e));
-  }
-}
+// NOTE: `loadDiary` / `saveDiary` su uklonjeni 2026-05 — nisu imali pozivaoca.
+// `DiaryEntry` interfejs i `_diaryCache` su zadržani jer ih `db-schema.ts`
+// koristi za tipiziranje `db.diary` tabele i očuvanje istorijskih zapisa.
 
 
 // ─── Calibration (confidence before reveal) ──────────────
@@ -137,12 +130,8 @@ export function loadLatency(): LatencyEntry[] {
   return _latencyCache;
 }
 
-export function saveLatency(entries: LatencyEntry[]) {
-  _latencyCache = entries;
-  if (entries.length > 0) {
-    db.latencyLog.bulkPut(entries).catch((e) => console.warn("[silent]", e));
-  }
-}
+// `saveLatency` uklonjen 2026-05 — bulk overwrite nije imao pozivaoca.
+// Zapisi se dodaju isključivo preko `addLatencyEntry`.
 
 export function addLatencyEntry(entry: LatencyEntry) {
   _latencyCache = [..._latencyCache, entry];
@@ -151,33 +140,12 @@ export function addLatencyEntry(entry: LatencyEntry) {
 }
 
 // ─── Self-analysis reminder ─────────────────────────────
-
-export function getLastAnalysisDate(): string | null {
-  return _lastAnalysisDate;
-}
-
-export function setLastAnalysisDate(date: string) {
-  _lastAnalysisDate = date;
-  db.settings.put({ key: "lastAnalysisDate", value: date }).catch((e) => console.warn("[silent]", e));
-}
-
-export function isAnalysisNeededToday(reviewLog: ReviewLogEntry[]): boolean {
-  const today = new Date().toISOString().slice(0, 10);
-  if (_lastAnalysisDate === today) return false;
-  const todayStart = new Date(today).getTime();
-  return reviewLog.some(e => e.timestamp >= todayStart);
-}
-
-// ─── Aggregation helpers ─────────────────────────────────
-
-export function getTodayReviewStats(reviewLog: ReviewLogEntry[]) {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const todayStart = new Date(todayStr).getTime();
-  const todayEntries = reviewLog.filter(e => e.timestamp >= todayStart);
-  const successes = todayEntries.filter(e => e.grade === 4);
-  const lapses = todayEntries.filter(e => e.grade <= 2);
-  return { successes, lapses, total: todayEntries.length };
-}
+//
+// `getLastAnalysisDate`, `setLastAnalysisDate`, `isAnalysisNeededToday`,
+// i `getTodayReviewStats` su uklonjeni 2026-05 — ostali su bez pozivaoca
+// nakon redizajna Dashboard-a. `_lastAnalysisDate` keš i ključ
+// `settings.lastAnalysisDate` u IDB se i dalje hidriraju u `initMetacognitiveCache`
+// radi forward-compat (ako budući widget zatreba podsjetnik).
 
 export function getCalibrationStats(entries: CalibrationEntry[]) {
   if (entries.length === 0) return { overconfident: 0, underconfident: 0, calibrated: 0, total: 0, avgDelta: 0 };
@@ -229,7 +197,9 @@ export function recordFirstAction() {
     const slippageEntry: SlippageEntry = { date: today, appEntryTime: _appEntry.time, firstActionTime: Date.now(), slippageMs };
     _slippageCache = [..._slippageCache, slippageEntry];
     db.slippageLog.add(slippageEntry).catch((e) => console.warn("[silent]", e));
-  } catch {}
+  } catch (err) {
+    console.warn("[metacognitive] recordFirstAction failed", err);
+  }
 }
 
 export function loadSlippageLog(): SlippageEntry[] {
@@ -247,9 +217,11 @@ export interface ActivityEntry {
   category?: string;
 }
 
-export type TimeReservoir = "review" | "learning" | "creative" | "analysis";
+// `TimeReservoir`, `getReservoir` i `TimeDistribution` su INTERNI tipovi/helpers
+// (de-eksportovani 2026-05) — koriste se samo unutar agregacionih funkcija ovog modula.
+type TimeReservoir = "review" | "learning" | "creative" | "analysis";
 
-export function getReservoir(type: ActivityType): TimeReservoir {
+function getReservoir(type: ActivityType): TimeReservoir {
   switch (type) {
     case "review":
     case "mnemonic-test":
@@ -278,9 +250,7 @@ export const RESERVOIR_COLORS: Record<TimeReservoir, string> = {
   analysis: "hsl(var(--muted-foreground))",
 };
 
-export function loadActivityLog(): ActivityEntry[] {
-  return _activityCache;
-}
+// `loadActivityLog` uklonjen 2026-05 — nije imao pozivaoca.
 
 export function addActivityEntry(entry: ActivityEntry) {
   _activityCache = [..._activityCache, entry];
@@ -288,7 +258,7 @@ export function addActivityEntry(entry: ActivityEntry) {
   db.activityLog.add(entry).catch((e) => console.warn("[silent]", e));
 }
 
-export interface TimeDistribution {
+interface TimeDistribution {
   review: number;
   learning: number;
   creative: number;

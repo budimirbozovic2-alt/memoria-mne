@@ -69,6 +69,30 @@ export default tseslint.config(
     },
   },
 
+  // Metacognitive storage hardening: detect dead code early.
+  // Po uklanjanju "Procjena sigurnosti" iz Konsolidacije, modul sadrži više
+  // legacy/read-only API-ja. Build mora pasti ako se pojave neiskorišteni
+  // importi, lokalne varijable, parametri ili nedostupan kod — kako bi se
+  // mrtve grane uočile u CI-ju, a ne u ručnoj reviziji.
+  {
+    files: ["src/lib/metacognitive-storage.ts"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          args: "after-used",
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrors: "all",
+          caughtErrorsIgnorePattern: "^_",
+          ignoreRestSiblings: true,
+        },
+      ],
+      "no-unreachable": "error",
+      "no-useless-catch": "error",
+    },
+  },
+
   // Tests: partial mocks legitimately need `any` for constructing
   // simplified fixtures without satisfying full domain interfaces.
   {
