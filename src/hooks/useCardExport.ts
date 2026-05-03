@@ -6,17 +6,13 @@ import type { CategoryRecord } from "@/lib/db-schema";
 
 const IPC_SIZE_LIMIT_MB = 50;
 
-async function downloadFile(blob: Blob, filename: string): Promise<void> {
+async function downloadFile(blob: Blob, filename: string): Promise<{ saved: boolean }> {
   const sizeMB = blob.size / (1024 * 1024);
-  
+
   // Use native Electron save dialog if available
   if (window.electronAPI?.showSaveDialog) {
     if (sizeMB > IPC_SIZE_LIMIT_MB) {
-      toast.error("Upozorenje o veličini", { 
-        description: `ZIP fajl je prevelik (${sizeMB.toFixed(1)}MB) za direktan transfer. Optimizacija streaminga je u razvoju.`
-      });
-      // Ovdje u budućnosti implementirati Node.js fs.createWriteStream na strani Main procesa 
-      return;
+      throw new Error(`Fajl je prevelik (${sizeMB.toFixed(1)}MB). Maksimum za direktan transfer je ${IPC_SIZE_LIMIT_MB}MB. Pokušajte bez ZIP kompresije ili izvezite po predmetu.`);
     }
 
     const ext = filename.endsWith('.zip') ? 'zip' : 'json';
@@ -24,7 +20,7 @@ async function downloadFile(blob: Blob, filename: string): Promise<void> {
       defaultPath: filename,
       filters: [{ name: ext === 'zip' ? 'ZIP Archive' : 'JSON File', extensions: [ext] }],
     });
-    if (result.canceled || !result.filePath) return;
+    if (result.canceled || !result.filePath) return { saved: false };
     const arrayBuffer = await blob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
     let binary = '';
@@ -34,7 +30,7 @@ async function downloadFile(blob: Blob, filename: string): Promise<void> {
     }
     const base64 = btoa(binary);
     await window.electronAPI.saveFile(result.filePath, base64);
-    return;
+    return { saved: true };
   }
   // Web fallback
   const url = URL.createObjectURL(blob);
@@ -43,6 +39,7 @@ async function downloadFile(blob: Blob, filename: string): Promise<void> {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+  return { saved: true };
 }
 
 async function buildJsonChunked(
