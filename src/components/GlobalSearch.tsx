@@ -177,14 +177,25 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
   }, [results, selectedIndex, handleSelect, onClose]);
 
   useEffect(() => {
+    if (!open) return;
+    // M2 fix: capture-phase guard — while GlobalSearch is open, swallow
+    // navigation keys before other window-level listeners (LocalSpeedReader,
+    // ReviewCard) can mis-trigger on stray events.
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
-        if (open) onClose();
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key === "Escape" || e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Enter") {
+        // Let the dialog's own onKeyDown handler process these, but block
+        // propagation to other window-level listeners.
+        e.stopPropagation();
       }
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    window.addEventListener("keydown", handler, true); // capture
+    return () => window.removeEventListener("keydown", handler, true);
   }, [open, onClose]);
 
   if (!open) return null;
