@@ -127,6 +127,11 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
     cardMapRef,
   });
 
+  // FIX S4: Backlink index subscriptions — managed via React lifecycle (cleanup on unmount/HMR)
+  useEffect(() => {
+    return initBacklinkIndexSubscriptions();
+  }, []);
+
   useEffect(() => {
     const electron = typeof window !== "undefined" ? window.electronAPI : undefined;
     let unsubQuit: (() => void) | undefined;
