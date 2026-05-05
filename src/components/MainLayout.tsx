@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Moon, Sun, Search, Focus, HelpCircle } from "lucide-react";
 import { setDarkMode } from "@/lib/app-settings";
 import { useEditReturn } from "@/hooks/useEditReturn";
+import { useGlobalHotkey } from "@/hooks/useGlobalHotkey";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
@@ -152,16 +153,10 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     setDarkMode(next);
   }, [dark]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        setGlobalSearchOpen(v => !v);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  useGlobalHotkey(
+    e => (e.ctrlKey || e.metaKey) && e.key === "k",
+    e => { e.preventDefault(); setGlobalSearchOpen(v => !v); },
+  );
 
   const isFullWidth = SOURCE_ROUTES.some(r => pathname.startsWith(r));
 
