@@ -2,7 +2,7 @@ import { useCallback, MutableRefObject } from "react";
 import { toast } from "sonner";
 import { Card, createCard, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
+import { CardMap, bumpMapVersion, schedulePersist, persistQueue } from "@/lib/persist-queue";
 import {
   db,
   idbLoadCategories,
@@ -13,6 +13,10 @@ import {
 import { resolveLegacyTaxonomyNames } from "@/lib/migrations/resolve-legacy-taxonomy";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { BackupSchema, type ParsedBackup } from "@/lib/migrations/backup-schema";
+import { migrateBackup, BackupVersionError } from "@/lib/backup/migrate";
+import { yieldUI } from "@/lib/backup/yield-ui";
+
+export type ImportProgress = (pct: number, label: string) => void;
 
 interface UseCardImportDeps {
   setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
@@ -65,8 +69,14 @@ export function useCardImport({
   cardMapRef,
 }: UseCardImportDeps) {
   const importData = useCallback(
-    async (file: File, strategy: "keep" | "overwrite" | "skip" | "newer" = "skip") => {
+    async (
+      file: File,
+      strategy: "keep" | "overwrite" | "skip" | "newer" = "skip",
+      onProgress?: ImportProgress,
+    ) => {
+      const progress: ImportProgress = onProgress ?? (() => { /* noop */ });
       try {
+        progress(2, "Čitanje fajla…");
         let jsonText: string;
         if (file.name.endsWith(".zip")) {
           const { decompressJsonFromZip } = await import("@/lib/zip-service");
@@ -75,12 +85,14 @@ export function useCardImport({
           jsonText = await file.text();
         }
 
+        progress(15, "Parsiranje…");
         let raw: unknown;
         try { raw = JSON.parse(jsonText); } catch {
           toast.error("Neispravan JSON format. Fajl je oštećen ili nije validan.");
           return;
         }
 
+        progress(20, "Validacija šeme…");
         const result = BackupSchema.safeParse(raw);
         if (!result.success) {
           const issue = result.error.issues[0];
@@ -88,12 +100,28 @@ export function useCardImport({
           toast.error(`Backup nije validan: ${path} — ${issue?.message ?? "nepoznata greška"}`);
           return;
         }
-        const parsed = result.data;
+
+        // Schema-version migration ladder. Rejects backups newer than the app
+        // before any IDB write so partial state can never leak through.
+        let parsed: ParsedBackup;
+        try {
+          parsed = migrateBackup(result.data);
+        } catch (err) {
+          if (err instanceof BackupVersionError) {
+            toast.error(err.message);
+          } else {
+            toast.error("Migracija backupa nije uspjela.");
+            console.error("[useCardImport] migrate failed", err);
+          }
+          return;
+        }
 
         if (parsed.cards.length === 0 && (!Array.isArray(parsed.categories) || parsed.categories.length === 0)) {
           toast.error("Fajl ne sadrži kartice ni kategorije za uvoz.");
           return;
         }
+        progress(25, "Priprema podataka…");
+        await yieldUI();
 
         // ── Cards: schema already migrated + sanitized ──
         const importedCards: Card[] = parsed.cards;
@@ -171,6 +199,13 @@ export function useCardImport({
                   const remapped = idRemap.get(a.subjectId);
                   if (remapped) a.subjectId = remapped;
                 }
+                // FK completeness: mindMaps also reference categoryId.
+                for (const m of parsed.mindMaps) {
+                  if (m.categoryId) {
+                    const remapped = idRemap.get(m.categoryId);
+                    if (remapped) m.categoryId = remapped;
+                  }
+                }
               }
 
               if (filteredCatRecords.length > 0) {
@@ -223,10 +258,20 @@ export function useCardImport({
         }
 
         // ── Persist cards AFTER remap is complete ──
+        progress(40, "Snimanje kartica…");
         if (merged.length > 0) schedulePersist({ type: "bulk", cards: merged });
         cardMapRef.current = nextMap;
         setCardMapState(() => nextMap);
         bumpMapVersion();
+        // Drain the persist queue NOW so subsequent table writes see a stable
+        // post-cards state. Without this, schedulePersist (debounced) could
+        // race with the sources/mindMaps bulkPut block below — if the queue
+        // failed AFTER those committed, we'd be left with a partially imported
+        // database that has the satellites but not the cards they reference.
+        try { await persistQueue.flush(); } catch (e) {
+          console.warn("[useCardImport] persist flush failed (continuing)", e);
+        }
+        await yieldUI();
 
         // ── Legacy `subcategories` map (only relevant for legacy name-based backups) ──
         const isNewCatFormat = isCategoryRecordArray(parsed.categories);
@@ -255,52 +300,62 @@ export function useCardImport({
           setCategoryRecords(updated);
         }
 
-        // ── Review log overwrite ──
+        // ── Review log overwrite (atomic clear+bulkAdd) ──
         if (parsed.reviewLog.length > 0 && strategy === "overwrite") {
+          progress(50, "Uvoz dnevnika ponavljanja…");
           const log = parsed.reviewLog as unknown as ReviewLogEntry[];
           setReviewLog(log);
-          await db.reviewLog.clear();
-          await db.reviewLog.bulkAdd(log);
+          await db.transaction("rw", db.reviewLog, async () => {
+            await db.reviewLog.clear();
+            await db.reviewLog.bulkAdd(log);
+          });
+          await yieldUI();
         }
 
         if (parsed.srSettings && strategy === "overwrite") {
           updateSRSettings({ ...DEFAULT_SR_SETTINGS, ...(parsed.srSettings as Partial<SRSettings>) });
         }
 
-        // ── Sources & MindMaps (already sanitized by schema) ──
-        if (parsed.sources.length > 0) {
-          await db.sources.bulkPut(parsed.sources);
-          invalidateSourcesCache();
-          if (strategy === "overwrite") {
-            const importedIds = new Set(parsed.sources.map((s) => s.id));
-            const allKeys = await db.sources.toCollection().primaryKeys();
-            const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-            if (toDelete.length > 0) await db.sources.bulkDelete(toDelete);
+        // ── Sources & MindMaps & KB articles in a single atomic transaction ──
+        // Combined so a malformed mindMap can't leave sources written but
+        // mindMaps absent — the failed transaction rolls back to the
+        // pre-import snapshot for these three tables.
+        progress(55, "Uvoz izvora i mapa…");
+        await db.transaction("rw", [db.sources, db.mindMaps, db.knowledgeBaseArticles], async () => {
+          if (parsed.sources.length > 0) {
+            await db.sources.bulkPut(parsed.sources);
+            if (strategy === "overwrite") {
+              const importedIds = new Set(parsed.sources.map((s) => s.id));
+              const allKeys = await db.sources.toCollection().primaryKeys();
+              const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+              if (toDelete.length > 0) await db.sources.bulkDelete(toDelete);
+            }
           }
-        }
-
-        if (parsed.mindMaps.length > 0) {
-          await db.mindMaps.bulkPut(parsed.mindMaps);
-          if (strategy === "overwrite") {
-            const importedIds = new Set(parsed.mindMaps.map((m) => m.id));
-            const allKeys = await db.mindMaps.toCollection().primaryKeys();
-            const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-            if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
+          await yieldUI();
+          if (parsed.mindMaps.length > 0) {
+            await db.mindMaps.bulkPut(parsed.mindMaps);
+            if (strategy === "overwrite") {
+              const importedIds = new Set(parsed.mindMaps.map((m) => m.id));
+              const allKeys = await db.mindMaps.toCollection().primaryKeys();
+              const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+              if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
+            }
           }
-        }
-
-        // ── Knowledge base articles (already sanitized by schema) ──
-        if (parsed.knowledgeBaseArticles.length > 0) {
-          await db.knowledgeBaseArticles.bulkPut(parsed.knowledgeBaseArticles);
-          if (strategy === "overwrite") {
-            const importedIds = new Set(parsed.knowledgeBaseArticles.map((a) => a.id));
-            const allKeys = await db.knowledgeBaseArticles.toCollection().primaryKeys();
-            const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-            if (toDelete.length > 0) await db.knowledgeBaseArticles.bulkDelete(toDelete);
+          await yieldUI();
+          if (parsed.knowledgeBaseArticles.length > 0) {
+            await db.knowledgeBaseArticles.bulkPut(parsed.knowledgeBaseArticles);
+            if (strategy === "overwrite") {
+              const importedIds = new Set(parsed.knowledgeBaseArticles.map((a) => a.id));
+              const allKeys = await db.knowledgeBaseArticles.toCollection().primaryKeys();
+              const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+              if (toDelete.length > 0) await db.knowledgeBaseArticles.bulkDelete(toDelete);
+            }
+          } else if (strategy === "overwrite") {
+            await db.knowledgeBaseArticles.clear();
           }
-        } else if (strategy === "overwrite") {
-          await db.knowledgeBaseArticles.clear();
-        }
+        });
+        invalidateSourcesCache();
+        progress(75, "Uvoz logova i postavki…");
 
         // ── Metacognitive + planner IDB tables ──
         type IdbBulkTable = {
@@ -329,33 +384,42 @@ export function useCardImport({
         const autoIncKeys = new Set(autoIncTables.map((t) => t.key));
         const dbRecord = db as unknown as Record<string, IdbBulkTable>;
 
-        for (const { key, table } of idbTables) {
-          const arr = (parsed as unknown as Record<string, unknown[]>)[key];
-          if (!Array.isArray(arr)) continue;
-          if (arr.length > 0) {
-            if (strategy === "overwrite" && autoIncKeys.has(key as typeof autoIncTables[number]["key"])) {
-              await dbRecord[table].clear();
-              const stripped = arr.map((r) => {
-                const rec = (r ?? {}) as Record<string, unknown>;
-                const { id: _id, ...rest } = rec;
-                return rest;
-              });
-              await dbRecord[table].bulkAdd(stripped);
-            } else {
-              await dbRecord[table].bulkPut(arr);
-              if (strategy === "overwrite") {
-                // Settings table uses `key` as primary key; others use `id`.
-                const pkField = key === "settings" ? "key" : "id";
-                const importedIds = new Set(arr.map((r) => (r as Record<string, unknown>)[pkField]));
-                const allKeys = await dbRecord[table].toCollection().primaryKeys();
-                const toDelete = allKeys.filter((k) => !importedIds.has(k));
-                if (toDelete.length > 0) await dbRecord[table].bulkDelete(toDelete);
+        // Atomic over the whole satellite-table set: a malformed log can no
+        // longer commit-then-fail mid-stream and leave half the metacognitive
+        // state replaced. The transaction holds the IDB lock; yieldUI()
+        // releases the JS thread between tables so the UI keeps painting.
+        const allLogTables = idbTables.map(({ table }) => dbRecord[table] as unknown as object);
+        await db.transaction("rw", allLogTables as never[], async () => {
+          let i = 0;
+          for (const { key, table } of idbTables) {
+            const arr = (parsed as unknown as Record<string, unknown[]>)[key];
+            if (Array.isArray(arr) && arr.length > 0) {
+              if (strategy === "overwrite" && autoIncKeys.has(key as typeof autoIncTables[number]["key"])) {
+                await dbRecord[table].clear();
+                const stripped = arr.map((r) => {
+                  const rec = (r ?? {}) as Record<string, unknown>;
+                  const { id: _id, ...rest } = rec;
+                  return rest;
+                });
+                await dbRecord[table].bulkAdd(stripped);
+              } else {
+                await dbRecord[table].bulkPut(arr);
+                if (strategy === "overwrite") {
+                  const pkField = key === "settings" ? "key" : "id";
+                  const importedIds = new Set(arr.map((r) => (r as Record<string, unknown>)[pkField]));
+                  const allKeys = await dbRecord[table].toCollection().primaryKeys();
+                  const toDelete = allKeys.filter((k) => !importedIds.has(k));
+                  if (toDelete.length > 0) await dbRecord[table].bulkDelete(toDelete);
+                }
               }
+            } else if (strategy === "overwrite") {
+              await dbRecord[table].clear();
             }
-          } else if (strategy === "overwrite") {
-            await dbRecord[table].clear();
+            i++;
+            progress(75 + Math.round((i / idbTables.length) * 20), `Logovi (${i}/${idbTables.length})…`);
+            await yieldUI();
           }
-        }
+        });
 
         // ── localStorage data (whitelist + sanitize) ──
         if (parsed.localStorageData && typeof parsed.localStorageData === "object") {
@@ -398,6 +462,7 @@ export function useCardImport({
         if (parsed.pomodoroLog.length > 0) extraParts.push(`${parsed.pomodoroLog.length} pomodoro zapisa`);
         if (parsed.localStorageData) extraParts.push("lokalna podešavanja");
         const extraMsg = extraParts.length > 0 ? ` + ${extraParts.join(", ")}` : "";
+        progress(100, "Završeno.");
         toast.success(`Uspješno uvezeno ${importedCards.length} kartica${extraMsg}.`);
       } catch (err) {
         toast.error(`Greška pri uvozu: ${err instanceof Error ? err.message : "Neispravan format fajla."}`);
