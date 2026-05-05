@@ -169,8 +169,8 @@ export interface KnowledgeBaseArticle {
   updatedAt: number;
 }
 
-// ─── Module-level blocked handler (registered once, no accumulation) ──
-let _blockedReject: ((err: Error) => void) | null = null;
+// V7: Set of pending rejecters. Single-slot lost concurrent open() calls.
+const _blockedRejecters = new Set<(err: Error) => void>();
 
 class MemoriaDB extends Dexie {
   categories!: Table<CategoryRecord, string>;
@@ -273,7 +273,10 @@ function emitBlockedThrottled() {
 db.on("blocked", () => {
   console.warn("[MemoriaDB] DB open blocked by another connection");
   emitBlockedThrottled();
-  _blockedReject?.(new Error("DB_BLOCKED"));
+  for (const r of _blockedRejecters) {
+    try { r(new Error("DB_BLOCKED")); } catch { /* noop */ }
+  }
+  _blockedRejecters.clear();
 });
 
 db.on("versionchange", () => {
@@ -315,20 +318,22 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const tryOpen = async (): Promise<boolean> => {
+    let rejecter: ((err: Error) => void) | null = null;
     try {
       await Promise.race([
         db.open(),
         new Promise<never>((_, reject) => {
-          _blockedReject = reject;
+          rejecter = reject;
+          _blockedRejecters.add(reject);
           timer = setTimeout(() => reject(new Error("DB_OPEN_TIMEOUT")), timeoutMs);
         }),
       ]);
       clearTimeout(timer);
-      _blockedReject = null;
+      if (rejecter) _blockedRejecters.delete(rejecter);
       return true;
     } catch (err: unknown) {
       clearTimeout(timer);
-      _blockedReject = null;
+      if (rejecter) _blockedRejecters.delete(rejecter);
       const e = err instanceof Error ? err : new Error(String(err));
       console.error("[MemoriaDB] open failed:", e.name, e.message);
 
