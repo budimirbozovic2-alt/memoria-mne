@@ -1,78 +1,95 @@
-## Faza 1 — Sprečavanje oštećenja podataka
+## Faza 2 — Arhitektonsko čišćenje i performanse
 
-Dva nezavisna problema:
+### Obim
 
-### A1+F1 · CategoryDeletion ostavlja siročiće
+1. **Dekompozicija `planner-storage.ts`** (576 LOC, 25+ exports — God Module).
+2. **Dekompozicija `ZettelkastenView.tsx`** (587 LOC — Orchestrator + UI mixed).
+3. **B2/B4 optimizacije** — pretpostavljam:
+   - **B2**: Dexie čitanja u `useDashboardData` / `loadArticlesBySubject` koja ne koriste compound indekse.
+   - **B4**: `backlinkIndex.rebuildFromAll` puca cijeli subject pri svakom save → inkrementalna delta.
 
-`useCategoryManagement.deleteCategory` trenutno briše/repariranje samo `cards` + `sources`. Ostaje siročad u:
-
-| Store / cache | Ključ | Trenutno stanje |
-|---|---|---|
-| `knowledgeBaseArticles` | `subjectId` | nije dirano |
-| `mindMaps` | `categoryId` | nije dirano |
-| `mnemonics` | `categoryId` | nije dirano |
-| `settings: subject_settings:<id>` | key prefix | nije dirano |
-| `plannerConfig.subjectOrder/hardSubjects/phases.categories` | embedded | dangling refs |
-| `examiner-profile-cache` (in-mem Map) | `categoryId` | dangling entry |
-| `backlink-index` (per-subject) | `subjectId` | dangling subject scope |
-
-Pored toga, postojeći cascade `db.sources.where("categoryId").modify(...)` se izvršava IZVAN bilo kakve transakcije sa drugim brisanjima → mid-flight failure ostavlja djelimično očišćeno stanje.
-
-### F2 · planner-storage konkurentnost
-
-`savePlanner`, `saveDisciplineLog`, `incrementDailyMapped`, `autoRedistributeIfNeeded`, `recordDayDiscipline` rade fire-and-forget `db.settings.put(...).catch(...)` bez serijalizacije. Pri brzim uzastopnim pozivima (Smart-Split worker batchuje `incrementDailyMapped` 3-4× u istom tick-u; `recordDayDiscipline` može da se preklopi sa `saveDisciplineLog`) IndexedDB transakcije se preklapaju → newer-wins na disku može da bude OBRNUTO od newer-wins u memoriji. Cache se odmah ažurira sinhrono, ali IDB stanje može da završi sa starijim payload-om (Lost Update).
+Ako B2/B4 znače nešto drugo u tvojoj internoj numeraciji, javi prije izvršenja.
 
 ---
 
-## Promjene
+### 1. Planner-storage split
 
-### 1. Novi fajl: `src/lib/category-deletion-service.ts`
+Modul ima 4 jasne odgovornosti — razbijam u namespace folder `src/lib/planner/`:
 
-`async function cascadeDeleteCategoryDomains(categoryId): Promise<CascadeResult>`:
-- Jedna `db.transaction("rw", [knowledgeBaseArticles, mindMaps, mnemonics, settings], ...)` koja u atomic boundary-ju:
-  - briše `knowledgeBaseArticles where subjectId = id`
-  - briše `mindMaps where categoryId = id`
-  - briše `mnemonics where categoryId = id`
-  - briše `settings:subject_settings:<id>`
-  - čita `plannerConfig`, skida `id` iz `subjectOrder`/`hardSubjects`/legacy `phases[].categories` i `put`-uje nazad
-- POSLIJE commit-a: `invalidateMindMapsCache()`, `clearSubjectSettings(id)`, `invalidateExaminerProfile(id)`, `backlinkIndex.clearSubject(id)`, `invalidateSourcesCache()`.
-- Vraća `CascadeResult` (count po domenu) za telemetriju i toast.
+```
+src/lib/planner/
+  index.ts                  // re-exports za backward compatibility
+  cache.ts                  // initPlannerCache + ref state + enqueueWrite mutex
+  config.ts                 // PlannerConfig type, DEFAULT_CONFIG, loadPlanner, savePlanner
+  velocity.ts               // calcVelocity, calcEstimatedFinish, getProjectionText
+  phases.ts                 // StudyPhase, PhaseProgress, calcPhaseProgress, getPhaseDisciplinePct
+  suggestions.ts            // SmartSuggestion, getSmartSuggestion, calcRebalancedQuota,
+                            //   calcDailyTimeRecommendation, getPlannerStatus
+  discipline.ts             // DisciplineEntry/Status, save/load/recordDay/calc/Emoji/Label,
+                            //   getCognitiveDebt, getDisciplineTrend
+  daily-mapped.ts           // getDailyMappedCount, incrementDailyMapped, autoRedistributeIfNeeded
+  burnup.ts                 // buildBurnupData
+  plan-generator.ts         // generateStudyPlan, calcLearningReviewRatio
+```
 
-Sources + cards i dalje obrađuje orchestrator (jer dijele `cardMapRef` mutaciju i fallback re-parent semantiku).
+`src/lib/planner-storage.ts` postaje 1-line re-export shim:
+```ts
+export * from "./planner";
+```
 
-### 2. Patch `src/lib/backlink-index.ts`
+Mutex (`enqueueWrite`) ostaje u `cache.ts` i koriste ga svi pisci. Test po-modulu postaje moguć.
 
-Dodati public `clearSubject(subjectId: string): void` metoda — wipe svih per-subject mapa za taj id. (Trenutno postoji `removeArticle` po-jedan; treba bulk wipe.)
+### 2. ZettelkastenView dekompozicija (Orchestrator pattern)
 
-### 3. Patch `src/hooks/useCategoryManagement.ts` · `deleteCategory`
+Ekstrahuj poslovnu logiku u hook-ove, view-komponenta ostaje "dumb shell":
 
-- `await cascadeDeleteCategoryDomains(categoryId)` se poziva PRIJE postojeće sources cascade IIFE (ili merge-ovano u nju).
-- Toast greška ostaje na error path.
-- Cards/sources path ostaje nepromijenjen — to je već pokriveno postojećim refactor-om.
+```
+src/views/ZettelkastenView.tsx           // ~150 LOC: layout + composition
+src/hooks/zettelkasten/
+  useZettelkastenState.ts                // articles, activeId, isEditing, draft, indexArticleId
+  useZettelkastenActions.ts              // save, delete, create, rename (saveDraft + backlinkIndex hooks)
+  useZettelkastenIndexBootstrap.ts       // initial loadArticlesBySubject + ensureIndexArticle
+  useExplorerCollapsed.ts                // localStorage-persisted explorer toggle
+```
 
-### 4. Patch `src/lib/planner-storage.ts` · F2 mutex
+Header/explorer/preview/editor već postoje kao podkomponente — samo se prosljeđuju props iz hook-ova.
 
-- Dodati modul-level `let _pendingWrite: Promise<void> = Promise.resolve();`
-- Helper `enqueue(op: () => Promise<void>): void` koji chain-uje sve `db.settings.put` / `db.disciplineLog` operacije. In-memory cache mutacija ostaje SINHRONA prije `enqueue` (ref-delta pattern, isto kao `service-layer-pattern`).
-- Refaktor: `savePlanner`, `saveDisciplineLog`, `incrementDailyMapped`, `autoRedistributeIfNeeded`-ova dva `db.settings.put`-a — svi prolaze kroz `enqueue`.
-- `loadPlanner`, `getDailyMappedCount`, `loadDisciplineLog` čitaju iz cache-a — nepromijenjeni.
-- HMR cleanup nije potreban (modul-level Promise se garbage-collect-uje).
+### 3. B2 — Dexie compound index audit
+
+- Dashboard: provjeriti da `useDashboardData` query-ja kartice po `[categoryId+subcategoryId]` umjesto in-memory filtera.
+- `loadArticlesBySubject` već koristi `subjectId` — OK.
+- `mindMaps.where("categoryId")` u cascade — OK (postoji index).
+- `mnemonics.where("categoryId")` — provjeriti da postoji `categoryId` index (postoji v10).
+
+Ako neki query radi `toArray()` + JS filter, prebaciti na indexed query.
+
+### 4. B4 — Inkrementalni backlink rebuild
+
+Trenutno u `ZettelkastenView` initial load:
+```ts
+backlinkIndex.rebuildFromAll(categoryId, merged);  // O(N × avgLinks) per mount
+```
+A `eventBus` već šalje per-article updates → `upsertArticle` se može koristiti jedanput po članku umjesto full rebuild kada se pojedini članak izmjeni. Trenutno postoji subscription na `EVENT_TYPES` koji već poziva `upsertArticle` pa je incremental put već implementiran.
+
+**Stvarni B4 problem**: `rebuildFromAll` u `useEffect [categoryId, categoryRec]` se okida i kada se samo `categoryRec` promijeni (npr. rename subkategorije). Treba okidati samo kada se zapravo promijeni `categoryId`. Fix:
+- Razdvojiti boot effect na `[categoryId]` only.
+- Ne pozivati `rebuildFromAll` ako je već izgrađen — zaštita `if (backlinkIndex.hasSubject(subjectId)) skip`.
+- Dodati `hasSubject(subjectId)` u `BacklinkIndex` (provjera da li `subjects.has(id)`).
 
 ### 5. Memory update
 
-Nova memorija `mem://features/data-integrity-v4` (zamjenjuje v3 ref na deletion temu): "Category deletion uses single-transaction cascadeDeleteCategoryDomains across knowledgeBaseArticles/mindMaps/mnemonics/settings + scrubs plannerConfig refs + invalidates examiner-profile/backlink-index/mindmaps/sources caches. Planner-storage IDB writes serialized via promise mutex."
+Nova memorija `mem://architecture/planner-decomposition` i `mem://architecture/zettelkasten-orchestrator-v2`. Update `mental-maps`/`backlink` ref ako postoji.
 
-## Bez izmjena
+---
 
-- Nema schema migracija (sve postojeće stores).
-- Nema UI promjena.
-- `optimisticCategoryUpdate` ostaje SSoT za `categories` tabelu.
-- `cards` / `sources` cascade ostaje u orchestratoru.
+### Bez izmjena
 
-## Test verifikacija (manuelno)
+- API surface ostaje 100% kompatibilan (re-export shim).
+- Nema schema migracija.
+- Nema UI/UX promjena.
 
-1. Kreirati subject sa: 1 source, 1 card, 1 article, 1 mindmap, 1 mnemonic, override settings, dodan u `subjectOrder` + `hardSubjects`.
-2. Delete subject sa `purgeCards=true`.
-3. Provjeriti DevTools → IndexedDB: nijedan red sa tim `categoryId`/`subjectId` ne smije ostati.
-4. Otvoriti planner → subject ne smije biti u `subjectOrder` ni `hardSubjects`.
-5. Mid-flight: throw u jednoj od `delete` operacija → cijeli batch rollback (Dexie tx semantika).
+### Pitanje pred izvršenjem
+
+**Da li B2 misliš na Dashboard query strategiju, ili na nešto specifičnije** (npr. specifična metrika u `analytics/`)? Ako je nešto specifičnije, dopuni prije nego krenem.
+
+Nastavak se okida čim odobriš.
