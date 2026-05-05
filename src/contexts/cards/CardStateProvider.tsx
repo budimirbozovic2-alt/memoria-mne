@@ -235,9 +235,14 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
       const currentSequence = ++fetchSequence; // Increment on every event
       const ids = payload?.cardIds;
 
+      // V5: ALWAYS drain pending writes before re-reading IDB. Without this,
+      // a CARDS_UPDATED event that fires within the 16 ms persist window can
+      // pull stale rows and clobber freshly-mutated cards in cardMapRef.
+      const drainThenFetch = persistQueue.cleanup();
+
       if (ids && ids.length > 0 && ids.length <= SURGICAL_LIMIT) {
         // Surgical branch
-        import("@/lib/db").then(({ db }) => {
+        drainThenFetch.then(() => import("@/lib/db")).then(({ db }) => {
           db.cards.bulkGet(ids).then((rows) => {
             // ABORT if unmounted or if a newer request has fired
             if (!isSubscribed || currentSequence !== fetchSequence) return;
@@ -264,7 +269,7 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
       }
 
       // Fallback: full reload
-      import("@/lib/db-queries").then(({ idbLoadCards }) => {
+      drainThenFetch.then(() => import("@/lib/db-queries")).then(({ idbLoadCards }) => {
         idbLoadCards().then((loaded) => {
           // ABORT if unmounted or if a newer request has fired
           if (!isSubscribed || currentSequence !== fetchSequence) return;
