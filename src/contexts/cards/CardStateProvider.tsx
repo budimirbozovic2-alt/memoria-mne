@@ -3,7 +3,7 @@ import { Card, SRSettings, DEFAULT_SR_SETTINGS, SectionState, isLeech, getSectio
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, mapToArray, persistQueue, schedulePersist, bumpMapVersion } from "@/lib/persist-queue";
 import { useCardMap, setCardMap, cardMapRefFacade, type CardMapRefFacade } from "@/store/useCardMapStore";
-import { idbSaveSettings, idbAddReviewLogEntry } from "@/lib/db";
+import { idbSaveSettings, idbAddReviewLogEntry, flushReviewLogQueue } from "@/lib/db";
 import { onCardLinksCleared, onCardReviewConfirmed } from "@/lib/sources-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { initBacklinkIndexSubscriptions } from "@/lib/backlink-index";
@@ -138,6 +138,9 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
     if (electron?.onQuitBackupRequested) {
       unsubQuit = electron.onQuitBackupRequested(async () => {
         try {
+          // V2: drain review-log queue BEFORE persistQueue so any pending
+          // grades captured during a fast-close get a chance to land.
+          await flushReviewLogQueue();
           await persistQueue.cleanup();
         } catch (err) {
           console.error("[CardStateProvider] quit flush failed", err);
@@ -156,6 +159,7 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
       } catch {
         /* noop */
       }
+      void flushReviewLogQueue();
       void persistQueue.cleanup();
     };
   }, []);
