@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { PlannerConfig, generateStudyPlan } from "@/lib/planner-storage";
 import { CategoryRecord } from "@/lib/db";
 import { Card as SRCard } from "@/lib/spaced-repetition";
+import Modal from "@/components/ui/Modal";
 import SubjectCard from "./SubjectCard";
 
 interface Props {
@@ -23,6 +24,7 @@ interface Props {
 
 export default function PlannerSetupWizard({ config, save, categoryRecords, cards, onClose }: Props) {
   const [step, setStep] = useState(0);
+  const titleId = useId();
   const [goalDate, setGoalDate] = useState<Date | undefined>(config.finalGoalDate ? new Date(config.finalGoalDate) : undefined);
   const [dailyHours, setDailyHours] = useState(config.dailyAvailableMinutes > 0 ? config.dailyAvailableMinutes / 60 : 4);
   const [buffer, setBuffer] = useState(config.bufferPercent);
@@ -51,15 +53,16 @@ export default function PlannerSetupWizard({ config, save, categoryRecords, card
   };
 
   return (
-    <div className="fixed inset-0 z-modal-elevated flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-lg mx-4 rounded-xl border bg-card shadow-xl overflow-hidden"
-      >
+    <Modal
+      open
+      onClose={onClose}
+      labelledBy={titleId}
+      backdropClassName="bg-background/80 backdrop-blur-sm"
+      panelClassName="w-full max-w-lg mx-4 rounded-xl border bg-card shadow-xl overflow-hidden"
+    >
         {/* Header */}
         <div className="p-5 border-b">
-          <h2 className="text-lg font-semibold">Podešavanje plana učenja</h2>
+          <h2 id={titleId} className="text-lg font-semibold">Podešavanje plana učenja</h2>
           <div className="flex gap-1 mt-3">
             {[0, 1, 2].map(i => (
               <div key={i} className={cn("h-1 flex-1 rounded-full transition-colors", i <= step ? "bg-primary" : "bg-secondary")} />
@@ -203,7 +206,6 @@ export default function PlannerSetupWizard({ config, save, categoryRecords, card
             )}
           </div>
         </div>
-      </motion.div>
-    </div>
+    </Modal>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import Modal from "@/components/ui/Modal";
 import type { CategoryRecord } from "@/lib/db-schema";
 
 interface Props {
@@ -275,9 +276,14 @@ export default function CategoryManager({
 
       {/* Confirm delete dialog */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-modal-elevated flex items-center justify-center bg-black/50" onClick={() => setConfirmDelete(null)}>
-          <div className="bg-card border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4" onClick={e => e.stopPropagation()}>
-            <h3 className="font-semibold text-lg">Obriši kategoriju</h3>
+        <Modal
+          open
+          onClose={() => setConfirmDelete(null)}
+          labelledBy="category-delete-title"
+          backdropClassName="bg-black/50"
+          panelClassName="bg-card border rounded-xl p-6 max-w-sm w-full mx-4 space-y-4"
+        >
+            <h3 id="category-delete-title" className="font-semibold text-lg">Obriši kategoriju</h3>
             {(cardCountByCategory[confirmDelete] ?? 0) > 0 ? (
               <>
                 <p className="text-sm text-muted-foreground">
@@ -306,8 +312,7 @@ export default function CategoryManager({
                 </div>
               </>
             )}
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
