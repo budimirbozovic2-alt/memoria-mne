@@ -118,7 +118,7 @@ export function loadPlanner(): PlannerConfig {
 
 export function savePlanner(config: PlannerConfig): void {
   _plannerCache = config;
-  db.settings.put({ key: "plannerConfig", value: config }).catch((e) => console.warn("[silent]", e));
+  enqueueWrite("savePlanner", () => db.settings.put({ key: "plannerConfig", value: config }));
 }
 
 // ─── Velocity ────────────────────────────────────────────
@@ -342,10 +342,12 @@ export function loadDisciplineLog(): DisciplineEntry[] {
 
 export function saveDisciplineLog(log: DisciplineEntry[]) {
   _disciplineCache = log;
-  db.transaction("rw", db.disciplineLog, async () => {
-    await db.disciplineLog.clear();
-    if (log.length > 0) await db.disciplineLog.bulkAdd(log);
-  }).catch((e) => console.warn("[silent]", e));
+  enqueueWrite("saveDisciplineLog", () =>
+    db.transaction("rw", db.disciplineLog, async () => {
+      await db.disciplineLog.clear();
+      if (log.length > 0) await db.disciplineLog.bulkAdd(log);
+    }),
+  );
 }
 
 export function calcDisciplineStatus(reviewsDone: number, dailyGoal: number, slippageMs: number | null): DisciplineStatus {
