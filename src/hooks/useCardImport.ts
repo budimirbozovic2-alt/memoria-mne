@@ -2,7 +2,7 @@ import { useCallback, MutableRefObject } from "react";
 import { toast } from "sonner";
 import { Card, createCard, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
+import { CardMap, bumpMapVersion, schedulePersist, persistQueue } from "@/lib/persist-queue";
 import {
   db,
   idbLoadCategories,
@@ -13,6 +13,10 @@ import {
 import { resolveLegacyTaxonomyNames } from "@/lib/migrations/resolve-legacy-taxonomy";
 import { invalidateSourcesCache } from "@/lib/sources-storage";
 import { BackupSchema, type ParsedBackup } from "@/lib/migrations/backup-schema";
+import { migrateBackup, BackupVersionError } from "@/lib/backup/migrate";
+import { yieldUI } from "@/lib/backup/yield-ui";
+
+export type ImportProgress = (pct: number, label: string) => void;
 
 interface UseCardImportDeps {
   setCategoryRecords: React.Dispatch<React.SetStateAction<CategoryRecord[]>>;
