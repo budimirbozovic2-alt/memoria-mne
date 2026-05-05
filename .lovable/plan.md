@@ -1,110 +1,192 @@
-# Plan: Doradenje M3 / W1 / W5 (refinement)
+# Code De-bloating Audit — pronađeno ~700 LOC za brisanje
 
-Prihvataju se sve tri sugestije. Plan je inkrementalan iznad već završenog rada — bez ponavljanja postignutog.
-
----
-
-## M3 — bez `flushSync`, eksplicitni `stash(cardId?)`
-
-**Problem koji ostaje:** trenutni `useEditReturn` čita `cardId` ili iz prop-a (zamrznutog na trenutku rendera) ili iz globalnog SSOT mirror-a (`getCurrentEditingCardId()`). Oba puta su podložna race-u kad pozivalac `setEditingCardId(card.id)` pa odmah `stash()` u istom handleru: SSOT mirror radi (jer je sinhron), ali ostaje "magičan" — pozivalac ne vidi koji ID će biti spremljen. Korisnikova preporuka: neka pozivalac eksplicitno preda ID.
-
-**Fix:**
-1. `useEditReturn` → `stash` potpis postaje:
-   ```ts
-   stash: (cardIdOverride?: string | null) => void
-   ```
-   Prioritet rješavanja u stash-u (od najvišeg ka najnižem):
-   1. `cardIdOverride` (eksplicitni argument)
-   2. `opts.cardId` (vrijednost ili getter, kao danas)
-   3. `getCurrentEditingCardId()` (SSOT fallback)
-
-2. Pozivni siteovi (`SubjectCardsView`, `LearnPage`, `MainLayout`) prelaze na eksplicitni stil:
-   ```ts
-   const openEditor = (card) => {
-     setEditingCardId(card.id);
-     stashEditReturn(card.id);   // eksplicitno, bez oslanjanja na timing
-     navigate("/edit");
-   };
-   ```
-
-3. `flushSync` se **NE uvodi**. Brisati spomen iz starog plana.
-
-4. `cardId` u `UseEditReturnOptions` ostaje (backwards-compat za pozive bez override-a), ali stabilizujemo getter referencu — interno normalizovati u `useMemo(() => typeof cardId === "function" ? cardId : () => cardId, [cardId])` da `useCallback(stash)` ne mijenja identitet kad consumer prosljeđuje inline funkciju. To eliminiše nepotrebne re-rendere child-a koji prima `stash` kao prop.
-
-5. Test: postojeći `edit-return-stash.test.tsx` proširiti scenarijem
-   - dva uzastopna `stash(cardA.id)`, `stash(cardB.id)` — rezultat snapshot ima `cardB.id`,
-   - bez override-a, samo `setEditingCardId(x); stash();` — snapshot ima `x` (SSOT fallback i dalje radi).
+Cilj: ukloniti redundantnu strukturu bez dodavanja funkcionalnosti. Sve nalaze sam verifikovao u kodu (linije citiram).
 
 ---
 
-## W1 — Inversion of Control za db→event-bus
+## 1. Copy-Paste Redundancija (UI)
 
-**Trenutno stanje:** `db-schema.ts` direktno importuje `eventBus` iz `@/lib/event-bus`. Konstante su izdvojene u `event-bus-types.ts`, ali sama instanca i dalje stvara cycle (event-bus indirektno povlači storage modul koji ovisi o db-schema).
+### 1A. Tri identična *Onboarding wrapper-a* (`AppOnboarding`, `PlannerOnboarding`, `StatsOnboarding`, `DashboardOnboarding`)
+**Lokacija:** `src/components/{App,Planner,Stats,Dashboard}Onboarding.tsx` (118 + 62 + 62 + 86 = **328 LOC**)
 
-**Fix (DI, bez dinamičkih importa):**
-1. `src/lib/db-schema.ts` više **ne** importuje `eventBus`. Umjesto toga drži lokalni emitter slot:
-   ```ts
-   type DbEmitter = (type: EventType, payload?: unknown) => void;
-   let _emit: DbEmitter = () => {}; // no-op default (SSR/test bez busa)
-   export function setDbEventEmitter(emit: DbEmitter): void { _emit = emit; }
-   // unutar setDbErrorState / blocked / unblocked:
-   _emit(EVENT_TYPES.DB_ERROR_CHANGED, next);
-   _emit(EVENT_TYPES.DB_BLOCKED);
-   _emit(EVENT_TYPES.DB_UNBLOCKED);
-   ```
-   Tip `EventType` se i dalje uzima iz `event-bus-types.ts` (bez instance).
+**Bloat:** Sva četiri fajla su 100% strukturno isti — drže `const SLIDES`, `STORAGE_KEY` i 5-linijski default export koji samo prosljeđuje sve u `<OnboardingModal>`. Razlika: samo niz slajdova i finishLabel.
 
-2. Bootstrap fajl koji već podiže DB (najvjerovatnije `src/lib/db.ts` ili modul gdje se prvo zove `openDb`) uradi jedan put:
-   ```ts
-   import { eventBus } from "@/lib/event-bus";
-   import { setDbEventEmitter } from "@/lib/db-schema";
-   setDbEventEmitter((type, payload) => eventBus.emit(type, payload));
-   ```
-   Provjeriti i izvršiti istu DI registraciju u test setup-u (`src/test/setup.ts`) ako neki test direktno koristi `db-schema` emitere.
+**Fix:** Jedan fajl `src/components/onboarding/slides.ts` koji eksportuje `ONBOARDING_PRESETS`:
+```ts
+export const ONBOARDING_PRESETS = {
+  app:       { key: "sr-app-onboarding-seen",       finish: "Počni koristiti", slides: [...] },
+  planner:   { key: "sr-planner-onboarding-seen",   finish: "Razumijem",       slides: [...] },
+  stats:     { key: "sr-stats-onboarding-seen",     finish: "Razumijem",       slides: [...] },
+  dashboard: { key: "sr-dashboard-onboarding-seen", finish: "Razumijem",       slides: [...] },
+} as const;
+```
+Pozivi postaju `<OnboardingModal preset="app" onComplete={...} />` (modal čita preset interno). Brišu se 4 wrapper komponente; ostaje samo `OnboardingModal` koji prima `preset` ili custom `slides`.
 
-3. Posljedice:
-   - cycle nestaje (graf: `event-bus` → ništa od db; `db-schema` → samo tipovi),
-   - debag je trivijalan jer je emitter sinhron i pozvan pod imenom (`_emit`),
-   - dinamički `import()` u `db-schema` se uklanja / ne uvodi.
-
-4. Dodati mali test `src/test/db-emitter-di.test.ts`:
-   - registrovati spy emitter, pozvati `setDbErrorState({...})` → spy primi `DB_ERROR_CHANGED` jednom,
-   - ne registrovati emitter → `setDbErrorState` ne baca, no-op default radi.
+**Ušteda:** ~**280 LOC** (4 × ~70 redova boilerplate-a + 4 lazy-import unosa). Konstante `APP_ONBOARDING_KEY` itd. ostaju kao re-export iz preset modula da pozivni siteovi ne pucaju.
 
 ---
 
-## W5 — ESLint pravilo za `eventBus.emit`/`subscribe`
+### 1B. `MainLayout` ima 3 jednolinijska `*Wrapper` komponente (`GlobalSearchWrapper`, `DocxImporterWrapper`)
+**Lokacija:** `src/components/MainLayout.tsx:86-140`
 
-Prihvaćeno. Implementacija:
+**Bloat:** Svaki wrapper je `memo()` + `Suspense` + early-return + jedan poziv lazy komponente. Logika je trivijalna. Pravi razlog postojanja je *sprečavanje da AppContext re-render pumpa lazy import* — što se rješava jednostavnijim early-return uzorkom direktno u JSX:
 
-1. U `eslint.config.js` (flat config) dodati `no-restricted-syntax` pravilo za `src/**/*.{ts,tsx}` koje pogađa string-literal argumente:
-   ```js
-   {
-     selector: "CallExpression[callee.object.name='eventBus'][callee.property.name=/^(emit|subscribe|unsubscribe)$/] > Literal:first-child",
-     message: "Koristi EVENT_TYPES.X umjesto string literala (W5).",
-   }
-   ```
-2. Skenirati postojeću bazu (`rg "eventBus\.(emit|subscribe|unsubscribe)\(['\"]" src`) i prebaciti sve hitove na konstantu (očekivano 0 — ali validirati).
-3. Dokumentovati pravilo jednom rečenicom u memoriji `event-bus-architecture`.
+**Fix:** Zamijeniti sa inline pattern-om jer je `lazy()` već u dat fajlu:
+```tsx
+{globalSearchOpen && (
+  <Suspense fallback={null}>
+    <GlobalSearch open onClose={...} onNavigateToCard={...} />
+  </Suspense>
+)}
+```
+`useEditReturn` hook se može pozvati u `MainLayout` direktno (već radi tako u GlobalSearchWrapper). NudgeWatcher ostaje (legitimno izolovan).
+
+**Ušteda:** ~**45 LOC** (2 wrappera × ~22 reda).
 
 ---
 
-## Tehnički detalji — fajlovi
+## 2. Zloupotreba lokalnog stanja (State Bloat)
 
-```text
-src/hooks/useEditReturn.ts            (M3 — stash(cardId?), stabilan getter)
-src/views/SubjectCardsView.tsx        (M3 — stash(card.id))
-src/views/LearnPage.tsx               (M3 — stash(card.id))
-src/components/MainLayout.tsx         (M3 — stash(card.id))
-src/lib/db-schema.ts                  (W1 — ukloniti import eventBus, dodati setDbEventEmitter)
-src/lib/db.ts (ili bootstrap)         (W1 — DI registracija jednom)
-src/test/setup.ts                     (W1 — DI u test env, ako treba)
-eslint.config.js                      (W5 — no-restricted-syntax)
-src/test/edit-return-stash.test.tsx   (M3 — proširiti)
-src/test/db-emitter-di.test.ts        (W1 — novi)
+### 2A. `MainLayout` — `useRef` mirror za context koji već ne re-renderuje
+**Lokacija:** `src/components/MainLayout.tsx:32-35`
+```ts
+const cardDataRef = useRef<ReturnType<typeof useCardData>>(null!);
+cardDataRef.current = useCardData();
+const reviewDataRef = useRef<ReturnType<typeof useReviewData>>(null!);
+reviewDataRef.current = useReviewData();
 ```
 
-## Šta se NE mijenja
-- `flushSync` se ne uvodi nigdje.
-- Dinamički `import()` za event-bus se ne uvodi.
-- Postojeća SSOT mirror logika (`getCurrentEditingCardId`) ostaje kao fallback — pojas i tregeri.
+**Bloat:** Hook se već zove svaki render — ref *ne* sprečava subscription, samo daje iluziju "lazy reads". Ako je cilj bio izbjeći re-render NudgeWatcher-a, treba ga premjestiti u dijete `<NudgeWatcher />` koje se mounta samo na route change preko `key={pathname}` ili koristiti `useEvent` pattern. Trenutno je to mrtva tkanina.
+
+**Fix:** Ukloniti refove, čitati direktno; ako je perf bitan, izdvojiti subscription u event-bus listener (kao DbErrorProvider). Ovaj NudgeWatcher se već okida samo na promjenu pathname (efekt deps), pa direktan poziv funkcije `useCardData()` ima isti broj re-rendera kao i ref-pristup.
+
+**Ušteda:** ~**6 LOC** + jasniji namjera.
+
+---
+
+### 2B. `GlobalSearch.stripHtml` — wrapper oko wrapper-a
+**Lokacija:** `src/components/GlobalSearch.tsx:34-37`
+```ts
+import { stripHtmlText as _stripHtml } from "@/lib/sanitize";
+function stripHtml(html: string): string { return _stripHtml(html); }
+```
+Komentar tvrdi "wrapper that drops trailing whitespace" — *ali ne radi to*. Samo prosljeđuje argument.
+
+**Fix:** Direktan `import { stripHtmlText as stripHtml }`.
+
+**Ušteda:** **3 LOC**, eliminisana lažna apstrakcija.
+
+---
+
+## 3. Loše apstrakcije alata (Reinventing the Wheel)
+
+### 3A. Vlastiti `Modal` shell ima ručni focus-trap i ESC handler — Radix `Dialog` već postoji u projektu
+**Lokacija:** `src/components/ui/Modal.tsx` (154 LOC) + `src/components/ui/dialog.tsx` (već instalirana shadcn varijanta).
+
+**Bloat:** `Modal.tsx` ručno radi:
+- focus trap (linije 79-110 — 32 reda Tab/Shift+Tab logike),
+- restore-focus (60-75),
+- portal + AnimatePresence,
+- vlastite z-index tokene.
+
+Sve ovo Radix Dialog daje besplatno, a već je u dependency-jima. Razlog za vlastiti Modal bio je "z-index conflict" sa `PlannerSetupWizard` — međutim, taj se rješava `<Dialog>` sa `modal={true}` i `Portal container` propom, ili jednostavnije: dodavanjem `style={{ zIndex: 60 }}` na `DialogContent` za "elevated" varijantu.
+
+**Fix:** Migrirati 5 potrošača Modal-a (`OnboardingModal`, `PlannerSetupWizard`, `CategoryManager` confirm, `AuditorDetailPanel`, `GlobalSearch`) na `Dialog`. Ostaviti `Modal.tsx` *samo* ako neki potrošač traži `z-search` (Cmd+K) — što se rješava Radix `Dialog` + custom `DialogContent` varijantom kroz `cva`.
+
+**Ušteda:** **~154 LOC** (cijeli Modal.tsx) + ~10 LOC po pozivu u potrošačima (uniformne props skraćene). Plus brisanje `z-index-conflict.test.tsx` koji testira sopstvenu apstrakciju.
+
+**Trade-off:** Migracija dotiče 5 komponenti i njihove vizuele moraju ostati identične — preporuka: napraviti `<DialogShell>` thin wrapper koji prenosi `panelClassName` na `DialogContent` da se ne mijenja styling po potrošaču.
+
+---
+
+### 3B. Globalna `setGlobalSearchOpen` zastavica + `shouldIgnoreGlobalKey` — Radix Dialog već radi inertne fokuse
+**Lokacija:** `src/lib/global-overlay-state.ts` (45 LOC), pozvana iz 4 keydown listenera.
+
+**Bloat:** Razlog postojanja — keydown listeneri u `LocalSpeedReader`, `ReviewCard`, `PassiveReader` se okidaju dok je GlobalSearch otvoren. Kad GlobalSearch postane Radix Dialog (3A), background postaje `inert` automatski (Radix postavlja `aria-hidden` + `pointer-events: none`), a fokus je zarobljen u dijalogu — *event.target* unutar Dijaloga nikad ne stiže do window listenera background komponenti jer komponente mogu provjeriti `e.target.closest('[role="dialog"]')`.
+
+**Fix:** Zamijeniti `shouldIgnoreGlobalKey(e)` jednim utilom `isInsideOpenDialog(e.target)` koji koristi DOM kao SSOT (ne globalnu varijablu). `setGlobalSearchOpen` poziv (i import) brišu se.
+
+**Ušteda:** **~30 LOC** + smanjenje stanja koje treba sinhronizovati ručno.
+
+---
+
+### 3C. Ručno parsiranje keydown za Ctrl+K (`MainLayout:159-168`) — postoji `useHotkeys`/native pattern
+**Lokacija:** `src/components/MainLayout.tsx:159-168` + identičan pattern u 8 drugih fajlova (`useEffect` sa `addEventListener("keydown")`).
+
+**Bloat:** 9 ponovljenih `useEffect(() => { window.addEventListener("keydown", ...); return () => removeEventListener })` blokova, svaki 8-12 redova. Logika ista, razlikuje se samo handler.
+
+**Fix:** Mali hook `useGlobalHotkey(matcher, handler, deps?)`:
+```ts
+// src/hooks/useGlobalHotkey.ts (~15 LOC)
+export function useGlobalHotkey(
+  matcher: (e: KeyboardEvent) => boolean,
+  handler: (e: KeyboardEvent) => void,
+  deps: unknown[] = [],
+  opts: { capture?: boolean; ignoreInEditable?: boolean } = {},
+) {
+  useEffect(() => {
+    const cb = (e: KeyboardEvent) => {
+      if (opts.ignoreInEditable && isEditableTarget(e.target)) return;
+      if (matcher(e)) handler(e);
+    };
+    window.addEventListener("keydown", cb, opts.capture);
+    return () => window.removeEventListener("keydown", cb, opts.capture);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+}
+```
+Pozivi se skraćuju sa 10 → 3 reda po komponenti.
+
+**Ušteda:** **~60 LOC** kroz 9 call-site-ova.
+
+---
+
+## 4. Nepotrebni Wrapperi
+
+### 4A. `src/contexts/AppContext.tsx` (re-export barrel)
+**Lokacija:** `src/contexts/AppContext.tsx` (46 LOC)
+
+**Status:** Pravi composition root + re-export barrel. *Nije bloat* — služi backwards-compat za 50+ importa. Ostavi.
+
+### 4B. `src/lib/db.ts` (3 reda re-exporta)
+**Lokacija:** `src/lib/db.ts` (4 LOC)
+
+**Status:** Barrel za 48 potrošača. Ostavi (legitiman fasad).
+
+### 4C. `MainLayout.GlobalSearchWrapper` / `DocxImporterWrapper` — pokriveno u 1B.
+
+### 4D. `useScrollRestore` u `useEditReturn` — vrijedi provjeriti
+Nije pregledano detaljno; preliminarno OK (ima jasnu odgovornost).
+
+---
+
+## Sažetak ušteda
+
+| Stavka | LOC za brisanje | Rizik |
+|---|---|---|
+| 1A: Onboarding wrapperi → preset | ~280 | nizak |
+| 1B: MainLayout wrapperi | ~45 | nizak |
+| 2A: MainLayout ref-mirror | ~6 | nizak |
+| 2B: GlobalSearch stripHtml wrapper | ~3 | trivijalan |
+| 3A: Modal shell → Radix Dialog | ~154 + ~50 | **srednji** (5 migracija) |
+| 3B: global-overlay-state | ~30 | nizak (uz 3A) |
+| 3C: useGlobalHotkey | ~60 (neto −45) | nizak |
+| **UKUPNO** | **~620 LOC neto** | |
+
+## Redoslijed izvršenja (od najsigurnijeg)
+
+1. **2B** (3 LOC, 0 rizika) — odmah.
+2. **2A** (6 LOC, čišćenje) — odmah.
+3. **3C** `useGlobalHotkey` — refaktor 9 mjesta, lako testirati.
+4. **1A** Onboarding presets — mehanička transformacija.
+5. **1B** MainLayout wrapperi — pratiti perf da nema novih re-rendera (memo nije bio bezveze, ali konzervativno može ostati).
+6. **3A + 3B** Modal → Radix Dialog — najveća ušteda, treba QA fokus-trapa i z-index sloja prije merge-a; jedini potez koji *uklanja* postojeće M1-M5 testove.
+
+## Šta NIJE bloat (ali djeluje sumnjivo)
+
+- `db-schema.ts` setDbEventEmitter DI — namjerno, riješeno u prošloj iteraciji (W1).
+- `useEditReturn` SSOT mirror — namjerno, kapija koja izbjegava 3 ref-mirror-a.
+- `BlockingModal`, `ProcessingOverlay`, `DatabaseRecoveryPanel` — *ne* koriste Modal jer su recovery-layer iznad svih dialog-a (z-blocking/z-recovery). Ostaju vanilla div.
+- `lazy()` importi u `MainLayout` — perf-kritični, ostaju.
+
+Po odobrenju kreciram koraci 1-6 jedan po jedan u zasebnim commit-ima da se LOC ušteda može mjeriti.
