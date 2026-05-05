@@ -88,21 +88,29 @@ export function useEditReturn<S extends BaseEditReturnSnapshot = BaseEditReturnS
 
   useScrollRestore(initialSnapshot?.scrollY ?? null);
 
-  const stash = useCallback(() => {
+  // Stabilize the cardId resolver so `useCallback(stash)` keeps a stable
+  // identity even when consumers pass an inline value/getter literal each render.
+  const cardIdResolver = useMemo<() => string | null | undefined>(
+    () => (typeof cardId === "function" ? cardId : () => cardId ?? undefined),
+    [cardId],
+  );
+
+  const stash = useCallback((cardIdOverride?: string | null) => {
     const resolvedPath = typeof path === "function" ? path() : path;
     setEditReturn({ path: resolvedPath });
 
     const extras = buildExtras ? buildExtras() : undefined;
-    // M3: When the caller doesn't supply `cardId`, fall back to the synchronous
-    // SSOT mirror in `UIProvider`. This lets components do
-    //   setEditingCardId(card.id); stash();
-    // and always record the freshest id without keeping a private ref.
-    const resolvedCardId =
-      typeof cardId === "function"
-        ? cardId()
-        : cardId !== undefined
-          ? cardId
-          : getCurrentEditingCardId();
+    // Resolution order (highest → lowest):
+    //   1. explicit `cardIdOverride` argument (preferred)
+    //   2. `opts.cardId` (value or getter)
+    //   3. SSOT mirror in `UIProvider` (`getCurrentEditingCardId`)
+    let resolvedCardId: string | null | undefined;
+    if (cardIdOverride !== undefined) {
+      resolvedCardId = cardIdOverride;
+    } else {
+      const fromOpts = cardIdResolver();
+      resolvedCardId = fromOpts !== undefined ? fromOpts : getCurrentEditingCardId();
+    }
     const snapshot = {
       ...(extras as object | undefined),
       path: resolvedPath,
@@ -112,7 +120,7 @@ export function useEditReturn<S extends BaseEditReturnSnapshot = BaseEditReturnS
     } as S;
 
     stashEditReturnState<S>(snapshot);
-  }, [path, categoryId, cardId, buildExtras]);
+  }, [path, categoryId, cardIdResolver, buildExtras]);
 
   return { initialSnapshot, stash };
 }
