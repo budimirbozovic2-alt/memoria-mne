@@ -69,13 +69,21 @@ export function useCardDraftAutosave(
     }
   }, [draftKey, enabled]);
 
-  // Debounced write on every change
+  // Debounced write on every change.
+  // V8: cleanup MUST flush any pending debounce — otherwise toggling `enabled`
+  // off (e.g. user closes the form within 600 ms of the last keystroke)
+  // silently discards the in-flight write.
   useEffect(() => {
     if (!enabled) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(flush, DEBOUNCE_MS);
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+        // Synchronous LS write — safe to invoke during cleanup.
+        flush();
+      }
     };
   }, [draft, enabled, flush]);
 
