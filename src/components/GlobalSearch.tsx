@@ -9,6 +9,7 @@ import { useAllSources } from "@/hooks/useCategorySources";
 import { useMindMaps } from "@/hooks/useMindMaps";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCardData, useCategoryData } from "@/contexts/AppContext";
+import { setGlobalSearchOpen } from "@/lib/global-overlay-state";
 
 interface Props {
   open: boolean;
@@ -177,10 +178,12 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
   }, [results, selectedIndex, handleSelect, onClose]);
 
   useEffect(() => {
+    // Publish open state to module-level flag so global keydown listeners
+    // (LocalSpeedReader, ReviewCard) can bail out cleanly.
+    setGlobalSearchOpen(open);
     if (!open) return;
     // M2 fix: capture-phase guard — while GlobalSearch is open, swallow
-    // navigation keys before other window-level listeners (LocalSpeedReader,
-    // ReviewCard) can mis-trigger on stray events.
+    // navigation keys before other window-level listeners can mis-trigger.
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
         e.preventDefault();
@@ -189,13 +192,14 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
         return;
       }
       if (e.key === "Escape" || e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "Enter") {
-        // Let the dialog's own onKeyDown handler process these, but block
-        // propagation to other window-level listeners.
         e.stopPropagation();
       }
     };
     window.addEventListener("keydown", handler, true); // capture
-    return () => window.removeEventListener("keydown", handler, true);
+    return () => {
+      window.removeEventListener("keydown", handler, true);
+      setGlobalSearchOpen(false);
+    };
   }, [open, onClose]);
 
   if (!open) return null;
