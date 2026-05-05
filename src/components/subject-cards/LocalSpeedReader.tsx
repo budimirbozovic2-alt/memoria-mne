@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { shouldIgnoreGlobalKey } from "@/lib/global-overlay-state";
 import {
   ChevronLeft, ChevronRight, Zap,
   Activity, AlertTriangle, Sparkles,
