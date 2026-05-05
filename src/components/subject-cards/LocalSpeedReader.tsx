@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { shouldIgnoreGlobalKey } from "@/lib/global-overlay-state";
+import { useGlobalHotkey } from "@/hooks/useGlobalHotkey";
 import {
   ChevronLeft, ChevronRight, Zap,
   Activity, AlertTriangle, Sparkles,
@@ -333,16 +334,17 @@ export default function LocalSpeedReader({
   }, []);
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+  useGlobalHotkey(
+    e => e.code === "Space" || e.code === "ArrowLeft" || e.code === "ArrowRight",
+    e => {
       if (shouldIgnoreGlobalKey(e)) return;
-      if (e.code === "Space") { e.preventDefault(); handlePlayPause(); }
-      if (e.code === "ArrowLeft") { e.preventDefault(); handlePrevWord(); }
-      if (e.code === "ArrowRight") { e.preventDefault(); handleNextWord(); }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [handlePlayPause, handlePrevWord, handleNextWord]);
+      e.preventDefault();
+      if (e.code === "Space") handlePlayPause();
+      else if (e.code === "ArrowLeft") handlePrevWord();
+      else handleNextWord();
+    },
+    [handlePlayPause, handlePrevWord, handleNextWord],
+  );
 
   const progress = totalWords > 0 ? ((currentWordIdx + 1) / totalWords) * 100 : 0;
   const activeSegment = getActiveSegment(segments, currentWordIdx);

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useGlobalHotkey } from "@/hooks/useGlobalHotkey";
 import {
   ChevronLeft, ChevronRight, BookOpen,
   Pencil, Activity, Sparkles, AlertTriangle,
@@ -144,18 +145,15 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
   }, [initialCardId, cards, filtered, subFilter, chapterFilter, typeFilter, onInitialConsumed]);
 
   // Keyboard navigation
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === "ArrowRight") {
-        setIndex(i => Math.min(i + 1, Math.max(0, filtered.length - 1)));
-      } else if (e.key === "ArrowLeft") {
-        setIndex(i => Math.max(i - 1, 0));
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [filtered.length]);
+  useGlobalHotkey(
+    e => e.key === "ArrowRight" || e.key === "ArrowLeft",
+    e => {
+      if (e.key === "ArrowRight") setIndex(i => Math.min(i + 1, Math.max(0, filtered.length - 1)));
+      else setIndex(i => Math.max(i - 1, 0));
+    },
+    [filtered.length],
+    { ignoreInEditable: true },
+  );
 
   const current = filtered[index];
 

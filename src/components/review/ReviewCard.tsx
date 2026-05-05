@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { addLatencyEntry } from "@/lib/metacognitive-storage";
 import { shouldIgnoreGlobalKey } from "@/lib/global-overlay-state";
+import { useGlobalHotkey } from "@/hooks/useGlobalHotkey";
 import ShortcutsHint from "@/components/ShortcutsHint";
 import GradeButtons from "@/components/learn/GradeButtons";
 import { ViewWidth, viewWidthClasses, viewWidthLabels, REVIEW_SHORTCUTS } from "./review-constants";
@@ -70,8 +71,9 @@ export default function ReviewCard({
   }, [showAnswer, card.id, section.id, onGrade]);
 
   // Keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
+  useGlobalHotkey(
+    () => true,
+    e => {
       if (shouldIgnoreGlobalKey(e)) return;
 
       if (e.key === " " && !showAnswer) {
@@ -82,7 +84,6 @@ export default function ReviewCard({
 
       if (showAnswer && ["1", "2", "3", "4"].includes(e.key)) {
         const grade = parseInt(e.key);
-        // Cooldown removed for parity with Active Recall.
         e.preventDefault();
         lastGradeRef.current = { cardId: card.id, sectionId: section.id, grade };
         handleGradeWithCalibration(grade);
@@ -95,10 +96,9 @@ export default function ReviewCard({
         onLogError(card.id, selection, section.id);
         toast("Greška zabilježena", { description: `"${selection.length > 40 ? selection.slice(0, 40) + "…" : selection}"` });
       }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [showAnswer, card.id, section.id, handleGradeWithCalibration, onLogError, handleRevealAnswer]);
+    },
+    [showAnswer, card.id, section.id, handleGradeWithCalibration, onLogError, handleRevealAnswer],
+  );
 
   const sectionIsLeech = isLeech(section, srSettings);
   const lapses = section.lapses || 0;
