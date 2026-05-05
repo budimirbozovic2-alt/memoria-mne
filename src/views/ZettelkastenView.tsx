@@ -6,21 +6,20 @@ import {
 } from "lucide-react";
 import { useCategoryData } from "@/contexts/AppContext";
 import {
-  loadArticlesBySubject,
   saveArticle,
   deleteArticle,
   findArticleByTitle,
   newArticle,
   bulkCreateArticlesIfMissing,
-  ensureIndexArticle,
   getArticle,
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { useWikiLinkAutoCreate } from "@/hooks/useWikiLinkAutoCreate";
+import { useZettelkastenBootstrap } from "@/hooks/zettelkasten/useZettelkastenBootstrap";
+import { useExplorerCollapsed } from "@/hooks/zettelkasten/useExplorerCollapsed";
 import { type Source } from "@/lib/sources-storage";
 import { useCategorySources } from "@/hooks/useCategorySources";
 import { sameStringSet } from "@/lib/struct-eq";
-import { backlinkIndex } from "@/lib/backlink-index";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,30 +57,30 @@ export default function ZettelkastenView() {
     [categoryRecords, categoryId],
   );
 
-  const [articles, setArticles] = useState<KnowledgeBaseArticle[]>([]);
-  const sources = useCategorySources(categoryId);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Index article id (the auto-created entry-point). Used by "Back to Index"
-  // navigation. Resolved during initial load and kept in sync with `articles`.
-  const indexArticleId = useMemo(
-    () => articles.find(a => a.isIndex)?.id ?? null,
-    [articles],
+  // Memoize bootstrap inputs from the category record so identity churn on
+  // unrelated fields doesn't cascade into the bootstrap effect.
+  const subjectName = categoryRec?.name ?? null;
+  const subcategoryNames = useMemo(
+    () => (categoryRec?.subcategories ?? []).map(s => s.name),
+    [categoryRec],
   );
 
-  // Explorer panel collapsed state — persisted per user across sessions.
-  const EXPLORER_COLLAPSED_KEY = "zettel.explorer.collapsed";
-  const [explorerCollapsed, setExplorerCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(EXPLORER_COLLAPSED_KEY) === "1"; } catch { return false; }
-  });
-  const toggleExplorer = useCallback(() => {
-    setExplorerCollapsed(prev => {
-      const next = !prev;
-      try { localStorage.setItem(EXPLORER_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* ignore */ }
-      return next;
-    });
-  }, []);
+  const sources = useCategorySources(categoryId);
+
+  // Bootstrap: load articles + ensure Index + warm backlink index (idempotent).
+  // Hook owns the effect and its dependency policy; the view just consumes.
+  const { articles, setArticles, loading, indexArticleId, initialActiveId } =
+    useZettelkastenBootstrap({ categoryId, subjectName, subcategoryNames });
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Adopt the bootstrap's initial active id once it resolves (Index article).
+  useEffect(() => {
+    if (initialActiveId && !activeId) setActiveId(initialActiveId);
+  }, [initialActiveId, activeId]);
+
+  // Explorer panel collapsed state — extracted hook persists to localStorage.
+  const { collapsed: explorerCollapsed, toggle: toggleExplorer } = useExplorerCollapsed();
 
   // Active-article view state
   const [isEditing, setIsEditing] = useState(false);
@@ -90,35 +89,6 @@ export default function ZettelkastenView() {
   const [mmPickerOpen, setMmPickerOpen] = useState(false);
   const editorRef = useRef<ZettelEditorHandle | null>(null);
 
-  // Initial load — also ensures the subject has its Index article (auto-creates
-  // it on first visit, or promotes a pre-existing same-titled article during
-  // migration). The user always lands on the Index when no other article is open.
-  useEffect(() => {
-    if (!categoryId || !categoryRec) return;
-    let cancelled = false;
-    setLoading(true);
-    loadArticlesBySubject(categoryId).then(async (list) => {
-      if (cancelled) return;
-      // Seed Index article using the subject's subcategory names as discovery
-      // hints (NOT structural tags — they're just initial wiki-link suggestions
-      // the user is free to ignore, rename, or delete).
-      const suggested = (categoryRec.subcategories ?? []).map(s => s.name);
-      const idx = await ensureIndexArticle(categoryId, categoryRec.name, suggested);
-      if (cancelled) return;
-
-      // Merge the (possibly newly-created or promoted) Index back into the list.
-      const merged = list.some(a => a.id === idx.id)
-        ? list.map(a => a.id === idx.id ? idx : a)
-        : [idx, ...list];
-
-      setArticles(merged);
-      backlinkIndex.rebuildFromAll(categoryId, merged);
-      // Default landing: Index article in read mode.
-      setActiveId(prev => prev ?? idx.id);
-      setLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [categoryId, categoryRec]);
 
   const activeArticle = useMemo(
     () => articles.find(a => a.id === activeId) ?? null,

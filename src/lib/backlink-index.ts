@@ -88,6 +88,16 @@ class BacklinkIndex {
     return s;
   }
 
+  /**
+   * True when an index slot has been allocated for this subject (i.e. a
+   * `rebuildFromAll` or `upsertArticle` already populated it). Lets callers
+   * skip a redundant O(N × avgLinks) full rebuild on view re-mounts triggered
+   * by orthogonal state (e.g. category-record renames).
+   */
+  hasSubject(subjectId: string): boolean {
+    return this.subjects.has(subjectId);
+  }
+
   /** Drop everything we know about this subject (e.g. on Full Restore). */
   clear(subjectId: string): void {
     const s = this.subjects.get(subjectId);
