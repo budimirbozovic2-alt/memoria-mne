@@ -7,29 +7,22 @@ interface DialogShellProps {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
-  /** id of element labelling the dialog (for aria-labelledby). If omitted, a hidden fallback label is rendered. */
   labelledBy?: string;
   describedBy?: string;
-  /** Backdrop classes (background + alignment overrides). */
   backdropClassName?: string;
-  /** Panel classes (card visuals). */
   panelClassName?: string;
-  /** Vertical alignment of the panel inside the viewport. */
   align?: "center" | "top";
-  /** Close when clicking the backdrop. Default true. */
   closeOnBackdrop?: boolean;
-  /** z-index utility class. Defaults to z-modal-elevated. */
   zClassName?: string;
 }
 
 /**
  * Accessible dialog shell built on Radix `@radix-ui/react-dialog`.
  *
- * Replaces the previous custom Modal: Radix gives us focus-trap, ESC-to-close,
- * focus-restore, body inertness, and aria-modal for free. We layer framer-motion
- * on top for the same enter/exit animations as before, and keep the
- * `panelClassName` / `backdropClassName` / `zClassName` API so existing
- * consumers don't need styling changes.
+ * Radix provides focus-trap, ESC-to-close, focus-restore, body inertness,
+ * aria-modal — replacing the previous custom implementation. Positioning is
+ * a flex backdrop (matches the old Modal layout exactly), so consumers' panel
+ * classes (`max-w-lg mx-4 ...`) keep working without absolute coordinates.
  */
 export default function DialogShell({
   open,
@@ -50,6 +43,7 @@ export default function DialogShell({
     <DialogPrimitive.Root
       open={open}
       onOpenChange={(o) => { if (!o) onClose(); }}
+      modal
     >
       <AnimatePresence>
         {open && (
@@ -65,37 +59,29 @@ export default function DialogShell({
                   zClassName,
                   backdropClassName,
                 )}
-                onClick={closeOnBackdrop ? onClose : undefined}
-              />
-            </DialogPrimitive.Overlay>
-            <DialogPrimitive.Content
-              aria-labelledby={labelId}
-              aria-describedby={describedBy}
-              onPointerDownOutside={(e) => { if (!closeOnBackdrop) e.preventDefault(); }}
-              onInteractOutside={(e) => { if (!closeOnBackdrop) e.preventDefault(); }}
-              asChild
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.96, y: align === "top" ? -10 : 8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96, y: align === "top" ? -10 : 8 }}
-                transition={{ duration: 0.18 }}
-                className={cn(
-                  "fixed outline-none",
-                  zClassName,
-                  align === "center"
-                    ? "left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-                    : "left-1/2 top-[15vh] -translate-x-1/2",
-                  panelClassName,
-                )}
-                onClick={(e) => e.stopPropagation()}
               >
-                {!labelledBy && (
-                  <DialogPrimitive.Title id={labelId} className="sr-only">Dijalog</DialogPrimitive.Title>
-                )}
-                {children}
+                <DialogPrimitive.Content
+                  aria-labelledby={labelId}
+                  aria-describedby={describedBy}
+                  onPointerDownOutside={(e) => { if (!closeOnBackdrop) e.preventDefault(); }}
+                  onInteractOutside={(e) => { if (!closeOnBackdrop) e.preventDefault(); }}
+                  asChild
+                >
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96, y: align === "top" ? -10 : 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: align === "top" ? -10 : 8 }}
+                    transition={{ duration: 0.18 }}
+                    className={cn("outline-none", panelClassName)}
+                  >
+                    {!labelledBy && (
+                      <DialogPrimitive.Title id={labelId} className="sr-only">Dijalog</DialogPrimitive.Title>
+                    )}
+                    {children}
+                  </motion.div>
+                </DialogPrimitive.Content>
               </motion.div>
-            </DialogPrimitive.Content>
+            </DialogPrimitive.Overlay>
           </DialogPrimitive.Portal>
         )}
       </AnimatePresence>
