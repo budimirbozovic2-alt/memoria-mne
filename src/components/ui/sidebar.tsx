@@ -51,16 +51,11 @@ export function SidebarProvider({ children, defaultOpen = true }: SidebarProvide
   const toggleSidebar = React.useCallback(() => setOpen(!open), [open, setOpen]);
 
   // Keyboard shortcut: Ctrl+B
-  React.useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
-        e.preventDefault();
-        toggleSidebar();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [toggleSidebar]);
+  useGlobalHotkey(
+    e => (e.ctrlKey || e.metaKey) && e.key === "b",
+    e => { e.preventDefault(); toggleSidebar(); },
+    [toggleSidebar],
+  );
 
   const state: SidebarState = open ? "expanded" : "collapsed";
 
