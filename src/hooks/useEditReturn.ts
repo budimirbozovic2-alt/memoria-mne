@@ -88,8 +88,16 @@ export function useEditReturn<S extends BaseEditReturnSnapshot = BaseEditReturnS
     setEditReturn({ path: resolvedPath });
 
     const extras = buildExtras ? buildExtras() : undefined;
+    // M3: When the caller doesn't supply `cardId`, fall back to the synchronous
+    // SSOT mirror in `UIProvider`. This lets components do
+    //   setEditingCardId(card.id); stash();
+    // and always record the freshest id without keeping a private ref.
     const resolvedCardId =
-      typeof cardId === "function" ? cardId() : cardId;
+      typeof cardId === "function"
+        ? cardId()
+        : cardId !== undefined
+          ? cardId
+          : getCurrentEditingCardId();
     const snapshot = {
       ...(extras as object | undefined),
       path: resolvedPath,
