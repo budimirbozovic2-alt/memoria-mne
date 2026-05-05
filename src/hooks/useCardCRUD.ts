@@ -33,7 +33,7 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
   void _params; // explicit unused
 
   const patchCard = useCallback((id: string, patcher: (card: Card) => Card) => {
-    cardRepository.patch(id, patcher);
+    void cardCommandBus.dispatch({ type: "patch", id, patcher });
   }, []);
 
   const addCard = useCallback(
