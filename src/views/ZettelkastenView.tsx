@@ -90,11 +90,22 @@ export default function ZettelkastenView() {
   const [mmPickerOpen, setMmPickerOpen] = useState(false);
   const editorRef = useRef<ZettelEditorHandle | null>(null);
 
+  // Snapshot the seed inputs the bootstrap effect actually depends on, so we
+  // don't re-run (and re-rebuild the backlink index) every time `categoryRec`
+  // gets a new identity for orthogonal reasons (e.g. a subcategory rename).
+  // Subject identity is the only thing that matters for booting the view.
+  const subjectName = categoryRec?.name ?? null;
+  const subjectSubcatNames = useMemo(
+    () => (categoryRec?.subcategories ?? []).map(s => s.name),
+    [categoryRec],
+  );
+  const seedNamesKey = useMemo(() => subjectSubcatNames.join("\u0001"), [subjectSubcatNames]);
+
   // Initial load — also ensures the subject has its Index article (auto-creates
   // it on first visit, or promotes a pre-existing same-titled article during
   // migration). The user always lands on the Index when no other article is open.
   useEffect(() => {
-    if (!categoryId || !categoryRec) return;
+    if (!categoryId || !subjectName) return;
     let cancelled = false;
     setLoading(true);
     loadArticlesBySubject(categoryId).then(async (list) => {
@@ -102,8 +113,7 @@ export default function ZettelkastenView() {
       // Seed Index article using the subject's subcategory names as discovery
       // hints (NOT structural tags — they're just initial wiki-link suggestions
       // the user is free to ignore, rename, or delete).
-      const suggested = (categoryRec.subcategories ?? []).map(s => s.name);
-      const idx = await ensureIndexArticle(categoryId, categoryRec.name, suggested);
+      const idx = await ensureIndexArticle(categoryId, subjectName, subjectSubcatNames);
       if (cancelled) return;
 
       // Merge the (possibly newly-created or promoted) Index back into the list.
@@ -112,13 +122,20 @@ export default function ZettelkastenView() {
         : [idx, ...list];
 
       setArticles(merged);
-      backlinkIndex.rebuildFromAll(categoryId, merged);
+      // B4: skip the full rebuild when the subject's index is already hot —
+      // incremental upserts via the eventBus subscription keep it fresh, so
+      // re-mounts (HMR, route swap back to same subject) cost ~O(0) instead of
+      // O(N × avgLinks).
+      if (!backlinkIndex.hasSubject(categoryId)) {
+        backlinkIndex.rebuildFromAll(categoryId, merged);
+      }
       // Default landing: Index article in read mode.
       setActiveId(prev => prev ?? idx.id);
       setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [categoryId, categoryRec]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, subjectName, seedNamesKey]);
 
   const activeArticle = useMemo(
     () => articles.find(a => a.id === activeId) ?? null,
