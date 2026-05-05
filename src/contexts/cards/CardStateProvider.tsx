@@ -10,7 +10,8 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { Card, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap, mapToArray, persistQueue, flushReviewLogQueue } from "@/lib/persist-queue";
+import { CardMap, mapToArray, persistQueue } from "@/lib/persist-queue";
+import { flushReviewLogQueue } from "@/lib/db";
 import { useCardMap, setCardMap, cardMapRefFacade, type CardMapRefFacade } from "@/store/useCardMapStore";
 import { useCardBootstrap } from "@/hooks/useCardBootstrap";
 import { EMPTY_BUCKETS, type CardBuckets } from "@/lib/card-buckets";
