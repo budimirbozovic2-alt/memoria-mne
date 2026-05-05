@@ -3,27 +3,26 @@ import { toast } from "sonner";
 import { Card, SRSettings } from "@/lib/spaced-repetition";
 import { setLastBackupTime } from "@/lib/storage";
 import type { CategoryRecord } from "@/lib/db-schema";
+import { streamBackup, type ProgressFn } from "@/lib/backup/export-stream";
 
 const IPC_SIZE_LIMIT_MB = 50;
 
 async function downloadFile(blob: Blob, filename: string): Promise<{ saved: boolean }> {
   const sizeMB = blob.size / (1024 * 1024);
 
-  // Use native Electron save dialog if available
   if (window.electronAPI?.showSaveDialog) {
     if (sizeMB > IPC_SIZE_LIMIT_MB) {
       throw new Error(`Fajl je prevelik (${sizeMB.toFixed(1)}MB). Maksimum za direktan transfer je ${IPC_SIZE_LIMIT_MB}MB. Pokušajte bez ZIP kompresije ili izvezite po predmetu.`);
     }
-
-    const ext = filename.endsWith('.zip') ? 'zip' : 'json';
+    const ext = filename.endsWith(".zip") ? "zip" : "json";
     const result = await window.electronAPI.showSaveDialog({
       defaultPath: filename,
-      filters: [{ name: ext === 'zip' ? 'ZIP Archive' : 'JSON File', extensions: [ext] }],
+      filters: [{ name: ext === "zip" ? "ZIP Archive" : "JSON File", extensions: [ext] }],
     });
     if (result.canceled || !result.filePath) return { saved: false };
     const arrayBuffer = await blob.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    let binary = '';
+    let binary = "";
     const CHUNK_SIZE = 8192;
     for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
       binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK_SIZE));
@@ -32,7 +31,6 @@ async function downloadFile(blob: Blob, filename: string): Promise<{ saved: bool
     await window.electronAPI.saveFile(result.filePath, base64);
     return { saved: true };
   }
-  // Web fallback
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -40,39 +38,6 @@ async function downloadFile(blob: Blob, filename: string): Promise<{ saved: bool
   a.click();
   URL.revokeObjectURL(url);
   return { saved: true };
-}
-
-async function buildJsonChunked(
-  data: object,
-  onProgress: (p: number, msg: string) => void,
-): Promise<Blob> {
-  onProgress(10, "Priprema podataka...");
-  await new Promise((r) => setTimeout(r, 30));
-
-  const dataAny = data as Record<string, unknown>;
-  const cardsArr: unknown[] = (dataAny.cards as unknown[]) || [];
-  const CHUNK = 500;
-  const blobParts: (string | Blob)[] = [];
-
-  const rest = { ...dataAny };
-  delete rest.cards;
-  const restJson = JSON.stringify(rest);
-  blobParts.push(restJson.slice(0, -1) + ',"cards":[');
-
-  for (let i = 0; i < cardsArr.length; i += CHUNK) {
-    const chunk = cardsArr.slice(i, i + CHUNK);
-    const prefix = i > 0 ? "," : "";
-    blobParts.push(prefix + chunk.map((c: unknown) => JSON.stringify(c)).join(","));
-    const pct = 10 + Math.round((i / Math.max(cardsArr.length, 1)) * 60);
-    onProgress(pct, `Serijalizacija kartica... ${Math.min(i + CHUNK, cardsArr.length)}/${cardsArr.length}`);
-    await new Promise((r) => setTimeout(r, 10));
-  }
-
-  blobParts.push("]}");
-  onProgress(75, "Finalizacija...");
-  await new Promise((r) => setTimeout(r, 20));
-
-  return new Blob(blobParts, { type: "application/json" });
 }
 
 interface UseCardExportDeps {
@@ -91,40 +56,61 @@ function deriveSubMap(catRecords: CategoryRecord[]): Record<string, string[]> {
 }
 
 export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
-  // H1 fix: Read fresh cards from IDB for templates too
   const exportTemplate = useCallback(
-    async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
+    async (compress: boolean, onProgress: ProgressFn) => {
       const { db } = await import("@/lib/db");
-      const [allCards, catRecords] = await Promise.all([
-        db.cards.toArray(),
-        db.categories.orderBy('sortOrder').toArray(),
-      ]);
-      const freshCards = allCards.length > 0 ? allCards : cards;
-      const templateCards = freshCards.map((c) => ({
-        id: c.id,
-        question: c.question,
-        sections: c.sections.map((s) => ({ title: s.title, content: s.content })),
-        categoryId: c.categoryId,
-        subcategoryId: c.subcategoryId || "",
-        chapterId: c.chapterId || "",
-        type: c.type,
-        tags: c.tags || [],
-      }));
-      const data = { version: 2, type: "template", cards: templateCards, categories: catRecords, subcategories: deriveSubMap(catRecords) };
+      const catRecords = await db.categories.orderBy("sortOrder").toArray();
+
       const dateStr = new Date().toISOString().slice(0, 10);
 
-      const blob = await buildJsonChunked(data, onProgress);
+      // Templates don't carry logs; stream cards but project to template shape.
+      onProgress(5, "Priprema templatea…");
+      const parts: BlobPart[] = [];
+      parts.push(`{"version":2,"type":"template"`);
+      parts.push(`,"categories":${JSON.stringify(catRecords)}`);
+      parts.push(`,"subcategories":${JSON.stringify(deriveSubMap(catRecords))}`);
+      parts.push(`,"cards":[`);
+      let i = 0;
+      const total = await db.cards.count();
+      await db.cards.each((c) => {
+        const t = {
+          id: c.id,
+          question: c.question,
+          sections: c.sections.map((s) => ({ title: s.title, content: s.content })),
+          categoryId: c.categoryId,
+          subcategoryId: c.subcategoryId || "",
+          chapterId: c.chapterId || "",
+          type: c.type,
+          tags: c.tags || [],
+        };
+        parts.push((i === 0 ? "" : ",") + JSON.stringify(t));
+        i++;
+        if (i % 500 === 0) {
+          onProgress(10 + Math.round((i / Math.max(total, 1)) * 70), `Kartice ${i}/${total}`);
+        }
+      });
+      // Fall back to in-memory if IDB empty
+      if (i === 0 && cards.length > 0) {
+        parts.push(cards.map((c) => JSON.stringify({
+          id: c.id, question: c.question,
+          sections: c.sections.map((s) => ({ title: s.title, content: s.content })),
+          categoryId: c.categoryId, subcategoryId: c.subcategoryId || "",
+          chapterId: c.chapterId || "", type: c.type, tags: c.tags || [],
+        })).join(","));
+      }
+      parts.push("]}");
+      const blob = new Blob(parts, { type: "application/json" });
 
       try {
         if (compress) {
-          onProgress(85, "Kompresija...");
+          onProgress(85, "Kompresija…");
           const { compressToZip } = await import("@/lib/zip-service");
           const zipBlob = await compressToZip(`codex-template-${dateStr}.json`, blob);
-          onProgress(100, "Preuzimanje...");
+          onProgress(100, "Preuzimanje…");
           const r = await downloadFile(zipBlob, `codex-template-${dateStr}.zip`);
           if (r.saved) toast.success("Template uspješno exportovan.");
         } else {
-          onProgress(100, "Preuzimanje...");
+          onProgress(100, "Preuzimanje…");
           const r = await downloadFile(blob, `codex-template-${dateStr}.json`);
           if (r.saved) toast.success("Template uspješno exportovan.");
         }
@@ -137,47 +123,16 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
   );
 
   const exportData = useCallback(
-    async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
-      onProgress(5, "Učitavanje svih podataka…");
-      const { db, idbLoadReviewLog: loadFullReviewLog } = await import("@/lib/db");
+    async (compress: boolean, onProgress: ProgressFn) => {
+      onProgress(2, "Priprema…");
+      const { db } = await import("@/lib/db");
 
-      // Read snapshot inside a single read-only Dexie transaction so a
-      // concurrent edit (e.g. user grading a card mid-export) cannot produce
-      // a backup with mixed pre/post state across tables.
-      const snapshot = await db.transaction(
-        "r",
-        [db.sources, db.mindMaps, db.diary, db.calibrationLog, db.latencyLog,
-         db.slippageLog, db.activityLog, db.disciplineLog, db.pomodoroLog,
-         db.reviewLog, db.categories, db.mnemonics, db.majorSystem,
-         db.mnemonicTestLog, db.knowledgeBaseArticles, db.settings, db.cards],
-        async () => ({
-          sources: await db.sources.toArray(),
-          mindMaps: await db.mindMaps.toArray(),
-          diary: await db.diary.toArray(),
-          calibrationLog: await db.calibrationLog.toArray(),
-          latencyLog: await db.latencyLog.toArray(),
-          slippageLog: await db.slippageLog.toArray(),
-          activityLog: await db.activityLog.toArray(),
-          disciplineLog: await db.disciplineLog.toArray(),
-          pomodoroLog: await db.pomodoroLog.toArray(),
-          fullReviewLog: await loadFullReviewLog(),
-          catRecords: await db.categories.orderBy('sortOrder').toArray(),
-          mnemonics: await db.mnemonics.toArray(),
-          majorSystem: await db.majorSystem.toArray(),
-          mnemonicTestLog: await db.mnemonicTestLog.toArray(),
-          knowledgeBaseArticles: await db.knowledgeBaseArticles.toArray(),
-          settings: await db.settings.toArray(),
-          allCards: await db.cards.toArray(),
-        }),
-      );
-      const {
-        sources, mindMaps, diary, calibrationLog, latencyLog,
-        slippageLog, activityLog, disciplineLog, pomodoroLog, fullReviewLog,
-        catRecords, mnemonics, majorSystem, mnemonicTestLog,
-        knowledgeBaseArticles, settings, allCards,
-      } = snapshot;
+      // Pre-compute scalars that need to be embedded inline (small objects),
+      // and read the ordered category list once for `subcategories` map.
+      // The categories table is also streamed below for the array form, so
+      // this single sync read is cheap.
+      const catRecords = await db.categories.orderBy("sortOrder").toArray();
 
-      // localStorage keys (browser-only, not in IDB settings table)
       const localStorageData: Record<string, unknown> = {};
       const lsKeys = [
         "sr-app-settings", "sr-mnemonic-workshop", "sr-mnemonic-associations",
@@ -191,35 +146,58 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
         }
       }
 
-      // H3 fix: prefer fresh IDB cards (already snapshotted) over stale prop
-      const freshCards = allCards.length > 0 ? allCards : cards;
-
-      const data = {
-        version: 7, type: "full",
-        cards: freshCards, categories: catRecords, subcategories: deriveSubMap(catRecords),
-        reviewLog: fullReviewLog, srSettings,
-        sources, mindMaps, diary, calibrationLog, latencyLog,
-        slippageLog, activityLog, disciplineLog, pomodoroLog,
-        mnemonics, majorSystem, mnemonicTestLog,
-        knowledgeBaseArticles,
-        settings,
-        localStorageData,
-      };
       const dateStr = new Date().toISOString().slice(0, 10);
 
-      const blob = await buildJsonChunked(data, onProgress);
+      const blob = await streamBackup({
+        version: 7,
+        type: "full",
+        scalars: {
+          subcategories: deriveSubMap(catRecords),
+          srSettings,
+          localStorageData,
+        },
+        tables: [
+          { key: "cards", table: db.cards as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "categories", table: db.categories as unknown as import("dexie").Table<unknown, unknown>,
+            collection: () => db.categories.orderBy("sortOrder") as unknown as { each: (cb: (r: unknown) => unknown) => Promise<unknown> } },
+          { key: "sources", table: db.sources as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "mindMaps", table: db.mindMaps as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "knowledgeBaseArticles", table: db.knowledgeBaseArticles as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "diary", table: db.diary as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "calibrationLog", table: db.calibrationLog as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "latencyLog", table: db.latencyLog as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "slippageLog", table: db.slippageLog as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "activityLog", table: db.activityLog as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "disciplineLog", table: db.disciplineLog as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "pomodoroLog", table: db.pomodoroLog as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "reviewLog", table: db.reviewLog as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "mnemonics", table: db.mnemonics as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "majorSystem", table: db.majorSystem as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "mnemonicTestLog", table: db.mnemonicTestLog as unknown as import("dexie").Table<unknown, unknown> },
+          { key: "settings", table: db.settings as unknown as import("dexie").Table<unknown, unknown> },
+        ],
+        txTables: [
+          db.cards, db.categories, db.sources, db.mindMaps, db.knowledgeBaseArticles,
+          db.diary, db.calibrationLog, db.latencyLog, db.slippageLog,
+          db.activityLog, db.disciplineLog, db.pomodoroLog, db.reviewLog,
+          db.mnemonics, db.majorSystem, db.mnemonicTestLog, db.settings,
+        ] as unknown as import("dexie").Table<unknown, unknown>[],
+        onProgress,
+        pStart: 5,
+        pEnd: 80,
+      });
 
       try {
         let saved = false;
         if (compress) {
-          onProgress(85, "Kompresija...");
+          onProgress(85, "Kompresija…");
           const { compressToZip } = await import("@/lib/zip-service");
           const zipBlob = await compressToZip(`codex-backup-${dateStr}.json`, blob);
-          onProgress(100, "Preuzimanje...");
+          onProgress(100, "Preuzimanje…");
           const r = await downloadFile(zipBlob, `codex-backup-${dateStr}.zip`);
           saved = r.saved;
         } else {
-          onProgress(100, "Preuzimanje...");
+          onProgress(100, "Preuzimanje…");
           const r = await downloadFile(blob, `codex-backup-${dateStr}.json`);
           saved = r.saved;
         }
