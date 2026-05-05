@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { addLatencyEntry } from "@/lib/metacognitive-storage";
+import { shouldIgnoreGlobalKey } from "@/lib/global-overlay-state";
 import ShortcutsHint from "@/components/ShortcutsHint";
 import GradeButtons from "@/components/learn/GradeButtons";
 import { ViewWidth, viewWidthClasses, viewWidthLabels, REVIEW_SHORTCUTS } from "./review-constants";
