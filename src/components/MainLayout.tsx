@@ -28,11 +28,8 @@ const NudgeWatcher = memo(function NudgeWatcher() {
   const nudgeShownRef = useRef(false);
   const plannerModRef = useRef<typeof import("@/lib/planner-storage") | null>(null);
 
-  // Store refs to context data — avoids subscribing to frequent changes
-  const cardDataRef = useRef<ReturnType<typeof useCardData>>(null!);
-  cardDataRef.current = useCardData();
-  const reviewDataRef = useRef<ReturnType<typeof useReviewData>>(null!);
-  reviewDataRef.current = useReviewData();
+  const { cards } = useCardData();
+  const { reviewLog } = useReviewData();
 
   useEffect(() => {
     if (pathname === "/planner") plannerModRef.current = null;
@@ -53,8 +50,6 @@ const NudgeWatcher = memo(function NudgeWatcher() {
         const { loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } = plannerModRef.current;
         const planner = loadPlanner();
         if (!planner.finalGoalDate || planner.phases.length === 0) return;
-        const cards = cardDataRef.current.cards;
-        const reviewLog = reviewDataRef.current.reviewLog;
         const velocity = calcVelocity(reviewLog, 7);
         const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
         if (!suggestion || suggestion.suggestedToday <= 0) return;
@@ -70,6 +65,7 @@ const NudgeWatcher = memo(function NudgeWatcher() {
         }
       } catch {}
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   return null;
