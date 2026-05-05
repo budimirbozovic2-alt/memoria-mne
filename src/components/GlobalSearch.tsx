@@ -9,6 +9,7 @@ import { useAllSources } from "@/hooks/useCategorySources";
 import { useMindMaps } from "@/hooks/useMindMaps";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCardData, useCategoryData } from "@/contexts/AppContext";
+import { setGlobalSearchOpen } from "@/lib/global-overlay-state";
 
 interface Props {
   open: boolean;
