@@ -85,12 +85,14 @@ export function useCardImport({
           jsonText = await file.text();
         }
 
+        progress(15, "Parsiranje…");
         let raw: unknown;
         try { raw = JSON.parse(jsonText); } catch {
           toast.error("Neispravan JSON format. Fajl je oštećen ili nije validan.");
           return;
         }
 
+        progress(20, "Validacija šeme…");
         const result = BackupSchema.safeParse(raw);
         if (!result.success) {
           const issue = result.error.issues[0];
@@ -98,12 +100,28 @@ export function useCardImport({
           toast.error(`Backup nije validan: ${path} — ${issue?.message ?? "nepoznata greška"}`);
           return;
         }
-        const parsed = result.data;
+
+        // Schema-version migration ladder. Rejects backups newer than the app
+        // before any IDB write so partial state can never leak through.
+        let parsed: ParsedBackup;
+        try {
+          parsed = migrateBackup(result.data);
+        } catch (err) {
+          if (err instanceof BackupVersionError) {
+            toast.error(err.message);
+          } else {
+            toast.error("Migracija backupa nije uspjela.");
+            console.error("[useCardImport] migrate failed", err);
+          }
+          return;
+        }
 
         if (parsed.cards.length === 0 && (!Array.isArray(parsed.categories) || parsed.categories.length === 0)) {
           toast.error("Fajl ne sadrži kartice ni kategorije za uvoz.");
           return;
         }
+        progress(25, "Priprema podataka…");
+        await yieldUI();
 
         // ── Cards: schema already migrated + sanitized ──
         const importedCards: Card[] = parsed.cards;
