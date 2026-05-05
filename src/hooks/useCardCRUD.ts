@@ -94,7 +94,7 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
         sourceType?: CardSourceType;
       },
     ) => {
-      cardRepository.patch(id, (c) => {
+      void cardCommandBus.dispatch({ type: "patch", id, patcher: (c) => {
         const newCard = { ...c };
         if (updates.question) newCard.question = updates.question;
         if (updates.categoryId) newCard.categoryId = updates.categoryId;
@@ -119,7 +119,7 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
           });
         }
         return newCard;
-      });
+      } });
       toast.success("Kartica ažurirana.");
     },
     [],
@@ -169,7 +169,7 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
   );
 
   const setFrequency = useCallback((id: string, value: FrequencyTag | null) => {
-    cardRepository.patch(id, (c) => setCardFrequency(c, value));
+    void cardCommandBus.dispatch({ type: "patch", id, patcher: (c) => setCardFrequency(c, value) });
   }, []);
 
   return { patchCard, addCard, addFlashCard, updateCard, deleteCard, splitCard, bulkAddCards, bulkAddFlashCards, setFrequency };
