@@ -149,6 +149,37 @@ export async function flushReviewLogQueue(): Promise<void> {
   await _flushReviewLogQueue();
 }
 
+// V2: Flush review-log on tab hide so the queue (debounced 250 ms) can never
+// silently drop entries when the user closes the tab inside that window.
+// Module-level handler with HMR cleanup mirrors the persist-queue pattern.
+declare global {
+  // eslint-disable-next-line no-var
+  var __codexReviewLogVisHandler: (() => void) | undefined;
+}
+function _reviewLogOnVisibility(): void {
+  if (document.visibilityState === "hidden" && _reviewLogQueue.length > 0) {
+    void flushReviewLogQueue();
+  }
+}
+if (typeof document !== "undefined") {
+  if (globalThis.__codexReviewLogVisHandler) {
+    document.removeEventListener("visibilitychange", globalThis.__codexReviewLogVisHandler);
+  }
+  globalThis.__codexReviewLogVisHandler = _reviewLogOnVisibility;
+  document.addEventListener("visibilitychange", _reviewLogOnVisibility);
+}
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    try {
+      if (globalThis.__codexReviewLogVisHandler) {
+        document.removeEventListener("visibilitychange", globalThis.__codexReviewLogVisHandler);
+        globalThis.__codexReviewLogVisHandler = undefined;
+      }
+      if (_reviewLogQueue.length > 0) void flushReviewLogQueue();
+    } catch (e) { console.warn("[reviewLog] HMR dispose failed", e); }
+  });
+}
+
 // ─── Settings ───────────────────────────────────────────
 
 export async function idbLoadSettings<T>(key: string, fallback: T): Promise<T> {
