@@ -6,6 +6,7 @@ import { useCardOnlyActions, useCategoryData } from "@/contexts/AppContext";
 import {
   MnemonicCard,
   loadMnemonicCards,
+  loadMnemonicCardsByCategory,
   saveMnemonicCards,
   addMnemonicTestEntry,
   getMnemonicStats,
@@ -78,24 +79,30 @@ export default function MnemonicModule({ embedded = false, categoryFilter }: Pro
   // FIX S3: Memory Leak & Race Condition Prevention
   // ═══════════════════════════════════════════════════════════════════════════
   useEffect(() => {
-    let isMounted = true; // Zastavica za kontrolu unmount-a
+    let isMounted = true;
 
-    loadMnemonicCards().then((loadedCards) => {
+    // B2: when scoped to a single subject, use the indexed loader instead of
+    // pulling the global mnemonic table only to discard most rows in memory.
+    const load = (): Promise<MnemonicCard[]> =>
+      categoryFilter
+        ? loadMnemonicCardsByCategory(categoryFilter)
+        : loadMnemonicCards();
+
+    load().then((loadedCards) => {
       if (isMounted) setCardsState(loadedCards);
     });
 
     const unsub = eventBus.subscribe(EVENT_TYPES.MNEMONICS_UPDATED, () => {
-      loadMnemonicCards().then((loadedCards) => {
-        // Ažuriraj stanje SAMO ako je komponenta još uvijek na ekranu
+      load().then((loadedCards) => {
         if (isMounted) setCardsState(loadedCards);
       });
     });
 
     return () => {
-      isMounted = false; // Spriječi buduće state update-ove asinkronih poziva
+      isMounted = false;
       unsub();
     };
-  }, []);
+  }, [categoryFilter]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FIX S3: Idempotent React Updater (Separating side-effects from setState)

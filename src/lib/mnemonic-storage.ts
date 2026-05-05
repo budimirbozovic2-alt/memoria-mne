@@ -167,6 +167,21 @@ export async function loadMnemonicCards(): Promise<MnemonicCard[]> {
   }
 }
 
+/**
+ * B2: Indexed scoped loader. Uses the `categoryId` index added in v10
+ * (previously dead weight — every consumer was doing global `toArray()` +
+ * JS-side filter). Subject-scoped views should use this to avoid pulling
+ * N×subjects worth of mnemonic cards into memory only to discard most.
+ */
+export async function loadMnemonicCardsByCategory(categoryId: string): Promise<MnemonicCard[]> {
+  try {
+    return await db.mnemonics.where("categoryId").equals(categoryId).toArray();
+  } catch (err) {
+    console.error("[mnemonic-storage] loadMnemonicCardsByCategory failed", err);
+    return [];
+  }
+}
+
 export async function saveMnemonicCards(cards: MnemonicCard[]): Promise<void> {
   try {
     await db.mnemonics.bulkPut(cards);
