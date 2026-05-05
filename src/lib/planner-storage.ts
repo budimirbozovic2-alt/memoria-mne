@@ -444,7 +444,7 @@ export function autoRedistributeIfNeeded(
   const entry = _disciplineCache.find(e => e.date === yesterday);
   if (!entry || entry.planCompletion >= 90) {
     _lastRedistributeDate = today;
-    db.settings.put({ key: "lastRedistribute", value: today }).catch((e) => console.warn("[silent]", e));
+    enqueueWrite("lastRedistribute(skip)", () => db.settings.put({ key: "lastRedistribute", value: today }));
     return null;
   }
 
@@ -456,7 +456,7 @@ export function autoRedistributeIfNeeded(
   if (!result) return null;
 
   _lastRedistributeDate = today;
-  db.settings.put({ key: "lastRedistribute", value: today }).catch((e) => console.warn("[silent]", e));
+  enqueueWrite("lastRedistribute(apply)", () => db.settings.put({ key: "lastRedistribute", value: today }));
   return { redistributed: true, newQuota: result.newDailyQuota };
 }
 
