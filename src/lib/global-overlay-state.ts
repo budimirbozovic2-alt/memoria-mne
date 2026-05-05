@@ -1,45 +1,31 @@
 /**
- * Lightweight module-level flags for "is a global overlay currently open?".
+ * Helpers used by window-level keydown listeners to bail out cleanly when a
+ * top-level overlay (Radix Dialog, GlobalSearch, …) is active or when the
+ * event came from an editable surface.
  *
- * Used by window-level keydown listeners (LocalSpeedReader, ReviewCard, …)
- * to bail out early when a top-level overlay (GlobalSearch, …) is active,
- * so stray Escape/Arrow/Space events don't mis-trigger background nav.
- *
- * Why module-level (not React context): keydown handlers are registered in
- * `useEffect` with stable deps and would otherwise capture stale boolean
- * values. A mutable ref-like flag avoids re-subscribing on every toggle.
+ * Previously this module exposed a mutable `setGlobalSearchOpen` flag. It was
+ * removed because Radix Dialog now mounts the GlobalSearch as a real
+ * `[role="dialog"][data-state="open"]` node — the DOM is the single source
+ * of truth, no manual sync required.
  */
 
-let _searchOpen = false;
-
-export function setGlobalSearchOpen(open: boolean): void {
-  _searchOpen = open;
-}
-
-export function isGlobalSearchOpen(): boolean {
-  return _searchOpen;
-}
-
-/**
- * Returns true when the keydown event originated from an editable element
- * (input, textarea, [contenteditable]) and should be ignored by global
- * shortcut handlers.
- */
 export function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target instanceof HTMLInputElement) return true;
   if (target instanceof HTMLTextAreaElement) return true;
   if (target instanceof HTMLSelectElement) return true;
   if (target.isContentEditable) return true;
-  // Defensive: walk up in case the event is dispatched on a child of CE root
   if (target.closest('[contenteditable="true"]')) return true;
   return false;
 }
 
-/**
- * Composite guard: ignore the event if any global overlay is open OR if the
- * target is an editable surface.
- */
+/** True when any Radix-style modal dialog is currently mounted and open. */
+export function isOverlayOpen(): boolean {
+  if (typeof document === "undefined") return false;
+  return !!document.querySelector('[role="dialog"][data-state="open"]');
+}
+
+/** Composite guard: ignore the key event if any overlay is open OR the target is editable. */
 export function shouldIgnoreGlobalKey(e: KeyboardEvent): boolean {
-  return isGlobalSearchOpen() || isEditableTarget(e.target);
+  return isOverlayOpen() || isEditableTarget(e.target);
 }

@@ -2,27 +2,23 @@ import { ArrowRight, ArrowLeft, X, CheckCircle2 } from "lucide-react";
 import { useState, useId } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-import Modal from "@/components/ui/Modal";
+import Modal from "@/components/ui/DialogShell";
 import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
+import { ONBOARDING_PRESETS, type OnboardingPresetId } from "@/components/onboarding/presets";
 export interface OnboardingSlide {
   icon: LucideIcon;
   iconColor: string;
   title: string;
-  /** Use `content` for simple text or `bullets` for bullet lists */
   content?: string;
   bullets?: string[];
-  /** Optional level badge */
   level?: string;
   levelColor?: string;
 }
 
-interface Props {
-  slides: OnboardingSlide[];
-  storageKey: string;
-  onComplete: () => void;
-  finishLabel?: string;
-}
+type Props =
+  | { preset: OnboardingPresetId; onComplete: () => void; slides?: never; storageKey?: never; finishLabel?: never }
+  | { preset?: never; slides: OnboardingSlide[]; storageKey: string; onComplete: () => void; finishLabel?: string };
 
 export function hasSeenOnboarding(key: string): boolean {
   return localStorage.getItem(key) === "true";
@@ -32,7 +28,12 @@ export function markOnboardingSeen(key: string) {
   localStorage.setItem(key, "true");
 }
 
-export default function OnboardingModal({ slides, storageKey, onComplete, finishLabel = "Počni" }: Props) {
+export default function OnboardingModal(props: Props) {
+  const resolved = props.preset
+    ? { slides: ONBOARDING_PRESETS[props.preset].slides, storageKey: ONBOARDING_PRESETS[props.preset].key, finishLabel: ONBOARDING_PRESETS[props.preset].finish }
+    : { slides: props.slides, storageKey: props.storageKey, finishLabel: props.finishLabel ?? "Počni" };
+  const { slides, storageKey, finishLabel } = resolved;
+  const { onComplete } = props;
   const [step, setStep] = useState(0);
   const titleId = useId();
   const slide = slides[step];
@@ -44,11 +45,6 @@ export default function OnboardingModal({ slides, storageKey, onComplete, finish
     onComplete();
   };
 
-  /**
-   * Close the modal WITHOUT marking onboarding as seen — the user accidentally
-   * clicked the backdrop, so we'll re-show the modal on next session. The
-   * explicit X button and "Počni" CTA still call `finish` (they're intentional).
-   */
   const dismissForNow = () => {
     onComplete();
   };

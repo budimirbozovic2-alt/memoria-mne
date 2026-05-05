@@ -7,15 +7,16 @@ import AppSidebar from "@/components/AppSidebar";
 import BlockingModal from "@/components/db/BlockingModal";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { hasSeenOnboarding } from "@/components/OnboardingModal";
-import { APP_ONBOARDING_KEY } from "@/components/AppOnboarding";
+import { ONBOARDING_KEYS } from "@/components/onboarding/presets";
 import { toast } from "sonner";
 import { Moon, Sun, Search, Focus, HelpCircle } from "lucide-react";
 import { setDarkMode } from "@/lib/app-settings";
 import { useEditReturn } from "@/hooks/useEditReturn";
+import { useGlobalHotkey } from "@/hooks/useGlobalHotkey";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 const GlobalSearch = lazy(() => import("@/components/GlobalSearch"));
-const AppOnboarding = lazy(() => import("@/components/AppOnboarding"));
+const OnboardingModal = lazy(() => import("@/components/OnboardingModal"));
 
 const SOURCE_ROUTES = ["/categories", "/category/"];
 
@@ -28,11 +29,8 @@ const NudgeWatcher = memo(function NudgeWatcher() {
   const nudgeShownRef = useRef(false);
   const plannerModRef = useRef<typeof import("@/lib/planner-storage") | null>(null);
 
-  // Store refs to context data — avoids subscribing to frequent changes
-  const cardDataRef = useRef<ReturnType<typeof useCardData>>(null!);
-  cardDataRef.current = useCardData();
-  const reviewDataRef = useRef<ReturnType<typeof useReviewData>>(null!);
-  reviewDataRef.current = useReviewData();
+  const { cards } = useCardData();
+  const { reviewLog } = useReviewData();
 
   useEffect(() => {
     if (pathname === "/planner") plannerModRef.current = null;
@@ -53,8 +51,6 @@ const NudgeWatcher = memo(function NudgeWatcher() {
         const { loadPlanner, getSmartSuggestion, calcVelocity, getDailyMappedCount } = plannerModRef.current;
         const planner = loadPlanner();
         if (!planner.finalGoalDate || planner.phases.length === 0) return;
-        const cards = cardDataRef.current.cards;
-        const reviewLog = reviewDataRef.current.reviewLog;
         const velocity = calcVelocity(reviewLog, 7);
         const suggestion = getSmartSuggestion(null, cards, planner.finalGoalDate, velocity, planner.bufferPercent ?? 15);
         if (!suggestion || suggestion.suggestedToday <= 0) return;
@@ -70,6 +66,7 @@ const NudgeWatcher = memo(function NudgeWatcher() {
         }
       } catch {}
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   return null;
@@ -146,7 +143,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const [zenMode, setZenMode] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [showAppOnboarding, setShowAppOnboarding] = useState(
-    () => !hasSeenOnboarding(APP_ONBOARDING_KEY)
+    () => !hasSeenOnboarding(ONBOARDING_KEYS.app)
   );
   const [dark, setDarkState] = useState(() => document.documentElement.classList.contains("dark"));
 
@@ -156,16 +153,10 @@ export default function MainLayout({ children }: { children: ReactNode }) {
     setDarkMode(next);
   }, [dark]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        setGlobalSearchOpen(v => !v);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+  useGlobalHotkey(
+    e => (e.ctrlKey || e.metaKey) && e.key === "k",
+    e => { e.preventDefault(); setGlobalSearchOpen(v => !v); },
+  );
 
   const isFullWidth = SOURCE_ROUTES.some(r => pathname.startsWith(r));
 
@@ -231,7 +222,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       <GlobalSearchWrapper open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
       {showAppOnboarding && (
         <Suspense fallback={null}>
-          <AppOnboarding onComplete={() => setShowAppOnboarding(false)} />
+          <OnboardingModal preset="app" onComplete={() => setShowAppOnboarding(false)} />
         </Suspense>
       )}
       <BlockingModal />

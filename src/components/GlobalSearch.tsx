@@ -8,8 +8,7 @@ import { type Source } from "@/lib/sources-storage";
 import { useAllSources } from "@/hooks/useCategorySources";
 import { useMindMaps } from "@/hooks/useMindMaps";
 import { useCardData, useCategoryData } from "@/contexts/AppContext";
-import { setGlobalSearchOpen } from "@/lib/global-overlay-state";
-import Modal from "@/components/ui/Modal";
+import Modal from "@/components/ui/DialogShell";
 
 interface Props {
   open: boolean;
@@ -31,10 +30,7 @@ interface SearchResult {
   mindmapId?: string;
 }
 
-// stripHtml: thin wrapper that drops trailing whitespace; uses canonical
-// regex stripper from sanitize.ts (collapses whitespace + decodes entities).
-import { stripHtmlText as _stripHtml } from "@/lib/sanitize";
-function stripHtml(html: string): string { return _stripHtml(html); }
+import { stripHtmlText as stripHtml } from "@/lib/sanitize";
 
 function highlightMatch(text: string, query: string): string {
   if (!query) return sanitizeHtml(text);
@@ -178,11 +174,8 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
   }, [results, selectedIndex, handleSelect, onClose]);
 
   useEffect(() => {
-    // Publish open state to module-level flag so global keydown listeners
-    // (LocalSpeedReader, ReviewCard) can bail out cleanly.
-    setGlobalSearchOpen(open);
     if (!open) return;
-    // M2 fix: capture-phase guard — while GlobalSearch is open, swallow
+    // Capture-phase guard: while GlobalSearch is open, swallow Ctrl+K and
     // navigation keys before other window-level listeners can mis-trigger.
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "k") {
@@ -195,11 +188,8 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
         e.stopPropagation();
       }
     };
-    window.addEventListener("keydown", handler, true); // capture
-    return () => {
-      window.removeEventListener("keydown", handler, true);
-      setGlobalSearchOpen(false);
-    };
+    window.addEventListener("keydown", handler, true);
+    return () => window.removeEventListener("keydown", handler, true);
   }, [open, onClose]);
 
   if (!open) return null;
@@ -234,7 +224,6 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
       zClassName="z-search"
       backdropClassName="bg-background/80 backdrop-blur-sm"
       panelClassName="relative w-full max-w-lg mx-4 rounded-xl border bg-card shadow-2xl overflow-hidden"
-      initialFocusRef={inputRef}
       labelledBy="global-search-label"
     >
       <span id="global-search-label" className="sr-only">Globalna pretraga</span>
