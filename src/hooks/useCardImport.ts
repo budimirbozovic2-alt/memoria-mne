@@ -380,33 +380,42 @@ export function useCardImport({
         const autoIncKeys = new Set(autoIncTables.map((t) => t.key));
         const dbRecord = db as unknown as Record<string, IdbBulkTable>;
 
-        for (const { key, table } of idbTables) {
-          const arr = (parsed as unknown as Record<string, unknown[]>)[key];
-          if (!Array.isArray(arr)) continue;
-          if (arr.length > 0) {
-            if (strategy === "overwrite" && autoIncKeys.has(key as typeof autoIncTables[number]["key"])) {
-              await dbRecord[table].clear();
-              const stripped = arr.map((r) => {
-                const rec = (r ?? {}) as Record<string, unknown>;
-                const { id: _id, ...rest } = rec;
-                return rest;
-              });
-              await dbRecord[table].bulkAdd(stripped);
-            } else {
-              await dbRecord[table].bulkPut(arr);
-              if (strategy === "overwrite") {
-                // Settings table uses `key` as primary key; others use `id`.
-                const pkField = key === "settings" ? "key" : "id";
-                const importedIds = new Set(arr.map((r) => (r as Record<string, unknown>)[pkField]));
-                const allKeys = await dbRecord[table].toCollection().primaryKeys();
-                const toDelete = allKeys.filter((k) => !importedIds.has(k));
-                if (toDelete.length > 0) await dbRecord[table].bulkDelete(toDelete);
+        // Atomic over the whole satellite-table set: a malformed log can no
+        // longer commit-then-fail mid-stream and leave half the metacognitive
+        // state replaced. The transaction holds the IDB lock; yieldUI()
+        // releases the JS thread between tables so the UI keeps painting.
+        const allLogTables = idbTables.map(({ table }) => dbRecord[table] as unknown as object);
+        await db.transaction("rw", allLogTables as never[], async () => {
+          let i = 0;
+          for (const { key, table } of idbTables) {
+            const arr = (parsed as unknown as Record<string, unknown[]>)[key];
+            if (Array.isArray(arr) && arr.length > 0) {
+              if (strategy === "overwrite" && autoIncKeys.has(key as typeof autoIncTables[number]["key"])) {
+                await dbRecord[table].clear();
+                const stripped = arr.map((r) => {
+                  const rec = (r ?? {}) as Record<string, unknown>;
+                  const { id: _id, ...rest } = rec;
+                  return rest;
+                });
+                await dbRecord[table].bulkAdd(stripped);
+              } else {
+                await dbRecord[table].bulkPut(arr);
+                if (strategy === "overwrite") {
+                  const pkField = key === "settings" ? "key" : "id";
+                  const importedIds = new Set(arr.map((r) => (r as Record<string, unknown>)[pkField]));
+                  const allKeys = await dbRecord[table].toCollection().primaryKeys();
+                  const toDelete = allKeys.filter((k) => !importedIds.has(k));
+                  if (toDelete.length > 0) await dbRecord[table].bulkDelete(toDelete);
+                }
               }
+            } else if (strategy === "overwrite") {
+              await dbRecord[table].clear();
             }
-          } else if (strategy === "overwrite") {
-            await dbRecord[table].clear();
+            i++;
+            progress(75 + Math.round((i / idbTables.length) * 20), `Logovi (${i}/${idbTables.length})…`);
+            await yieldUI();
           }
-        }
+        });
 
         // ── localStorage data (whitelist + sanitize) ──
         if (parsed.localStorageData && typeof parsed.localStorageData === "object") {
