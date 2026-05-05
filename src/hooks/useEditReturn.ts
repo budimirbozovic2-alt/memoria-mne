@@ -21,10 +21,12 @@ interface UseEditReturnOptions<S extends BaseEditReturnSnapshot> {
    */
   categoryId?: string;
   /**
-   * Resolved lazily inside `stash()` so the hook always records the most
-   * recent edit target without re-binding the callback.
+   * Card id to record in the snapshot. Accepts either a direct value (read at
+   * stash time from the latest render) or a getter (resolved lazily). Using a
+   * direct value from a SSOT (e.g. `editingCardId` from `useUIContext`) avoids
+   * stale-ref bugs when components keep their own copy. (M3)
    */
-  cardId?: () => string | null | undefined;
+  cardId?: string | null | (() => string | null | undefined);
   /**
    * View-specific snapshot fields. The hook automatically adds `path`,
    * `scrollY`, `categoryId` and `cardId` — consumers only provide extras.
@@ -85,12 +87,14 @@ export function useEditReturn<S extends BaseEditReturnSnapshot = BaseEditReturnS
     setEditReturn({ path: resolvedPath });
 
     const extras = buildExtras ? buildExtras() : undefined;
+    const resolvedCardId =
+      typeof cardId === "function" ? cardId() : cardId;
     const snapshot = {
       ...(extras as object | undefined),
       path: resolvedPath,
       scrollY: typeof window !== "undefined" ? window.scrollY : undefined,
       categoryId,
-      cardId: cardId?.() ?? undefined,
+      cardId: resolvedCardId ?? undefined,
     } as S;
 
     stashEditReturnState<S>(snapshot);
