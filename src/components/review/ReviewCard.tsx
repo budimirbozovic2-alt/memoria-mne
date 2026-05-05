@@ -71,7 +71,7 @@ export default function ReviewCard({
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (shouldIgnoreGlobalKey(e)) return;
 
       if (e.key === " " && !showAnswer) {
         e.preventDefault();
