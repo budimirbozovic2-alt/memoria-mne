@@ -3,7 +3,8 @@ import { Card } from "./spaced-repetition";
 import { ReviewLogEntry, PomodoroLogEntry } from "./storage";
 import type { DiaryEntry, CalibrationEntry, LatencyEntry, SlippageEntry, ActivityEntry } from "./metacognitive-storage";
 import type { DisciplineEntry } from "./planner-storage";
-import { eventBus, EVENT_TYPES } from "./event-bus";
+import { eventBus } from "./event-bus";
+import { EVENT_TYPES } from "./event-bus-types";
 import { MnemonicCard, MnemonicTestLogEntry } from "./mnemonic-storage";
 
 // ─── Global DB error state (reactive signal for UI) ─────
