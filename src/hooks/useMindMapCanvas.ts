@@ -238,22 +238,51 @@ export function useMindMapCanvas(doc: MindMapDoc) {
   }, [edges, setNodes, fitView, stableOnUpdate, stableOnDuplicate]);
 
   const handleSave = useCallback(async () => {
-    const cleanNodes = nodes.map(({ data, ...rest }) => {
-      const { onUpdate: _u, onDuplicate: _d, ...cleanData } = data as Record<string, unknown>;
-      return { ...rest, data: cleanData };
-    });
-    const updated: MindMapDoc = { ...doc, title, nodes: cleanNodes, edges, updatedAt: Date.now() };
-    await saveMindMap(updated);
-    setDirty(false);
-    toast.success("Mapa sačuvana");
+    try {
+      const cleanNodes = nodes.map(({ data, ...rest }) => {
+        const { onUpdate: _u, onDuplicate: _d, ...cleanData } = data as Record<string, unknown>;
+        return { ...rest, data: cleanData };
+      });
+      const updated: MindMapDoc = { ...doc, title, nodes: cleanNodes, edges, updatedAt: Date.now() };
+      await saveMindMap(updated);
+      setDirty(false);
+      toast.success("Mapa sačuvana");
+    } catch (err) {
+      console.error("[mindMap] save failed", err);
+      toast.error("Mapa NIJE sačuvana — pokušajte ponovo.");
+      throw err;
+    }
   }, [doc, title, nodes, edges]);
 
   // Auto-save 30s
   useEffect(() => {
     if (!dirty) return;
-    const timer = setTimeout(() => { handleSave(); }, 30000);
+    const timer = setTimeout(() => { void handleSave().catch(() => { /* surfaced via toast */ }); }, 30000);
     return () => clearTimeout(timer);
   }, [dirty, handleSave]);
+
+  // V3: Flush on unmount + beforeunload guard so route-change or window-close
+  // can never silently drop the user's drawing. Refs ensure we always read the
+  // freshest dirty flag and save fn without re-binding the unmount effect.
+  const dirtyRef = useRef(false);
+  const saveRef = useRef(handleSave);
+  useEffect(() => { dirtyRef.current = dirty; saveRef.current = handleSave; }, [dirty, handleSave]);
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirtyRef.current) return;
+      // Best-effort save; browser may not await but Dexie write is queued.
+      void saveRef.current().catch(() => { /* noop */ });
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      if (dirtyRef.current) {
+        void saveRef.current().catch(() => { /* noop */ });
+      }
+    };
+  }, []);
 
   // Edge click → open settings
   const onEdgeClick = useCallback((_: React.MouseEvent, edge: Edge) => {
@@ -263,7 +292,10 @@ export function useMindMapCanvas(doc: MindMapDoc) {
   // Ctrl+S
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); handleSave(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        void handleSave().catch(() => { /* surfaced via toast */ });
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
