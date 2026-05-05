@@ -312,40 +312,46 @@ export function useCardImport({
           updateSRSettings({ ...DEFAULT_SR_SETTINGS, ...(parsed.srSettings as Partial<SRSettings>) });
         }
 
-        // ── Sources & MindMaps (already sanitized by schema) ──
-        if (parsed.sources.length > 0) {
-          await db.sources.bulkPut(parsed.sources);
-          invalidateSourcesCache();
-          if (strategy === "overwrite") {
-            const importedIds = new Set(parsed.sources.map((s) => s.id));
-            const allKeys = await db.sources.toCollection().primaryKeys();
-            const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-            if (toDelete.length > 0) await db.sources.bulkDelete(toDelete);
+        // ── Sources & MindMaps & KB articles in a single atomic transaction ──
+        // Combined so a malformed mindMap can't leave sources written but
+        // mindMaps absent — the failed transaction rolls back to the
+        // pre-import snapshot for these three tables.
+        progress(55, "Uvoz izvora i mapa…");
+        await db.transaction("rw", [db.sources, db.mindMaps, db.knowledgeBaseArticles], async () => {
+          if (parsed.sources.length > 0) {
+            await db.sources.bulkPut(parsed.sources);
+            if (strategy === "overwrite") {
+              const importedIds = new Set(parsed.sources.map((s) => s.id));
+              const allKeys = await db.sources.toCollection().primaryKeys();
+              const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+              if (toDelete.length > 0) await db.sources.bulkDelete(toDelete);
+            }
           }
-        }
-
-        if (parsed.mindMaps.length > 0) {
-          await db.mindMaps.bulkPut(parsed.mindMaps);
-          if (strategy === "overwrite") {
-            const importedIds = new Set(parsed.mindMaps.map((m) => m.id));
-            const allKeys = await db.mindMaps.toCollection().primaryKeys();
-            const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-            if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
+          await yieldUI();
+          if (parsed.mindMaps.length > 0) {
+            await db.mindMaps.bulkPut(parsed.mindMaps);
+            if (strategy === "overwrite") {
+              const importedIds = new Set(parsed.mindMaps.map((m) => m.id));
+              const allKeys = await db.mindMaps.toCollection().primaryKeys();
+              const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+              if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
+            }
           }
-        }
-
-        // ── Knowledge base articles (already sanitized by schema) ──
-        if (parsed.knowledgeBaseArticles.length > 0) {
-          await db.knowledgeBaseArticles.bulkPut(parsed.knowledgeBaseArticles);
-          if (strategy === "overwrite") {
-            const importedIds = new Set(parsed.knowledgeBaseArticles.map((a) => a.id));
-            const allKeys = await db.knowledgeBaseArticles.toCollection().primaryKeys();
-            const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-            if (toDelete.length > 0) await db.knowledgeBaseArticles.bulkDelete(toDelete);
+          await yieldUI();
+          if (parsed.knowledgeBaseArticles.length > 0) {
+            await db.knowledgeBaseArticles.bulkPut(parsed.knowledgeBaseArticles);
+            if (strategy === "overwrite") {
+              const importedIds = new Set(parsed.knowledgeBaseArticles.map((a) => a.id));
+              const allKeys = await db.knowledgeBaseArticles.toCollection().primaryKeys();
+              const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+              if (toDelete.length > 0) await db.knowledgeBaseArticles.bulkDelete(toDelete);
+            }
+          } else if (strategy === "overwrite") {
+            await db.knowledgeBaseArticles.clear();
           }
-        } else if (strategy === "overwrite") {
-          await db.knowledgeBaseArticles.clear();
-        }
+        });
+        invalidateSourcesCache();
+        progress(75, "Uvoz logova i postavki…");
 
         // ── Metacognitive + planner IDB tables ──
         type IdbBulkTable = {
