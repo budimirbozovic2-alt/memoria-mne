@@ -258,10 +258,20 @@ export function useCardImport({
         }
 
         // ── Persist cards AFTER remap is complete ──
+        progress(40, "Snimanje kartica…");
         if (merged.length > 0) schedulePersist({ type: "bulk", cards: merged });
         cardMapRef.current = nextMap;
         setCardMapState(() => nextMap);
         bumpMapVersion();
+        // Drain the persist queue NOW so subsequent table writes see a stable
+        // post-cards state. Without this, schedulePersist (debounced) could
+        // race with the sources/mindMaps bulkPut block below — if the queue
+        // failed AFTER those committed, we'd be left with a partially imported
+        // database that has the satellites but not the cards they reference.
+        try { await persistQueue.flush(); } catch (e) {
+          console.warn("[useCardImport] persist flush failed (continuing)", e);
+        }
+        await yieldUI();
 
         // ── Legacy `subcategories` map (only relevant for legacy name-based backups) ──
         const isNewCatFormat = isCategoryRecordArray(parsed.categories);
