@@ -20,6 +20,7 @@ import { setCardFrequency } from "@/lib/sr/frequency";
 import type { CardMap } from "@/lib/persist-queue";
 import type { CardMapRefFacade } from "@/store/useCardMapStore";
 import { cardRepository } from "@/lib/repositories/cardRepository";
+import { cardCommandBus } from "@/lib/repositories/cardCommandBus";
 
 interface UseCardCRUDParams {
   // Kept for backward-compat with the provider wiring; unused — all writes
@@ -59,7 +60,7 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
       if (extra?.childCardIds) card.childCardIds = extra.childCardIds;
       if (extra?.sourceModules) card.sourceModules = extra.sourceModules;
       if (extra?.tags && extra.tags.length > 0) card.tags = extra.tags;
-      cardRepository.put(card);
+      void cardCommandBus.dispatch({ type: "put", card: card });
       return card;
     },
     [],
@@ -68,7 +69,7 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
   const addFlashCard = useCallback(
     (question: string, answer: string, categoryId: string, subcategoryId?: string) => {
       const card = createFlashCard(question, answer, categoryId, subcategoryId);
-      cardRepository.put(card);
+      void cardCommandBus.dispatch({ type: "put", card: card });
       return card;
     },
     [],
@@ -125,7 +126,7 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
   );
 
   const deleteCard = useCallback((id: string) => {
-    cardRepository.remove(id);
+    void cardCommandBus.dispatch({ type: "delete", id: id });
     toast.success("Kartica obrisana.");
   }, []);
 
@@ -141,12 +142,12 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
       ),
       sections: [{ ...section }],
     }));
-    cardRepository.bulkPut(newCards);
-    cardRepository.remove(id);
+    void cardCommandBus.dispatch({ type: "bulkPut", cards: newCards });
+    void cardCommandBus.dispatch({ type: "delete", id: id });
   }, []);
 
   const bulkAddCards = useCallback((newCards: Card[]) => {
-    cardRepository.bulkPut(newCards);
+    void cardCommandBus.dispatch({ type: "bulkPut", cards: newCards });
   }, []);
 
   const bulkAddFlashCards = useCallback(
@@ -162,7 +163,7 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
         if (p.chapterId) card.chapterId = p.chapterId;
         return card;
       });
-      cardRepository.bulkPut(newCards);
+      void cardCommandBus.dispatch({ type: "bulkPut", cards: newCards });
     },
     [],
   );
