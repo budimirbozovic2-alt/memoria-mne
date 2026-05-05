@@ -92,9 +92,6 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
       const errors: string[] = [];
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const isValidUUID = (id: unknown): id is string => typeof id === 'string' && uuidRegex.test(id);
-      const errors: string[] = [];
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isValidUUID = (id: unknown): id is string => typeof id === 'string' && uuidRegex.test(id);
 
       // Validate structure
       if (!parsed || typeof parsed !== "object") {
