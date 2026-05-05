@@ -143,7 +143,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
   const [zenMode, setZenMode] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [showAppOnboarding, setShowAppOnboarding] = useState(
-    () => !hasSeenOnboarding(APP_ONBOARDING_KEY)
+    () => !hasSeenOnboarding(ONBOARDING_KEYS.app)
   );
   const [dark, setDarkState] = useState(() => document.documentElement.classList.contains("dark"));
 
@@ -222,7 +222,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       <GlobalSearchWrapper open={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
       {showAppOnboarding && (
         <Suspense fallback={null}>
-          <AppOnboarding onComplete={() => setShowAppOnboarding(false)} />
+          <OnboardingModal preset="app" onComplete={() => setShowAppOnboarding(false)} />
         </Suspense>
       )}
       <BlockingModal />
