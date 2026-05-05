@@ -138,31 +138,44 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
 
   const exportData = useCallback(
     async (compress: boolean, onProgress: (p: number, msg: string) => void) => {
-      onProgress(5, "Učitavanje svih podataka...");
+      onProgress(5, "Učitavanje svih podataka…");
       const { db, idbLoadReviewLog: loadFullReviewLog } = await import("@/lib/db");
-      const [
+
+      // Read snapshot inside a single read-only Dexie transaction so a
+      // concurrent edit (e.g. user grading a card mid-export) cannot produce
+      // a backup with mixed pre/post state across tables.
+      const snapshot = await db.transaction(
+        "r",
+        [db.sources, db.mindMaps, db.diary, db.calibrationLog, db.latencyLog,
+         db.slippageLog, db.activityLog, db.disciplineLog, db.pomodoroLog,
+         db.reviewLog, db.categories, db.mnemonics, db.majorSystem,
+         db.mnemonicTestLog, db.knowledgeBaseArticles, db.settings, db.cards],
+        async () => ({
+          sources: await db.sources.toArray(),
+          mindMaps: await db.mindMaps.toArray(),
+          diary: await db.diary.toArray(),
+          calibrationLog: await db.calibrationLog.toArray(),
+          latencyLog: await db.latencyLog.toArray(),
+          slippageLog: await db.slippageLog.toArray(),
+          activityLog: await db.activityLog.toArray(),
+          disciplineLog: await db.disciplineLog.toArray(),
+          pomodoroLog: await db.pomodoroLog.toArray(),
+          fullReviewLog: await loadFullReviewLog(),
+          catRecords: await db.categories.orderBy('sortOrder').toArray(),
+          mnemonics: await db.mnemonics.toArray(),
+          majorSystem: await db.majorSystem.toArray(),
+          mnemonicTestLog: await db.mnemonicTestLog.toArray(),
+          knowledgeBaseArticles: await db.knowledgeBaseArticles.toArray(),
+          settings: await db.settings.toArray(),
+          allCards: await db.cards.toArray(),
+        }),
+      );
+      const {
         sources, mindMaps, diary, calibrationLog, latencyLog,
         slippageLog, activityLog, disciplineLog, pomodoroLog, fullReviewLog,
         catRecords, mnemonics, majorSystem, mnemonicTestLog,
-        knowledgeBaseArticles, settings,
-      ] = await Promise.all([
-        db.sources.toArray(),
-        db.mindMaps.toArray(),
-        db.diary.toArray(),
-        db.calibrationLog.toArray(),
-        db.latencyLog.toArray(),
-        db.slippageLog.toArray(),
-        db.activityLog.toArray(),
-        db.disciplineLog.toArray(),
-        db.pomodoroLog.toArray(),
-        loadFullReviewLog(),
-        db.categories.orderBy('sortOrder').toArray(),
-        db.mnemonics.toArray(),
-        db.majorSystem.toArray(),
-        db.mnemonicTestLog.toArray(),
-        db.knowledgeBaseArticles.toArray(),
-        db.settings.toArray(),
-      ]);
+        knowledgeBaseArticles, settings, allCards,
+      } = snapshot;
 
       // localStorage keys (browser-only, not in IDB settings table)
       const localStorageData: Record<string, unknown> = {};
@@ -178,9 +191,8 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
         }
       }
 
-      // H3 fix: Read cards fresh from IDB to avoid stale closure data
-      const allCards = await db.cards.toArray();
-      const freshCards = allCards.length > 0 ? allCards : cards; // fallback to prop if IDB empty
+      // H3 fix: prefer fresh IDB cards (already snapshotted) over stale prop
+      const freshCards = allCards.length > 0 ? allCards : cards;
 
       const data = {
         version: 7, type: "full",
