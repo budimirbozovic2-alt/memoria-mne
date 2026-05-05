@@ -7,9 +7,9 @@ import { Card } from "@/lib/spaced-repetition";
 import { type Source } from "@/lib/sources-storage";
 import { useAllSources } from "@/hooks/useCategorySources";
 import { useMindMaps } from "@/hooks/useMindMaps";
-import { motion, AnimatePresence } from "framer-motion";
 import { useCardData, useCategoryData } from "@/contexts/AppContext";
 import { setGlobalSearchOpen } from "@/lib/global-overlay-state";
+import Modal from "@/components/ui/Modal";
 
 interface Props {
   open: boolean;
@@ -227,92 +227,85 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
   let flatIndex = 0;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-search flex items-start justify-center pt-[15vh]"
-        onClick={onClose}
-      >
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm" />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: -10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: -10 }}
-          transition={{ duration: 0.15 }}
-          onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-lg mx-4 rounded-xl border bg-card shadow-2xl overflow-hidden"
-        >
-          {/* Search input */}
-          <div className="flex items-center gap-3 px-4 border-b">
-            <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Pretraži module, izvore, mentalne mape..."
-              className="flex-1 py-3.5 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-            />
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border bg-secondary text-[10px] text-muted-foreground font-mono">
-              ESC
-            </kbd>
-          </div>
+    <Modal
+      open={open}
+      onClose={onClose}
+      align="top"
+      zClassName="z-search"
+      backdropClassName="bg-background/80 backdrop-blur-sm"
+      panelClassName="relative w-full max-w-lg mx-4 rounded-xl border bg-card shadow-2xl overflow-hidden"
+      initialFocusRef={inputRef}
+      labelledBy="global-search-label"
+    >
+      <span id="global-search-label" className="sr-only">Globalna pretraga</span>
+      {/* Search input */}
+      <div className="flex items-center gap-3 px-4 border-b">
+        <Search className="h-4 w-4 text-muted-foreground shrink-0" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Pretraži module, izvore, mentalne mape..."
+          className="flex-1 py-3.5 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          aria-label="Pretraga"
+        />
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border bg-secondary text-[10px] text-muted-foreground font-mono">
+          ESC
+        </kbd>
+      </div>
 
-          {/* Results */}
-          <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
-            {query.trim() && results.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">Nema rezultata za "{query}"</p>
-            )}
-            {(["card", "source", "mindmap"] as ResultType[]).map((type) => {
-              const items = grouped[type];
-              if (!items || items.length === 0) return null;
-              return (
-                <div key={type}>
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2 pb-1">
-                    {typeLabel[type]}
-                  </p>
-                  {items.map((result) => {
-                    const currentIndex = flatIndex++;
-                    return (
-                      <button
-                        key={result.id}
-                        onClick={() => handleSelect(result)}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                          currentIndex === selectedIndex ? "bg-primary/10 text-foreground" : "text-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          {iconMap[result.icon]}
-                          <span
-                            className="font-medium truncate flex-1"
-                            dangerouslySetInnerHTML={{ __html: highlightMatch(result.title, query) }}
-                          />
-                          {result.type !== "card" && (
-                            <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
-                          )}
-                        </div>
-                        {result.subtitle && (
-                          <span className="text-[10px] text-muted-foreground/60 ml-5.5">{result.subtitle}</span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
+      {/* Results */}
+      <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-2">
+        {query.trim() && results.length === 0 && (
+          <p className="text-sm text-muted-foreground text-center py-8">Nema rezultata za "{query}"</p>
+        )}
+        {(["card", "source", "mindmap"] as ResultType[]).map((type) => {
+          const items = grouped[type];
+          if (!items || items.length === 0) return null;
+          return (
+            <div key={type}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2 pb-1">
+                {typeLabel[type]}
+              </p>
+              {items.map((result) => {
+                const currentIndex = flatIndex++;
+                return (
+                  <button
+                    key={result.id}
+                    onClick={() => handleSelect(result)}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                      currentIndex === selectedIndex ? "bg-primary/10 text-foreground" : "text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {iconMap[result.icon]}
+                      <span
+                        className="font-medium truncate flex-1"
+                        dangerouslySetInnerHTML={{ __html: highlightMatch(result.title, query) }}
+                      />
+                      {result.type !== "card" && (
+                        <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                      )}
+                    </div>
+                    {result.subtitle && (
+                      <span className="text-[10px] text-muted-foreground/60 ml-5.5">{result.subtitle}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
 
-          {/* Footer */}
-          <div className="border-t px-4 py-2 flex items-center gap-4 text-[10px] text-muted-foreground">
-            <span>↑↓ navigacija</span>
-            <span>↵ otvori</span>
-            <span>esc zatvori</span>
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+      {/* Footer */}
+      <div className="border-t px-4 py-2 flex items-center gap-4 text-[10px] text-muted-foreground">
+        <span>↑↓ navigacija</span>
+        <span>↵ otvori</span>
+        <span>esc zatvori</span>
+      </div>
+    </Modal>
   );
 }
