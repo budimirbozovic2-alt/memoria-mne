@@ -1,12 +1,16 @@
-// M1 decomposition — sync effects extracted from CardStateProvider.
-// Listens to source-link / review-confirmed / CARDS_UPDATED bus events and
-// routes mutations through cardRepository.
+// M1 decomposition + F2 — sync effects extracted from CardStateProvider.
+// All mutation paths (link clear / review confirmed / CARDS_UPDATED delta /
+// full reload) dispatch through `cardCommandBus`, which serializes against
+// any in-flight patchCard for the affected ids. The V5/V10 race patches in
+// the legacy provider are now obsolete: serialization is guaranteed by the
+// per-id mutex, and the `applySyncDelta` repository method still applies
+// `updatedAt` newer-wins as defense-in-depth.
 import { useEffect } from "react";
 import { onCardLinksCleared, onCardReviewConfirmed } from "@/lib/sources-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { initBacklinkIndexSubscriptions } from "@/lib/backlink-index";
 import { persistQueue } from "@/lib/persist-queue";
-import { cardRepository } from "@/lib/repositories/cardRepository";
+import { cardCommandBus } from "@/lib/repositories/cardCommandBus";
 import type { Card } from "@/lib/spaced-repetition";
 
 interface CardsUpdatedPayload {
@@ -20,11 +24,11 @@ export function useCardSyncEffects(): void {
   useEffect(() => initBacklinkIndexSubscriptions(), []);
 
   useEffect(() => onCardLinksCleared((ids) => {
-    cardRepository.clearLinks(ids);
+    void cardCommandBus.dispatch({ type: "clearLinks", ids });
   }), []);
 
   useEffect(() => onCardReviewConfirmed((cardId) => {
-    cardRepository.clearNeedsReview(cardId);
+    void cardCommandBus.dispatch({ type: "clearNeedsReview", id: cardId });
   }), []);
 
   useEffect(() => {
@@ -34,37 +38,35 @@ export function useCardSyncEffects(): void {
     const unsub = eventBus.subscribe<CardsUpdatedPayload>(EVENT_TYPES.CARDS_UPDATED, (payload) => {
       const currentSequence = ++fetchSequence;
       const ids = payload?.cardIds;
-      const drainThenFetch = persistQueue.cleanup();
 
       if (ids && ids.length > 0 && ids.length <= SURGICAL_LIMIT) {
-        drainThenFetch.then(() => import("@/lib/db")).then(({ db }) => {
-          db.cards.bulkGet(ids).then((rows) => {
+        void persistQueue.cleanup()
+          .then(() => import("@/lib/db"))
+          .then(({ db }) => db.cards.bulkGet(ids))
+          .then((rows) => {
             if (!isSubscribed || currentSequence !== fetchSequence) return;
-            const localMap = cardRepository.snapshot();
-            const fetched = rows
-              .filter((r): r is Card => !!r)
-              .filter((r) => {
-                const local = localMap[r.id];
-                if (!local) return true;
-                return (r.updatedAt ?? 0) >= (local.updatedAt ?? 0);
-              });
+            const fetched = rows.filter((r): r is Card => !!r);
             const fetchedIds = new Set(fetched.map((c) => c.id));
             const deletedIds = ids.filter((id) => !fetchedIds.has(id));
             if (fetched.length === 0 && deletedIds.length === 0) return;
-            cardRepository.applySyncDelta(fetched, deletedIds);
+            return cardCommandBus.dispatch({
+              type: "applySyncDelta",
+              rows: fetched,
+              deletedIds,
+            });
           });
-        });
         return;
       }
 
-      drainThenFetch.then(() => import("@/lib/db-queries")).then(({ idbLoadCards }) => {
-        idbLoadCards().then((loaded) => {
+      void persistQueue.cleanup()
+        .then(() => import("@/lib/db-queries"))
+        .then(({ idbLoadCards }) => idbLoadCards())
+        .then((loaded) => {
           if (!isSubscribed || currentSequence !== fetchSequence) return;
           const map: Record<string, Card> = {};
           for (const c of loaded) map[c.id] = c;
-          cardRepository.replaceAll(map);
+          return cardCommandBus.dispatch({ type: "replaceAll", map });
         });
-      });
     });
 
     return () => { isSubscribed = false; unsub(); };
