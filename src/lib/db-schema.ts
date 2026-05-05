@@ -11,9 +11,12 @@ import { MnemonicCard, MnemonicTestLogEntry } from "./mnemonic-storage";
 // (src/main.tsx) injects an emitter via `setDbEventEmitter`. This breaks the
 // `db-schema` ↔ `event-bus` cycle and makes calls debuggable by name.
 type DbEmitter = (type: EventType, payload?: unknown) => void;
+type TabCounter = () => number;
 let _emit: DbEmitter = () => { /* no-op default (SSR / test without bus) */ };
-export function setDbEventEmitter(emit: DbEmitter): void {
+let _getTabCount: TabCounter = () => 1;
+export function setDbEventEmitter(emit: DbEmitter, getTabCount?: TabCounter): void {
   _emit = emit;
+  if (getTabCount) _getTabCount = getTabCount;
 }
 
 // ─── Global DB error state (reactive signal for UI) ─────
@@ -263,7 +266,7 @@ function emitBlockedThrottled() {
   const now = Date.now();
   if (now - _lastBlockedEmitAt < 250) return;
   _lastBlockedEmitAt = now;
-  eventBus.emit(EVENT_TYPES.DB_BLOCKED);
+  _emit(EVENT_TYPES.DB_BLOCKED);
 }
 
 // Register blocked handler ONCE at module level
@@ -291,10 +294,10 @@ export function startUnblockWatch() {
       unblockIntervalId = null;
       return;
     }
-    if (dbErrorState.type === "timeout" && eventBus.getTabCount() <= 1) {
+    if (dbErrorState.type === "timeout" && _getTabCount() <= 1) {
       if (import.meta.env.DEV) console.log("[MemoriaDB] Only one tab remains, clearing blocked state...");
       setDbErrorState(null);
-      eventBus.emit(EVENT_TYPES.DB_UNBLOCKED);
+      _emit(EVENT_TYPES.DB_UNBLOCKED);
       clearInterval(unblockIntervalId!);
       unblockIntervalId = null;
       if (!reloadScheduled) {
