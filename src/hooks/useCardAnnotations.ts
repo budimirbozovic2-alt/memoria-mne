@@ -10,8 +10,9 @@ import {
   RETENTION_MAX,
 } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap, bumpMapVersion, schedulePersist } from "@/lib/persist-queue";
-import { idbAddReviewLogEntry } from "@/lib/db";
+import type { CardMap } from "@/lib/persist-queue";
+import { reviewLogRepository } from "@/lib/repositories/reviewLogRepository";
+import { cardRepository } from "@/lib/repositories/cardRepository";
 import { getExaminerProfileSync } from "@/lib/examiner-profile-cache";
 
 interface UseCardAnnotationsParams {
@@ -23,9 +24,7 @@ interface UseCardAnnotationsParams {
 
 export function useCardAnnotations({
   patchCard,
-  setCardMapState,
   setReviewLog,
-  cardMapRef,
 }: UseCardAnnotationsParams) {
 
   // O(1) review — surgical IDB write (patchCard handles persist via Ref-Delta)
@@ -74,7 +73,7 @@ export function useCardAnnotations({
 
       // Persist review log OUTSIDE the state updater to avoid nested setState.
       // Batched + debounced (250 ms) inside idbAddReviewLogEntry to avoid IDB queue floods.
-      try { idbAddReviewLogEntry(entry); }
+      try { reviewLogRepository.append(entry); }
       catch (err) {
         console.error("[reviewSection] log enqueue failed", err);
         void import("sonner").then(({ toast }) => toast.error("Memorija puna, istorija učenja se ne čuva!"));
@@ -170,46 +169,24 @@ export function useCardAnnotations({
     [patchCard],
   );
 
-  // C2 fix: Pre-compute changes from ref BEFORE setState, then apply atomically.
-  // This eliminates the race where the updater array is populated inside setState
-  // but consumed outside it.
+  // Bulk-flag via repository facade — single bulk write + single render.
   const bulkFlagNeedsReview = useCallback((cardIds: string[]) => {
-    if (cardIds.length === 0) return;
-    const now = Date.now();
-    const updated: Card[] = [];
-    const nextRef = { ...cardMapRef.current };
-    for (const id of cardIds) {
-      if (nextRef[id]) {
-        const u = { ...nextRef[id], needsReview: true, updatedAt: now };
-        nextRef[id] = u;
-        updated.push(u);
-      }
-    }
-    if (updated.length === 0) return;
-    cardMapRef.current = nextRef;
-    schedulePersist({ type: "bulk", cards: updated });
-    setCardMapState(() => nextRef);
-    bumpMapVersion();
-  }, [setCardMapState, cardMapRef]);
+    cardRepository.bulkPatch(cardIds, (c) => ({ ...c, needsReview: true }));
+  }, []);
 
-
-  const bulkUpdateChapter = useCallback((updates: { id: string; chapterId: string | undefined; chapterOrder: number }[]) => {
-    const now = Date.now();
-    const changed: Card[] = [];
-    const nextRef = { ...cardMapRef.current };
-    for (const u of updates) {
-      if (nextRef[u.id]) {
-        const c = { ...nextRef[u.id], chapterId: u.chapterId ?? "", chapterOrder: u.chapterOrder, updatedAt: now };
-        nextRef[u.id] = c;
-        changed.push(c);
-      }
-    }
-    if (changed.length === 0) return;
-    cardMapRef.current = nextRef;
-    schedulePersist({ type: "bulk", cards: changed });
-    setCardMapState(() => nextRef);
-    bumpMapVersion();
-  }, [setCardMapState, cardMapRef]);
+  const bulkUpdateChapter = useCallback(
+    (updates: { id: string; chapterId: string | undefined; chapterOrder: number }[]) => {
+      const map = new Map(updates.map((u) => [u.id, u]));
+      cardRepository.bulkPatch(
+        updates.map((u) => u.id),
+        (c) => {
+          const u = map.get(c.id)!;
+          return { ...c, chapterId: u.chapterId ?? "", chapterOrder: u.chapterOrder };
+        },
+      );
+    },
+    [],
+  );
 
   return {
     reviewSection,
