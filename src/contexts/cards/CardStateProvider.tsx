@@ -263,7 +263,7 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
                 return remoteTs >= localTs;
               });
             const fetchedIds = new Set(fetched.map((c) => c.id));
-            const deletedIds = ids.filter((id) => !fetchedIds.has(id) && !!localMap[id] === false);
+            const deletedIds = ids.filter((id) => !fetchedIds.has(id));
 
             if (fetched.length === 0 && deletedIds.length === 0) return;
 
