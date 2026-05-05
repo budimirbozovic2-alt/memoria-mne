@@ -73,35 +73,40 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
   const exportTemplate = useCallback(
     async (compress: boolean, onProgress: ProgressFn) => {
       const { db } = await import("@/lib/db");
-      const catRecords = await db.categories.orderBy("sortOrder").toArray();
 
       const dateStr = new Date().toISOString().slice(0, 10);
 
       // Templates don't carry logs; stream cards but project to template shape.
+      // Wrapped in a single read-only transaction so categories + cards form
+      // a consistent point-in-time snapshot even if the user is actively
+      // editing in another tab/process.
       onProgress(5, "Priprema templatea…");
       const parts: BlobPart[] = [];
-      parts.push(`{"version":2,"type":"template"`);
-      parts.push(`,"categories":${JSON.stringify(catRecords)}`);
-      parts.push(`,"subcategories":${JSON.stringify(deriveSubMap(catRecords))}`);
-      parts.push(`,"cards":[`);
       let i = 0;
-      const total = await db.cards.count();
-      await db.cards.each((c) => {
-        const t = {
-          id: c.id,
-          question: c.question,
-          sections: c.sections.map((s) => ({ title: s.title, content: s.content })),
-          categoryId: c.categoryId,
-          subcategoryId: c.subcategoryId || "",
-          chapterId: c.chapterId || "",
-          type: c.type,
-          tags: c.tags || [],
-        };
-        parts.push((i === 0 ? "" : ",") + JSON.stringify(t));
-        i++;
-        if (i % 500 === 0) {
-          onProgress(10 + Math.round((i / Math.max(total, 1)) * 70), `Kartice ${i}/${total}`);
-        }
+      await db.transaction("r", [db.categories, db.cards], async () => {
+        const catRecords = await db.categories.orderBy("sortOrder").toArray();
+        parts.push(`{"version":2,"type":"template"`);
+        parts.push(`,"categories":${JSON.stringify(catRecords)}`);
+        parts.push(`,"subcategories":${JSON.stringify(deriveSubMap(catRecords))}`);
+        parts.push(`,"cards":[`);
+        const total = await db.cards.count();
+        await db.cards.each((c) => {
+          const t = {
+            id: c.id,
+            question: c.question,
+            sections: c.sections.map((s) => ({ title: s.title, content: s.content })),
+            categoryId: c.categoryId,
+            subcategoryId: c.subcategoryId || "",
+            chapterId: c.chapterId || "",
+            type: c.type,
+            tags: c.tags || [],
+          };
+          parts.push((i === 0 ? "" : ",") + JSON.stringify(t));
+          i++;
+          if (i % 500 === 0) {
+            onProgress(10 + Math.round((i / Math.max(total, 1)) * 70), `Kartice ${i}/${total}`);
+          }
+        });
       });
       // Fall back to in-memory if IDB empty
       if (i === 0 && cards.length > 0) {
