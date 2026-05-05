@@ -54,6 +54,17 @@ let _disciplineCache: DisciplineEntry[] = [];
 let _dailyMapped: { date: string; count: number } = { date: "", count: 0 };
 let _lastRedistributeDate: string = "";
 
+// F2: serialize all planner IDB writes. In-memory cache is mutated
+// SYNCHRONOUSLY before enqueue (ref-delta pattern); the chained promise
+// guarantees IDB writes apply in the same order as the calls, preventing
+// Lost Update where a faster later call overwrites with stale settings.
+let _pendingWrite: Promise<void> = Promise.resolve();
+function enqueueWrite(label: string, op: () => Promise<unknown>): void {
+  _pendingWrite = _pendingWrite
+    .then(() => op().then(() => undefined))
+    .catch((e: unknown) => { console.warn(`[planner:${label}]`, e); });
+}
+
 /**
  * Initialize planner caches from IndexedDB.
  * Called once at boot after ensureDbOpen succeeds.
@@ -107,7 +118,7 @@ export function loadPlanner(): PlannerConfig {
 
 export function savePlanner(config: PlannerConfig): void {
   _plannerCache = config;
-  db.settings.put({ key: "plannerConfig", value: config }).catch((e) => console.warn("[silent]", e));
+  enqueueWrite("savePlanner", () => db.settings.put({ key: "plannerConfig", value: config }));
 }
 
 // ─── Velocity ────────────────────────────────────────────
@@ -331,10 +342,12 @@ export function loadDisciplineLog(): DisciplineEntry[] {
 
 export function saveDisciplineLog(log: DisciplineEntry[]) {
   _disciplineCache = log;
-  db.transaction("rw", db.disciplineLog, async () => {
-    await db.disciplineLog.clear();
-    if (log.length > 0) await db.disciplineLog.bulkAdd(log);
-  }).catch((e) => console.warn("[silent]", e));
+  enqueueWrite("saveDisciplineLog", () =>
+    db.transaction("rw", db.disciplineLog, async () => {
+      await db.disciplineLog.clear();
+      if (log.length > 0) await db.disciplineLog.bulkAdd(log);
+    }),
+  );
 }
 
 export function calcDisciplineStatus(reviewsDone: number, dailyGoal: number, slippageMs: number | null): DisciplineStatus {
@@ -412,7 +425,8 @@ export function incrementDailyMapped(amount: number = 1): number {
   const current = _dailyMapped.date === today ? _dailyMapped.count : 0;
   const newCount = current + amount;
   _dailyMapped = { date: today, count: newCount };
-  db.settings.put({ key: "dailyMapped", value: _dailyMapped }).catch((e) => console.warn("[silent]", e));
+  const snapshot = { ..._dailyMapped };
+  enqueueWrite("incrementDailyMapped", () => db.settings.put({ key: "dailyMapped", value: snapshot }));
   return newCount;
 }
 
@@ -430,7 +444,7 @@ export function autoRedistributeIfNeeded(
   const entry = _disciplineCache.find(e => e.date === yesterday);
   if (!entry || entry.planCompletion >= 90) {
     _lastRedistributeDate = today;
-    db.settings.put({ key: "lastRedistribute", value: today }).catch((e) => console.warn("[silent]", e));
+    enqueueWrite("lastRedistribute(skip)", () => db.settings.put({ key: "lastRedistribute", value: today }));
     return null;
   }
 
@@ -442,7 +456,7 @@ export function autoRedistributeIfNeeded(
   if (!result) return null;
 
   _lastRedistributeDate = today;
-  db.settings.put({ key: "lastRedistribute", value: today }).catch((e) => console.warn("[silent]", e));
+  enqueueWrite("lastRedistribute(apply)", () => db.settings.put({ key: "lastRedistribute", value: today }));
   return { redistributed: true, newQuota: result.newDailyQuota };
 }
 
