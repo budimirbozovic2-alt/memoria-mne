@@ -224,7 +224,6 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
       zClassName="z-search"
       backdropClassName="bg-background/80 backdrop-blur-sm"
       panelClassName="relative w-full max-w-lg mx-4 rounded-xl border bg-card shadow-2xl overflow-hidden"
-      initialFocusRef={inputRef}
       labelledBy="global-search-label"
     >
       <span id="global-search-label" className="sr-only">Globalna pretraga</span>
