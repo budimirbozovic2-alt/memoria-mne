@@ -14,7 +14,7 @@ interface ExportImportDialogProps {
   onOpenChange: (open: boolean) => void;
   onExportTemplate: (compress: boolean, onProgress: (p: number, msg: string) => void) => Promise<void>;
   onExportFull: (compress: boolean, onProgress: (p: number, msg: string) => void) => Promise<void>;
-  onImport: (file: File, strategy: "keep" | "overwrite" | "skip" | "newer") => Promise<void>;
+  onImport: (file: File, strategy: "keep" | "overwrite" | "skip" | "newer", onProgress?: (p: number, msg: string) => void) => Promise<void>;
   cards: Card[];
 }
 
@@ -258,18 +258,11 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
     // can't lie about completion. `onImport` (useCardImport.importData) owns
     // its own success/error toast so we don't double-fire.
     setStep("importing");
-    setProgress(10);
+    setProgress(2);
     setProgressMsg("Pripremam uvoz…");
     try {
-      // Light progress nudge so the bar doesn't look frozen during the (sync-ish) parse.
-      const tick = setInterval(() => {
-        setProgress((p) => (p < 85 ? p + 5 : p));
-      }, 300);
-      try {
-        await onImport(validation.file, strategy);
-      } finally {
-        clearInterval(tick);
-      }
+      // Real progress wired through from useCardImport (no fake interval).
+      await onImport(validation.file, strategy, onProgress);
       setProgress(100);
       setProgressMsg("Završeno.");
     } finally {

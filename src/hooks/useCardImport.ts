@@ -462,6 +462,7 @@ export function useCardImport({
         if (parsed.pomodoroLog.length > 0) extraParts.push(`${parsed.pomodoroLog.length} pomodoro zapisa`);
         if (parsed.localStorageData) extraParts.push("lokalna podešavanja");
         const extraMsg = extraParts.length > 0 ? ` + ${extraParts.join(", ")}` : "";
+        progress(100, "Završeno.");
         toast.success(`Uspješno uvezeno ${importedCards.length} kartica${extraMsg}.`);
       } catch (err) {
         toast.error(`Greška pri uvozu: ${err instanceof Error ? err.message : "Neispravan format fajla."}`);
