@@ -54,6 +54,17 @@ let _disciplineCache: DisciplineEntry[] = [];
 let _dailyMapped: { date: string; count: number } = { date: "", count: 0 };
 let _lastRedistributeDate: string = "";
 
+// F2: serialize all planner IDB writes. In-memory cache is mutated
+// SYNCHRONOUSLY before enqueue (ref-delta pattern); the chained promise
+// guarantees IDB writes apply in the same order as the calls, preventing
+// Lost Update where a faster later call overwrites with stale settings.
+let _pendingWrite: Promise<void> = Promise.resolve();
+function enqueueWrite(label: string, op: () => Promise<unknown>): void {
+  _pendingWrite = _pendingWrite
+    .then(() => op().then(() => undefined))
+    .catch((e: unknown) => { console.warn(`[planner:${label}]`, e); });
+}
+
 /**
  * Initialize planner caches from IndexedDB.
  * Called once at boot after ensureDbOpen succeeds.
