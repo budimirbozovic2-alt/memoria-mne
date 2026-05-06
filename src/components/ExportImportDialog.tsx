@@ -455,6 +455,7 @@ export default function ExportImportDialog({ open, onOpenChange, onExportTemplat
                     <div>
                       <p className="text-muted-foreground text-xs">Veličina</p>
                       <p className="font-medium">{validation.fileSizeKB > 1024 ? `${(validation.fileSizeKB / 1024).toFixed(1)} MB` : `${validation.fileSizeKB} KB`}</p>
+                    </div>
                   </div>
                   {/* Schema version row */}
                   <div className="flex items-center gap-2 pt-2 mt-2 border-t text-xs">
