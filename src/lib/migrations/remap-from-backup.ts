@@ -248,6 +248,7 @@ export async function remapFromBackup(
     }
   }
 
+  onProgress(100, "Završeno.");
   // Suppress unused warning
   void oldCatNameById;
 
