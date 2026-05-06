@@ -93,8 +93,14 @@ export default function RemapFromBackupDialog({
   const handleApply = useCallback(async () => {
     if (!parsedJsonRef.current) return;
     setPhase("applying");
+    setProgress(5);
+    setProgressMsg("Primjena izmjena…");
     try {
-      const finalReport = await remapFromBackup(parsedJsonRef.current, { dryRun: false });
+      await yieldUI();
+      const finalReport = await remapFromBackup(parsedJsonRef.current, {
+        dryRun: false,
+        onProgress: (p, msg) => { setProgress(p); setProgressMsg(msg); },
+      });
       setReport(finalReport);
       setPhase("done");
       const total =
@@ -172,11 +178,14 @@ export default function RemapFromBackupDialog({
             </div>
           </div>
 
-          {/* Status: parsing */}
-          {phase === "parsing" && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Analiziram backup…
+          {/* Status: parsing / applying */}
+          {(phase === "parsing" || phase === "applying") && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="truncate">{progressMsg || (phase === "parsing" ? "Analiziram backup…" : "Primjenjujem…")}</span>
+              </div>
+              <Progress value={progress} className="h-2" />
             </div>
           )}
 
