@@ -122,12 +122,18 @@ function pruneOrphans(parsed: ParsedBackup, validCategoryIds: Set<string>): void
   parsed.mindMaps = parsed.mindMaps.filter((m) => !m.categoryId || validCategoryIds.has(m.categoryId));
 }
 
-export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
-  const { parsed, strategy, currentMap, onProgress } = ctx;
-  const progress = onProgress ?? (() => { /* noop */ });
+// ────────────────────────────────────────────────────────────────────────
+// Extracted tx helpers — each runs *inside* the parent rw transaction.
+// They contain no logic changes; they merely group the body of
+// `applyImportAtomically` into named, reviewable units.
+// ────────────────────────────────────────────────────────────────────────
 
-  // ── 1. Pre-merge cards (in-memory only — IDB writes happen in tx below) ──
-  const importedCards: Card[] = parsed.cards;
+/** Pre-merge imported cards into the in-memory map per strategy (pure). */
+function mergeCardsByStrategy(
+  importedCards: Card[],
+  currentMap: Record<string, Card>,
+  strategy: ImportStrategy,
+): { merged: Card[]; nextMap: Record<string, Card> } {
   const merged: Card[] = [];
   const nextMap: Record<string, Card> = { ...currentMap };
 
@@ -147,6 +153,212 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
       if (!nextMap[ic.id]) { nextMap[ic.id] = ic; merged.push(ic); }
     });
   }
+  return { merged, nextMap };
+}
+
+/** Sections 4a + 4b: write categories and apply legacy `subcategories` map. */
+async function writeCategoriesTx(
+  parsed: ParsedBackup,
+  strategy: ImportStrategy,
+  freshCategories: CategoryRecord[],
+): Promise<void> {
+  // 4a. Categories
+  if (parsed.categories.length > 0) {
+    if (isCategoryRecordArray(parsed.categories)) {
+      if (strategy === "overwrite") {
+        // Pre-tx remap already aligned satellite FKs to existing IDs;
+        // any backup categories whose name already exists were also
+        // remapped, so a clear+bulkPut here is safe.
+        await db.categories.clear();
+        await db.categories.bulkPut(parsed.categories);
+        // FK sweep: only after categories are finalized.
+        const validIds = new Set(parsed.categories.map((c) => c.id));
+        pruneOrphans(parsed, validIds);
+      } else {
+        // Non-overwrite: bulkPut only categories that didn't get remapped.
+        const existingByName = new Map<string, string>();
+        for (const c of freshCategories) existingByName.set(c.name.toLowerCase(), c.id);
+        const toInsert = parsed.categories.filter(
+          (cr) => !existingByName.has(cr.name.toLowerCase()),
+        );
+        if (toInsert.length > 0) await db.categories.bulkPut(toInsert);
+      }
+    } else {
+      // Legacy `string[]` format — create CategoryRecord[] from names.
+      const legacyNames = parsed.categories;
+      if (strategy === "overwrite") {
+        const allRecs: CategoryRecord[] = legacyNames.map((name, i) => ({
+          id: crypto.randomUUID(), name, sortOrder: i, subcategories: [],
+        }));
+        await db.categories.clear();
+        await db.categories.bulkPut(allRecs);
+      } else {
+        const existingNames = new Set(freshCategories.map((r) => r.name));
+        const newRecs: CategoryRecord[] = [];
+        for (const name of legacyNames) {
+          if (!existingNames.has(name)) {
+            newRecs.push({
+              id: crypto.randomUUID(),
+              name,
+              sortOrder: freshCategories.length + newRecs.length,
+              subcategories: [],
+            });
+          }
+        }
+        if (newRecs.length > 0) await db.categories.bulkPut(newRecs);
+      }
+    }
+  }
+
+  // 4b. Legacy `subcategories` map (only if legacy names format).
+  const isNewCatFormat = parsed.categories.length === 0 || isCategoryRecordArray(parsed.categories);
+  if (parsed.subcategories && typeof parsed.subcategories === "object" && !isNewCatFormat) {
+    const recs = await db.categories.toArray();
+    const subData = parsed.subcategories as Record<string, string[]>;
+    const updated = recs.map((r) => {
+      const subs = subData[r.id] || subData[r.name] || [];
+      if (subs.length === 0) return r;
+      const existingNames = new Set(r.subcategories.map((n) => n.name));
+      const newNodes: SubcategoryNode[] = subs
+        .filter((s) => !existingNames.has(s))
+        .map((name, i) => ({
+          id: crypto.randomUUID(),
+          name,
+          chapters: [],
+          sortOrder: r.subcategories.length + i,
+        }));
+      return { ...r, subcategories: [...r.subcategories, ...newNodes] };
+    });
+    await db.categories.bulkPut(updated);
+  }
+}
+
+/** Section 4c: bulk write cards, prune orphans on overwrite. */
+async function writeCardsTx(merged: Card[], strategy: ImportStrategy): Promise<void> {
+  if (merged.length > 0) await db.cards.bulkPut(merged);
+  if (strategy === "overwrite") {
+    const allCardKeys = await db.cards.toCollection().primaryKeys();
+    const importedIdSet = new Set(merged.map((c) => c.id));
+    const orphanKeys = allCardKeys.filter((k) => !importedIdSet.has(k as string));
+    if (orphanKeys.length > 0) await db.cards.bulkDelete(orphanKeys);
+  }
+  await yieldUI();
+}
+
+type IdbBulkTable = {
+  bulkPut: (items: unknown[]) => Promise<unknown>;
+  bulkAdd: (items: unknown[]) => Promise<unknown>;
+  clear: () => Promise<void>;
+  toCollection: () => { primaryKeys: () => Promise<unknown[]> };
+  bulkDelete: (keys: unknown[]) => Promise<void>;
+};
+
+const UUID_TABLES = [
+  { key: "diary", table: "diary" },
+  { key: "mnemonics", table: "mnemonics" },
+  { key: "majorSystem", table: "majorSystem" },
+  { key: "settings", table: "settings" },
+] as const;
+const AUTO_INC_TABLES = [
+  { key: "calibrationLog", table: "calibrationLog" },
+  { key: "latencyLog", table: "latencyLog" },
+  { key: "slippageLog", table: "slippageLog" },
+  { key: "activityLog", table: "activityLog" },
+  { key: "disciplineLog", table: "disciplineLog" },
+  { key: "pomodoroLog", table: "pomodoroLog" },
+  { key: "mnemonicTestLog", table: "mnemonicTestLog" },
+] as const;
+
+/** Sections 4f + 4g: sources/mindMaps/KB plus all metacognitive log tables. */
+async function writeSatelliteTablesTx(
+  parsed: ParsedBackup,
+  strategy: ImportStrategy,
+  progress: (pct: number, label: string) => void,
+): Promise<void> {
+  // 4f. Sources, MindMaps, Knowledge-base articles.
+  progress(70, "Uvoz izvora i mapa…");
+  if (parsed.sources.length > 0) {
+    await db.sources.bulkPut(parsed.sources);
+    if (strategy === "overwrite") {
+      const importedIds = new Set(parsed.sources.map((s) => s.id));
+      const allKeys = await db.sources.toCollection().primaryKeys();
+      const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+      if (toDelete.length > 0) await db.sources.bulkDelete(toDelete);
+    }
+  } else if (strategy === "overwrite") {
+    await db.sources.clear();
+  }
+  await yieldUI();
+
+  if (parsed.mindMaps.length > 0) {
+    await db.mindMaps.bulkPut(parsed.mindMaps);
+    if (strategy === "overwrite") {
+      const importedIds = new Set(parsed.mindMaps.map((m) => m.id));
+      const allKeys = await db.mindMaps.toCollection().primaryKeys();
+      const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+      if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
+    }
+  } else if (strategy === "overwrite") {
+    await db.mindMaps.clear();
+  }
+  await yieldUI();
+
+  if (parsed.knowledgeBaseArticles.length > 0) {
+    await db.knowledgeBaseArticles.bulkPut(parsed.knowledgeBaseArticles);
+    if (strategy === "overwrite") {
+      const importedIds = new Set(parsed.knowledgeBaseArticles.map((a) => a.id));
+      const allKeys = await db.knowledgeBaseArticles.toCollection().primaryKeys();
+      const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
+      if (toDelete.length > 0) await db.knowledgeBaseArticles.bulkDelete(toDelete);
+    }
+  } else if (strategy === "overwrite") {
+    await db.knowledgeBaseArticles.clear();
+  }
+  await yieldUI();
+
+  // 4g. Metacognitive + planner satellite tables.
+  progress(85, "Uvoz logova i postavki…");
+  const idbTables = [...UUID_TABLES, ...AUTO_INC_TABLES];
+  const autoIncKeys = new Set(AUTO_INC_TABLES.map((t) => t.key));
+  const dbRecord = db as unknown as Record<string, IdbBulkTable>;
+
+  let i = 0;
+  for (const { key, table } of idbTables) {
+    const arr = (parsed as unknown as Record<string, unknown[]>)[key];
+    if (Array.isArray(arr) && arr.length > 0) {
+      if (strategy === "overwrite" && autoIncKeys.has(key as typeof AUTO_INC_TABLES[number]["key"])) {
+        await dbRecord[table].clear();
+        const stripped = arr.map((r) => {
+          const rec = (r ?? {}) as Record<string, unknown>;
+          const { id: _id, ...rest } = rec;
+          return rest;
+        });
+        await dbRecord[table].bulkAdd(stripped);
+      } else {
+        await dbRecord[table].bulkPut(arr);
+        if (strategy === "overwrite") {
+          const pkField = key === "settings" ? "key" : "id";
+          const importedIds = new Set(arr.map((r) => (r as Record<string, unknown>)[pkField]));
+          const allKeys = await dbRecord[table].toCollection().primaryKeys();
+          const toDelete = allKeys.filter((k) => !importedIds.has(k));
+          if (toDelete.length > 0) await dbRecord[table].bulkDelete(toDelete);
+        }
+      }
+    } else if (strategy === "overwrite") {
+      await dbRecord[table].clear();
+    }
+    i++;
+    progress(85 + Math.round((i / idbTables.length) * 10), `Logovi (${i}/${idbTables.length})…`);
+    await yieldUI();
+  }
+}
+
+export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
+  const { parsed, strategy, currentMap, onProgress } = ctx;
+  const progress = onProgress ?? (() => { /* noop */ });
+
+  // ── 1. Pre-merge cards (in-memory only — IDB writes happen in tx below) ──
+  const { merged, nextMap } = mergeCardsByStrategy(parsed.cards, currentMap, strategy);
 
   // ── 2. Pre-tx remap (Phase 2.1) ──
   // Read existing categories OUTSIDE the rw tx so we can compute the remap
@@ -181,87 +393,10 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
   ];
   await db.transaction("rw", tables, async () => {
     progress(35, "Snimanje kategorija…");
+    await writeCategoriesTx(parsed, strategy, freshCategories);
 
-    // 4a. Categories
-    if (parsed.categories.length > 0) {
-      if (isCategoryRecordArray(parsed.categories)) {
-        if (strategy === "overwrite") {
-          // Pre-tx remap already aligned satellite FKs to existing IDs;
-          // any backup categories whose name already exists were also
-          // remapped, so a clear+bulkPut here is safe.
-          await db.categories.clear();
-          await db.categories.bulkPut(parsed.categories);
-          // FK sweep: only after categories are finalized.
-          const validIds = new Set(parsed.categories.map((c) => c.id));
-          pruneOrphans(parsed, validIds);
-        } else {
-          // Non-overwrite: bulkPut only categories that didn't get remapped.
-          const existingByName = new Map<string, string>();
-          for (const c of freshCategories) existingByName.set(c.name.toLowerCase(), c.id);
-          const toInsert = parsed.categories.filter(
-            (cr) => !existingByName.has(cr.name.toLowerCase()),
-          );
-          if (toInsert.length > 0) await db.categories.bulkPut(toInsert);
-        }
-      } else {
-        // Legacy `string[]` format — create CategoryRecord[] from names.
-        const legacyNames = parsed.categories;
-        if (strategy === "overwrite") {
-          const allRecs: CategoryRecord[] = legacyNames.map((name, i) => ({
-            id: crypto.randomUUID(), name, sortOrder: i, subcategories: [],
-          }));
-          await db.categories.clear();
-          await db.categories.bulkPut(allRecs);
-        } else {
-          const existingNames = new Set(freshCategories.map((r) => r.name));
-          const newRecs: CategoryRecord[] = [];
-          for (const name of legacyNames) {
-            if (!existingNames.has(name)) {
-              newRecs.push({
-                id: crypto.randomUUID(),
-                name,
-                sortOrder: freshCategories.length + newRecs.length,
-                subcategories: [],
-              });
-            }
-          }
-          if (newRecs.length > 0) await db.categories.bulkPut(newRecs);
-        }
-      }
-    }
-
-    // 4b. Legacy `subcategories` map (only if legacy names format).
-    const isNewCatFormat = parsed.categories.length === 0 || isCategoryRecordArray(parsed.categories);
-    if (parsed.subcategories && typeof parsed.subcategories === "object" && !isNewCatFormat) {
-      const recs = await db.categories.toArray();
-      const subData = parsed.subcategories as Record<string, string[]>;
-      const updated = recs.map((r) => {
-        const subs = subData[r.id] || subData[r.name] || [];
-        if (subs.length === 0) return r;
-        const existingNames = new Set(r.subcategories.map((n) => n.name));
-        const newNodes: SubcategoryNode[] = subs
-          .filter((s) => !existingNames.has(s))
-          .map((name, i) => ({
-            id: crypto.randomUUID(),
-            name,
-            chapters: [],
-            sortOrder: r.subcategories.length + i,
-          }));
-        return { ...r, subcategories: [...r.subcategories, ...newNodes] };
-      });
-      await db.categories.bulkPut(updated);
-    }
-
-    // 4c. Cards — direct bulkPut (no persist-queue race).
     progress(50, "Snimanje kartica…");
-    if (merged.length > 0) await db.cards.bulkPut(merged);
-    if (strategy === "overwrite") {
-      const allCardKeys = await db.cards.toCollection().primaryKeys();
-      const importedIdSet = new Set(merged.map((c) => c.id));
-      const orphanKeys = allCardKeys.filter((k) => !importedIdSet.has(k as string));
-      if (orphanKeys.length > 0) await db.cards.bulkDelete(orphanKeys);
-    }
-    await yieldUI();
+    await writeCardsTx(merged, strategy);
 
     // 4d. Review log overwrite.
     if (parsed.reviewLog.length > 0 && strategy === "overwrite") {
@@ -278,104 +413,7 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
       srSettingsApplied = { ...DEFAULT_SR_SETTINGS, ...(parsed.srSettings as Partial<SRSettings>) };
     }
 
-    // 4f. Sources, MindMaps, Knowledge-base articles.
-    progress(70, "Uvoz izvora i mapa…");
-    if (parsed.sources.length > 0) {
-      await db.sources.bulkPut(parsed.sources);
-      if (strategy === "overwrite") {
-        const importedIds = new Set(parsed.sources.map((s) => s.id));
-        const allKeys = await db.sources.toCollection().primaryKeys();
-        const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-        if (toDelete.length > 0) await db.sources.bulkDelete(toDelete);
-      }
-    } else if (strategy === "overwrite") {
-      await db.sources.clear();
-    }
-    await yieldUI();
-
-    if (parsed.mindMaps.length > 0) {
-      await db.mindMaps.bulkPut(parsed.mindMaps);
-      if (strategy === "overwrite") {
-        const importedIds = new Set(parsed.mindMaps.map((m) => m.id));
-        const allKeys = await db.mindMaps.toCollection().primaryKeys();
-        const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-        if (toDelete.length > 0) await db.mindMaps.bulkDelete(toDelete);
-      }
-    } else if (strategy === "overwrite") {
-      await db.mindMaps.clear();
-    }
-    await yieldUI();
-
-    if (parsed.knowledgeBaseArticles.length > 0) {
-      await db.knowledgeBaseArticles.bulkPut(parsed.knowledgeBaseArticles);
-      if (strategy === "overwrite") {
-        const importedIds = new Set(parsed.knowledgeBaseArticles.map((a) => a.id));
-        const allKeys = await db.knowledgeBaseArticles.toCollection().primaryKeys();
-        const toDelete = allKeys.filter((k) => !importedIds.has(k as string));
-        if (toDelete.length > 0) await db.knowledgeBaseArticles.bulkDelete(toDelete);
-      }
-    } else if (strategy === "overwrite") {
-      await db.knowledgeBaseArticles.clear();
-    }
-    await yieldUI();
-
-    // 4g. Metacognitive + planner satellite tables.
-    progress(85, "Uvoz logova i postavki…");
-    type IdbBulkTable = {
-      bulkPut: (items: unknown[]) => Promise<unknown>;
-      bulkAdd: (items: unknown[]) => Promise<unknown>;
-      clear: () => Promise<void>;
-      toCollection: () => { primaryKeys: () => Promise<unknown[]> };
-      bulkDelete: (keys: unknown[]) => Promise<void>;
-    };
-    const uuidTables = [
-      { key: "diary", table: "diary" },
-      { key: "mnemonics", table: "mnemonics" },
-      { key: "majorSystem", table: "majorSystem" },
-      { key: "settings", table: "settings" },
-    ] as const;
-    const autoIncTables = [
-      { key: "calibrationLog", table: "calibrationLog" },
-      { key: "latencyLog", table: "latencyLog" },
-      { key: "slippageLog", table: "slippageLog" },
-      { key: "activityLog", table: "activityLog" },
-      { key: "disciplineLog", table: "disciplineLog" },
-      { key: "pomodoroLog", table: "pomodoroLog" },
-      { key: "mnemonicTestLog", table: "mnemonicTestLog" },
-    ] as const;
-    const idbTables = [...uuidTables, ...autoIncTables];
-    const autoIncKeys = new Set(autoIncTables.map((t) => t.key));
-    const dbRecord = db as unknown as Record<string, IdbBulkTable>;
-
-    let i = 0;
-    for (const { key, table } of idbTables) {
-      const arr = (parsed as unknown as Record<string, unknown[]>)[key];
-      if (Array.isArray(arr) && arr.length > 0) {
-        if (strategy === "overwrite" && autoIncKeys.has(key as typeof autoIncTables[number]["key"])) {
-          await dbRecord[table].clear();
-          const stripped = arr.map((r) => {
-            const rec = (r ?? {}) as Record<string, unknown>;
-            const { id: _id, ...rest } = rec;
-            return rest;
-          });
-          await dbRecord[table].bulkAdd(stripped);
-        } else {
-          await dbRecord[table].bulkPut(arr);
-          if (strategy === "overwrite") {
-            const pkField = key === "settings" ? "key" : "id";
-            const importedIds = new Set(arr.map((r) => (r as Record<string, unknown>)[pkField]));
-            const allKeys = await dbRecord[table].toCollection().primaryKeys();
-            const toDelete = allKeys.filter((k) => !importedIds.has(k));
-            if (toDelete.length > 0) await dbRecord[table].bulkDelete(toDelete);
-          }
-        }
-      } else if (strategy === "overwrite") {
-        await dbRecord[table].clear();
-      }
-      i++;
-      progress(85 + Math.round((i / idbTables.length) * 10), `Logovi (${i}/${idbTables.length})…`);
-      await yieldUI();
-    }
+    await writeSatelliteTablesTx(parsed, strategy, progress);
   });
 
   // ── 5. Re-read final categories snapshot for AppContext ──
