@@ -1,62 +1,55 @@
 ## Cilj
 
-Razbiti `src/hooks/useCardActions.ts` (369 LOC, 16 `useState` poziva, B−) na tri fokusirana sub-hook-a + tanki orkestrator. **Bez API breaking change-a** — `useCardActions` zadržava identičan return shape, tako da `CardForm.tsx` i `EditPage.tsx` ostaju netaknuti.
+Kozmetičko čišćenje `applyImportAtomically` (270 LOC) ekstraktovanjem 4 helpera iz `db.transaction` body-ja. Bez promjene logike, transakcionih granica, ili spoljnog API-ja.
 
-## Nova struktura
+## Nova struktura (isti fajl)
 
 ```text
-src/hooks/card-actions/
-  useSectionEditor.ts     // cardType, question, flashAnswer, sections, cuttingIndex + section actions
-  useCardMetadata.ts      // categoryId/subcategoryId/chapterId + new* + show* + frequencyTag/sourceType
-                          //   + availableSubs, availableChapters, resolvedMeta, linkedGazetteInfo
-  useCardDraft.ts         // pendingDraft banner + restore/dismiss + draftKey + autosave wiring
-  validation.ts           // validate(), ValidationErrors, parseHtmlToParagraphs (čista util logika)
-src/hooks/useCardActions.ts  // orchestrator (~80 LOC): kompozicija + handleSubmit + return objekt
+src/lib/backup/import-transaction.ts
+  // existing helpers
+  isCategoryRecordArray, buildCategoryIdRemap, applyRemapToParsed, pruneOrphans
+  // NEW extracted helpers (private, defined above applyImportAtomically)
+  mergeCardsByStrategy(...)            // ── 1. Pre-merge cards
+  writeCategoriesTx(...)               // ── 4a + 4b. Categories + legacy subs map
+  writeCardsTx(...)                    // ── 4c. Cards bulkPut + overwrite prune
+  writeSatelliteTablesTx(...)          // ── 4f + 4g. Sources/MindMaps/KB + log tables
+  applyImportAtomically(ctx)           // slimmed orchestrator (~80 LOC)
 ```
 
-## Detalji po modulu
+## Detalji
 
-**`useSectionEditor`**
-- State: `cardType`, `question`, `flashAnswer`, `sections`, `cuttingIndex`, `validationErrors`, `isSaving`.
-- Actions: `addSection`, `removeSection`, `updateSection`, `moveSection`, `handleCut`.
-- Init iz `editCard` (essay/flash grananje kao danas).
-- Vraća sve setere + akcije + read-only state.
+**`mergeCardsByStrategy(importedCards, currentMap, strategy)`**
+- Vraća `{ merged, nextMap }`.
+- Sadrži postojeću `newer` / `overwrite` / default granu (linije 130-149).
 
-**`useCardMetadata`**
-- State: `categoryId`, `subcategoryId`, `chapterId`, `newCategory`, `showNewCat`, `newSubcategory`, `showNewSub`, `newChapter`, `showNewChapter`, `frequencyTag`, `sourceType`, `formWidth`, `linkedGazetteInfo`.
-- Derived: `availableSubs`, `availableChapters`, `resolvedMeta` (sve postojeće `useMemo` netaknute).
-- Effect: load `linkedGazetteInfo` iz `db.sources` kad postoji `editCard.sourceId`.
-- Init iz `editCard` + `categories[0]` fallback.
+**`writeCategoriesTx(parsed, strategy, freshCategories)`**
+- Pokriva 4a + 4b (linije 186-253) — radi unutar postojeće `rw` transakcije, prima `parsed` i `freshCategories`, mutira `parsed` (već je tako).
+- Vraća `void`.
 
-**`useCardDraft`**
-- Computa `draftKey` preko `buildDraftKey` (initialCategoryIdRef pattern zadržan).
-- Drži `pendingDraft`, `pendingDraftSavedAt`; one-shot `loadCardDraft` na mount.
-- `autosaveEnabled = pendingDraft === null`; poziva `useCardDraftAutosave(draftKey, snapshot, enabled)`.
-- Prima `draftSnapshot` kao argument (orkestrator ga sastavi iz drugih hookova).
-- Prima `applyDraft(draft)` callback koji editor + metadata hooks izlažu da bi `restoreDraft` mogao popuniti njihovo state.
-- Vraća: `pendingDraft`, `pendingDraftSavedAt`, `restoreDraft`, `dismissDraft`, `clearDraft`.
+**`writeCardsTx(merged, strategy)`**
+- Pokriva 4c (linije 256-263). bulkPut + overwrite orphan prune + `yieldUI`.
 
-**`validation.ts`**
-- Premjestiti čiste funkcije: `validate`, `parseHtmlToParagraphs`, tip `ValidationErrors`.
-- Re-eksport iz `useCardActions.ts` radi backwards compat (tipovi `SectionInput`, `CardType`, `FormWidth`, `ValidationErrors`).
+**`writeSatelliteTablesTx(parsed, strategy, progress)`**
+- Pokriva 4f + 4g (sources, mindMaps, KB, uuidTables, autoIncTables, linije 282-378).
+- Prima `progress` callback za "Uvoz izvora i mapa…" / "Logovi (i/N)…".
+- Sadrži `IdbBulkTable` tip i `uuidTables`/`autoIncTables` konstante (lokalno u fajlu, izvan funkcije).
 
-**`useCardActions` (orkestrator)**
-- Pozove `useSectionEditor`, `useCardMetadata`, pa `useCardDraft` (kome proslijedi snapshot + apply callback).
-- Drži samo `handleSubmit` (validacija → `onUpdate`/`onSave`/`onSaveFlash` → `clearDraft` → setIsSaving).
-- Vrati spread svih sub-hookova + handleSubmit, identičan oblik kao danas.
+**`applyImportAtomically` (slim)**
+- Ostaje: pre-merge poziv, pre-tx remap, legacy taxonomy resolve, otvaranje `db.transaction`, redoslijed poziva helpera, post-tx `idbLoadCategories`.
+- Review log (4d) i SR settings (4e) ostaju inline jer pišu u closure-vezane `srSettingsApplied`/`reviewLogApplied` varijable — extract bi zahtijevao return tuple, što povećava šum bez koristi.
 
-## Tipovi i back-compat
+## Garancije
 
-- `SectionInput`, `CardType`, `FormWidth` ostaju eksportovani iz `useCardActions.ts` (re-export).
-- Return shape neporomijenjen → `CardForm.tsx` koristi sve property-je nepromijenjeno.
-- `useCardDraftAutosave` API ostaje isti.
+- **Bez logičkih promjena**: helperi sadrže identičan kod, samo izdvojen.
+- **Transakcione granice nepromijenjene**: svi helperi se zovu unutar postojećeg `db.transaction("rw", tables, …)`.
+- **Bez API breaks**: `applyImportAtomically(ctx)` signature, return tip, i ponašanje su nepromijenjeni.
+- **Ekstraktovani helperi su `function` deklaracije iznad `applyImportAtomically`** (file-private, ne export).
 
 ## Verifikacija
 
-- `bunx vitest run src/test/card-draft-autosave.test.ts` — postojeći test mora proći.
-- TypeScript build (auto).
-- Smoke: open `/new`, otkucaj → reload → "Vrati nacrt" radi; edit existing card → save → no orphan draft.
+- `bunx vitest run src/test/backup-schema.test.ts`
+- TypeScript build (auto)
 
-## Procjena gradea
+## Procjena
 
-Cilj: B− → A−. Svaki sub-hook < 120 LOC, jasna SRP, orkestrator ~80 LOC bez state šuma.
+B → A−. Glavna funkcija: 270 LOC → ~80 LOC. Svaki helper ima jasnu odgovornost i ime koje se mapira na originalne sekcije 4a-4g.
