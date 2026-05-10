@@ -204,7 +204,7 @@ export default function ZettelkastenView() {
     eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId, article });
     setActiveId(article.id);
     // Open new article straight in edit mode
-    setDraft({ title: article.title, content: article.content, linkedSourceIds: article.linkedSourceIds ?? [], tags: article.tags ?? [] });
+    setDraft({ title: article.title, content: article.content, linkedSourceIds: article.linkedSourceIds ?? [], tags: article.tags ?? [], aliases: article.aliases ?? [] });
     setIsEditing(true);
   }, [categoryId]);
 
