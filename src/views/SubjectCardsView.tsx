@@ -1,10 +1,7 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowLeft, Layers, BookOpen, Settings, Search, X, Pencil, Sparkles, Zap, Brain,
-} from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { BookOpen, Search, X, Pencil, Sparkles, Zap } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -21,8 +18,9 @@ import StructureManagerDialog from "@/components/category/StructureManagerDialog
 
 import PassiveReader from "@/components/subject-cards/PassiveReader";
 import LocalSpeedReader from "@/components/subject-cards/LocalSpeedReader";
+import SubjectHeader from "@/views/subject-cards/SubjectHeader";
+import ManageModeToolbar from "@/views/subject-cards/ManageModeToolbar";
 import {
-  MANAGE_MODES,
   MANAGE_MODE,
   DEFAULT_MANAGE_MODE,
   isManageMode,
