@@ -38,11 +38,26 @@ function renderMarkdown(md: string, existingTitles: Set<string>, emptyTitles: Se
     if (inList) { out.push("</ul>"); inList = false; }
   };
 
-  const inline = (raw: string): string => {
-    let s = escapeHtml(raw);
-    s = s.replace(/\[\[([^\]]+)\]\]/g, (_m, t: string) => {
-      const title = t.trim();
-      const low = title.toLowerCase();
+  /**
+   * Substitute every `[[Target]]` / `[[Target|Display]]` occurrence with an
+   * anchor whose `id` carries the resolution TARGET (base64) — display half
+   * is rendered as visible text. Existing-title styling uses the same set
+   * (titles + aliases, normalized) so alias-only links still look "alive".
+   */
+  const renderWikiLinks = (rawHtml: string, plainSource: string): string => {
+    const matches = Array.from(iterateWikiLinks(plainSource));
+    if (matches.length === 0) return rawHtml;
+    // Re-scan the HTML-escaped output (escapeHtml keeps `[`, `]`, `|` intact),
+    // so positions in `rawHtml` match positions in `plainSource` after escaping
+    // — but escaping can shift indices for `<`, `>`, `&`. To keep things
+    // robust we do a direct replace on the escaped string using a copy of the
+    // regex, since the patterns we match (only ASCII brackets/pipe + inner
+    // text that escapeHtml may have transformed) survive escaping intact.
+    return rawHtml.replace(/\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]/g, (_m, t: string, d?: string) => {
+      const target = t.trim();
+      if (!target) return _m;
+      const display = (d?.trim()) || target;
+      const low = target.toLowerCase();
       const exists = existingTitles.has(low);
       const empty = exists && emptyTitles.has(low);
       let cls: string;
@@ -54,10 +69,15 @@ function renderMarkdown(md: string, existingTitles: Set<string>, emptyTitles: Se
         cls = "zettel-wikilink text-primary underline decoration-solid underline-offset-2 hover:bg-primary/10 px-0.5 rounded cursor-pointer";
       }
       // Use <a> + id (allowed by global sanitizer) instead of <button> + data-* (stripped).
-      // Title is base64-encoded (UTF-8 safe) into the id so it survives sanitization.
-      const encoded = `wl-${btoa(unescape(encodeURIComponent(title))).replace(/=+$/, "")}`;
-      return `<a id="${encoded}" class="${cls}">${escapeHtml(title)}</a>`;
+      // Target is base64-encoded (UTF-8 safe) into the id so it survives sanitization.
+      const encoded = `wl-${btoa(unescape(encodeURIComponent(target))).replace(/=+$/, "")}`;
+      return `<a id="${encoded}" class="${cls}">${escapeHtml(display)}</a>`;
     });
+  };
+
+  const inline = (raw: string): string => {
+    const escaped = escapeHtml(raw);
+    let s = renderWikiLinks(escaped, raw);
     s = s.replace(/`([^`]+)`/g, '<code class="px-1 py-0.5 rounded bg-muted text-[0.9em]">$1</code>');
     s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
     s = s.replace(/\*([^*]+)\*/g, "<em>$1</em>");
