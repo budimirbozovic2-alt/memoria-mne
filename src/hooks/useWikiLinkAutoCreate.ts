@@ -95,12 +95,16 @@ export function useWikiLinkAutoCreate({
     lastKeystrokeAtRef.current = now;
 
     // Cheap pre-check against in-memory set; bail before scheduling any timer
-    // when there is nothing new — the typical keystroke case.
-    const matches = Array.from(content.matchAll(WIKI_LINK_RE))
-      .map(m => m[1].trim())
-      .filter(Boolean);
+    // when there is nothing new — the typical keystroke case. Pipe-form
+    // matches (`[[T|D]]`) are excluded: those are deliberate references and
+    // must not produce placeholders for `D`.
+    const matches: string[] = [];
+    for (const m of iterateWikiLinks(content)) {
+      if (m.hasPipe) continue;
+      matches.push(m.target);
+    }
     const pendingAll = matches.filter(
-      t => !existingTitlesLowerRef.current.has(t.toLowerCase()),
+      t => !existingTitlesLowerRef.current.has(normalizeKey(t)),
     );
     if (pendingAll.length === 0) {
       // Nothing pending → reset overflow latch so a future burst notifies fresh.
