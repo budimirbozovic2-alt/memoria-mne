@@ -5,6 +5,7 @@ import {
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
+import { iterateWikiLinks, normalizeKey } from "@/lib/zettelkasten-wiki-link";
 
 /**
  * Auto-creates placeholder articles for new `[[Wiki Links]]` typed inside
