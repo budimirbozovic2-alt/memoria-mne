@@ -219,6 +219,7 @@ export default function ZettelkastenView() {
         content: target.content,
         linkedSourceIds: target.linkedSourceIds ?? [],
         tags: target.tags ?? [],
+        aliases: target.aliases ?? [],
       });
       setIsEditing(true);
     } else {
