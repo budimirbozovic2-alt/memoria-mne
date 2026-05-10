@@ -58,9 +58,17 @@ export function useWikiLinkAutoCreate({
   // re-subscribing.
   const existingTitlesLowerRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    existingTitlesLowerRef.current = new Set(
-      articles.map(a => a.title.trim().toLowerCase()),
-    );
+    // Union of titles + aliases — alias matches must NOT trigger placeholder
+    // creation, otherwise typing `[[krivičnog djela]]` would spawn a duplicate
+    // article alongside the canonical `Krivično djelo`.
+    const next = new Set<string>();
+    for (const a of articles) {
+      next.add(normalizeKey(a.title));
+      if (Array.isArray(a.aliases)) {
+        for (const alias of a.aliases) next.add(normalizeKey(alias));
+      }
+    }
+    existingTitlesLowerRef.current = next;
   }, [articles]);
 
   // Cadence + overflow-latch refs.
