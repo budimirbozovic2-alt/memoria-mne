@@ -1,6 +1,7 @@
 import { useMemo, Fragment } from "react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { FileText } from "lucide-react";
+import { iterateWikiLinks } from "@/lib/zettelkasten-wiki-link";
 import EmbeddedMindMap from "./EmbeddedMindMap";
 
 interface Props {
