@@ -154,11 +154,13 @@ export default function ZettelkastenView() {
     const fresh = await getArticle(activeId);
     if (!fresh) return null;
     const titleClean = draft.title.trim() || "Bez naslova";
+    const aliasesClean = normalizeAliasList(draft.aliases);
     const dirty =
       titleClean !== fresh.title ||
       draft.content !== fresh.content ||
       !sameStringSet(draft.linkedSourceIds, fresh.linkedSourceIds ?? []) ||
-      !sameStringSet(draft.tags, fresh.tags ?? []);
+      !sameStringSet(draft.tags, fresh.tags ?? []) ||
+      !sameStringSet(aliasesClean, fresh.aliases ?? []);
     if (!dirty) return fresh;
     const next: KnowledgeBaseArticle = {
       ...fresh,
@@ -166,6 +168,7 @@ export default function ZettelkastenView() {
       content: draft.content,
       linkedSourceIds: draft.linkedSourceIds,
       tags: draft.tags,
+      aliases: aliasesClean,
       updatedAt: Date.now(),
     };
     try {
