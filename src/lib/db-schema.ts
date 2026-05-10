@@ -165,6 +165,15 @@ export interface KnowledgeBaseArticle {
    * Always normalized: lowercase, trimmed, no `#` prefix, deduped.
    */
   tags?: string[];
+  /**
+   * Case-form synonyms (e.g. "krivičnog djela" for the article
+   * "Krivično djelo"). The backlink index treats each alias as a secondary
+   * key that resolves to the article's canonical title; the auto-link
+   * pipeline uses them to suppress duplicate placeholder creation.
+   * Always normalized: lowercase, trimmed, no wiki-link metachars, deduped.
+   * See `src/lib/zettelkasten-aliases.ts` for the normalization contract.
+   */
+  aliases?: string[];
   createdAt: number;
   updatedAt: number;
 }

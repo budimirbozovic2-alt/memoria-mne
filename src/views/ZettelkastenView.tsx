@@ -36,9 +36,12 @@ import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
 import SourceSidePanel from "@/components/zettelkasten/SourceSidePanel";
 import ZettelExplorerPanel from "@/components/zettelkasten/ZettelExplorerPanel";
 import ZettelTagEditor from "@/components/zettelkasten/ZettelTagEditor";
+import ZettelAliasEditor from "@/components/zettelkasten/ZettelAliasEditor";
 import MindMapPickerDialog from "@/components/zettelkasten/MindMapPickerDialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { backlinkIndex } from "@/lib/backlink-index";
+import { normalizeAliasList } from "@/lib/zettelkasten-aliases";
 
 interface Draft {
   title: string;
@@ -46,6 +49,8 @@ interface Draft {
   linkedSourceIds: string[];
   /** Always normalized; mirrors the article's persisted tag list. */
   tags: string[];
+  /** Always normalized; mirrors the article's persisted alias list. */
+  aliases: string[];
 }
 
 export default function ZettelkastenView() {
@@ -101,20 +106,33 @@ export default function ZettelkastenView() {
   // (and during any `articles` mutation that lands while editing, e.g. after
   // a wiki-link auto-create batch persists).
   const existingTitleSet = useMemo(
-    () => isEditing
-      ? new Set<string>()
-      : new Set(articles.map(a => a.title.trim().toLowerCase())),
+    () => {
+      if (isEditing) return new Set<string>();
+      const set = new Set<string>();
+      for (const a of articles) {
+        set.add(a.title.trim().toLowerCase());
+        if (Array.isArray(a.aliases)) {
+          for (const alias of a.aliases) set.add(alias.trim().toLowerCase());
+        }
+      }
+      return set;
+    },
     [articles, isEditing],
   );
 
   const emptyTitleSet = useMemo(
-    () => isEditing
-      ? new Set<string>()
-      : new Set(
-          articles
-            .filter(a => a.content.trim().length === 0)
-            .map(a => a.title.trim().toLowerCase()),
-        ),
+    () => {
+      if (isEditing) return new Set<string>();
+      const set = new Set<string>();
+      for (const a of articles) {
+        if (a.content.trim().length !== 0) continue;
+        set.add(a.title.trim().toLowerCase());
+        if (Array.isArray(a.aliases)) {
+          for (const alias of a.aliases) set.add(alias.trim().toLowerCase());
+        }
+      }
+      return set;
+    },
     [articles, isEditing],
   );
 
@@ -136,11 +154,13 @@ export default function ZettelkastenView() {
     const fresh = await getArticle(activeId);
     if (!fresh) return null;
     const titleClean = draft.title.trim() || "Bez naslova";
+    const aliasesClean = normalizeAliasList(draft.aliases);
     const dirty =
       titleClean !== fresh.title ||
       draft.content !== fresh.content ||
       !sameStringSet(draft.linkedSourceIds, fresh.linkedSourceIds ?? []) ||
-      !sameStringSet(draft.tags, fresh.tags ?? []);
+      !sameStringSet(draft.tags, fresh.tags ?? []) ||
+      !sameStringSet(aliasesClean, fresh.aliases ?? []);
     if (!dirty) return fresh;
     const next: KnowledgeBaseArticle = {
       ...fresh,
@@ -148,6 +168,7 @@ export default function ZettelkastenView() {
       content: draft.content,
       linkedSourceIds: draft.linkedSourceIds,
       tags: draft.tags,
+      aliases: aliasesClean,
       updatedAt: Date.now(),
     };
     try {
@@ -199,7 +220,7 @@ export default function ZettelkastenView() {
     eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId, article });
     setActiveId(article.id);
     // Open new article straight in edit mode
-    setDraft({ title: article.title, content: article.content, linkedSourceIds: article.linkedSourceIds ?? [], tags: article.tags ?? [] });
+    setDraft({ title: article.title, content: article.content, linkedSourceIds: article.linkedSourceIds ?? [], tags: article.tags ?? [], aliases: article.aliases ?? [] });
     setIsEditing(true);
   }, [categoryId]);
 
@@ -214,6 +235,7 @@ export default function ZettelkastenView() {
         content: target.content,
         linkedSourceIds: target.linkedSourceIds ?? [],
         tags: target.tags ?? [],
+        aliases: target.aliases ?? [],
       });
       setIsEditing(true);
     } else {
@@ -244,6 +266,7 @@ export default function ZettelkastenView() {
       content: activeArticle.content,
       linkedSourceIds: activeArticle.linkedSourceIds ?? [],
       tags: activeArticle.tags ?? [],
+      aliases: activeArticle.aliases ?? [],
     });
     setIsEditing(true);
   }, [activeArticle]);
@@ -291,7 +314,15 @@ export default function ZettelkastenView() {
     // Persist current draft before navigating away
     await flushRef.current();
 
-    // Coalesce concurrent clicks on the same title into a single transaction.
+    // Resolve aliases first: if target matches an existing article's alias
+    // (or canonical title), open it directly without spawning a placeholder.
+    const resolvedId = backlinkIndex.resolveTargetToArticleId(categoryId, trimmed);
+    if (resolvedId) {
+      handleOpen(resolvedId);
+      return;
+    }
+
+
     let pending = wikiLinkInFlightRef.current.get(key);
     if (!pending) {
       pending = (async (): Promise<string | null> => {
@@ -496,6 +527,14 @@ export default function ZettelkastenView() {
               <ZettelTagEditor
                 tags={draft.tags}
                 onChange={(tags) => setDraft({ ...draft, tags })}
+              />
+            )}
+
+            {/* Alias editor (edit only) — case-form synonyms for auto-link. */}
+            {isEditing && draft && (
+              <ZettelAliasEditor
+                aliases={draft.aliases}
+                onChange={(aliases) => setDraft({ ...draft, aliases })}
               />
             )}
 

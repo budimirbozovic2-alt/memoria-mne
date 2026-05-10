@@ -5,6 +5,7 @@ import {
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
+import { iterateWikiLinks, normalizeKey } from "@/lib/zettelkasten-wiki-link";
 
 /**
  * Auto-creates placeholder articles for new `[[Wiki Links]]` typed inside
@@ -29,7 +30,9 @@ import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
  * the still-unresolved tail can be drained even if the user paused typing.
  */
 const WIKI_LINK_BATCH_CAP = 50;
-const WIKI_LINK_RE = /\[\[([^\]]+)\]\]/g;
+// Pipe-form `[[Target|display]]` is intentionally NOT auto-created — it's
+// the author's explicit signal that `Target` already exists or will be
+// created by hand. Aliases of existing articles likewise suppress creation.
 
 interface UseWikiLinkAutoCreateParams {
   activeId: string | null;
@@ -55,9 +58,17 @@ export function useWikiLinkAutoCreate({
   // re-subscribing.
   const existingTitlesLowerRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    existingTitlesLowerRef.current = new Set(
-      articles.map(a => a.title.trim().toLowerCase()),
-    );
+    // Union of titles + aliases — alias matches must NOT trigger placeholder
+    // creation, otherwise typing `[[krivičnog djela]]` would spawn a duplicate
+    // article alongside the canonical `Krivično djelo`.
+    const next = new Set<string>();
+    for (const a of articles) {
+      next.add(normalizeKey(a.title));
+      if (Array.isArray(a.aliases)) {
+        for (const alias of a.aliases) next.add(normalizeKey(alias));
+      }
+    }
+    existingTitlesLowerRef.current = next;
   }, [articles]);
 
   // Cadence + overflow-latch refs.
@@ -84,12 +95,16 @@ export function useWikiLinkAutoCreate({
     lastKeystrokeAtRef.current = now;
 
     // Cheap pre-check against in-memory set; bail before scheduling any timer
-    // when there is nothing new — the typical keystroke case.
-    const matches = Array.from(content.matchAll(WIKI_LINK_RE))
-      .map(m => m[1].trim())
-      .filter(Boolean);
+    // when there is nothing new — the typical keystroke case. Pipe-form
+    // matches (`[[T|D]]`) are excluded: those are deliberate references and
+    // must not produce placeholders for `D`.
+    const matches: string[] = [];
+    for (const m of iterateWikiLinks(content)) {
+      if (m.hasPipe) continue;
+      matches.push(m.target);
+    }
     const pendingAll = matches.filter(
-      t => !existingTitlesLowerRef.current.has(t.toLowerCase()),
+      t => !existingTitlesLowerRef.current.has(normalizeKey(t)),
     );
     if (pendingAll.length === 0) {
       // Nothing pending → reset overflow latch so a future burst notifies fresh.

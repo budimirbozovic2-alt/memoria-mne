@@ -34,6 +34,7 @@
 import { useSyncExternalStore } from "react";
 import type { KnowledgeBaseArticle } from "./zettelkasten-storage";
 import { eventBus, EVENT_TYPES } from "./event-bus";
+import { iterateWikiLinks, normalizeKey } from "./zettelkasten-wiki-link";
 
 export interface BacklinkEntry {
   /** Source article that contains the link. */
@@ -47,19 +48,22 @@ export interface BacklinkEntry {
 interface SubjectState {
   byTarget: Map<string, Set<string>>;
   snippets: Map<string, string>; // key = `${sourceId}::${normTitle}`
-  articleLinks: Map<string, Set<string>>; // sourceId → set of normalized targets
+  articleLinks: Map<string, Set<string>>; // sourceId → set of normalized targets (canonical)
   titleById: Map<string, string>; // articleId → raw title (for snippet rendering)
+  /** Reverse map: any indexable key (alias or canonical title, normalized) → owning article id. */
+  keyToArticleId: Map<string, string>;
+  /** Per-article keys we contributed to keyToArticleId (so we can remove them on update/delete). */
+  articleKeys: Map<string, Set<string>>;
   /** Monotonic version per (subject, normTitle); useSyncExternalStore tracks this. */
   versionByTarget: Map<string, number>;
   /** Subscribers per normTitle for fine-grained re-renders. */
   subsByTarget: Map<string, Set<() => void>>;
 }
 
-const WIKI_RE = /\[\[([^\]]+)\]\]/g;
 const SNIPPET_PAD = 40;
 
 function norm(title: string): string {
-  return title.trim().toLowerCase();
+  return normalizeKey(title);
 }
 
 function snippetFor(content: string, idx: number, matchLen: number): string {
@@ -80,6 +84,8 @@ class BacklinkIndex {
         snippets: new Map(),
         articleLinks: new Map(),
         titleById: new Map(),
+        keyToArticleId: new Map(),
+        articleKeys: new Map(),
         versionByTarget: new Map(),
         subsByTarget: new Map(),
       };
@@ -109,6 +115,9 @@ class BacklinkIndex {
 
   /**
    * Replace the entire index for `subjectId` from a fresh article list.
+   * Two passes: (1) build the keyToArticleId map (titles + aliases) so that
+   * (2) the link-scanning pass can resolve `[[krivičnog djela]]` against
+   * `Krivično djelo`'s aliases regardless of insertion order.
    * Cheap enough to call on subject mount (single O(N × avgLinks) pass).
    */
   rebuildFromAll(subjectId: string, articles: readonly KnowledgeBaseArticle[]): void {
@@ -117,8 +126,15 @@ class BacklinkIndex {
     s.snippets.clear();
     s.articleLinks.clear();
     s.titleById.clear();
+    s.keyToArticleId.clear();
+    s.articleKeys.clear();
+    // Pass 1: build identity map (title + aliases → article id).
     for (const a of articles) {
-      this.indexArticle(s, a);
+      this.registerKeys(s, a);
+    }
+    // Pass 2: scan content and bucket links under canonical targets.
+    for (const a of articles) {
+      this.indexArticleLinks(s, a);
     }
     // Bump every version we just touched and notify.
     for (const [t, subs] of s.subsByTarget) {
@@ -127,30 +143,87 @@ class BacklinkIndex {
     }
   }
 
-  private indexArticle(s: SubjectState, a: KnowledgeBaseArticle): void {
+  /** Register an article's title + aliases in the reverse identity map. */
+  private registerKeys(s: SubjectState, a: KnowledgeBaseArticle): void {
+    const keys = new Set<string>();
+    const titleKey = norm(a.title);
+    if (titleKey) {
+      s.keyToArticleId.set(titleKey, a.id);
+      keys.add(titleKey);
+    }
+    if (Array.isArray(a.aliases)) {
+      for (const alias of a.aliases) {
+        const k = norm(alias);
+        if (!k || k === titleKey) continue;
+        // Title wins over alias on collision; first-registered alias wins
+        // between articles. Either way we don't overwrite an existing slot.
+        if (!s.keyToArticleId.has(k)) {
+          s.keyToArticleId.set(k, a.id);
+          keys.add(k);
+        }
+      }
+    }
+    if (keys.size > 0) s.articleKeys.set(a.id, keys);
+  }
+
+  /** Drop this article's contribution to the reverse identity map. */
+  private unregisterKeys(s: SubjectState, articleId: string): void {
+    const keys = s.articleKeys.get(articleId);
+    if (!keys) return;
+    for (const k of keys) {
+      if (s.keyToArticleId.get(k) === articleId) {
+        s.keyToArticleId.delete(k);
+      }
+    }
+    s.articleKeys.delete(articleId);
+  }
+
+  /**
+   * Scan one article's content for wiki-links and bucket each under the
+   * CANONICAL normalized title of the resolved article. Aliases collapse to
+   * the same bucket so `BacklinksPanel` groups everything under one source.
+   * Unresolved targets fall back to their normalized form (existing behavior
+   * for placeholder/orange links).
+   */
+  private indexArticleLinks(s: SubjectState, a: KnowledgeBaseArticle): void {
     s.titleById.set(a.id, a.title);
     const links = new Set<string>();
-    WIKI_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
     const seenInThis = new Set<string>();
-    while ((m = WIKI_RE.exec(a.content)) !== null) {
-      const target = norm(m[1]);
-      if (!target || target === norm(a.title)) continue; // skip self-refs
-      if (seenInThis.has(target)) continue;
-      seenInThis.add(target);
-      links.add(target);
-      let bucket = s.byTarget.get(target);
+    const selfTitle = norm(a.title);
+    for (const m of iterateWikiLinks(a.content)) {
+      const targetKey = norm(m.target);
+      if (!targetKey) continue;
+      // Resolve aliases → canonical title key.
+      const resolvedId = s.keyToArticleId.get(targetKey);
+      const canonicalKey = resolvedId
+        ? norm(s.titleById.get(resolvedId) ?? m.target)
+        : targetKey;
+      if (canonicalKey === selfTitle) continue; // skip self-refs
+      if (seenInThis.has(canonicalKey)) continue;
+      seenInThis.add(canonicalKey);
+      links.add(canonicalKey);
+      let bucket = s.byTarget.get(canonicalKey);
       if (!bucket) {
         bucket = new Set();
-        s.byTarget.set(target, bucket);
+        s.byTarget.set(canonicalKey, bucket);
       }
       bucket.add(a.id);
-      s.snippets.set(`${a.id}::${target}`, snippetFor(a.content, m.index, m[0].length));
+      s.snippets.set(`${a.id}::${canonicalKey}`, snippetFor(a.content, m.index, m.raw.length));
     }
     if (links.size > 0) s.articleLinks.set(a.id, links);
   }
 
-  /** Incremental insert/update of a single article. O(linksInArticle). */
+  /**
+   * Incremental insert/update of a single article. O(linksInArticle).
+   *
+   * NOTE on alias changes: this updates THIS article's contribution to the
+   * keyToArticleId map, plus its own outgoing links. It does NOT re-scan
+   * other articles' content, so a freshly-added alias on article X won't
+   * retroactively resolve `[[that-alias]]` links sitting in unrelated
+   * articles until those are themselves saved (or until the next
+   * `rebuildFromAll`). Acceptable trade-off — full index rebuilds happen on
+   * subject (re)mount and on Restore.
+   */
   upsertArticle(subjectId: string, article: KnowledgeBaseArticle): void {
     const s = this.getOrCreate(subjectId);
     const touched = new Set<string>();
@@ -165,8 +238,11 @@ class BacklinkIndex {
       }
       s.articleLinks.delete(article.id);
     }
-    // Re-index with the new content.
-    this.indexArticle(s, article);
+    // Refresh identity-map keys (title + aliases) for this article.
+    this.unregisterKeys(s, article.id);
+    this.registerKeys(s, article);
+    // Re-scan with the new content + (possibly) new identity map.
+    this.indexArticleLinks(s, article);
     const next = s.articleLinks.get(article.id);
     if (next) for (const t of next) touched.add(t);
     // Rename: subscribers to the *old* title under which this article was
@@ -198,6 +274,7 @@ class BacklinkIndex {
     const prevTitle = s.titleById.get(articleId);
     if (prevTitle) touched.add(norm(prevTitle));
     s.titleById.delete(articleId);
+    this.unregisterKeys(s, articleId);
     this.bumpAndNotify(s, touched);
   }
 
@@ -279,6 +356,18 @@ class BacklinkIndex {
     const s = this.subjects.get(subjectId);
     if (!s) return 0;
     return s.versionByTarget.get(norm(targetTitle)) ?? 0;
+  }
+
+  /**
+   * Resolve a wiki-link target (raw — may be an alias or grammatical case)
+   * to the owning article id. Returns null when no article matches either
+   * by title or by alias. Used by `handleWikiLink` to redirect alias clicks
+   * to the canonical article without spawning a duplicate placeholder.
+   */
+  resolveTargetToArticleId(subjectId: string, target: string): string | null {
+    const s = this.subjects.get(subjectId);
+    if (!s) return null;
+    return s.keyToArticleId.get(norm(target)) ?? null;
   }
 }
 
