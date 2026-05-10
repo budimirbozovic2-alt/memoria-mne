@@ -43,15 +43,11 @@ function renderMarkdown(md: string, existingTitles: Set<string>, emptyTitles: Se
    * is rendered as visible text. Existing-title styling uses the same set
    * (titles + aliases, normalized) so alias-only links still look "alive".
    */
-  const renderWikiLinks = (rawHtml: string, plainSource: string): string => {
-    const matches = Array.from(iterateWikiLinks(plainSource));
-    if (matches.length === 0) return rawHtml;
-    // Re-scan the HTML-escaped output (escapeHtml keeps `[`, `]`, `|` intact),
-    // so positions in `rawHtml` match positions in `plainSource` after escaping
-    // — but escaping can shift indices for `<`, `>`, `&`. To keep things
-    // robust we do a direct replace on the escaped string using a copy of the
-    // regex, since the patterns we match (only ASCII brackets/pipe + inner
-    // text that escapeHtml may have transformed) survive escaping intact.
+  const renderWikiLinks = (rawHtml: string): string => {
+    // Re-scan the HTML-escaped output. The wiki-link characters (`[`, `]`,
+    // `|`) survive `escapeHtml` unchanged, so the same regex matches the
+    // escaped string. Inner display text may have been escaped (e.g. `&`),
+    // which is exactly what we want for the rendered anchor body.
     return rawHtml.replace(/\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]/g, (_m, t: string, d?: string) => {
       const target = t.trim();
       if (!target) return _m;
