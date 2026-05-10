@@ -106,20 +106,33 @@ export default function ZettelkastenView() {
   // (and during any `articles` mutation that lands while editing, e.g. after
   // a wiki-link auto-create batch persists).
   const existingTitleSet = useMemo(
-    () => isEditing
-      ? new Set<string>()
-      : new Set(articles.map(a => a.title.trim().toLowerCase())),
+    () => {
+      if (isEditing) return new Set<string>();
+      const set = new Set<string>();
+      for (const a of articles) {
+        set.add(a.title.trim().toLowerCase());
+        if (Array.isArray(a.aliases)) {
+          for (const alias of a.aliases) set.add(alias.trim().toLowerCase());
+        }
+      }
+      return set;
+    },
     [articles, isEditing],
   );
 
   const emptyTitleSet = useMemo(
-    () => isEditing
-      ? new Set<string>()
-      : new Set(
-          articles
-            .filter(a => a.content.trim().length === 0)
-            .map(a => a.title.trim().toLowerCase()),
-        ),
+    () => {
+      if (isEditing) return new Set<string>();
+      const set = new Set<string>();
+      for (const a of articles) {
+        if (a.content.trim().length !== 0) continue;
+        set.add(a.title.trim().toLowerCase());
+        if (Array.isArray(a.aliases)) {
+          for (const alias of a.aliases) set.add(alias.trim().toLowerCase());
+        }
+      }
+      return set;
+    },
     [articles, isEditing],
   );
 
