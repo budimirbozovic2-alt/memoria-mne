@@ -115,6 +115,9 @@ class BacklinkIndex {
 
   /**
    * Replace the entire index for `subjectId` from a fresh article list.
+   * Two passes: (1) build the keyToArticleId map (titles + aliases) so that
+   * (2) the link-scanning pass can resolve `[[krivičnog djela]]` against
+   * `Krivično djelo`'s aliases regardless of insertion order.
    * Cheap enough to call on subject mount (single O(N × avgLinks) pass).
    */
   rebuildFromAll(subjectId: string, articles: readonly KnowledgeBaseArticle[]): void {
@@ -123,8 +126,15 @@ class BacklinkIndex {
     s.snippets.clear();
     s.articleLinks.clear();
     s.titleById.clear();
+    s.keyToArticleId.clear();
+    s.articleKeys.clear();
+    // Pass 1: build identity map (title + aliases → article id).
     for (const a of articles) {
-      this.indexArticle(s, a);
+      this.registerKeys(s, a);
+    }
+    // Pass 2: scan content and bucket links under canonical targets.
+    for (const a of articles) {
+      this.indexArticleLinks(s, a);
     }
     // Bump every version we just touched and notify.
     for (const [t, subs] of s.subsByTarget) {
@@ -133,25 +143,72 @@ class BacklinkIndex {
     }
   }
 
-  private indexArticle(s: SubjectState, a: KnowledgeBaseArticle): void {
+  /** Register an article's title + aliases in the reverse identity map. */
+  private registerKeys(s: SubjectState, a: KnowledgeBaseArticle): void {
+    const keys = new Set<string>();
+    const titleKey = norm(a.title);
+    if (titleKey) {
+      s.keyToArticleId.set(titleKey, a.id);
+      keys.add(titleKey);
+    }
+    if (Array.isArray(a.aliases)) {
+      for (const alias of a.aliases) {
+        const k = norm(alias);
+        if (!k || k === titleKey) continue;
+        // Title wins over alias on collision; first-registered alias wins
+        // between articles. Either way we don't overwrite an existing slot.
+        if (!s.keyToArticleId.has(k)) {
+          s.keyToArticleId.set(k, a.id);
+          keys.add(k);
+        }
+      }
+    }
+    if (keys.size > 0) s.articleKeys.set(a.id, keys);
+  }
+
+  /** Drop this article's contribution to the reverse identity map. */
+  private unregisterKeys(s: SubjectState, articleId: string): void {
+    const keys = s.articleKeys.get(articleId);
+    if (!keys) return;
+    for (const k of keys) {
+      if (s.keyToArticleId.get(k) === articleId) {
+        s.keyToArticleId.delete(k);
+      }
+    }
+    s.articleKeys.delete(articleId);
+  }
+
+  /**
+   * Scan one article's content for wiki-links and bucket each under the
+   * CANONICAL normalized title of the resolved article. Aliases collapse to
+   * the same bucket so `BacklinksPanel` groups everything under one source.
+   * Unresolved targets fall back to their normalized form (existing behavior
+   * for placeholder/orange links).
+   */
+  private indexArticleLinks(s: SubjectState, a: KnowledgeBaseArticle): void {
     s.titleById.set(a.id, a.title);
     const links = new Set<string>();
-    WIKI_RE.lastIndex = 0;
-    let m: RegExpExecArray | null;
     const seenInThis = new Set<string>();
-    while ((m = WIKI_RE.exec(a.content)) !== null) {
-      const target = norm(m[1]);
-      if (!target || target === norm(a.title)) continue; // skip self-refs
-      if (seenInThis.has(target)) continue;
-      seenInThis.add(target);
-      links.add(target);
-      let bucket = s.byTarget.get(target);
+    const selfTitle = norm(a.title);
+    for (const m of iterateWikiLinks(a.content)) {
+      const targetKey = norm(m.target);
+      if (!targetKey) continue;
+      // Resolve aliases → canonical title key.
+      const resolvedId = s.keyToArticleId.get(targetKey);
+      const canonicalKey = resolvedId
+        ? norm(s.titleById.get(resolvedId) ?? m.target)
+        : targetKey;
+      if (canonicalKey === selfTitle) continue; // skip self-refs
+      if (seenInThis.has(canonicalKey)) continue;
+      seenInThis.add(canonicalKey);
+      links.add(canonicalKey);
+      let bucket = s.byTarget.get(canonicalKey);
       if (!bucket) {
         bucket = new Set();
-        s.byTarget.set(target, bucket);
+        s.byTarget.set(canonicalKey, bucket);
       }
       bucket.add(a.id);
-      s.snippets.set(`${a.id}::${target}`, snippetFor(a.content, m.index, m[0].length));
+      s.snippets.set(`${a.id}::${canonicalKey}`, snippetFor(a.content, m.index, m.raw.length));
     }
     if (links.size > 0) s.articleLinks.set(a.id, links);
   }
