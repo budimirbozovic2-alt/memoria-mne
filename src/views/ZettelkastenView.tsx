@@ -250,6 +250,7 @@ export default function ZettelkastenView() {
       content: activeArticle.content,
       linkedSourceIds: activeArticle.linkedSourceIds ?? [],
       tags: activeArticle.tags ?? [],
+      aliases: activeArticle.aliases ?? [],
     });
     setIsEditing(true);
   }, [activeArticle]);
