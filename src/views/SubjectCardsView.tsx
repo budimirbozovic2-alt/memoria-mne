@@ -1,10 +1,7 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowLeft, Layers, BookOpen, Settings, Search, X, Pencil, Sparkles, Zap, Brain,
-} from "lucide-react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { BookOpen, Search, X, Pencil, Sparkles, Zap } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -21,8 +18,9 @@ import StructureManagerDialog from "@/components/category/StructureManagerDialog
 
 import PassiveReader from "@/components/subject-cards/PassiveReader";
 import LocalSpeedReader from "@/components/subject-cards/LocalSpeedReader";
+import SubjectHeader from "@/views/subject-cards/SubjectHeader";
+import ManageModeToolbar from "@/views/subject-cards/ManageModeToolbar";
 import {
-  MANAGE_MODES,
   MANAGE_MODE,
   DEFAULT_MANAGE_MODE,
   isManageMode,
@@ -157,61 +155,27 @@ export default function SubjectCardsView() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link
-          to={`/subject/${categoryId}`}
-          className="p-2 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-          aria-label="Nazad na predmet"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <Layers className="h-5 w-5 text-primary shrink-0" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-bold text-foreground truncate">{category.name}</h1>
-              <Badge variant="secondary" className="text-[10px] h-5 px-1.5 gap-1" title="Esejska pitanja">
-                <Pencil className="h-3 w-3" /> Esej: {essayCount}
-              </Badge>
-              <Badge variant="secondary" className="text-[10px] h-5 px-1.5 gap-1" title="Blic pitanja">
-                <Sparkles className="h-3 w-3" /> Blic: {flashCount}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Kartice — uređivanje, struktura, pasivno i brzo čitanje
-            </p>
-          </div>
-        </div>
-        {tab === "manage" && (
-          <CardCreateMenu
-            size="icon"
-            categoryId={categoryId!}
-            allCategoryNames={allCategoryNames}
-            addCard={addCard}
-            addFlashCard={addFlashCard}
-            bulkAddFlashCards={bulkAddFlashCards}
-            importEssays={importCards}
-          />
-        )}
-        <Button
-          asChild
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
-          title="Memorizacija"
-          aria-label="Memorizacija"
-        >
-          <Link to={`/subject/${categoryId}/mnemonics`}>
-            <Brain className="h-4 w-4" />
-          </Link>
-        </Button>
-        {(tab === "read" || tab === "speed") && (
-          <Button variant="outline" size="sm" onClick={() => setTab("manage")} className="gap-1.5 h-8 text-xs">
-            <Pencil className="h-3.5 w-3.5" /> Nazad na uređivanje
-          </Button>
-        )}
-      </div>
+      <SubjectHeader
+        categoryId={categoryId!}
+        categoryName={category.name}
+        essayCount={essayCount}
+        flashCount={flashCount}
+        tab={tab}
+        onBackToManage={() => setTab("manage")}
+        createMenuSlot={
+          tab === "manage" ? (
+            <CardCreateMenu
+              size="icon"
+              categoryId={categoryId!}
+              allCategoryNames={allCategoryNames}
+              addCard={addCard}
+              addFlashCard={addFlashCard}
+              bulkAddFlashCards={bulkAddFlashCards}
+              importEssays={importCards}
+            />
+          ) : null
+        }
+      />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabValue)} className="w-full space-y-4">
 
@@ -262,45 +226,11 @@ export default function SubjectCardsView() {
         </div>
 
         <TabsContent value="manage" className="pt-2 space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="inline-flex rounded-lg border bg-card p-0.5">
-              {MANAGE_MODES.map((mode) => {
-                const Icon = mode.icon;
-                const active = manageMode === mode.id;
-                return (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => setManageMode(mode.id)}
-                    title={mode.tooltip}
-                    aria-label={mode.tooltip}
-                    aria-pressed={active}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      active
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {mode.label}
-                    <span className="opacity-60">({mode.shortTag})</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {manageMode === MANAGE_MODE.Structure && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8 text-xs"
-                onClick={() => setStructureOpen(true)}
-              >
-                <Settings className="h-3.5 w-3.5" />
-                Uredi potkategorije i glave
-              </Button>
-            )}
-          </div>
+          <ManageModeToolbar
+            manageMode={manageMode}
+            onChangeMode={setManageMode}
+            onOpenStructure={() => setStructureOpen(true)}
+          />
 
           {manageMode === MANAGE_MODE.Edit ? (
             <>

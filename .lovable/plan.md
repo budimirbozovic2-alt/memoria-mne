@@ -1,50 +1,59 @@
 ## Cilj
 
-Razbiti monolitnu IIFE u `src/hooks/useCardBootstrap.ts` (~270 LOC) na jasno imenovane faze. Bez promjene ponašanja, redoslijeda, timeout-a, splash UI poruka, ni javnog API-ja hook-a.
+Kozmetičko čišćenje `src/views/SubjectCardsView.tsx` (~395 LOC) ekstrakcijom dva čisto prezentaciona JSX bloka u zasebne "dumb" komponente. **Nikakva poslovna logika, hook-ovi, state ili efekti se ne diraju** — samo se JSX preseljava i prosljeđuju props-ovi.
 
-## Nova struktura
+## Nove komponente
 
-Novi folder `src/hooks/card-bootstrap/` sa file-private fazama:
+### 1. `src/views/subject-cards/SubjectHeader.tsx` (~70 LOC)
 
-```text
-src/hooks/card-bootstrap/
-  splash.ts              // splashProgress, showSplashError, cleanupSplash, notifyReady
-  withTimeout.ts         // postojeći helper iznesen iz useCardBootstrap
-  bootDb.ts              // ensureDbOpen + getDbErrorState; vraća { ok, errored }
-  runMigrations.ts       // migrateFromLocalStorage + mnemonics + healCardTaxonomy
-  loadInitialData.ts     // initCaches + paralelno idbLoad* + frequency tag migracija
-  normalizeCategories.ts // legacy string→SubcategoryNode, fallback nodes, phantom prune, persist
-src/hooks/useCardBootstrap.ts  // slim orchestrator (~70 LOC)
+Preuzima cijeli `<div className="flex items-center gap-3">` blok — od `<Link>` (Nazad) do desnog "Nazad na uređivanje" dugmeta.
+
+**Props (čisto podaci + callback-ovi, bez konteksta):**
+```ts
+interface SubjectHeaderProps {
+  categoryId: string;
+  categoryName: string;
+  essayCount: number;
+  flashCount: number;
+  tab: "manage" | "read" | "speed";
+  onBackToManage: () => void;
+  // Slot za "Dodaj" dugme — render-prop da SubjectCardsView zadrži CardCreateMenu
+  // sa svim svojim akcijama netaknutim:
+  createMenuSlot?: React.ReactNode;
+}
 ```
 
-## Detalji faza
+`CardCreateMenu` se renderuje u parent-u i prosljeđuje kao `createMenuSlot` (jer ima 6+ akcija/callback-ova vezanih za context — nema smisla pumpati ih kroz props).
 
-**`splash.ts`** — sve `document.getElementById("splash-*")` DOM operacije (progress bar, status, error, cleanup sa fade, `electronAPI.notifyReady`). Čisto presentational.
+### 2. `src/views/subject-cards/ManageModeToolbar.tsx` (~45 LOC)
 
-**`bootDb({ panicSetReady })`** — poziva `ensureDbOpen(6000)`, `markBootStep`, `scheduleLogPrune`. Vraća `{ ok: boolean }`. Ako pukne, splash poruka i `showSplashError` se postavljaju ovdje.
+Preuzima `<div className="flex items-center justify-between gap-2 flex-wrap">` blok unutar `TabsContent value="manage"` — segmentirani prekidač Edit↔Structure + dugme "Uredi potkategorije i glave".
 
-**`runMigrations()`** — tri postojeća `withTimeout` poziva (LS migration, mnemonics, taxonomy heal) + `checkInterruptedFlush`. Vraća `void`.
+**Props:**
+```ts
+interface ManageModeToolbarProps {
+  manageMode: ManageMode;
+  onChangeMode: (m: ManageMode) => void;
+  onOpenStructure: () => void;
+}
+```
 
-**`loadInitialData()`** — `initCaches` (Promise.all 3 init-a) + paralelni `idbLoad*` blok + frequency tag migracija + splashProgress(60). Vraća `{ cards, catRecords, log, settings }`.
+`MANAGE_MODES` i `MANAGE_MODE` ostaju import iz postojećeg `manageModes.ts`.
 
-**`normalizeCategories({ cards, catRecords })`** — sva logika gradnje `cardsByCat` indeksa, legacy `string[]` → `SubcategoryNode[]` migracija sa `stableLegacyId`, fallback nodes za orphan kartice, phantom UUID prune, fire-and-forget IDB persist. Vraća `{ finalRecords }`.
+## SubjectCardsView nakon refaktora
 
-**`useCardBootstrap` (slim)** — drži `useState(ready)`, panic timer, te `useEffect` koji sekvencijalno zove faze i na kraju setuje state (cardMapRef, setCardMapState, bumpMapVersion, setCategoryRecordsState, setReviewLogState, setSrSettingsState) + `splashProgress(100)` + `finally` blok (setReady, clearTimeout, splash cleanup, notifyReady).
+- Sve `useState`, `useMemo`, `useCallback`, `useEditReturn`, context hook-ovi ostaju **identično** gdje su sada.
+- Render se skraćuje: header blok → `<SubjectHeader ... createMenuSlot={tab === "manage" ? <CardCreateMenu .../> : null} />`.
+- Manage toolbar → `<ManageModeToolbar manageMode={manageMode} onChangeMode={setManageMode} onOpenStructure={() => setStructureOpen(true)} />`.
+- Procijenjeno smanjenje: ~395 → ~270 LOC u glavnom fajlu.
 
 ## Garancije
 
-- Identičan redoslijed `markBootStep` poziva i splash progress tačaka (5/10/15/25/60/85/100).
-- Iste `withTimeout` vrijednosti i fallback vrijednosti.
-- Iste DEV `console.log` poruke.
-- Setteri se zovu tačno jednom, na kraju, kao i sad.
-- Panic timer (8s) i `finally` blok ostaju u hook-u (jer trebaju `setReady`).
-- Eksterni API (`useCardBootstrap(setters)` → `{ ready }`) nepromijenjen.
-
-## Verifikacija
-
-- TypeScript build (auto).
-- Ručna provjera boot-a u preview-u: splash prolazi kroz iste tačke; nema duplog mount-a (`initialLoadDone.current` ostaje).
+- Identičan DOM i klase (copy-paste JSX-a, samo zamjena lokalnih varijabli props-ovima).
+- Identično ponašanje tab-ova, edit-return stash-a, structure dialoga.
+- Bez izmjena u `AppContext`-u, hook-ovima ili `manageModes.ts`.
+- TypeScript build kao verifikacija.
 
 ## Procjena
 
-B → A−. Glavni fajl: ~270 LOC → ~70 LOC. Svaka faza ima jednu odgovornost i može se zasebno čitati/testirati.
+B− → A− (čisto čitljivost). Hook-ovi i orkestracija ostaju u `SubjectCardsView`, prezentacija se izvlači.
