@@ -36,9 +36,12 @@ import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
 import SourceSidePanel from "@/components/zettelkasten/SourceSidePanel";
 import ZettelExplorerPanel from "@/components/zettelkasten/ZettelExplorerPanel";
 import ZettelTagEditor from "@/components/zettelkasten/ZettelTagEditor";
+import ZettelAliasEditor from "@/components/zettelkasten/ZettelAliasEditor";
 import MindMapPickerDialog from "@/components/zettelkasten/MindMapPickerDialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import { backlinkIndex } from "@/lib/backlink-index";
+import { normalizeAliasList } from "@/lib/zettelkasten-aliases";
 
 interface Draft {
   title: string;
@@ -46,6 +49,8 @@ interface Draft {
   linkedSourceIds: string[];
   /** Always normalized; mirrors the article's persisted tag list. */
   tags: string[];
+  /** Always normalized; mirrors the article's persisted alias list. */
+  aliases: string[];
 }
 
 export default function ZettelkastenView() {
