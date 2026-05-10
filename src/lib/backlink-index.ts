@@ -357,6 +357,18 @@ class BacklinkIndex {
     if (!s) return 0;
     return s.versionByTarget.get(norm(targetTitle)) ?? 0;
   }
+
+  /**
+   * Resolve a wiki-link target (raw — may be an alias or grammatical case)
+   * to the owning article id. Returns null when no article matches either
+   * by title or by alias. Used by `handleWikiLink` to redirect alias clicks
+   * to the canonical article without spawning a duplicate placeholder.
+   */
+  resolveTargetToArticleId(subjectId: string, target: string): string | null {
+    const s = this.subjects.get(subjectId);
+    if (!s) return null;
+    return s.keyToArticleId.get(norm(target)) ?? null;
+  }
 }
 
 export const backlinkIndex = new BacklinkIndex();
