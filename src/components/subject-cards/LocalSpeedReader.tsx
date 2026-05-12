@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useMemo } from "react";
 import { shouldIgnoreGlobalKey } from "@/lib/global-overlay-state";
 import { useGlobalHotkey } from "@/hooks/useGlobalHotkey";
 import {
@@ -16,13 +16,10 @@ import {
   type Card, SectionState, getCardRetrievability,
 } from "@/lib/spaced-repetition";
 import type { SubcategoryNode } from "@/lib/db";
-import {
-  buildSegments, getActiveSegment,
-  type Segment, type WordEntry,
-  cleanForTTS,
-} from "@/components/speed-reader/speed-reader-constants";
 import SpeedReaderControls from "@/components/speed-reader/SpeedReaderControls";
-import { loadTTSSettings, saveTTSSettings, type TTSSettings } from "@/lib/tts";
+import { retentionColor } from "@/components/speed-reader/retention-color";
+import { useSpeedReaderSelection } from "@/hooks/speed-reader/useSpeedReaderSelection";
+import { useSpeedReaderEngine } from "@/hooks/speed-reader/useSpeedReaderEngine";
 
 interface Props {
   cards: Card[];
@@ -32,342 +29,56 @@ interface Props {
   onInitialConsumed?: () => void;
 }
 
-type TypeFilter = "all" | "essay" | "flash";
-
-const FILTER_KEY = "speed-reader-filters:";
-
-interface PersistedFilters {
-  subFilter: string;
-  chapterFilter: string;
-  typeFilter: TypeFilter;
+interface CardStats {
+  reads: number;
+  lapses: number;
+  avgStability: number;
+  retention: number;
+  allNew: boolean;
 }
 
-function loadFilters(categoryId: string): PersistedFilters {
-  try {
-    const raw = localStorage.getItem(FILTER_KEY + categoryId);
-    if (!raw) return { subFilter: "all", chapterFilter: "all", typeFilter: "all" };
-    const p = JSON.parse(raw) as Partial<PersistedFilters>;
-    const tf = p.typeFilter;
-    return {
-      subFilter: typeof p.subFilter === "string" ? p.subFilter : "all",
-      chapterFilter: typeof p.chapterFilter === "string" ? p.chapterFilter : "all",
-      typeFilter: tf === "essay" || tf === "flash" ? tf : "all",
-    };
-  } catch {
-    return { subFilter: "all", chapterFilter: "all", typeFilter: "all" };
-  }
-}
-
-function retentionColor(pct: number): string {
-  if (pct >= 80) return "text-success";
-  if (pct >= 50) return "text-warning";
-  return "text-destructive";
+function computeStats(card: Card | undefined): CardStats | null {
+  if (!card) return null;
+  const sections = card.sections ?? [];
+  const reviewed = sections.filter(s => s.state !== SectionState.New);
+  const allNew = sections.length > 0 && reviewed.length === 0;
+  const lapses = sections.reduce((sum, s) => sum + (s.lapses ?? 0), 0);
+  const avgStability = reviewed.length === 0
+    ? 0
+    : reviewed.reduce((sum, s) => sum + (s.stability ?? 0), 0) / reviewed.length;
+  const retention = getCardRetrievability(card);
+  return { reads: card.readCount ?? 0, lapses, avgStability, retention, allNew };
 }
 
 export default function LocalSpeedReader({
   cards, subcategoryNodes, categoryId, initialCardId, onInitialConsumed,
 }: Props) {
-  // ─── Filters ─────────────────────────────
-  const [subFilter, setSubFilter] = useState<string>(() => loadFilters(categoryId).subFilter);
-  const [chapterFilter, setChapterFilter] = useState<string>(() => loadFilters(categoryId).chapterFilter);
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>(() => loadFilters(categoryId).typeFilter);
-  const [index, setIndex] = useState(0);
-
-  // Validate filters against taxonomy
-  useEffect(() => {
-    if (subFilter !== "all" && !subcategoryNodes.some(s => s.id === subFilter)) {
-      setSubFilter("all");
-      setChapterFilter("all");
-      return;
-    }
-    if (chapterFilter !== "all") {
-      const sub = subcategoryNodes.find(s => s.id === subFilter);
-      if (!sub?.chapters?.some(ch => ch.id === chapterFilter)) setChapterFilter("all");
-    }
-  }, [subcategoryNodes, subFilter, chapterFilter]);
-
-  // Persist
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        FILTER_KEY + categoryId,
-        JSON.stringify({ subFilter, chapterFilter, typeFilter }),
-      );
-    } catch { /* ignore */ }
-  }, [categoryId, subFilter, chapterFilter, typeFilter]);
-
-  const chapters = useMemo(() => {
-    if (subFilter === "all") return [];
-    return subcategoryNodes.find(s => s.id === subFilter)?.chapters ?? [];
-  }, [subFilter, subcategoryNodes]);
-
-  const filtered = useMemo(() => {
-    let list = cards.slice();
-    if (subFilter !== "all") list = list.filter(c => c.subcategoryId === subFilter);
-    if (chapterFilter !== "all") list = list.filter(c => c.chapterId === chapterFilter);
-    if (typeFilter !== "all") list = list.filter(c => c.type === typeFilter);
-    return list.sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0));
-  }, [cards, subFilter, chapterFilter, typeFilter]);
-
-  useEffect(() => { setIndex(0); }, [subFilter, chapterFilter, typeFilter]);
-  useEffect(() => {
-    if (index > 0 && index >= filtered.length) setIndex(Math.max(0, filtered.length - 1));
-  }, [filtered.length, index]);
-
-  // ── Focus specific card ──
-  const consumedRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!initialCardId || consumedRef.current === initialCardId) return;
-    const target = cards.find(c => c.id === initialCardId);
-    if (!target) { consumedRef.current = initialCardId; onInitialConsumed?.(); return; }
-    const idx = filtered.findIndex(c => c.id === initialCardId);
-    if (idx === -1) {
-      if (subFilter !== "all") setSubFilter("all");
-      if (chapterFilter !== "all") setChapterFilter("all");
-      if (typeFilter !== "all") setTypeFilter("all");
-      return;
-    }
-    setIndex(idx);
-    consumedRef.current = initialCardId;
-    onInitialConsumed?.();
-  }, [initialCardId, cards, filtered, subFilter, chapterFilter, typeFilter, onInitialConsumed]);
-
-  const current = filtered[index];
-
-  // ─── Speed Reader Engine (local, per-card) ──────────────
-  const { segments, wordEntries } = useMemo(() => {
-    if (!current) return { segments: [] as Segment[], wordEntries: [] as WordEntry[] };
-    return buildSegments([current]);
-  }, [current]);
-
-  const totalWords = wordEntries.length;
-
-  const [wpm, setWpm] = useState(200);
-  const [fontSize, setFontSize] = useState("text-xl");
-  const [playing, setPlaying] = useState(false);
-  const [currentWordIdx, setCurrentWordIdx] = useState(0);
-  const wordRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // TTS
-  const [ttsEnabled, setTtsEnabled] = useState(false);
-  const [ttsMode, setTtsModeState] = useState<"natural" | "wpm">(() => {
-    const saved = localStorage.getItem("sr-tts-mode");
-    return saved === "wpm" ? "wpm" : "natural";
+  const sel = useSpeedReaderSelection({
+    cards, subcategoryNodes, categoryId, initialCardId, onInitialConsumed,
   });
-  const setTtsMode = (mode: "natural" | "wpm") => {
-    setTtsModeState(mode);
-    localStorage.setItem("sr-tts-mode", mode);
-  };
-  const [ttsSettings, setTtsSettings] = useState<TTSSettings>(loadTTSSettings);
-  const [showTtsSettings, setShowTtsSettings] = useState(false);
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const ttsUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const ttsPlayingRef = useRef(false);
-  const ttsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const ttsSegIdxRef = useRef(-1);
+  const eng = useSpeedReaderEngine(sel.current);
+  const stats = useMemo(() => computeStats(sel.current), [sel.current]);
 
-  // Load voices
-  useEffect(() => {
-    if (!("speechSynthesis" in window)) return;
-    const load = () => { const v = window.speechSynthesis.getVoices(); if (v.length) setVoices(v); };
-    load();
-    window.speechSynthesis.addEventListener("voiceschanged", load);
-    return () => { window.speechSynthesis.removeEventListener("voiceschanged", load); };
-  }, []);
-
-  // Reset on card change
-  useEffect(() => {
-    setCurrentWordIdx(0);
-    setPlaying(false);
-    wordRefs.current = [];
-  }, [current?.id]);
-
-  // Timer
-  useEffect(() => {
-    if (playing && totalWords > 0 && !(ttsEnabled && ttsMode === "natural")) {
-      const interval = 60000 / wpm;
-      timerRef.current = setInterval(() => {
-        setCurrentWordIdx(prev => {
-          if (prev >= totalWords - 1) { setPlaying(false); return prev; }
-          return prev + 1;
-        });
-      }, interval);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [playing, wpm, totalWords, ttsEnabled, ttsMode]);
-
-  // TTS natural mode
-  const speakSegment = useCallback((segIdx: number, startLocal: number) => {
-    if (!ttsPlayingRef.current) return;
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const seg = segments[segIdx];
-    if (!seg) { setPlaying(false); return; }
-    const remainingWords = seg.words.slice(startLocal);
-    if (remainingWords.length === 0) {
-      if (segIdx + 1 < segments.length) {
-        ttsSegIdxRef.current = segIdx + 1;
-        ttsTimeoutRef.current = setTimeout(() => speakSegment(segIdx + 1, 0), 50);
-      } else { setPlaying(false); ttsPlayingRef.current = false; }
-      return;
-    }
-    const ttsText = cleanForTTS(remainingWords.join(" "));
-    if (!ttsText) {
-      if (segIdx + 1 < segments.length) {
-        ttsSegIdxRef.current = segIdx + 1;
-        ttsTimeoutRef.current = setTimeout(() => speakSegment(segIdx + 1, 0), 50);
-      } else { setPlaying(false); ttsPlayingRef.current = false; }
-      return;
-    }
-    const utterance = new SpeechSynthesisUtterance(ttsText);
-    utterance.lang = "sr-RS";
-    utterance.rate = ttsSettings.rate;
-    if (ttsSettings.voiceURI) {
-      const v = window.speechSynthesis.getVoices().find(vv => vv.voiceURI === ttsSettings.voiceURI);
-      if (v) utterance.voice = v;
-    }
-    utterance.onboundary = (event) => {
-      if (event.name === "word") {
-        const spoken = utterance.text.substring(0, event.charIndex);
-        const spokenWords = spoken.split(/\s+/).filter(Boolean).length;
-        const newGlobal = seg.globalStartIdx + startLocal + spokenWords;
-        if (newGlobal < seg.globalStartIdx + seg.words.length) setCurrentWordIdx(newGlobal);
-      }
-    };
-    utterance.onend = () => {
-      if (!ttsPlayingRef.current) return;
-      const next = segIdx + 1;
-      if (next < segments.length) {
-        ttsSegIdxRef.current = next;
-        setCurrentWordIdx(segments[next].globalStartIdx);
-        ttsTimeoutRef.current = setTimeout(() => speakSegment(next, 0), 100);
-      } else { setPlaying(false); ttsPlayingRef.current = false; }
-    };
-    utterance.onerror = (e) => {
-      if (e.error === "canceled") return;
-      const next = segIdx + 1;
-      if (next < segments.length) {
-        ttsSegIdxRef.current = next;
-        setCurrentWordIdx(segments[next].globalStartIdx);
-        ttsTimeoutRef.current = setTimeout(() => speakSegment(next, 0), 100);
-      } else { setPlaying(false); ttsPlayingRef.current = false; }
-    };
-    ttsUtteranceRef.current = utterance;
-    ttsSegIdxRef.current = segIdx;
-    window.speechSynthesis.speak(utterance);
-  }, [segments, ttsSettings]);
-
-  useEffect(() => {
-    if (!ttsEnabled || !playing || ttsMode !== "natural") {
-      if (ttsPlayingRef.current && ttsMode === "natural") {
-        window.speechSynthesis.cancel();
-        ttsPlayingRef.current = false;
-      }
-      return;
-    }
-    ttsPlayingRef.current = true;
-    const seg = getActiveSegment(segments, currentWordIdx);
-    if (!seg) return;
-    const segIdx = segments.indexOf(seg);
-    const localIdx = currentWordIdx - seg.globalStartIdx;
-    speakSegment(segIdx, localIdx);
-    return () => {
-      window.speechSynthesis.cancel();
-      ttsPlayingRef.current = false;
-      if (ttsTimeoutRef.current) { clearTimeout(ttsTimeoutRef.current); ttsTimeoutRef.current = null; }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ttsEnabled, playing, ttsMode]);
-
-  // TTS wpm mode
-  const prevWordRef = useRef(-1);
-  useEffect(() => {
-    if (!ttsEnabled || !playing || ttsMode !== "wpm" || !("speechSynthesis" in window)) return;
-    if (currentWordIdx === prevWordRef.current) return;
-    prevWordRef.current = currentWordIdx;
-    window.speechSynthesis.cancel();
-    const entry = wordEntries[currentWordIdx];
-    if (!entry) return;
-    const cleaned = cleanForTTS(entry.text);
-    if (!cleaned) return;
-    const utterance = new SpeechSynthesisUtterance(cleaned);
-    utterance.lang = "sr-RS";
-    utterance.rate = Math.max(1.5, ttsSettings.rate);
-    if (ttsSettings.voiceURI) {
-      const v = window.speechSynthesis.getVoices().find(vv => vv.voiceURI === ttsSettings.voiceURI);
-      if (v) utterance.voice = v;
-    }
-    window.speechSynthesis.speak(utterance);
-  }, [ttsEnabled, playing, ttsMode, currentWordIdx, wordEntries, ttsSettings]);
-
-  useEffect(() => {
-    if (ttsEnabled && timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-  }, [ttsEnabled, playing]);
-
-  // Scroll active word into view
-  useEffect(() => {
-    const el = wordRefs.current[currentWordIdx];
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-  }, [currentWordIdx]);
-
-  const stopTts = useCallback(() => {
-    if (ttsTimeoutRef.current) { clearTimeout(ttsTimeoutRef.current); ttsTimeoutRef.current = null; }
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-    ttsUtteranceRef.current = null;
-    ttsPlayingRef.current = false;
-  }, []);
-
-  const handlePlayPause = useCallback(() => {
-    if (totalWords === 0) return;
-    if (currentWordIdx >= totalWords - 1) setCurrentWordIdx(0);
-    setPlaying(p => { if (p) stopTts(); return !p; });
-  }, [totalWords, currentWordIdx, stopTts]);
-
-  const handleReset = useCallback(() => { setPlaying(false); setCurrentWordIdx(0); stopTts(); }, [stopTts]);
-  const handlePrevWord = useCallback(() => { setPlaying(false); stopTts(); setCurrentWordIdx(prev => Math.max(0, prev - 1)); }, [stopTts]);
-  const handleNextWord = useCallback(() => { setPlaying(false); stopTts(); setCurrentWordIdx(prev => Math.min(totalWords - 1, prev + 1)); }, [stopTts, totalWords]);
-
-  const updateTtsSettings = useCallback((s: TTSSettings) => {
-    setTtsSettings(s);
-    saveTTSSettings(s);
-  }, []);
-
-  // Keyboard shortcuts
   useGlobalHotkey(
     e => e.code === "Space" || e.code === "ArrowLeft" || e.code === "ArrowRight",
     e => {
       if (shouldIgnoreGlobalKey(e)) return;
       e.preventDefault();
-      if (e.code === "Space") handlePlayPause();
-      else if (e.code === "ArrowLeft") handlePrevWord();
-      else handleNextWord();
+      if (e.code === "Space") eng.handlePlayPause();
+      else if (e.code === "ArrowLeft") eng.handlePrevWord();
+      else eng.handleNextWord();
     },
-    [handlePlayPause, handlePrevWord, handleNextWord],
+    [eng.handlePlayPause, eng.handlePrevWord, eng.handleNextWord],
   );
 
-  const progress = totalWords > 0 ? ((currentWordIdx + 1) / totalWords) * 100 : 0;
-  const activeSegment = getActiveSegment(segments, currentWordIdx);
-
-  // FSRS stats
-  const stats = useMemo(() => {
-    if (!current) return null;
-    const sections = current.sections ?? [];
-    const reviewed = sections.filter(s => s.state !== SectionState.New);
-    const allNew = sections.length > 0 && reviewed.length === 0;
-    const lapses = sections.reduce((sum, s) => sum + (s.lapses ?? 0), 0);
-    const avgStability = reviewed.length === 0
-      ? 0
-      : reviewed.reduce((sum, s) => sum + (s.stability ?? 0), 0) / reviewed.length;
-    const retention = getCardRetrievability(current);
-    return { reads: current.readCount ?? 0, lapses, avgStability, retention, allNew };
-  }, [current]);
+  const { current, filtered, index, chapters, subFilter, chapterFilter, typeFilter } = sel;
+  const { segments, totalWords, activeSegment, currentWordIdx, fontSize } = eng;
 
   return (
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select value={subFilter} onValueChange={(v) => { setSubFilter(v); setChapterFilter("all"); }}>
+        <Select value={subFilter} onValueChange={sel.setSub}>
           <SelectTrigger className="h-9 w-[220px]">
             <SelectValue placeholder="Potkategorija" />
           </SelectTrigger>
@@ -380,7 +91,7 @@ export default function LocalSpeedReader({
         </Select>
 
         {subFilter !== "all" && chapters.length > 0 && (
-          <Select value={chapterFilter} onValueChange={setChapterFilter}>
+          <Select value={chapterFilter} onValueChange={sel.setChapter}>
             <SelectTrigger className="h-9 w-[220px]">
               <SelectValue placeholder="Glava" />
             </SelectTrigger>
@@ -393,7 +104,7 @@ export default function LocalSpeedReader({
           </Select>
         )}
 
-        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as TypeFilter)}>
+        <Select value={typeFilter} onValueChange={(v) => sel.setType(v as typeof typeFilter)}>
           <SelectTrigger className="h-9 w-[160px]">
             <SelectValue placeholder="Tip" />
           </SelectTrigger>
@@ -417,33 +128,31 @@ export default function LocalSpeedReader({
         </div>
       ) : (
         <>
-          {/* Controls */}
           <SpeedReaderControls
-            playing={playing}
-            currentWordIdx={currentWordIdx}
-            totalWords={totalWords}
-            wpm={wpm}
-            setWpm={setWpm}
-            fontSize={fontSize}
-            setFontSize={setFontSize}
-            progress={progress}
-            ttsEnabled={ttsEnabled}
-            setTtsEnabled={setTtsEnabled}
-            ttsMode={ttsMode}
-            setTtsMode={setTtsMode}
-            ttsSettings={ttsSettings}
-            showTtsSettings={showTtsSettings}
-            setShowTtsSettings={setShowTtsSettings}
-            voices={voices}
-            updateTtsSettings={updateTtsSettings}
-            stopTts={stopTts}
-            handlePlayPause={handlePlayPause}
-            handleReset={handleReset}
-            handlePrevWord={handlePrevWord}
-            handleNextWord={handleNextWord}
+            playing={eng.playing}
+            currentWordIdx={eng.currentWordIdx}
+            totalWords={eng.totalWords}
+            wpm={eng.wpm}
+            setWpm={eng.setWpm}
+            fontSize={eng.fontSize}
+            setFontSize={eng.setFontSize}
+            progress={eng.progress}
+            ttsEnabled={eng.ttsEnabled}
+            setTtsEnabled={eng.setTtsEnabled}
+            ttsMode={eng.ttsMode}
+            setTtsMode={eng.setTtsMode}
+            ttsSettings={eng.ttsSettings}
+            showTtsSettings={eng.showTtsSettings}
+            setShowTtsSettings={eng.setShowTtsSettings}
+            voices={eng.voices}
+            updateTtsSettings={eng.setTtsSettings}
+            stopTts={eng.stopTts}
+            handlePlayPause={eng.handlePlayPause}
+            handleReset={eng.handleReset}
+            handlePrevWord={eng.handlePrevWord}
+            handleNextWord={eng.handleNextWord}
           />
 
-          {/* Card display */}
           <article className="glass-card rounded-2xl p-6 md:p-8 space-y-5">
             <header className="space-y-2">
               <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -453,7 +162,6 @@ export default function LocalSpeedReader({
                 {current.question}
               </h2>
 
-              {/* FSRS chips */}
               {stats && (
                 <TooltipProvider delayDuration={250}>
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
@@ -507,7 +215,6 @@ export default function LocalSpeedReader({
               )}
             </header>
 
-            {/* Speed reader word display */}
             <div className="min-h-[30vh] max-h-[55vh] overflow-y-auto space-y-6">
               {totalWords === 0 ? (
                 <p className="text-muted-foreground text-center py-12">Nema tekstualnog sadržaja.</p>
@@ -525,7 +232,7 @@ export default function LocalSpeedReader({
                               return (
                                 <span
                                   key={globalIdx}
-                                  ref={el => { wordRefs.current[globalIdx] = el; }}
+                                  ref={el => eng.registerWordRef(globalIdx, el)}
                                   className={`inline-block py-0.5 px-0.5 rounded transition-all duration-150 cursor-pointer ${
                                     globalIdx === currentWordIdx
                                       ? "bg-primary text-primary-foreground scale-105 shadow-sm"
@@ -533,7 +240,7 @@ export default function LocalSpeedReader({
                                       ? "text-muted-foreground/40"
                                       : isCurrentSeg ? "text-muted-foreground" : "text-muted-foreground/60"
                                   }`}
-                                  onClick={() => { setCurrentWordIdx(globalIdx); setPlaying(false); }}
+                                  onClick={() => eng.jumpToWord(globalIdx)}
                                 >
                                   {word}
                                 </span>
@@ -548,7 +255,7 @@ export default function LocalSpeedReader({
                           return (
                             <span
                               key={globalIdx}
-                              ref={el => { wordRefs.current[globalIdx] = el; }}
+                              ref={el => eng.registerWordRef(globalIdx, el)}
                               className={`inline-block mr-[0.35em] py-0.5 px-0.5 rounded transition-all duration-150 cursor-pointer ${
                                 globalIdx === currentWordIdx
                                   ? "bg-primary text-primary-foreground scale-105 shadow-sm"
@@ -556,7 +263,7 @@ export default function LocalSpeedReader({
                                   ? "text-muted-foreground/60"
                                   : "text-foreground"
                               }`}
-                              onClick={() => { setCurrentWordIdx(globalIdx); setPlaying(false); }}
+                              onClick={() => eng.jumpToWord(globalIdx)}
                             >
                               {word}
                             </span>
@@ -576,7 +283,7 @@ export default function LocalSpeedReader({
       <div className="flex items-center justify-between gap-3">
         <Button
           variant="outline"
-          onClick={() => { setIndex(i => Math.max(i - 1, 0)); setPlaying(false); stopTts(); }}
+          onClick={() => { eng.stopTts(); sel.prev(); }}
           disabled={index <= 0}
           className="gap-1.5"
         >
@@ -587,7 +294,7 @@ export default function LocalSpeedReader({
         </span>
         <Button
           variant="outline"
-          onClick={() => { setIndex(i => Math.min(i + 1, filtered.length - 1)); setPlaying(false); stopTts(); }}
+          onClick={() => { eng.stopTts(); sel.next(); }}
           disabled={index >= filtered.length - 1}
           className="gap-1.5"
         >
@@ -595,7 +302,6 @@ export default function LocalSpeedReader({
         </Button>
       </div>
 
-      {/* Keyboard hint */}
       <div className="flex justify-center">
         <p className="text-[10px] text-muted-foreground/50">
           Space = play/pause · ← → = prethodna/sljedeća riječ · Klikni na riječ za skok
