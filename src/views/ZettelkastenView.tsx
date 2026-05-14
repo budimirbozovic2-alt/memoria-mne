@@ -1,26 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft, Plus, Trash2, FileText, Compass,
   Pencil, Check, BookMarked,
 } from "lucide-react";
 import { useCategoryData } from "@/contexts/AppContext";
-import {
-  saveArticle,
-  deleteArticle,
-  findArticleByTitle,
-  newArticle,
-  bulkCreateArticlesIfMissing,
-  getArticle,
-  type KnowledgeBaseArticle,
-} from "@/lib/zettelkasten-storage";
 import { useWikiLinkAutoCreate } from "@/hooks/useWikiLinkAutoCreate";
 import { useZettelkastenBootstrap } from "@/hooks/zettelkasten/useZettelkastenBootstrap";
 import { useExplorerCollapsed } from "@/hooks/zettelkasten/useExplorerCollapsed";
+import { useArticleDraft } from "@/hooks/zettelkasten/useArticleDraft";
+import { useArticleIndex } from "@/hooks/zettelkasten/useArticleIndex";
+import { useArticleMutations } from "@/hooks/zettelkasten/useArticleMutations";
 import { type Source } from "@/lib/sources-storage";
 import { useCategorySources } from "@/hooks/useCategorySources";
-import { sameStringSet } from "@/lib/struct-eq";
-import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import ZettelEditor, { type ZettelEditorHandle } from "@/components/zettelkasten/ZettelEditor";
+import ZettelEditor from "@/components/zettelkasten/ZettelEditor";
 import ZettelPreview from "@/components/zettelkasten/ZettelPreview";
 import BacklinksPanel from "@/components/zettelkasten/BacklinksPanel";
 import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
@@ -39,31 +31,15 @@ import ZettelTagEditor from "@/components/zettelkasten/ZettelTagEditor";
 import ZettelAliasEditor from "@/components/zettelkasten/ZettelAliasEditor";
 import MindMapPickerDialog from "@/components/zettelkasten/MindMapPickerDialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { toast } from "sonner";
-import { backlinkIndex } from "@/lib/backlink-index";
-import { normalizeAliasList } from "@/lib/zettelkasten-aliases";
-
-interface Draft {
-  title: string;
-  content: string;
-  linkedSourceIds: string[];
-  /** Always normalized; mirrors the article's persisted tag list. */
-  tags: string[];
-  /** Always normalized; mirrors the article's persisted alias list. */
-  aliases: string[];
-}
 
 export default function ZettelkastenView() {
   const { categoryId } = useParams<{ categoryId: string }>();
-  const navigate = useNavigate();
   const { categoryRecords } = useCategoryData();
   const categoryRec = useMemo(
     () => categoryRecords.find(r => r.id === categoryId),
     [categoryRecords, categoryId],
   );
 
-  // Memoize bootstrap inputs from the category record so identity churn on
-  // unrelated fields doesn't cascade into the bootstrap effect.
   const subjectName = categoryRec?.name ?? null;
   const subcategoryNames = useMemo(
     () => (categoryRec?.subcategories ?? []).map(s => s.name),
@@ -72,131 +48,31 @@ export default function ZettelkastenView() {
 
   const sources = useCategorySources(categoryId);
 
-  // Bootstrap: load articles + ensure Index + warm backlink index (idempotent).
-  // Hook owns the effect and its dependency policy; the view just consumes.
   const { articles, setArticles, loading, indexArticleId, initialActiveId } =
     useZettelkastenBootstrap({ categoryId, subjectName, subcategoryNames });
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [readingSourceId, setReadingSourceId] = useState<string | null>(null);
+  const [mmPickerOpen, setMmPickerOpen] = useState(false);
 
-  // Adopt the bootstrap's initial active id once it resolves (Index article).
   useEffect(() => {
     if (initialActiveId && !activeId) setActiveId(initialActiveId);
   }, [initialActiveId, activeId]);
 
-  // Explorer panel collapsed state — extracted hook persists to localStorage.
   const { collapsed: explorerCollapsed, toggle: toggleExplorer } = useExplorerCollapsed();
 
-  // Active-article view state
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [readingSourceId, setReadingSourceId] = useState<string | null>(null);
-  const [mmPickerOpen, setMmPickerOpen] = useState(false);
-  const editorRef = useRef<ZettelEditorHandle | null>(null);
+  const draftApi = useArticleDraft({ activeId, categoryId, setArticles });
+  const { draft, isEditing, editorRef } = draftApi;
 
+  const { activeArticle, existingTitleSet, emptyTitleSet } = useArticleIndex({
+    articles, activeId, isEditing,
+  });
 
-  const activeArticle = useMemo(
-    () => articles.find(a => a.id === activeId) ?? null,
-    [articles, activeId],
-  );
+  const mutations = useArticleMutations({
+    categoryId, articles, setArticles, setActiveId, setReadingSourceId,
+    indexArticleId, activeArticle, draftApi,
+  });
 
-  // Title sets are consumed only by `<ZettelPreview>` (read-only mode). When
-  // the user is editing, the preview is unmounted, so we skip building these
-  // sets entirely — guarantees zero work for these memos during typing bursts
-  // (and during any `articles` mutation that lands while editing, e.g. after
-  // a wiki-link auto-create batch persists).
-  const existingTitleSet = useMemo(
-    () => {
-      if (isEditing) return new Set<string>();
-      const set = new Set<string>();
-      for (const a of articles) {
-        set.add(a.title.trim().toLowerCase());
-        if (Array.isArray(a.aliases)) {
-          for (const alias of a.aliases) set.add(alias.trim().toLowerCase());
-        }
-      }
-      return set;
-    },
-    [articles, isEditing],
-  );
-
-  const emptyTitleSet = useMemo(
-    () => {
-      if (isEditing) return new Set<string>();
-      const set = new Set<string>();
-      for (const a of articles) {
-        if (a.content.trim().length !== 0) continue;
-        set.add(a.title.trim().toLowerCase());
-        if (Array.isArray(a.aliases)) {
-          for (const alias of a.aliases) set.add(alias.trim().toLowerCase());
-        }
-      }
-      return set;
-    },
-    [articles, isEditing],
-  );
-
-  // Wiki-link auto-create concern lives in `useWikiLinkAutoCreate` (called below).
-
-
-  // NOTE: Subcategory-based filtering and grid-style organization were removed
-  // intentionally. The Zettelkasten is meant to grow organically; imposing the
-  // subject's formal taxonomy on top of it defeated the purpose. Browsing,
-  // searching, and sorting now live exclusively inside `ZettelExplorerPanel`.
-
-  // ── Persistence ────────────────────────────────
-  const flushDraft = useCallback(async (): Promise<KnowledgeBaseArticle | null> => {
-    if (!draft || !activeId) return null;
-    // V4: Read the FRESHEST persisted article, not the closure snapshot. The
-    // wiki-link auto-create pipeline can mutate `articles[activeId]` while the
-    // user is typing; using a stale `activeArticle` reference would clobber
-    // those server-side fields (e.g. linkedSourceIds expansions) on flush.
-    const fresh = await getArticle(activeId);
-    if (!fresh) return null;
-    const titleClean = draft.title.trim() || "Bez naslova";
-    const aliasesClean = normalizeAliasList(draft.aliases);
-    const dirty =
-      titleClean !== fresh.title ||
-      draft.content !== fresh.content ||
-      !sameStringSet(draft.linkedSourceIds, fresh.linkedSourceIds ?? []) ||
-      !sameStringSet(draft.tags, fresh.tags ?? []) ||
-      !sameStringSet(aliasesClean, fresh.aliases ?? []);
-    if (!dirty) return fresh;
-    const next: KnowledgeBaseArticle = {
-      ...fresh,
-      title: titleClean,
-      content: draft.content,
-      linkedSourceIds: draft.linkedSourceIds,
-      tags: draft.tags,
-      aliases: aliasesClean,
-      updatedAt: Date.now(),
-    };
-    try {
-      await saveArticle(next);
-    } catch (err) {
-      console.error("[zettelkasten] saveArticle failed", err);
-      toast.error("Članak NIJE sačuvan. Kopirajte tekst prije navigacije.");
-      return null;
-    }
-    setArticles(prev => prev.map(a => a.id === next.id ? next : a));
-    eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId!, article: next });
-    return next;
-  }, [draft, activeId, categoryId]);
-
-  // Cleanup-flush: when leaving edit mode without explicit save, when switching
-  // articles, or when the view unmounts. Use a ref to always read the latest.
-  const flushRef = useRef(flushDraft);
-  useEffect(() => { flushRef.current = flushDraft; }, [flushDraft]);
-
-  // Flush + reset draft when active article changes
-  useEffect(() => {
-    return () => {
-      // On effect cleanup (article id change OR unmount), persist any pending draft.
-      void flushRef.current();
-    };
-  }, [activeId]);
-
-  // ── Auto-create placeholder articles for new [[Wiki Links]] (extracted) ──
   useWikiLinkAutoCreate({
     activeId,
     categoryId,
@@ -207,158 +83,6 @@ export default function ZettelkastenView() {
     setArticles,
   });
 
-  // ── Mutations ──────────────────────────────────
-  const handleCreate = useCallback(async (title?: string) => {
-    if (!categoryId) return;
-    const t = (title ?? prompt("Naslov novog članka:") ?? "").trim();
-    if (!t) return;
-    // Articles created via Explorer "+" or top bar are taxonomy-free; they
-    // join the network organically via wiki-links written into them later.
-    const article = newArticle(categoryId, t);
-    await saveArticle(article);
-    setArticles(prev => [article, ...prev]);
-    eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId, article });
-    setActiveId(article.id);
-    // Open new article straight in edit mode
-    setDraft({ title: article.title, content: article.content, linkedSourceIds: article.linkedSourceIds ?? [], tags: article.tags ?? [], aliases: article.aliases ?? [] });
-    setIsEditing(true);
-  }, [categoryId]);
-
-  const handleOpen = useCallback((id: string) => {
-    setReadingSourceId(null);
-    setActiveId(id);
-    // Auto-enter edit mode for empty drafts so the user can start writing immediately.
-    const target = articles.find(a => a.id === id);
-    if (target && target.content.trim().length === 0) {
-      setDraft({
-        title: target.title,
-        content: target.content,
-        linkedSourceIds: target.linkedSourceIds ?? [],
-        tags: target.tags ?? [],
-        aliases: target.aliases ?? [],
-      });
-      setIsEditing(true);
-    } else {
-      setIsEditing(false);
-      setDraft(null);
-    }
-  }, [articles]);
-
-  // "Back" from a regular article returns the user to the Index article (the
-  // entry-point for organic exploration). If the Index doesn't exist for any
-  // reason, fall back to clearing the active selection.
-  const handleBackToIndex = useCallback(async () => {
-    await flushRef.current();
-    setReadingSourceId(null);
-    setDraft(null);
-    setIsEditing(false);
-    if (indexArticleId) {
-      setActiveId(indexArticleId);
-    } else {
-      setActiveId(null);
-    }
-  }, [indexArticleId]);
-
-  const handleEnterEdit = useCallback(() => {
-    if (!activeArticle) return;
-    setDraft({
-      title: activeArticle.title,
-      content: activeArticle.content,
-      linkedSourceIds: activeArticle.linkedSourceIds ?? [],
-      tags: activeArticle.tags ?? [],
-      aliases: activeArticle.aliases ?? [],
-    });
-    setIsEditing(true);
-  }, [activeArticle]);
-
-  const handleSaveAndClose = useCallback(async () => {
-    await flushRef.current();
-    setIsEditing(false);
-    setDraft(null);
-    toast.success("Sačuvano");
-  }, []);
-
-  const handleDelete = useCallback(async () => {
-    if (!activeArticle) return;
-    // The Index article is the subject's entry-point and must always exist —
-    // deleting it would leave the Zettelkasten orphaned.
-    if (activeArticle.isIndex) {
-      toast.error("Index članak (polazna tačka predmeta) se ne može obrisati.");
-      return;
-    }
-    if (!confirm(`Obrisati članak "${activeArticle.title}"?`)) return;
-    await deleteArticle(activeArticle.id);
-    eventBus.emit(EVENT_TYPES.KB_ARTICLE_REMOVED, { subjectId: activeArticle.subjectId, articleId: activeArticle.id });
-    setArticles(prev => prev.filter(a => a.id !== activeArticle.id));
-    // After delete, return to the Index rather than to a non-existent list.
-    if (indexArticleId && indexArticleId !== activeArticle.id) {
-      setActiveId(indexArticleId);
-    } else {
-      setActiveId(null);
-    }
-    setDraft(null);
-    setIsEditing(false);
-    toast.success("Članak obrisan");
-  }, [activeArticle, indexArticleId]);
-
-  // In-flight guard: dedupes parallel clicks on the same wiki-link title.
-  // Maps normalized title -> Promise resolving to the article id to open.
-  const wikiLinkInFlightRef = useRef<Map<string, Promise<string | null>>>(new Map());
-
-  const handleWikiLink = useCallback(async (title: string) => {
-    if (!categoryId) return;
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    const key = trimmed.toLowerCase();
-
-    // Persist current draft before navigating away
-    await flushRef.current();
-
-    // Resolve aliases first: if target matches an existing article's alias
-    // (or canonical title), open it directly without spawning a placeholder.
-    const resolvedId = backlinkIndex.resolveTargetToArticleId(categoryId, trimmed);
-    if (resolvedId) {
-      handleOpen(resolvedId);
-      return;
-    }
-
-
-    let pending = wikiLinkInFlightRef.current.get(key);
-    if (!pending) {
-      pending = (async (): Promise<string | null> => {
-        try {
-          // Atomic open-or-create within a single Dexie rw transaction.
-          const created = await bulkCreateArticlesIfMissing(
-            categoryId,
-            [trimmed],
-            activeArticle?.rootSubcategoryId,
-          );
-          if (created.length > 0) {
-            const article = created[0];
-            setArticles(prev => [article, ...prev]);
-            eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId, article });
-            toast.success(`Kreiran novi članak "${article.title}"`);
-            return article.id;
-          }
-          // Already existed → resolve via case-insensitive lookup.
-          const existing = await findArticleByTitle(categoryId, trimmed);
-          return existing?.id ?? null;
-        } finally {
-          wikiLinkInFlightRef.current.delete(key);
-        }
-      })();
-      wikiLinkInFlightRef.current.set(key, pending);
-    }
-
-    const id = await pending;
-    if (id) handleOpen(id);
-  }, [categoryId, activeArticle, handleOpen]);
-
-  const handlePickMindMap = useCallback((mmId: string) => {
-    editorRef.current?.insertBlock(`::mindmap[${mmId}]`);
-  }, []);
-
-  // ── Render ─────────────────────────────────────
   if (!categoryRec) {
     return (
       <div className="p-6 text-center text-muted-foreground">
@@ -370,7 +94,6 @@ export default function ZettelkastenView() {
     );
   }
 
-  // Compute view-specific data only when an article is active.
   const linkedIds = activeArticle
     ? ((isEditing && draft ? draft.linkedSourceIds : activeArticle.linkedSourceIds) ?? [])
     : [];
@@ -386,9 +109,6 @@ export default function ZettelkastenView() {
     ? (isEditing && draft ? draft.content : activeArticle.content)
     : "";
 
-  // Unified layout: Explorer rail (left) + main pane (right).
-  // The Explorer is always present so the user has a stable map of the
-  // organic network even while reading or editing a single article.
   return (
     <div className="flex h-[calc(100vh-3rem)] w-full">
       <ZettelExplorerPanel
@@ -397,12 +117,11 @@ export default function ZettelkastenView() {
         activeId={activeId}
         collapsed={explorerCollapsed}
         onToggleCollapsed={toggleExplorer}
-        onOpen={handleOpen}
-        onCreate={() => handleCreate()}
+        onOpen={mutations.open}
+        onCreate={() => mutations.create()}
       />
 
       <div className="flex-1 min-w-0 flex flex-col">
-        {/* Top bar — always visible */}
         <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-border">
           <div className="flex items-center gap-2 min-w-0">
             <Link
@@ -425,7 +144,7 @@ export default function ZettelkastenView() {
               type="button"
               variant="ghost"
               size="sm"
-              onClick={handleBackToIndex}
+              onClick={mutations.backToIndex}
               className="gap-1.5 shrink-0"
               title="Vrati se na Index članak"
             >
@@ -434,7 +153,6 @@ export default function ZettelkastenView() {
           )}
         </div>
 
-        {/* Main pane */}
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
             Učitavanje...
@@ -446,16 +164,14 @@ export default function ZettelkastenView() {
               <p className="text-muted-foreground">
                 Izaberite članak iz Explorer panela ili kreirajte novi da započnete istraživanje.
               </p>
-              <Button onClick={() => handleCreate()} variant="outline" size="sm" className="gap-1.5">
+              <Button onClick={() => mutations.create()} variant="outline" size="sm" className="gap-1.5">
                 <Plus className="h-4 w-4" /> Novi članak
               </Button>
             </div>
           </div>
         ) : (
           <div className="flex flex-col flex-1 min-h-0 gap-3 p-4 max-w-4xl mx-auto w-full">
-            {/* Article action bar */}
             <div className="flex items-center justify-end gap-1.5">
-              {/* Source picker — opens overlay sheet (no split screen) */}
               {linkedSourceObjs.length > 0 ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -478,29 +194,27 @@ export default function ZettelkastenView() {
                 </Button>
               )}
 
-              {/* Read / Edit mode toggle */}
               {isEditing ? (
-                <Button type="button" size="sm" onClick={handleSaveAndClose} className="gap-1.5">
+                <Button type="button" size="sm" onClick={draftApi.saveAndClose} className="gap-1.5">
                   <Check className="h-4 w-4" /> Završi uređivanje
                 </Button>
               ) : (
-                <Button type="button" size="sm" onClick={handleEnterEdit} className="gap-1.5">
+                <Button type="button" size="sm" onClick={() => draftApi.enterEdit(activeArticle)} className="gap-1.5">
                   <Pencil className="h-4 w-4" /> Uredi
                 </Button>
               )}
 
               {!activeArticle.isIndex && (
-                <Button type="button" variant="ghost" size="sm" onClick={handleDelete} className="text-destructive">
+                <Button type="button" variant="ghost" size="sm" onClick={mutations.remove} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-1.5" /> Obriši
                 </Button>
               )}
             </div>
 
-            {/* Title */}
             {isEditing && draft ? (
               <Input
                 value={draft.title}
-                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                onChange={(e) => draftApi.updateDraft({ title: e.target.value })}
                 placeholder="Naslov članka"
                 className="text-xl font-bold border-0 px-0 focus-visible:ring-0 shadow-none"
                 disabled={activeArticle.isIndex}
@@ -513,45 +227,41 @@ export default function ZettelkastenView() {
               </h1>
             )}
 
-            {/* Linked sources picker (edit only) — read mode shows chips inside Preview */}
             {isEditing && draft && (
               <LinkedSourcesPicker
                 allSources={sources}
                 selectedIds={draft.linkedSourceIds}
-                onChange={(linkedSourceIds) => setDraft({ ...draft, linkedSourceIds })}
+                onChange={(linkedSourceIds) => draftApi.updateDraft({ linkedSourceIds })}
               />
             )}
 
-            {/* Tag editor (edit only) — pure Explorer-side filter facet, never shown in read mode. */}
             {isEditing && draft && (
               <ZettelTagEditor
                 tags={draft.tags}
-                onChange={(tags) => setDraft({ ...draft, tags })}
+                onChange={(tags) => draftApi.updateDraft({ tags })}
               />
             )}
 
-            {/* Alias editor (edit only) — case-form synonyms for auto-link. */}
             {isEditing && draft && (
               <ZettelAliasEditor
                 aliases={draft.aliases}
-                onChange={(aliases) => setDraft({ ...draft, aliases })}
+                onChange={(aliases) => draftApi.updateDraft({ aliases })}
               />
             )}
 
-            {/* Single-pane content area (no split screen) */}
             <div className="flex flex-col gap-3 flex-1 min-h-0">
               <div className="flex-1 min-h-0">
                 {isEditing && draft ? (
                   <ZettelEditor
                     ref={editorRef}
                     value={draft.content}
-                    onChange={(content) => setDraft({ ...draft, content })}
+                    onChange={(content) => draftApi.updateDraft({ content })}
                     onInsertMindMap={() => setMmPickerOpen(true)}
                   />
                 ) : (
                   <ZettelPreview
                     markdown={displayContent}
-                    onWikiLink={handleWikiLink}
+                    onWikiLink={mutations.wikiLink}
                     existingTitles={existingTitleSet}
                     emptyTitles={emptyTitleSet}
                     linkedSources={linkedSourceObjs}
@@ -564,12 +274,11 @@ export default function ZettelkastenView() {
                 subjectId={categoryId!}
                 activeArticleId={activeArticle.id}
                 activeTitle={activeArticle.title}
-                onOpen={handleOpen}
+                onOpen={mutations.open}
                 isEditing={isEditing}
               />
             </div>
 
-            {/* Source overlay (Sheet) — replaces previous side-by-side split */}
             <Sheet open={Boolean(readingSource)} onOpenChange={(open) => { if (!open) setReadingSourceId(null); }}>
               <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
                 {readingSource && (
@@ -586,7 +295,7 @@ export default function ZettelkastenView() {
               open={mmPickerOpen}
               onOpenChange={setMmPickerOpen}
               categoryId={categoryId!}
-              onPick={handlePickMindMap}
+              onPick={(mmId) => editorRef.current?.insertBlock(`::mindmap[${mmId}]`)}
             />
           </div>
         )}
