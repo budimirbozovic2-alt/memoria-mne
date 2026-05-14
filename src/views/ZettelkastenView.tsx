@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ZettelEditor from "@/components/zettelkasten/ZettelEditor";
 import ZettelPreview from "@/components/zettelkasten/ZettelPreview";
 import BacklinksPanel from "@/components/zettelkasten/BacklinksPanel";
@@ -32,7 +33,7 @@ import ZettelAliasEditor from "@/components/zettelkasten/ZettelAliasEditor";
 import MindMapPickerDialog from "@/components/zettelkasten/MindMapPickerDialog";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-export default function ZettelkastenView() {
+function ZettelkastenViewImpl() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const { categoryRecords } = useCategoryData();
   const categoryRec = useMemo(
@@ -301,5 +302,13 @@ export default function ZettelkastenView() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ZettelkastenView() {
+  return (
+    <ErrorBoundary label="Zettelkasten" compact>
+      <ZettelkastenViewImpl />
+    </ErrorBoundary>
   );
 }
