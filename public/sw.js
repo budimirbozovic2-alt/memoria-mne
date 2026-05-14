@@ -1,5 +1,5 @@
 const CACHE_NAME = "codex-v4";
-const STATIC_ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
+const STATIC_ASSETS = ["./", "./index.html", "./manifest.json", "./app-logo-192.png", "./app-logo-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

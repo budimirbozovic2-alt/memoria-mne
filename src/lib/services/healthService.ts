@@ -65,17 +65,13 @@ export async function fetchStorageSnapshot(): Promise<StorageSnapshot> {
 }
 
 export async function detectIntegrityIssues(): Promise<IntegrityIssues> {
-  const [allCards, allCategories] = await Promise.all([
-    db.cards.toArray(),
-    db.categories.toArray(),
-  ]);
+  const allCategories = await db.categories.toArray();
 
   const validIds = new Set(allCategories.map(c => c.id));
-  const orphanCards = allCards.filter(c => c.categoryId && !validIds.has(c.categoryId));
-
   const subUuids = new Set<string>();
   const chapUuids = new Set<string>();
   const chapToSub = new Map<string, string>();
+
   for (const cat of allCategories) {
     for (const sub of cat.subcategories ?? []) {
       subUuids.add(sub.id);
@@ -88,18 +84,39 @@ export async function detectIntegrityIssues(): Promise<IntegrityIssues> {
     }
   }
 
-  const staleSubCards = allCards.filter(c => c.subcategoryId && !subUuids.has(c.subcategoryId));
-  const staleChapCards = allCards.filter(c => {
-    if (!c.chapterId) return false;
-    if (!chapUuids.has(c.chapterId)) return true;
-    if (c.subcategoryId && subUuids.has(c.subcategoryId) && chapToSub.get(c.chapterId) !== c.subcategoryId) return true;
-    return false;
+  const orphanCardIds: string[] = [];
+  const staleSubCardIds: string[] = [];
+  const staleChapCardIds: string[] = [];
+
+  // ✅ ODLICNO (Audit V4): Koristimo .each() kursor umjesto .toArray()
+  // Ovo eliminira O(N) RAM alokaciju i sprječava OOM krah kod 20k+ kartica.
+  await db.cards.each(c => {
+    // 1. Orphans (categoryId missing in validIds)
+    if (c.categoryId && !validIds.has(c.categoryId)) {
+      orphanCardIds.push(c.id);
+    }
+
+    // 2. Stale subcategories
+    if (c.subcategoryId && !subUuids.has(c.subcategoryId)) {
+      staleSubCardIds.push(c.id);
+    }
+
+    // 3. Stale chapters
+    if (c.chapterId) {
+      let isStale = false;
+      if (!chapUuids.has(c.chapterId)) {
+        isStale = true;
+      } else if (c.subcategoryId && subUuids.has(c.subcategoryId) && chapToSub.get(c.chapterId) !== c.subcategoryId) {
+        isStale = true;
+      }
+      if (isStale) staleChapCardIds.push(c.id);
+    }
   });
 
   return {
-    orphans: { count: orphanCards.length, cardIds: orphanCards.map(c => c.id) },
-    staleSub: { count: staleSubCards.length, cardIds: staleSubCards.map(c => c.id) },
-    staleChap: { count: staleChapCards.length, cardIds: staleChapCards.map(c => c.id) },
+    orphans: { count: orphanCardIds.length, cardIds: orphanCardIds },
+    staleSub: { count: staleSubCardIds.length, cardIds: staleSubCardIds },
+    staleChap: { count: staleChapCardIds.length, cardIds: staleChapCardIds },
   };
 }
 

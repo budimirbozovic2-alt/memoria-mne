@@ -63,7 +63,7 @@ function createSplashWindow(isDev, baseDir) {
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
-    icon: getPublicPath(isDev, baseDir, 'icon.ico'),
+    icon: getPublicPath(isDev, baseDir, 'app-icon.ico'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -120,7 +120,7 @@ async function createWindow({ isDev, baseDir, configPath, logCrash, splash, onMa
     show: false,
     frame: false,
     titleBarStyle: 'hidden',
-    icon: getPublicPath(isDev, baseDir, 'icon.ico'),
+    icon: getPublicPath(isDev, baseDir, 'app-icon.ico'),
     backgroundColor: '#0a1628',
     webPreferences: {
       nodeIntegration: false,

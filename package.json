@@ -36,15 +36,18 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/icon.ico"
+      "icon": "public/app-icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
     },
     "mac": {
-      "target": ["dmg", "zip"],
-      "icon": "build/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "build/app-icon.icns",
       "category": "public.app-category.education"
     }
   },
