@@ -2,9 +2,10 @@
  * Zod schemas for the backup/import payload.
  *
  * All HTML-bearing fields are sanitized via `.transform(sanitizeHtml)` so the
- * import path receives data that is safe to persist directly to IDB. Unknown
- * fields are preserved (`.passthrough()`) so legacy backups never get rejected
- * just because the schema evolved.
+ * import path receives data that is safe to persist directly to IDB.
+ *
+ * Type safety: All schemas that map to database types now use `.strict()` to
+ * reject unknown fields and prevent type holes via unsafe casting.
  *
  * Single source of truth: this file replaces the ad-hoc `typeof`/`as any`
  * sanitization that used to live in `useCardImport.ts`.
@@ -79,7 +80,7 @@ export const BackupSectionSchema = z
     scheduledDays: NumberWithDefault(0),
     firstReviewPending: z.unknown().optional().transform((v) => (typeof v === "boolean" ? v : false)),
   })
-  .passthrough();
+  .strict();
 
 // ─── Frequency / source enums ───────────────────────────
 
@@ -125,7 +126,7 @@ export const BackupCardSchema = z
     frequencyTag: FrequencyTagSchema,
     sourceType: SourceTypeSchema,
   })
-  .passthrough()
+  .strict()
   .transform((c): Card => {
     // Normalize legacy `subcategory` → `subcategoryId`, `chapter` → `chapterId`.
     const subId =
@@ -170,7 +171,7 @@ export const BackupChapterSchema: z.ZodType<ChapterNode> = z
     name: SafeText,
     sortOrder: NumberWithDefault(0),
   })
-  .passthrough() as unknown as z.ZodType<ChapterNode>;
+  .strict() as unknown as z.ZodType<ChapterNode>;
 
 export const BackupSubcategorySchema: z.ZodType<SubcategoryNode> = z
   .object({
@@ -179,7 +180,7 @@ export const BackupSubcategorySchema: z.ZodType<SubcategoryNode> = z
     sortOrder: NumberWithDefault(0),
     chapters: z.array(BackupChapterSchema).default([]),
   })
-  .passthrough() as unknown as z.ZodType<SubcategoryNode>;
+  .strict() as unknown as z.ZodType<SubcategoryNode>;
 
 const ExaminerProfileSchema = z
   .object({
@@ -191,6 +192,7 @@ const ExaminerProfileSchema = z
     updatedAt: z.unknown().optional(),
   })
   .partial()
+  .strict()
   .transform((p) => {
     const out: NonNullable<CategoryRecord["examinerProfile"]> = {};
     if (p.difficulty) out.difficulty = p.difficulty;
@@ -209,7 +211,7 @@ export const BackupCategoryRecordSchema = z
     color: z.unknown().optional().transform((v) => (typeof v === "string" ? v : undefined)),
     examinerProfile: z.unknown().optional(),
   })
-  .passthrough()
+  .strict()
   .transform((c): CategoryRecord => {
     const out: CategoryRecord = {
       id: c.id,
@@ -244,8 +246,25 @@ export const BackupSourceSchema = z
     isExclusive: z.unknown().optional(),
     sourceKind: z.unknown().optional(),
   })
-  .passthrough()
-  .transform((s): Source => s as unknown as Source);
+  .strict()
+  .transform((s): Source => {
+    return {
+      id: s.id,
+      categoryId: s.categoryId,
+      title: s.title,
+      date: s.date,
+      htmlContent: s.htmlContent,
+      outline: s.outline as Source["outline"],
+      articles: s.articles as Source["articles"],
+      version: s.version,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+      officialGazetteInfo: s.officialGazetteInfo,
+      slMarkings: s.slMarkings,
+      isExclusive: s.isExclusive,
+      sourceKind: s.sourceKind,
+    };
+  });
 
 // ─── MindMap nodes/edges (with sanitized labels) ────────
 
@@ -264,7 +283,7 @@ const MindMapNodeSchema = z
     }),
     style: z.unknown().optional(),
   })
-  .passthrough();
+  .strict();
 
 const MindMapEdgeSchema = z
   .object({
@@ -272,7 +291,7 @@ const MindMapEdgeSchema = z
     source: z.string(),
     target: z.string(),
   })
-  .passthrough();
+  .strict();
 
 export const BackupMindMapSchema = z
   .object({
@@ -285,8 +304,19 @@ export const BackupMindMapSchema = z
     createdAt: NumberWithDefault(Date.now()),
     updatedAt: NumberWithDefault(Date.now()),
   })
-  .passthrough()
-  .transform((m): MindMapDoc => m as unknown as MindMapDoc);
+  .strict()
+  .transform((m): MindMapDoc => {
+    return {
+      id: m.id,
+      categoryId: m.categoryId,
+      title: m.title,
+      mode: m.mode,
+      nodes: m.nodes as MindMapDoc["nodes"],
+      edges: m.edges as MindMapDoc["edges"],
+      createdAt: m.createdAt,
+      updatedAt: m.updatedAt,
+    };
+  });
 
 // ─── Mnemonic ───────────────────────────────────────────
 
@@ -295,15 +325,20 @@ export const BackupMnemonicSchema = z
     id: z.string(),
     categoryId: z.unknown().optional().transform((v) => (typeof v === "string" ? v : "")),
   })
-  .passthrough()
-  .transform((m): MnemonicCard => m as unknown as MnemonicCard);
+  .strict()
+  .transform((m): MnemonicCard => {
+    return {
+      id: m.id,
+      categoryId: m.categoryId,
+    };
+  });
 
 // ─── Knowledge-base article ─────────────────────────────
 
 export const BackupKnowledgeBaseArticleSchema = z
   .object({
     id: z.string(),
-    subjectId: z.unknown().optional().transform((v) => (typeof v === "string" ? v : "")),
+    subjectId: SafeText,
     title: SafeHtml,
     content: SafeHtml,
     linkedSourceIds: StringArray,
@@ -316,8 +351,22 @@ export const BackupKnowledgeBaseArticleSchema = z
     createdAt: NumberWithDefault(Date.now()),
     updatedAt: NumberWithDefault(Date.now()),
   })
-  .passthrough()
-  .transform((a): KnowledgeBaseArticle => a as unknown as KnowledgeBaseArticle);
+  .strict()
+  .transform((a): KnowledgeBaseArticle => {
+    return {
+      id: a.id,
+      subjectId: a.subjectId,
+      title: a.title,
+      content: a.content,
+      linkedSourceIds: a.linkedSourceIds,
+      rootSubcategoryId: a.rootSubcategoryId,
+      isIndex: a.isIndex,
+      tags: a.tags,
+      aliases: a.aliases,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+    };
+  });
 
 // ─── Settings entry (db.settings table: { key, value }) ─
 export const BackupSettingsEntrySchema = z
@@ -325,7 +374,7 @@ export const BackupSettingsEntrySchema = z
     key: z.string(),
     value: z.unknown(),
   })
-  .passthrough();
+  .strict();
 
 // ─── Review log / SR settings ───────────────────────────
 
@@ -335,7 +384,7 @@ export const BackupReviewLogEntrySchema = z
     sectionId: z.string().optional(),
     timestamp: NumberWithDefault(Date.now()),
   })
-  .passthrough();
+  .strict();
 
 export const BackupSRSettingsSchema = z
   .object({
@@ -343,7 +392,7 @@ export const BackupSRSettingsSchema = z
     dailyGoal: z.unknown().optional(),
     resistanceWeights: z.unknown().optional(),
   })
-  .passthrough();
+  .strict();
 
 // ─── Top-level backup ───────────────────────────────────
 
@@ -390,7 +439,7 @@ export const BackupSchema = z
     settings: z.array(BackupSettingsEntrySchema).default([]),
     localStorageData: z.unknown().optional(),
   })
-  .passthrough();
+  .strict();
 
 export type ParsedBackup = z.infer<typeof BackupSchema>;
 export type ParsedCard = z.infer<typeof BackupCardSchema>;
