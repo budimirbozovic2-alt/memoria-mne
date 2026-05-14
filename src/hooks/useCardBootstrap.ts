@@ -54,7 +54,7 @@ export function useCardBootstrap(setters: BootSetters) {
         await runMigrations();
 
         const { cards, catRecords, log, settings } = await loadInitialData();
-        const { finalRecords } = normalizeCategories({ cards, catRecords });
+        const { finalRecords } = await normalizeCategories({ cards, catRecords });
 
         splashProgress(85, "Finalizacija…");
         markBootStep("cards:data-load-done", `${cards.length} cards`);
