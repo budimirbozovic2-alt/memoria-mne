@@ -12,6 +12,11 @@
  *   - Lost emits (backlink index drifting from DB).
  *   - Cross-title independence under load (disjoint titles must not block each other).
  *   - In-flight map cleanup (no leaked Promises after settle).
+ *
+ * Stabilized by:
+ *   - Removing setTimeout/timing assumptions; all index updates are synchronous on emit.
+ *   - Asserting version increments deterministically instead of polling.
+ *   - Using event capture to verify backlink index is updated before test assertions.
  */
 import "fake-indexeddb/auto";
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
@@ -162,13 +167,30 @@ describe("wiki-link integration — parallel clicks", () => {
     expect(all).toHaveLength(1);
   });
 
-  it("emit fires per-create and updates the backlink index live", async () => {
-    // Subscribe just like ZettelkastenView does at mount.
+  it("emit fires per-create and updates the backlink index deterministically", async () => {
+    // Capture emits to verify deterministic sequencing (not timing-dependent).
+    const capturedEmits: Array<{ type: string; targetId: string }> = [];
+
+    const originalEmit = eventBus.emit.bind(eventBus);
+    vi.spyOn(eventBus, "emit").mockImplementation((type, payload) => {
+      if (type === EVENT_TYPES.KB_ARTICLE_UPSERTED && payload?.article?.id) {
+        capturedEmits.push({ type, targetId: payload.article.id });
+      }
+      return originalEmit(type, payload);
+    });
+
     const { handle } = makeWikiLinkHandler(SUBJECT);
 
     // Create the target first via wiki-link.
     const targetId = await handle("Cilj");
     expect(targetId).not.toBeNull();
+
+    // Verify the emit was captured synchronously.
+    expect(capturedEmits).toHaveLength(1);
+    expect(capturedEmits[0].targetId).toBe(targetId);
+
+    // Get version BEFORE creating linker — establish baseline.
+    const versionBefore = backlinkIndex.getVersion(SUBJECT, "Cilj");
 
     // Now create a second article whose body links to "Cilj".
     const linker: KnowledgeBaseArticle = {
@@ -178,9 +200,17 @@ describe("wiki-link integration — parallel clicks", () => {
     await db.knowledgeBaseArticles.put(linker);
     eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: SUBJECT, article: linker });
 
-    // Backlink index must report Linker → Cilj.
+    // Backlink index version MUST increment (deterministic signal of update).
+    const versionAfter = backlinkIndex.getVersion(SUBJECT, "Cilj");
+    expect(versionAfter).toBeGreaterThan(versionBefore);
+
+    // Backlink index must report Linker → Cilj (no timing assumptions).
     const backlinks = backlinkIndex.getBacklinks(SUBJECT, "Cilj");
     expect(backlinks.map(b => b.articleId)).toContain(linker.id);
+
+    // Validate that the backlinks are correctly indexed.
+    expect(backlinks).toHaveLength(1);
+    expect(backlinks[0].title).toBe("Linker");
   });
 
   it("interleaved bursts: same title clicked in two waves only creates once total", async () => {
@@ -203,5 +233,73 @@ describe("wiki-link integration — parallel clicks", () => {
     expect(all).toHaveLength(1);
     // Exactly one creation emit across both waves.
     expect(emitted).toHaveLength(1);
+  });
+
+  it("backlink index version bumps deterministically on upsert (not timing)", async () => {
+    // Initialize backlink index with one article.
+    const article1 = newArticle(SUBJECT, "Article One");
+    await db.knowledgeBaseArticles.put(article1);
+    backlinkIndex.rebuildFromAll(SUBJECT, [article1]);
+
+    // Record initial version.
+    const versionInitial = backlinkIndex.getVersion(SUBJECT, "Some Title");
+    expect(versionInitial).toBe(0);
+
+    // Create and emit an article that links to "Some Title".
+    const linker = {
+      ...newArticle(SUBJECT, "Linker"),
+      content: "See [[Some Title]] here.",
+    };
+    await db.knowledgeBaseArticles.put(linker);
+
+    // Emit synchronously — version MUST bump before we read it again.
+    eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: SUBJECT, article: linker });
+
+    // Version increments immediately (deterministic, not timing-dependent).
+    const versionAfter = backlinkIndex.getVersion(SUBJECT, "Some Title");
+    expect(versionAfter).toBeGreaterThan(versionInitial);
+    expect(versionAfter).toBe(1);
+
+    // Backlinks are available synchronously.
+    const backlinks = backlinkIndex.getBacklinks(SUBJECT, "Some Title");
+    expect(backlinks).toHaveLength(1);
+    expect(backlinks[0].articleId).toBe(linker.id);
+    expect(backlinks[0].title).toBe("Linker");
+  });
+
+  it("removal from backlink index is deterministic and updates version", async () => {
+    // Setup: create target and linker articles.
+    const target = newArticle(SUBJECT, "Target");
+    const linker = {
+      ...newArticle(SUBJECT, "Linker"),
+      content: "See [[Target]].",
+    };
+    await db.knowledgeBaseArticles.put(target);
+    await db.knowledgeBaseArticles.put(linker);
+
+    // Build index from both articles.
+    backlinkIndex.rebuildFromAll(SUBJECT, [target, linker]);
+
+    // Verify link exists.
+    let backlinks = backlinkIndex.getBacklinks(SUBJECT, "Target");
+    expect(backlinks).toHaveLength(1);
+
+    // Record version before removal.
+    const versionBefore = backlinkIndex.getVersion(SUBJECT, "Target");
+
+    // Remove linker and emit event.
+    await db.knowledgeBaseArticles.delete(linker.id);
+    eventBus.emit(EVENT_TYPES.KB_ARTICLE_REMOVED, {
+      subjectId: SUBJECT,
+      articleId: linker.id,
+    });
+
+    // Version bumps deterministically (no timing assumptions).
+    const versionAfter = backlinkIndex.getVersion(SUBJECT, "Target");
+    expect(versionAfter).toBeGreaterThan(versionBefore);
+
+    // Backlinks are now empty (deterministic result).
+    backlinks = backlinkIndex.getBacklinks(SUBJECT, "Target");
+    expect(backlinks).toHaveLength(0);
   });
 });
