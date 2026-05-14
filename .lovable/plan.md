@@ -1,138 +1,171 @@
-# Refaktorisanje `useSourceReaderActions` → A/A/A + batch implementacija sa AutoSplitDialog
+# Plan: Refaktor `ZettelkastenView` i `MnemonicTest` (SSOT/SOA/UI ↔ Logika)
 
-## Trenutno stanje (`useSourceReaderActions.ts`, 525 lin.)
-
-Hook je narastao u "boga svega": miješa **5 različitih odgovornosti**.
-
-### Detektovani prekršaji
-
-| # | Linije | Prekršaj | Princip |
-|---|---|---|---|
-| 1 | 38-66 | DOM selekcija + globalni `mousedown` listener — manipulacija `window.getSelection()`, `getBoundingClientRect()` u hook-u | UI/Logika |
-| 2 | 99-169 | `handleSmartSplitConfirm` zna sve o `splitMode`, gradi `sections`/`sourceModules`/`childCardIds`, zove `addCard`, `incrementDailyMapped`, `dispatchEvent`, toast | SOA (domen+I/O+UI) |
-| 3 | 207-247 | `handleMapSelection` duplira logiku gradnje sekcija/sourceModules iz `handleSmartSplitConfirm` | SSOT |
-| 4 | 249-368 | `handleSetHeading`/`handleFormatAsList`/`handleFormatSelectionAs` — 120 linija direktne DOM manipulacije + `saveSource`/`extractOutline`/`injectHeadingIds`/`parseArticles` inline | UI/Logika + SOA |
-| 5 | 446-490 | `handleAutoFormatArticles` + `persistContent` — ista I/O sekvenca (sanitize → outline → articles → saveSource) ponovljena **4 puta** u fajlu | SSOT |
-| 6 | 412-430 | Globalni keyboard listener u istom hook-u | SOA |
-| 7 | 383-402 | Sopstveni Zustand subscribe + `window.addEventListener` cleanup za heading menu | SOA |
-
-`useState` nema, ali hook drži **ref + 4 useEffect-a + 16 callback-a** i raspoređen je između 3 različita izvora podataka (Zustand store, AppContext, `source` prop).
+Cilj: oba "Fat" fajla pretvoriti u tanke orkestratore, izvlačeći domensku logiku, perzistenciju i state-machine u namjenske hookove i čiste funkcije. Postojeći javni API (props i ponašanje) ostaje identičan.
 
 ---
 
-## Ciljana arhitektura (4 sloja, isti šablon kao HealthMonitor / SpeedReader)
+## DIO A — `ZettelkastenView.tsx` (596 → cilj < 250 LOC)
 
-### 1. Domenski sloj — `src/lib/source-reader/`
+### Trenutni problemi (mapirano na linije)
+1. **Mutacije** (`handleCreate`, `handleDelete`, `handleWikiLink`, `flushDraft`) — 211–355: direktno pozivaju `saveArticle`, `deleteArticle`, `bulkCreateArticlesIfMissing`, `getArticle`, emituju event-bus, kao i `toast` side effect.
+2. **In-flight dedupe** (`wikiLinkInFlightRef`) — 304–355: čista coordination logika ne pripada render fajlu.
+3. **Draft state** (92, 148–197, 262–279): `useState<Draft>` + `flushRef` + cleanup-flush + dirty-check su jedna cjelina.
+4. **Derived sets** (`existingTitleSet`, `emptyTitleSet`) — 108–137: dovoljno samostalna selektor logika.
+5. **Index-aware navigacija** (`handleBackToIndex`, `handleDelete` fallback na `indexArticleId`) — provlači se kroz handler-e.
 
-Čiste funkcije, bez Reacta i bez baze. Ovdje se centralizuje **gradnja kartica** koja je trenutno duplirana u 3 funkcije.
+### Nova arhitektura (4 sloja)
 
-**`build-essay-payload.ts`**
-- `buildSeparateEssaysFromModules(modules, edits, source, sub, chap)` → `Array<AddCardArgs>`
-- `buildCombinedEssayFromModules(modules, edits, parentName, source, sub, chap)` → `AddCardArgs | null`
-- `buildEssayFromSelection(text, html, question, source)` → `AddCardArgs` (za exam mapping single-shot)
-- `buildLinkPatch(card, snippetText, snippetHtml, sourceId, appendSnippet)` → `Card`
-
-Tip `AddCardArgs = { question, sections, categoryId, subId?, chapId?, options }`.
-
-**`source-html-pipeline.ts`** — eliminiše duplikat "sanitize → injectHeadingIds → outline → parseArticles → saveSource":
-- `rebuildSourceFromHtml(source, rawHtml): Promise<Source>` — pure transform + jedan `saveSource` poziv
-- `applyHeadingChange(container, el, level): { html }` — pure DOM op
-- `applyListWrap(container, range, type): { html }` — pure DOM op
-
-### 2. I/O / Servisni sloj — `src/lib/services/sourceEditingService.ts`
-
-Tanak omotač oko `sources-storage` + `planner-storage`:
-- `persistSourceHtml(source, container.innerHTML, onSourceUpdated)`
-- `persistAutoFormat(source, onSourceUpdated)`
-- `commitMappingCreated(count)` → `incrementDailyMapped(count) + dispatchEvent("codex-mapping-created")`
-
-Hook nikad više ne `import()` direktno `sources-storage`/`article-parser`/`article-autoformat` u 4 različita callback-a.
-
-### 3. Decomposed hooks (orkestracija)
-
-Razbijamo monolit na **3 fokusirana hook-a** koja koristi `SourceReader.tsx`:
-
-**`useSourceSelection.ts`** (~70 lin.)
-- DOM selekcija + globalni mousedown reset (linije 38-66)
-- Vraća: `{ contentRef, handleMouseUp, clearSelection }`
-- Sav DOM accessible kroz Zustand store kao i sad
-
-**`useSourceMapping.ts`** (~120 lin.)
-- Esej/split/link/exam akcije (linije 71-247)
-- Zove `build-essay-payload` + `addCard`/`patchCard` + `commitMappingCreated`
-- Vraća: `{ handleConvertToEssay, handleSmartSplitConfirm, handleLinkToExisting, handleLinkConfirm, handleMapSelection }`
-
-**`useSourceEditing.ts`** (~140 lin.)
-- Heading menu + format + auto-format + autosave (linije 249-502)
-- Zove `source-html-pipeline` + `sourceEditingService`
-- Vraća: `{ handleSetHeading, handleFormatSelectionAs, handleContextMenu, handleAutoFormatArticles, handleEditInput, handleInlineFormat, scrollToHeading }`
-
-**`useSourceReaderShortcuts.ts`** (~30 lin.)
-- Samo keyboard listener (linije 412-430), prima `{ onConvertToEssay }`
-
-### 4. Fasada — `useSourceReaderActions.ts` (~50 lin.)
-
-Postaje tanak agregator koji zove gornja 4 hook-a i vraća isti `{ contentRef, derived, actions }` API kao danas — **`SourceReader.tsx` nema promjena**.
-
-```ts
-export function useSourceReaderActions(source, onSourceUpdated) {
-  const { cards } = useCardData();
-  const sel = useSourceSelection();
-  const map = useSourceMapping(source, sel.contentRef);
-  const edit = useSourceEditing(source, sel.contentRef, onSourceUpdated);
-  useSourceReaderShortcuts({ onConvertToEssay: map.handleConvertToEssay });
-  const sourceCards = useMemo(() => cards.filter(c => c.sourceId === source.id), [cards, source.id]);
-  const safeHtml = useMemo(() => sanitizeHtml(source.htmlContent), [source.htmlContent]);
-  return {
-    contentRef: sel.contentRef,
-    derived: { sourceCards, safeHtml, linkedCount: sourceCards.length, cards },
-    actions: { ...sel, ...map, ...edit },
-  };
-}
+```text
+ZettelkastenView (UI shell, < 250 LOC)
+   │
+   ├── useZettelkastenBootstrap   (postojeći — bez izmjena)
+   ├── useArticleIndex            (NOVO — derived/title sets + indexArticleId selektori)
+   ├── useArticleDraft            (NOVO — draft state + flush + dirty + cleanup)
+   └── useArticleMutations        (NOVO — create/delete/wiki-link + in-flight dedupe + event-bus)
 ```
 
+#### A1. `src/hooks/zettelkasten/useArticleDraft.ts` (NOVO, ~110 LOC)
+- Vlasnik: `draft`, `isEditing`, `editorRef`, `flushRef`.
+- API:
+  ```ts
+  {
+    draft, isEditing, editorRef,
+    enterEdit(article), exitEdit(),
+    updateDraft(patch),               // setDraft({...draft, ...patch})
+    flush(): Promise<KnowledgeBaseArticle | null>,
+    saveAndClose(): Promise<void>,
+    resetForArticle(article | null),  // koristi se na open()
+  }
+  ```
+- Implementira: dirty-check, `getArticle(activeId)` fresh-read prije snimanja (linija 154), normalizaciju aliasa, `saveArticle` + emit `KB_ARTICLE_UPSERTED`, toast na grešku.
+- Cleanup-flush effect (linije 192–197) seli ovdje.
+
+#### A2. `src/hooks/zettelkasten/useArticleMutations.ts` (NOVO, ~120 LOC)
+- Ulaz: `{ categoryId, articles, setArticles, indexArticleId, activeArticle, setActiveId, draftApi, articleIndexApi }`.
+- API: `{ create(title?), open(id), backToIndex(), remove(activeArticle), wikiLink(title) }`.
+- Vlasnik: `wikiLinkInFlightRef` + `bulkCreateArticlesIfMissing` + `findArticleByTitle` + `backlinkIndex.resolveTargetToArticleId`.
+- Sve mutacije uvijek prvo `await draftApi.flush()`, pa apply, pa `eventBus.emit(...)`. Jedno mjesto za toast poruke.
+
+#### A3. `src/hooks/zettelkasten/useArticleIndex.ts` (NOVO, ~50 LOC)
+- Čisti selektori nad `articles`:
+  - `activeArticle(activeId)`
+  - `existingTitleSet`, `emptyTitleSet` (memo, isto pravilo "skip kad je `isEditing`")
+  - `indexArticleId` (već vraća bootstrap, ali centralizujemo getter ovdje za konzistentnost)
+- Ulaz: `{ articles, activeId, isEditing }`.
+
+#### A4. `src/views/ZettelkastenView.tsx` (refactor, ~230 LOC)
+- Ostaje: routing guards, layout (Explorer + main pane), JSX render, `LinkedSourcesPicker` / `ZettelTagEditor` / `ZettelAliasEditor` / `BacklinksPanel` / `Sheet` / `MindMapPickerDialog`.
+- Postaje "thin wiring":
+  ```tsx
+  const draftApi = useArticleDraft({ activeId, categoryId, setArticles });
+  const indexApi = useArticleIndex({ articles, activeId, isEditing: draftApi.isEditing });
+  const mutations = useArticleMutations({ categoryId, articles, setArticles,
+                                          indexArticleId, activeArticle: indexApi.activeArticle,
+                                          setActiveId, draftApi });
+  useWikiLinkAutoCreate({ ... }); // ostaje nepromijenjen
+  ```
+- Sve `setDraft({ ...draft, x })` postaju `draftApi.updateDraft({ x })`.
+
+### Verifikacija (Dio A)
+- Novi test: `src/test/zettelkasten-article-draft.test.ts` — dirty-check matriks (title/content/sources/tags/aliases) + "fresh-read prije save" scenario (simulira upsert između tipkanja i flush).
+- Novi test: `src/test/zettelkasten-mutations.test.ts` — `wikiLink` paralelni pozivi za isti naslov rezultiraju jednim `bulkCreateArticlesIfMissing` pozivom (in-flight dedupe).
+- Postojeći testovi (`zettelkasten-*`) moraju proći bez izmjena.
+
 ---
 
-## Batch plan (oba refaktora u jednom prolazu)
+## DIO B — `MnemonicTest.tsx` (442 → cilj < 100 LOC shell)
 
-Pošto su oba čisto interna i ne mijenjaju public API, izvršavamo ih **paralelno u istom commit-u**:
+### Trenutni problemi
+- 12 `useState` poziva (24, 39–41, 71–77) miješaju filtere, queue, fazu, tajmer, statistiku.
+- Tajmer (`useEffect` 82–98) + `setInterval` ref + state machine prelaza žive u render fajlu.
+- `categoryTree`, `hookTypeCounts`, `filteredTestable`, `uuidToName` (27–69) su čiste funkcije pomiješane s render-om.
+- Sva 4 prikaza (selector / reminder / test / finished) žive u jednoj ogromnoj komponenti.
 
-### Faza A — AutoSplitDialog (po prethodno odobrenom planu)
-1. `src/lib/auto-split/import-planner.ts` (čisti domen)
-2. `src/lib/services/autoSplitImportService.ts` (I/O + persistQueue + db.cards.count provjera)
-3. `src/hooks/useAutoSplitImport.ts` (orkestrator)
-4. `src/components/AutoSplitDialog.tsx` → dumb UI (~140 lin.)
-5. `src/test/auto-split-import-planner.test.ts`
+### Nova arhitektura
 
-### Faza B — useSourceReaderActions
-6. `src/lib/source-reader/build-essay-payload.ts`
-7. `src/lib/source-reader/source-html-pipeline.ts`
-8. `src/lib/services/sourceEditingService.ts`
-9. `src/hooks/source-reader/useSourceSelection.ts`
-10. `src/hooks/source-reader/useSourceMapping.ts`
-11. `src/hooks/source-reader/useSourceEditing.ts`
-12. `src/hooks/source-reader/useSourceReaderShortcuts.ts`
-13. `src/hooks/useSourceReaderActions.ts` → fasada (~50 lin.)
-14. `src/test/source-reader-build-essay.test.ts` (testira buildSeparate/buildCombined/buildLinkPatch)
+```text
+MnemonicTest (shell, < 100 LOC) — gleda phase, render <Selector|Reminder|TestRunner|Finished>
+   │
+   ├── lib/mnemonic/test-tree.ts       (NOVO — pure: buildCategoryTree, hookTypeCounts, filterTestable)
+   └── hooks/mnemonic/useTestEngine.ts (NOVO — state machine + tajmer + queue + statistika)
+```
 
-### Faza C — Verifikacija
-- `bunx vitest run` (postojeći testovi + 2 nova suite-a)
-- Smoke check: `SourceReader.tsx` i `AutoSplitDialog.tsx` ne uvoze direktno `db`, `persistQueue`, `sources-storage` u callback-ima.
+#### B1. `src/lib/mnemonic/test-tree.ts` (NOVO, ~50 LOC, čiste funkcije)
+- `buildCategoryTree(cards): Record<categoryId, Set<subId>>`
+- `buildHookTypeCounts(cards): Record<HookType, number>`
+- `filterTestable(cards, { category, subcategory, hookType }): MnemonicCard[]`
+- `buildUuidToName(categoryRecords): Record<string, string>`
+
+#### B2. `src/hooks/mnemonic/useTestEngine.ts` (NOVO, ~150 LOC)
+- Vlasnik:
+  - `phase: "selector" | "reminder" | "test" | "finished"` (useReducer preferiran)
+  - `queue`, `currentIndex`, `showTrigger`, `timerActive`, `timeLeft`, `timedOut`, `sessionStats`
+  - `timerRef` (interval) + cleanup
+- API:
+  ```ts
+  {
+    phase, currentCard, queue, currentIndex,
+    showTrigger, timeLeft, timedOut, sessionStats,
+    startSession(filteredCards), startRecall(),
+    answer(success), gotoSelector(), enterTestPhase(),
+  }
+  ```
+- Konstanta `RECALL_TIME_LIMIT` izložena kao `engine.recallLimit`.
+
+#### B3. Pod-komponente faza (NOVO u `src/components/mnemonic/`)
+- `MnemonicTestSelector.tsx` (~140 LOC) — filtri (kategorija/podkat/hook tip) + Start dugme.
+- `MnemonicTestReminder.tsx` (~50 LOC) — animirani intro ekran.
+- `MnemonicTestRunner.tsx` (~150 LOC) — kartica, tajmer, okidač, dugmad.
+- `MnemonicTestFinished.tsx` (~50 LOC) — rezime + restart.
+- "Empty state" (139–152) ostaje inline u shell-u.
+
+#### B4. `src/components/MnemonicTest.tsx` (refactor, ~80 LOC shell)
+```tsx
+export default function MnemonicTest({ cards, onRecordResult, onBack }) {
+  const { categoryRecords } = useCategoryData();
+  const allTestable = useMemo(() => cards.filter(c => c.mnemonicStatus !== "new"), [cards]);
+  const tree   = useMemo(() => buildCategoryTree(allTestable), [allTestable]);
+  const counts = useMemo(() => buildHookTypeCounts(allTestable), [allTestable]);
+  const names  = useMemo(() => buildUuidToName(categoryRecords), [categoryRecords]);
+  const engine = useTestEngine({ onRecordResult });
+
+  if (allTestable.length === 0) return <EmptyState onBack={onBack} />;
+  switch (engine.phase) {
+    case "selector": return <MnemonicTestSelector ... />;
+    case "reminder": return <MnemonicTestReminder ... />;
+    case "test":     return <MnemonicTestRunner ... />;
+    case "finished": return <MnemonicTestFinished ... />;
+  }
+}
+```
+- Filter `useState` ostaju u `MnemonicTestSelector` (lokalni mu state — vraća konačni `filteredTestable` u `engine.startSession`).
+
+### Verifikacija (Dio B)
+- Novi test: `src/test/mnemonic-test-tree.test.ts` — `buildCategoryTree`, `filterTestable`, `buildUuidToName`.
+- Novi test: `src/test/mnemonic-test-engine.test.ts` — fake timers (`vi.useFakeTimers`): tajmer odbrojava do 0 → `timedOut=true`, `answer(true/false)` ažurira stats i napreduje queue, na kraju queue → `phase="finished"`.
 
 ---
 
-## Ocjene nakon refaktora
+## Plan izvršavanja (jedan commit, batch)
 
+1. Dio A: kreirati `useArticleDraft.ts`, `useArticleMutations.ts`, `useArticleIndex.ts`; refaktor `ZettelkastenView.tsx`.
+2. Dio B: kreirati `lib/mnemonic/test-tree.ts`, `hooks/mnemonic/useTestEngine.ts`, 4 pod-komponente; refaktor `MnemonicTest.tsx`.
+3. Dodati 4 nova test fajla.
+4. `vitest run` lokalno (sva postojeća + nova) — paritet ponašanja je nepregovorljiv.
+
+### Garancije pariteta
+- **Toast poruke** identične (tekst, tip, vrijeme prikaza).
+- **Event-bus emiti** identični (`KB_ARTICLE_UPSERTED`, `KB_ARTICLE_REMOVED`).
+- **In-flight dedupe** za wiki-link sačuvan (paralelni klikovi → jedan IDB write).
+- **Tajmer ponašanje** identično (interval 100ms, korak 0.1s, prag `prev <= 0.1`).
+- `SourceReader.tsx` i ostali konzumenti ostaju nepromijenjeni (oba refaktora su interna).
+
+### Procjena ocjena nakon refaktora
 | Modul | SSOT | SOA | UI vs Logika |
 |---|---|---|---|
-| AutoSplitDialog | A | A | A |
-| useSourceReaderActions (fasada) | A | A | A |
-| build-essay-payload | A | A | n/a |
-| source-html-pipeline | A | A | n/a |
-
-## Garancije
-- `SourceReader.tsx` i `AutoSplitDialog` zadržavaju **identičan public API** i ponašanje (isti toast-ovi, isti event-i, isti shortcuts).
-- Svi side-effect-i (`incrementDailyMapped`, `dispatchEvent`, `toast`) ostaju samo u orkestratorskim hook-ovima — nisu rasuti po domenskim funkcijama.
-- Nema novih dependencija.
-
-Ako odobravaš ovaj batch plan, krećem direktno u implementaciju oba refaktora.
+| `ZettelkastenView` (shell) | A | A | A |
+| `useArticleDraft` | A | A | A |
+| `useArticleMutations` | A | A | A |
+| `MnemonicTest` (shell) | A | A | A |
+| `useTestEngine` | A | A | A |
+| `lib/mnemonic/test-tree` | A | A | A |
