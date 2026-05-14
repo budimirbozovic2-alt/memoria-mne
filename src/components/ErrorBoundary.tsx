@@ -78,33 +78,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   handleEmergencyBackup = async () => {
     try {
-      const { db } = await import("@/lib/db");
-      const [cards, categories, sources, reviewLog, mindMaps, diary,
-        calibrationLog, latencyLog, slippageLog, activityLog, disciplineLog, pomodoroLog,
-      ] = await Promise.all([
-        db.cards.toArray(), db.categories.toArray(), db.sources.toArray(),
-        db.reviewLog.toArray(), db.mindMaps.toArray(), db.diary.toArray(),
-        db.calibrationLog.toArray(), db.latencyLog.toArray(), db.slippageLog.toArray(),
-        db.activityLog.toArray(), db.disciplineLog.toArray(), db.pomodoroLog.toArray(),
-      ]);
-
-      // Derive subcategories from CategoryRecords
-      const subcategories: Record<string, string[]> = {};
-      categories.forEach(r => {
-        if (r.subcategories && r.subcategories.length > 0) {
-          subcategories[r.name] = r.subcategories.map((s: { name: string } | string) => typeof s === "string" ? s : s.name);
-        }
-      });
-
-      const backup = {
-        version: 5, type: "emergency-backup",
-        timestamp: new Date().toISOString(),
-        cards, categories, subcategories, sources, reviewLog,
-        mindMaps, diary, calibrationLog, latencyLog,
-        slippageLog, activityLog, disciplineLog, pomodoroLog,
-      };
-
-      const json = JSON.stringify(backup);
+      const { performEmergencyExport } = await import("@/lib/emergency-export");
+      const json = await performEmergencyExport();
       const blob = new Blob([json], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");

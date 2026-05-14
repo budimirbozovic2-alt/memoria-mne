@@ -1,6 +1,6 @@
 import { db, type KnowledgeBaseArticle } from "./db";
-import { normalizeTagList } from "./zettelkasten-tags";
-import { normalizeAliasList } from "./zettelkasten-aliases";
+import { assertTagsNormalized } from "./zettelkasten-tags";
+import { assertAliasesNormalized } from "./zettelkasten-aliases";
 
 export type { KnowledgeBaseArticle };
 
@@ -41,14 +41,18 @@ export async function findArticleByTitle(
 }
 
 export async function saveArticle(article: KnowledgeBaseArticle): Promise<void> {
-  // Defensive: re-normalize tags + aliases on every write so UI bugs or stale
-  // data from imports/migrations can never poison IDB with malformed entries.
-  const tags = normalizeTagList(article.tags);
-  const aliases = normalizeAliasList(article.aliases);
+  // Audit #11: Assume the UI (Editor) has already normalized tags and aliases.
+  // We only perform assertive validation here to prevent data corruption.
+  // This avoids redundant re-processing on every autosave/write.
+  if (import.meta.env.DEV) {
+    assertTagsNormalized(article.tags);
+    assertAliasesNormalized(article.aliases);
+  }
+
   // V6: bubble persistence failures up — caller decides whether to surface a
   // toast and skip the optimistic UI update. No silent swallow.
   try {
-    await db.knowledgeBaseArticles.put({ ...article, tags, aliases, updatedAt: Date.now() });
+    await db.knowledgeBaseArticles.put({ ...article, updatedAt: Date.now() });
   } catch (err) {
     console.error("[zettelkasten-storage] saveArticle failed", err);
     throw err;

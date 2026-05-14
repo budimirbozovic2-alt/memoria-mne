@@ -8,9 +8,9 @@
  * from the parent (the parent owns those because they're shared with the
  * mastery dial / search bar that live outside the view).
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useEffect } from "react";
 import { type Card } from "@/lib/spaced-repetition";
-import { type CategoryRecord } from "@/lib/db";
+import { type CategoryRecord, idbLoadCardsByChapter } from "@/lib/db";
 import {
   buildHierarchyOrder,
   compareCardsByHierarchy,
@@ -67,6 +67,17 @@ export function useCardViewFilters({
   const [filterType, setFilterType] = useState<FilterTypeValue>(initialType ?? "all");
   const [filterFrequency, setFilterFrequency] = useState<FrequencyFilterValue>(initialFrequency ?? "all");
 
+  // Audit #7: Local override for chapter-filtered cards to avoid loading all cards into memory
+  const [chapterOverride, setChapterOverride] = useState<Card[] | null>(null);
+
+  useEffect(() => {
+    if (filterChapter !== ALL) {
+      idbLoadCardsByChapter(categoryId, filterChapter).then(setChapterOverride);
+    } else {
+      setChapterOverride(null);
+    }
+  }, [filterChapter, categoryId]);
+
   const categoryRecord = useMemo(
     () => allCategories.find((c) => c.id === categoryId) ?? null,
     [allCategories, categoryId],
@@ -97,9 +108,13 @@ export function useCardViewFilters({
     const q = (externalQuery ?? "").trim().toLowerCase();
     const hasQuery = q.length > 0;
 
-    const list = scoped.filter((card) => {
+    // Audit #7: Use chapterOverride if available, otherwise fall back to scoped (category-level)
+    const baseList = chapterOverride || scoped;
+
+    const list = baseList.filter((card) => {
+      // If we use chapterOverride, we don't need to check filterChapter again
+      if (!chapterOverride && filterChapter !== ALL && card.chapterId !== filterChapter) return false;
       if (filterSubcategory !== ALL && card.subcategoryId !== filterSubcategory) return false;
-      if (filterChapter !== ALL && card.chapterId !== filterChapter) return false;
       if (!matchesType(card, filterType)) return false;
       if (!matchesFrequency(card, filterFrequency)) return false;
       if (typeof masteryFilter === "number") {
@@ -120,7 +135,26 @@ export function useCardViewFilters({
 
     const order = categoryRecord ? buildHierarchyOrder(categoryRecord) : EMPTY_HIERARCHY_ORDER;
     return [...list].sort((a, b) => compareCardsByHierarchy(a, b, order));
-  }, [scoped, filterSubcategory, filterChapter, filterType, filterFrequency, externalQuery, masteryFilter, categoryRecord]);
+  }, [scoped, chapterOverride, filterSubcategory, filterChapter, filterType, filterFrequency, externalQuery, masteryFilter, categoryRecord]);
+
+  // Audit #7: Local override for chapter-filtered counts
+  const chapterCountsOverride = useMemo(() => {
+    if (!chapterOverride) return null;
+    const m: Record<string, number> = {};
+    for (const c of chapterOverride) {
+      if (c.chapterId) m[c.chapterId] = (m[c.chapterId] ?? 0) + 1;
+    }
+    return m;
+  }, [chapterOverride]);
+
+  const subcategoryCountsOverride = useMemo(() => {
+    if (!chapterOverride) return null;
+    const m: Record<string, number> = {};
+    for (const c of chapterOverride) {
+      if (c.subcategoryId) m[c.subcategoryId] = (m[c.subcategoryId] ?? 0) + 1;
+    }
+    return m;
+  }, [chapterOverride]);
 
   const hasActiveFilters = useMemo(
     () =>
@@ -152,8 +186,8 @@ export function useCardViewFilters({
     filterType,
     filterFrequency,
     filteredCards,
-    subcategoryCounts,
-    chapterCounts,
+    subcategoryCounts: subcategoryCountsOverride || subcategoryCounts,
+    chapterCounts: chapterCountsOverride || chapterCounts,
     hasActiveFilters,
     setFilterSubcategory,
     setFilterChapter,

@@ -219,6 +219,14 @@ export async function idbCountByType(type: string): Promise<number> {
   return db.cards.where("type").equals(type).count();
 }
 
+/**
+ * Audit #7: Optimized chapter filtering using composite index.
+ * Fetches cards for a specific chapter within a category directly from IDB.
+ */
+export async function idbLoadCardsByChapter(categoryId: string, chapterId: string): Promise<Card[]> {
+  return db.cards.where("[categoryId+chapterId]").equals([categoryId, chapterId]).toArray();
+}
+
 export async function idbCountReviewLogSince(since: number): Promise<number> {
   return db.reviewLog.where("timestamp").aboveOrEqual(since).count();
 }

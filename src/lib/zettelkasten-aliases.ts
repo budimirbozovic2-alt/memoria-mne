@@ -21,6 +21,26 @@ export const ALIAS_LIMITS = {
   maxLen: 60,
 } as const;
 
+/**
+ * Audit #11: Assertive validation for persistence layer.
+ * Throws if the alias list is not already normalized.
+ */
+export function assertAliasesNormalized(aliases: string[] | undefined): void {
+  if (!aliases || aliases.length === 0) return;
+  if (aliases.length > ALIAS_LIMITS.maxPerArticle) {
+    throw new Error(`Alias count exceeds limit (${aliases.length} > ${ALIAS_LIMITS.maxPerArticle})`);
+  }
+  const seen = new Set<string>();
+  for (const a of aliases) {
+    if (typeof a !== "string") throw new Error("Alias must be a string");
+    if (a !== normalizeAlias(a)) {
+      throw new Error(`Alias "${a}" is not normalized (should be "${normalizeAlias(a)}")`);
+    }
+    if (seen.has(a)) throw new Error(`Duplicate alias detected: ${a}`);
+    seen.add(a);
+  }
+}
+
 /** Normalize a raw alias entry. Returns "" if the entry should be dropped. */
 export function normalizeAlias(raw: string): string {
   const trimmed = raw.trim().toLowerCase();

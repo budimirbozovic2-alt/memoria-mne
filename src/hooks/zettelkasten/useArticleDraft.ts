@@ -19,6 +19,7 @@ import {
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { normalizeAliasList } from "@/lib/zettelkasten-aliases";
+import { normalizeTagList } from "@/lib/zettelkasten-tags";
 import { sameStringSet } from "@/lib/struct-eq";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import type { ZettelEditorHandle } from "@/components/zettelkasten/ZettelEditor";
@@ -64,25 +65,40 @@ export function useArticleDraft({ activeId, categoryId, setArticles }: Input): A
   const [isEditing, setIsEditing] = useState(false);
   const editorRef = useRef<ZettelEditorHandle | null>(null);
 
+  // Audit V4: Use a ref to track the latest draft state. This ensures that
+  // the `flush` callback (and its calls during cleanup/unmount) always see
+  // the absolute latest data even if the React render cycle hasn't committed
+  // the state update to the closure yet.
+  const draftRef = useRef<Draft | null>(null);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
   const flush = useCallback(async (): Promise<KnowledgeBaseArticle | null> => {
-    if (!draft || !activeId) return null;
+    const currentDraft = draftRef.current;
+    if (!currentDraft || !activeId) return null;
     const fresh = await getArticle(activeId);
     if (!fresh) return null;
-    const titleClean = draft.title.trim() || "Bez naslova";
-    const aliasesClean = normalizeAliasList(draft.aliases);
+
+    // Audit #11: Perform final normalization only once before saving.
+    const titleClean = currentDraft.title.trim() || "Bez naslova";
+    const tagsClean = normalizeTagList(currentDraft.tags);
+    const aliasesClean = normalizeAliasList(currentDraft.aliases);
+
     const dirty =
       titleClean !== fresh.title ||
-      draft.content !== fresh.content ||
-      !sameStringSet(draft.linkedSourceIds, fresh.linkedSourceIds ?? []) ||
-      !sameStringSet(draft.tags, fresh.tags ?? []) ||
+      currentDraft.content !== fresh.content ||
+      !sameStringSet(currentDraft.linkedSourceIds, fresh.linkedSourceIds ?? []) ||
+      !sameStringSet(tagsClean, fresh.tags ?? []) ||
       !sameStringSet(aliasesClean, fresh.aliases ?? []);
     if (!dirty) return fresh;
+
     const next: KnowledgeBaseArticle = {
       ...fresh,
       title: titleClean,
-      content: draft.content,
-      linkedSourceIds: draft.linkedSourceIds,
-      tags: draft.tags,
+      content: currentDraft.content,
+      linkedSourceIds: currentDraft.linkedSourceIds,
+      tags: tagsClean,
       aliases: aliasesClean,
       updatedAt: Date.now(),
     };
@@ -98,7 +114,7 @@ export function useArticleDraft({ activeId, categoryId, setArticles }: Input): A
       eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId, article: next });
     }
     return next;
-  }, [draft, activeId, categoryId, setArticles]);
+  }, [activeId, categoryId, setArticles]); // Removed 'draft' from dependencies
 
   // Flush ref so cleanup effect always sees the latest closure.
   const flushRef = useRef(flush);

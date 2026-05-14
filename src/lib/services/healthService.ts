@@ -128,9 +128,15 @@ export async function cleanOrphans(cardIds: string[]): Promise<CleanOrphansResul
     throw new Error("Nema kategorija za premještanje kartica");
   }
   const fallback = categories[0];
-  await Promise.all(
-    cardIds.map(id => db.cards.update(id, { categoryId: fallback.id, subcategoryId: "", chapterId: "" }))
-  );
+
+  // Audit V4: Optimized bulk update using modify() to avoid N+1 query problem.
+  // This executes a single collection update instead of N separate IDB transactions.
+  await db.cards.where("id").anyOf(cardIds).modify({
+    categoryId: fallback.id,
+    subcategoryId: "",
+    chapterId: ""
+  });
+
   return { fallbackCategoryName: fallback.name, movedCount: cardIds.length };
 }
 

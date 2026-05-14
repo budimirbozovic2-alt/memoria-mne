@@ -104,11 +104,8 @@ export function useCategoryManagement({
           cardMapRef.current = nextRef;
           setCardMapState(() => nextRef);
           bumpMapVersion();
-          Promise.allSettled(toDelete.map(id => idbDeleteCard(id))).then(results => {
-            results.forEach((r, i) => {
-              if (r.status === "rejected") console.error(`[deleteCategory] card purge failed for ${toDelete[i]}`, r.reason);
-            });
-          });
+          // Audit V4: idbDeleteCard calls removed here because IDB state is
+          // now handled atomically by cascadeDeleteCategoryDomains transaction.
         }
       } else {
         const changed: Card[] = [];
@@ -122,7 +119,8 @@ export function useCategoryManagement({
         }
         if (changed.length > 0) {
           cardMapRef.current = nextRef;
-          schedulePersist({ type: "bulk", cards: changed });
+          // Audit V4: schedulePersist removed here because IDB state is
+          // now handled atomically by cascadeDeleteCategoryDomains transaction.
           setCardMapState(() => nextRef);
           bumpMapVersion();
         }
@@ -131,14 +129,10 @@ export function useCategoryManagement({
       (async () => {
         try {
           // A1+F1: atomic cascade across all category-keyed side-stores
-          // (knowledgeBaseArticles, mindMaps, mnemonics, settings, planner refs).
-          await cascadeDeleteCategoryDomains(categoryId);
+          // (knowledgeBaseArticles, mindMaps, mnemonics, settings, planner refs,
+          // AND cards/sources).
+          await cascadeDeleteCategoryDomains(categoryId, { purgeCards, fallbackId });
 
-          if (purgeCards) {
-            await db.sources.where("categoryId").equals(categoryId).delete();
-          } else {
-            await db.sources.where("categoryId").equals(categoryId).modify({ categoryId: fallbackId });
-          }
           invalidateSourcesCache();
         } catch (err) {
           console.error("[deleteCategory] cascade failed", err);

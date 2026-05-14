@@ -9,6 +9,12 @@ interface BackupInfo {
 
 interface ElectronAPI {
   requestBackup: (jsonData: string) => Promise<boolean>;
+  // Chunked/Streaming backup (Audit V4)
+  backupStreamStart: () => Promise<boolean>;
+  backupStreamChunk: (chunk: Uint8Array) => Promise<boolean>;
+  backupStreamFinish: () => Promise<boolean>;
+  backupStreamAbort: () => Promise<boolean>;
+
   getAppVersion: () => Promise<string>;
   getBackupInfo: () => Promise<BackupInfo>;
   notifyReady: () => void;

@@ -4,6 +4,11 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // Trigger a manual backup from renderer
   requestBackup: (jsonData) => ipcRenderer.invoke('request-backup', jsonData),
+  // Chunked/Streaming backup (Audit V4 optimization for large payloads)
+  backupStreamStart: () => ipcRenderer.invoke('backup-stream-start'),
+  backupStreamChunk: (chunk) => ipcRenderer.invoke('backup-stream-chunk', chunk),
+  backupStreamFinish: () => ipcRenderer.invoke('backup-stream-finish'),
+  backupStreamAbort: () => ipcRenderer.invoke('backup-stream-abort'),
   // Get app paths
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   // Get backup info (file list, last auto-backup time)

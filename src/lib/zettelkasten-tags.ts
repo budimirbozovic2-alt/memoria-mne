@@ -115,3 +115,23 @@ export const TAG_LIMITS = {
   maxPerArticle: MAX_TAGS_PER_ARTICLE,
   maxTagLength: MAX_TAG_LENGTH,
 } as const;
+
+/**
+ * Audit #11: Assertive validation for persistence layer.
+ * Throws if the tag list is not already normalized.
+ */
+export function assertTagsNormalized(tags: string[] | undefined): void {
+  if (!tags || tags.length === 0) return;
+  if (tags.length > MAX_TAGS_PER_ARTICLE) {
+    throw new Error(`Tag count exceeds limit (${tags.length} > ${MAX_TAGS_PER_ARTICLE})`);
+  }
+  const seen = new Set<string>();
+  for (const t of tags) {
+    if (typeof t !== "string") throw new Error("Tag must be a string");
+    if (t !== normalizeTag(t)) {
+      throw new Error(`Tag "${t}" is not normalized (should be "${normalizeTag(t)}")`);
+    }
+    if (seen.has(t)) throw new Error(`Duplicate tag detected: ${t}`);
+    seen.add(t);
+  }
+}

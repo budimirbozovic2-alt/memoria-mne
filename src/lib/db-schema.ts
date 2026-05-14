@@ -263,6 +263,12 @@ class MemoriaDB extends Dexie {
     this.version(16).stores({
       cards: "id, categoryId, subcategoryId, type, createdAt, sourceId, [categoryId+subcategoryId]",
     });
+
+    // v17: re-add chapter-level composite index [categoryId+chapterId] (Audit #7)
+    // to enable efficient server-side filtering without loading all category cards.
+    this.version(17).stores({
+      cards: "id, categoryId, subcategoryId, chapterId, type, createdAt, sourceId, [categoryId+subcategoryId], [categoryId+chapterId]",
+    });
   }
 }
 

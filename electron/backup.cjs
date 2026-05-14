@@ -101,6 +101,74 @@ function setupBackupSystem({ app, getMainWindow, logCrash, isDev, assertTrustedS
 
   // ── IPC Handlers ──
   const MAX_BACKUP_BYTES = 200 * 1024 * 1024; // I2: 200 MB cap
+  
+  // Streaming Backup State
+  let activeStreamPath = null;
+  let activeStreamFile = null;
+
+  ipcMain.handle('backup-stream-start', async (event) => {
+    guard(event);
+    try {
+      await ensureBackupDir();
+      const now = new Date();
+      const ts = now.toISOString().replace(/[-:T]/g, '_').slice(0, 15);
+      const filename = `Codex_AutoBackup_${ts}.json.tmp`;
+      activeStreamPath = path.join(BACKUP_DIR, filename);
+      activeStreamFile = await fsp.open(activeStreamPath, 'w');
+      return true;
+    } catch (err) {
+      logCrash('backup-stream-start-error', err);
+      return false;
+    }
+  });
+
+  ipcMain.handle('backup-stream-chunk', async (event, chunk) => {
+    guard(event);
+    if (!activeStreamFile) return false;
+    try {
+      // chunk is Uint8Array/Buffer
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      await activeStreamFile.appendFile(buf);
+      return true;
+    } catch (err) {
+      logCrash('backup-stream-chunk-error', err);
+      return false;
+    }
+  });
+
+  ipcMain.handle('backup-stream-finish', async (event) => {
+    guard(event);
+    if (!activeStreamFile || !activeStreamPath) return false;
+    try {
+      await activeStreamFile.close();
+      activeStreamFile = null;
+      
+      const finalPath = activeStreamPath.replace('.tmp', '');
+      await fsp.rename(activeStreamPath, finalPath);
+      activeStreamPath = null;
+
+      await cleanOldBackups();
+      await setLastAutoBackupTime();
+      return true;
+    } catch (err) {
+      logCrash('backup-stream-finish-error', err);
+      return false;
+    }
+  });
+
+  ipcMain.handle('backup-stream-abort', async (event) => {
+    guard(event);
+    if (activeStreamFile) {
+      await activeStreamFile.close();
+      activeStreamFile = null;
+    }
+    if (activeStreamPath) {
+      try { await fsp.unlink(activeStreamPath); } catch (_) {}
+      activeStreamPath = null;
+    }
+    return true;
+  });
+
   ipcMain.handle('request-backup', async (event, jsonData) => {
     guard(event);
     if (typeof jsonData !== 'string' || jsonData.length <= 2) return false;
