@@ -5,11 +5,11 @@ import { stableLegacyId } from "@/lib/stable-id";
 /**
  * Normalizes legacy `string[]` subcategories into `SubcategoryNode[]`,
  * synthesizes fallback nodes for orphaned cards, prunes phantom UUID-named
- * nodes, and fire-and-forget persists changes back to IDB.
+ * nodes, and persists changes back to IDB with proper error handling.
  */
-export function normalizeCategories(
+export async function normalizeCategories(
   { cards, catRecords }: { cards: Card[]; catRecords: CategoryRecord[] },
-): { finalRecords: CategoryRecord[] } {
+): Promise<{ finalRecords: CategoryRecord[] }> {
   // Build card-by-category index O(n)
   const cardsByCat = new Map<string, Card[]>();
   for (const card of cards) {
@@ -99,15 +99,21 @@ export function normalizeCategories(
     updatedRecords.push({ ...r, subcategories: nodes });
   }
 
-  // Persist migrated/fallback nodes back to IDB (fire-and-forget)
+  // ISPRAVLJEN BLOK ZA PERZISTENCIJU:
   if (needsPersist && db) {
-    Promise.all(
-      updatedRecords.map((rec) =>
-        db!.categories.update(rec.id, { subcategories: rec.subcategories }).catch((e: unknown) =>
-          console.warn("[boot] fallback persist failed for", rec.name, e)
+    try {
+      // Čekamo da se svi upisi završe prije nego proglasimo boot uspješnim
+      await Promise.all(
+        updatedRecords.map((rec) =>
+          db.categories.update(rec.id, { subcategories: rec.subcategories })
         )
-      )
-    ).catch(() => {});
+      );
+    } catch (err: unknown) {
+      const e = err instanceof Error ? err : new Error(String(err));
+      console.error("[boot] KRITIČNO: Neuspješan upis normalizovanih kategorija", e.message);
+      // Bacamo grešku koju će Bootloader uhvatiti i prikazati Panic Screen
+      throw new Error(`Greška pri migraciji baze podataka: ${e.message}`);
+    }
   }
 
   const finalRecords = needsPersist ? updatedRecords : catRecords;
