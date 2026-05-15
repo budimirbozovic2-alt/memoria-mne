@@ -1,5 +1,5 @@
 import { X, FileText, Loader2, Scissors, Save, RotateCcw, ArrowLeft } from "lucide-react";
-import { lazy, Suspense } from "react";
+import { useEffect, lazy, Suspense } from "react"; // 👈 DODAT useEffect
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/lib/spaced-repetition";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,26 @@ interface Props {
   categories: string[];
   subcategories: Record<string, string[]>;
   categoryRecords?: CategoryRecord[];
-  onSave: (question: string, sections: SectionInput[], categoryId: string, subcategoryId?: string, chapterId?: string) => void;
+  onSave: (
+    question: string,
+    sections: SectionInput[],
+    categoryId: string,
+    subcategoryId?: string,
+    chapterId?: string,
+  ) => void;
   onSaveFlash: (question: string, answer: string, categoryId: string, subcategoryId?: string) => void;
   onCancel: () => void;
   editCard?: Card | null;
-  onUpdate?: (id: string, updates: { question?: string; sections?: SectionInput[]; categoryId?: string; subcategoryId?: string; chapterId?: string }) => void;
+  onUpdate?: (
+    id: string,
+    updates: {
+      question?: string;
+      sections?: SectionInput[];
+      categoryId?: string;
+      subcategoryId?: string;
+      chapterId?: string;
+    },
+  ) => void;
   onSplit?: (id: string) => void;
 }
 
@@ -31,15 +46,42 @@ const widthClasses: Record<FormWidth, string> = {
 };
 
 const widthLabels: Record<FormWidth, string> = {
-  compact: "S", normal: "M", wide: "L", full: "XL",
+  compact: "S",
+  normal: "M",
+  wide: "L",
+  full: "XL",
 };
 
-export default function CardForm({ categories, subcategories, categoryRecords, onSave, onSaveFlash, onCancel, editCard, onUpdate, onSplit }: Props) {
+export default function CardForm({
+  categories,
+  subcategories,
+  categoryRecords,
+  onSave,
+  onSaveFlash,
+  onCancel,
+  editCard,
+  onUpdate,
+  onSplit,
+}: Props) {
   const a = useCardActions({ categories, subcategories, categoryRecords, editCard, onSave, onSaveFlash, onUpdate });
   const navigate = useNavigate();
 
+  // ── Prisilno otključavanje ekrana (Radix UI bug fix) ──
+  useEffect(() => {
+    return () => {
+      // Kada se forma ugasi (bilo na Cancel ili Save), prisilno oslobađamo ekran!
+      document.body.style.pointerEvents = "auto";
+    };
+  }, []);
+  // ──────────────────────────────────────────────────────
+
   const draftAgeLabel = a.pendingDraftSavedAt
-    ? new Date(a.pendingDraftSavedAt).toLocaleString("bs-BA", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" })
+    ? new Date(a.pendingDraftSavedAt).toLocaleString("bs-BA", {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "2-digit",
+        month: "2-digit",
+      })
     : "";
 
   return (
@@ -106,14 +148,21 @@ export default function CardForm({ categories, subcategories, categoryRecords, o
                 type="button"
                 onClick={() => a.setFormWidth(w)}
                 className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-                  a.formWidth === w ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  a.formWidth === w
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {widthLabels[w]}
               </button>
             ))}
           </div>
-          <button type="button" onClick={onCancel} aria-label="Zatvori" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Zatvori"
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
