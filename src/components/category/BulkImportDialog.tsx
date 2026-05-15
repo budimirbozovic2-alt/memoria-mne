@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { type Card } from "@/lib/spaced-repetition";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
+import { afterDialogClose } from "@/lib/dialog-utils";
 import { parseFlashcards } from "@/lib/flashcard-parser";
 import {
   listTemplates,
