@@ -25,6 +25,7 @@ import {
 } from "@/lib/selection-split-engine";
 import RichTextEditor from "@/components/RichTextEditor";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { SafeHtml } from "@/components/ui/safe-html";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
 
