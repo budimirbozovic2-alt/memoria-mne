@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import type { ExaminerProfile, ExaminerDifficulty, PreferredAnswerType } from "@/lib/db";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
+import { afterDialogClose } from "@/lib/dialog-utils";
 
 const NONE = "__none__";
 const NOTES_MAX = 500;
