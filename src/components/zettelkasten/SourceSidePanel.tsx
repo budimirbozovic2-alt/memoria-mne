@@ -4,6 +4,7 @@ import { X, ExternalLink, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { sanitizeHtml } from "@/lib/sanitize";
 import type { Source } from "@/lib/db";
+import { SafeHtml } from "@/components/ui/safe-html";
 
 interface Props {
   source: Source;
@@ -56,10 +57,9 @@ export default function SourceSidePanel({ source, categoryId, onClose }: Props) 
           <X className="h-4 w-4" />
         </Button>
       </div>
-      <div
+      <SafeHtml
         className="prose prose-sm dark:prose-invert max-w-none p-4 overflow-y-auto flex-1 text-foreground"
-        // eslint-disable-next-line react/no-danger
-        dangerouslySetInnerHTML={{ __html: html || '<p class="text-muted-foreground italic">Izvor nema sadržaja.</p>' }}
+        html={html || '<p class="text-muted-foreground italic">Izvor nema sadržaja.</p>'}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { useMemo, Fragment } from "react";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { FileText } from "lucide-react";
 import EmbeddedMindMap from "./EmbeddedMindMap";
+import { SafeHtml } from "@/components/ui/safe-html";
 
 interface Props {
   markdown: string;
@@ -188,11 +189,10 @@ export default function ZettelPreview({
               <EmbeddedMindMap key={`mm-${i}-${seg.payload}`} mindMapId={seg.payload} categoryId={categoryId} />
             );
           }
-          const html = sanitizeHtml(renderMarkdown(seg.payload, existingTitles, emptySet));
+          const html = renderMarkdown(seg.payload, existingTitles, emptySet);
           return (
             <Fragment key={`md-${i}`}>
-              {/* eslint-disable-next-line react/no-danger */}
-              <div dangerouslySetInnerHTML={{ __html: html }} />
+              <SafeHtml html={html} />
             </Fragment>
           );
         })}

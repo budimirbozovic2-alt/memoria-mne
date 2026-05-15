@@ -90,9 +90,9 @@ function CuttingView({
               <div className="flex-1 h-px bg-warning/30 group-hover:bg-warning" />
             </button>
           )}
-          <div
+          <SafeHtml
             className="text-sm px-2 py-1 rounded prose prose-sm max-w-none dark:prose-invert"
-            dangerouslySetInnerHTML={{ __html: sanitizeHtml(blk) }}
+            html={blk}
           />
         </div>
       ))}

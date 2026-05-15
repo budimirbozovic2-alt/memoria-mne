@@ -16,6 +16,7 @@ import {
 } from "@/lib/spaced-repetition";
 import type { SubcategoryNode } from "@/lib/db";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { SafeHtml } from "@/components/ui/safe-html";
 
 interface Props {
   cards: Card[];
@@ -326,9 +327,9 @@ export default function PassiveReader({ cards, subcategoryNodes, categoryId, onE
                       {sec.title}
                     </h3>
                   )}
-                  <div
+                  <SafeHtml
                     className="prose prose-sm max-w-none card-prose"
-                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(sec.content || "") }}
+                    html={sec.content || ""}
                   />
                 </section>
               ))}

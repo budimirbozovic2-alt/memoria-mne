@@ -3,6 +3,7 @@ import { useState, useMemo, memo, useCallback, lazy, Suspense } from "react";
 import { MnemonicCard, MnemonicStatus, HookType, HookMode, loadMajorSystem, resolveNumber, extractNumbers, detectEnumerationItems } from "@/lib/mnemonic-storage";
 import { useCategoryData } from "@/contexts/AppContext";
 import { sanitizeHtml } from "@/lib/sanitize";
+import { SafeHtml } from "@/components/ui/safe-html";
 
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -189,7 +190,7 @@ function WorkshopCardItemInner({ card, isExpanded, onToggle, onUpdateCard, onDel
                   card.sections.map((s, i) => (
                     <div key={i} className="rounded-lg bg-secondary/30 p-3">
                       <p className="text-xs font-medium text-muted-foreground mb-1">{s.title}</p>
-                      <div className="text-sm prose prose-sm max-w-none card-prose" dangerouslySetInnerHTML={{ __html: sanitizeHtml(s.content) }} />
+                      <SafeHtml className="text-sm prose prose-sm max-w-none card-prose" html={s.content} />
                     </div>
                   ))
                 )}
