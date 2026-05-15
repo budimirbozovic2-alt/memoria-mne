@@ -2,7 +2,6 @@ import { CheckCircle2, Brain, Film, Type, ChevronDown, ChevronRight, Sparkles, W
 import { useState, useMemo, memo, useCallback, lazy, Suspense } from "react";
 import { MnemonicCard, MnemonicStatus, HookType, HookMode, loadMajorSystem, resolveNumber, extractNumbers, detectEnumerationItems } from "@/lib/mnemonic-storage";
 import { useCategoryData } from "@/contexts/AppContext";
-import { sanitizeHtml } from "@/lib/sanitize";
 import { SafeHtml } from "@/components/ui/safe-html";
 
 

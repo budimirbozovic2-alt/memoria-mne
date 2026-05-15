@@ -1,4 +1,3 @@
-import { sanitizeHtml } from "@/lib/sanitize";
 import { SafeHtml } from "@/components/ui/safe-html";
 import { ChevronDown, ChevronRight, ArrowRightLeft, Flame, Link2, BookOpen, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";

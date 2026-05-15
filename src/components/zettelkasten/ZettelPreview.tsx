@@ -1,5 +1,4 @@
 import { useMemo, Fragment } from "react";
-import { sanitizeHtml } from "@/lib/sanitize";
 import { FileText } from "lucide-react";
 import EmbeddedMindMap from "./EmbeddedMindMap";
 import { SafeHtml } from "@/components/ui/safe-html";

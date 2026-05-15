@@ -15,7 +15,6 @@ import {
   type Card, SectionState, getCardRetrievability,
 } from "@/lib/spaced-repetition";
 import type { SubcategoryNode } from "@/lib/db";
-import { sanitizeHtml } from "@/lib/sanitize";
 import { SafeHtml } from "@/components/ui/safe-html";
 
 interface Props {
