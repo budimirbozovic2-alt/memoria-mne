@@ -65,13 +65,28 @@ export function useAutoSplitImport(open: boolean, source: Source) {
 
   const [state, dispatch] = useReducer(rowsReducer, { rows: [] });
 
-  // Reset whenever inputs change (dialog opened, source switched, cards updated)
+  // Full reset only when the dialog opens or the source changes — NOT on
+  // every cards mutation (otherwise a successful import would flip the UI
+  // from "done" back to "preview" the moment bulkAddCards updates context).
   useEffect(() => {
+    if (!open) return;
     dispatch({ type: "set", rows: buildArticleRows(detected, linkedCards) });
     setPhase("preview");
     setProgress(0);
     setImportedCount(0);
     setMergeNameDialog(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, source.id]);
+
+  // Refresh row "exists" status when linked cards change, but only while
+  // the user is still in the preview phase (don't disturb importing/done).
+  useEffect(() => {
+    setPhase((p) => {
+      if (p === "preview") {
+        dispatch({ type: "set", rows: buildArticleRows(detected, linkedCards) });
+      }
+      return p;
+    });
   }, [detected, linkedCards]);
 
   const rows = state.rows;
