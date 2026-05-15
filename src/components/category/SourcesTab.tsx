@@ -14,6 +14,7 @@ import { FileText, Loader2, Eye, Pencil, Trash2, Map as MapIcon, Plus, GitBranch
 import { format } from "date-fns";
 import { toast } from "sonner";
 import SourceEditor from "@/components/category/SourceEditor";
+import { afterDialogClose } from "@/lib/dialog-utils";
 
 interface SourcesTabProps {
   categoryId: string;
@@ -83,11 +84,12 @@ export default function SourcesTab({ categoryId, sources, onOpenReader, onSource
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
     setDeleting(true);
+    const title = deleteTarget.title;
     try {
       await deleteSource(deleteTarget.id);
       // deleteSource notifies listeners (SSOT) — no manual invalidate needed.
-      toast.success(`Izvor "${deleteTarget.title}" obrisan.`);
       setDeleteTarget(null);
+      afterDialogClose(() => toast.success(`Izvor "${title}" obrisan.`));
     } catch {
       toast.error("Greška pri brisanju izvora.");
     } finally {
