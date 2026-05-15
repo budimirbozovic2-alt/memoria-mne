@@ -9,6 +9,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MnemonicCard } from "@/lib/mnemonic-storage";
+import { shuffle } from "@/lib/mnemonic/test-tree";
 
 export const RECALL_TIME_LIMIT = 3;
 
@@ -69,7 +70,7 @@ export function useTestEngine({ onRecordResult }: Input): TestEngine {
   }, [timerActive]);
 
   const startSession = useCallback((cards: MnemonicCard[]) => {
-    setQueue([...cards].sort(() => Math.random() - 0.5));
+    setQueue(shuffle(cards));
     setCurrentIndex(0);
     setShowTrigger(false);
     setTimerActive(false);

@@ -1,171 +1,203 @@
-# Plan: Refaktor `ZettelkastenView` i `MnemonicTest` (SSOT/SOA/UI ↔ Logika)
+## Analiza posljednjih izmjena — pronađene greške i suboptimizacije
 
-Cilj: oba "Fat" fajla pretvoriti u tanke orkestratore, izvlačeći domensku logiku, perzistenciju i state-machine u namjenske hookove i čiste funkcije. Postojeći javni API (props i ponašanje) ostaje identičan.
-
----
-
-## DIO A — `ZettelkastenView.tsx` (596 → cilj < 250 LOC)
-
-### Trenutni problemi (mapirano na linije)
-1. **Mutacije** (`handleCreate`, `handleDelete`, `handleWikiLink`, `flushDraft`) — 211–355: direktno pozivaju `saveArticle`, `deleteArticle`, `bulkCreateArticlesIfMissing`, `getArticle`, emituju event-bus, kao i `toast` side effect.
-2. **In-flight dedupe** (`wikiLinkInFlightRef`) — 304–355: čista coordination logika ne pripada render fajlu.
-3. **Draft state** (92, 148–197, 262–279): `useState<Draft>` + `flushRef` + cleanup-flush + dirty-check su jedna cjelina.
-4. **Derived sets** (`existingTitleSet`, `emptyTitleSet`) — 108–137: dovoljno samostalna selektor logika.
-5. **Index-aware navigacija** (`handleBackToIndex`, `handleDelete` fallback na `indexArticleId`) — provlači se kroz handler-e.
-
-### Nova arhitektura (4 sloja)
-
-```text
-ZettelkastenView (UI shell, < 250 LOC)
-   │
-   ├── useZettelkastenBootstrap   (postojeći — bez izmjena)
-   ├── useArticleIndex            (NOVO — derived/title sets + indexArticleId selektori)
-   ├── useArticleDraft            (NOVO — draft state + flush + dirty + cleanup)
-   └── useArticleMutations        (NOVO — create/delete/wiki-link + in-flight dedupe + event-bus)
-```
-
-#### A1. `src/hooks/zettelkasten/useArticleDraft.ts` (NOVO, ~110 LOC)
-- Vlasnik: `draft`, `isEditing`, `editorRef`, `flushRef`.
-- API:
-  ```ts
-  {
-    draft, isEditing, editorRef,
-    enterEdit(article), exitEdit(),
-    updateDraft(patch),               // setDraft({...draft, ...patch})
-    flush(): Promise<KnowledgeBaseArticle | null>,
-    saveAndClose(): Promise<void>,
-    resetForArticle(article | null),  // koristi se na open()
-  }
-  ```
-- Implementira: dirty-check, `getArticle(activeId)` fresh-read prije snimanja (linija 154), normalizaciju aliasa, `saveArticle` + emit `KB_ARTICLE_UPSERTED`, toast na grešku.
-- Cleanup-flush effect (linije 192–197) seli ovdje.
-
-#### A2. `src/hooks/zettelkasten/useArticleMutations.ts` (NOVO, ~120 LOC)
-- Ulaz: `{ categoryId, articles, setArticles, indexArticleId, activeArticle, setActiveId, draftApi, articleIndexApi }`.
-- API: `{ create(title?), open(id), backToIndex(), remove(activeArticle), wikiLink(title) }`.
-- Vlasnik: `wikiLinkInFlightRef` + `bulkCreateArticlesIfMissing` + `findArticleByTitle` + `backlinkIndex.resolveTargetToArticleId`.
-- Sve mutacije uvijek prvo `await draftApi.flush()`, pa apply, pa `eventBus.emit(...)`. Jedno mjesto za toast poruke.
-
-#### A3. `src/hooks/zettelkasten/useArticleIndex.ts` (NOVO, ~50 LOC)
-- Čisti selektori nad `articles`:
-  - `activeArticle(activeId)`
-  - `existingTitleSet`, `emptyTitleSet` (memo, isto pravilo "skip kad je `isEditing`")
-  - `indexArticleId` (već vraća bootstrap, ali centralizujemo getter ovdje za konzistentnost)
-- Ulaz: `{ articles, activeId, isEditing }`.
-
-#### A4. `src/views/ZettelkastenView.tsx` (refactor, ~230 LOC)
-- Ostaje: routing guards, layout (Explorer + main pane), JSX render, `LinkedSourcesPicker` / `ZettelTagEditor` / `ZettelAliasEditor` / `BacklinksPanel` / `Sheet` / `MindMapPickerDialog`.
-- Postaje "thin wiring":
-  ```tsx
-  const draftApi = useArticleDraft({ activeId, categoryId, setArticles });
-  const indexApi = useArticleIndex({ articles, activeId, isEditing: draftApi.isEditing });
-  const mutations = useArticleMutations({ categoryId, articles, setArticles,
-                                          indexArticleId, activeArticle: indexApi.activeArticle,
-                                          setActiveId, draftApi });
-  useWikiLinkAutoCreate({ ... }); // ostaje nepromijenjen
-  ```
-- Sve `setDraft({ ...draft, x })` postaju `draftApi.updateDraft({ x })`.
-
-### Verifikacija (Dio A)
-- Novi test: `src/test/zettelkasten-article-draft.test.ts` — dirty-check matriks (title/content/sources/tags/aliases) + "fresh-read prije save" scenario (simulira upsert između tipkanja i flush).
-- Novi test: `src/test/zettelkasten-mutations.test.ts` — `wikiLink` paralelni pozivi za isti naslov rezultiraju jednim `bulkCreateArticlesIfMissing` pozivom (in-flight dedupe).
-- Postojeći testovi (`zettelkasten-*`) moraju proći bez izmjena.
+Tri kategorije: **kritična greška**, **funkcionalna greška**, **suboptimizacija**.
 
 ---
 
-## DIO B — `MnemonicTest.tsx` (442 → cilj < 100 LOC shell)
+### 🔴 KRITIČNO #1 — Save-on-navigate izgubljen u Zettelkastenu
 
-### Trenutni problemi
-- 12 `useState` poziva (24, 39–41, 71–77) miješaju filtere, queue, fazu, tajmer, statistiku.
-- Tajmer (`useEffect` 82–98) + `setInterval` ref + state machine prelaza žive u render fajlu.
-- `categoryTree`, `hookTypeCounts`, `filteredTestable`, `uuidToName` (27–69) su čiste funkcije pomiješane s render-om.
-- Sva 4 prikaza (selector / reminder / test / finished) žive u jednoj ogromnoj komponenti.
+**Fajl:** `src/hooks/zettelkasten/useArticleDraft.ts`, linije 119–126
 
-### Nova arhitektura
+```ts
+const flushRef = useRef(flush);
+useEffect(() => { flushRef.current = flush; }, [flush]);
 
-```text
-MnemonicTest (shell, < 100 LOC) — gleda phase, render <Selector|Reminder|TestRunner|Finished>
-   │
-   ├── lib/mnemonic/test-tree.ts       (NOVO — pure: buildCategoryTree, hookTypeCounts, filterTestable)
-   └── hooks/mnemonic/useTestEngine.ts (NOVO — state machine + tajmer + queue + statistika)
+useEffect(() => {
+  return () => { void flushRef.current(); };
+}, [activeId]);
 ```
 
-#### B1. `src/lib/mnemonic/test-tree.ts` (NOVO, ~50 LOC, čiste funkcije)
-- `buildCategoryTree(cards): Record<categoryId, Set<subId>>`
-- `buildHookTypeCounts(cards): Record<HookType, number>`
-- `filterTestable(cards, { category, subcategory, hookType }): MnemonicCard[]`
-- `buildUuidToName(categoryRecords): Record<string, string>`
+**Problem:** Cleanup koristi `flushRef.current`, koji se sinkronizuje na NAJNOVIJI `flush` (`useEffect [flush]`). Kad korisnik prebaci A→B:
 
-#### B2. `src/hooks/mnemonic/useTestEngine.ts` (NOVO, ~150 LOC)
-- Vlasnik:
-  - `phase: "selector" | "reminder" | "test" | "finished"` (useReducer preferiran)
-  - `queue`, `currentIndex`, `showTrigger`, `timerActive`, `timeLeft`, `timedOut`, `sessionStats`
-  - `timerRef` (interval) + cleanup
-- API:
-  ```ts
-  {
-    phase, currentCard, queue, currentIndex,
-    showTrigger, timeLeft, timedOut, sessionStats,
-    startSession(filteredCards), startRecall(),
-    answer(success), gotoSelector(), enterTestPhase(),
+1. Render sa `activeId=B` → `flush` se rekreira sa `activeId=B`
+2. Commit → `flushRef.current = flush(B)`
+3. Cleanup starog efekta sa `activeId=A` se pokreće → poziva `flushRef.current()` koji **čita B-jev članak**, ne A-jev
+4. `draftRef.current` je već null (jer `open()` poziva `resetForArticle` koji postavlja `draft=null`)
+5. Flush vraća null — **A-ovi neuredeni izmjeni se gube bez riječi**
+
+`backToIndex` to izbjegava jer ručno `await draftApi.flush()` prije `setActiveId`. Ali `open()` (klik u Explorer panelu) ne. To je glavni navigacijski put i tu se gube izmjene.
+
+**Test pokriva flush dirty/no-op, ali ne pokriva cleanup-on-activeId-change.**
+
+**Fix:** Zaboraviti `flushRef`. Cleanup mora pozvati flush koji je vezan za STARI `activeId`. Najjednostavnije:
+
+```ts
+useEffect(() => {
+  return () => { void flush(); }; // koristi closure flush, ne ref
+}, [flush]); // dep na flush umjesto activeId
+```
+
+ili eksplicitno snimiti staru verziju:
+
+```ts
+useEffect(() => {
+  const prevFlush = flush;
+  return () => { void prevFlush(); };
+}, [activeId]); // ili samo [flush]
+```
+
+---
+
+### 🔴 KRITIČNO #2 — AutoSplitDialog "done" stanje nestaje odmah
+
+**Fajl:** `src/hooks/useAutoSplitImport.ts`, linije 68–75
+
+```ts
+useEffect(() => {
+  dispatch({ type: "set", rows: buildArticleRows(detected, linkedCards) });
+  setPhase("preview");
+  setProgress(0);
+  setImportedCount(0);
+  setMergeNameDialog(false);
+}, [detected, linkedCards]);
+```
+
+**Problem:** `linkedCards` se izvodi iz `cards` koji se ažurira nakon `bulkAddCards`. Tok:
+
+1. `startImport` → `executeImportPlan` → `bulkAddCards` mutuje cards
+2. `setPhase("done")` se postavlja na kraju
+3. Re-render: `linkedCards` memo daje novi array (sad sadrži upravo dodane kartice)
+4. Efekat reset-a okida → `dispatch set` + `setPhase("preview")` + `setImportedCount(0)`
+5. **Korisnik ne vidi success ekran** — vraća se na preview odmah
+
+Postoji i suptilnija varijanta: tokom `importing`, ako persistQueue flush probudi state update prije nego što `setPhase("done")` izvrši, faza se prebacuje preview→preview, ali `importedCount` se nuli.
+
+**Fix:** Reset samo kad se dijalog otvara ili izvor mijenja, ne na svaku promjenu kartica.
+
+```ts
+useEffect(() => {
+  if (!open) return;
+  dispatch({ type: "set", rows: buildArticleRows(detected, linkedCards) });
+  setPhase("preview");
+  setProgress(0);
+  setImportedCount(0);
+  setMergeNameDialog(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [open, source.id]);
+```
+
+(Ili razdvojiti reset od refresh-a redova: redove osvježiti kad se kartice promijene SAMO ako je faza "preview".)
+
+---
+
+### 🟠 FUNKCIONALNO #3 — Lažni "Sačuvano" toast nakon greške
+
+**Fajl:** `src/hooks/zettelkasten/useArticleDraft.ts`, linije 142–147
+
+```ts
+const saveAndClose = useCallback(async () => {
+  await flushRef.current();
+  setIsEditing(false);
+  setDraft(null);
+  toast.success("Sačuvano");
+}, []);
+```
+
+**Problem:** `flush` već prikazuje `toast.error("Članak NIJE sačuvan…")` na grešku, a zatim `saveAndClose` prikaže `toast.success("Sačuvano")`. Korisnik vidi dva oprečna toasta.
+
+**Fix:**
+
+```ts
+const saved = await flushRef.current();
+setIsEditing(false);
+setDraft(null);
+if (saved) toast.success("Sačuvano");
+```
+
+---
+
+### 🟡 SUBOPTIMIZACIJA #4 — Pristrasni shuffle u Mnemonic test engineu
+
+**Fajl:** `src/hooks/mnemonic/useTestEngine.ts`, linija 72
+
+```ts
+setQueue([...cards].sort(() => Math.random() - 0.5));
+```
+
+`Array.sort` sa nasumičnim komparatorom nije uniformno raspoređen (poznata neispravnost — V8 koristi TimSort koji daje pristrasan rezultat). Za test gdje uvijek dobijaš slične redoslijede, to znači da su rane kartice češće na vrhu.
+
+**Fix:** Fisher–Yates u `test-tree.ts` kao pure helper:
+
+```ts
+export function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
   }
-  ```
-- Konstanta `RECALL_TIME_LIMIT` izložena kao `engine.recallLimit`.
-
-#### B3. Pod-komponente faza (NOVO u `src/components/mnemonic/`)
-- `MnemonicTestSelector.tsx` (~140 LOC) — filtri (kategorija/podkat/hook tip) + Start dugme.
-- `MnemonicTestReminder.tsx` (~50 LOC) — animirani intro ekran.
-- `MnemonicTestRunner.tsx` (~150 LOC) — kartica, tajmer, okidač, dugmad.
-- `MnemonicTestFinished.tsx` (~50 LOC) — rezime + restart.
-- "Empty state" (139–152) ostaje inline u shell-u.
-
-#### B4. `src/components/MnemonicTest.tsx` (refactor, ~80 LOC shell)
-```tsx
-export default function MnemonicTest({ cards, onRecordResult, onBack }) {
-  const { categoryRecords } = useCategoryData();
-  const allTestable = useMemo(() => cards.filter(c => c.mnemonicStatus !== "new"), [cards]);
-  const tree   = useMemo(() => buildCategoryTree(allTestable), [allTestable]);
-  const counts = useMemo(() => buildHookTypeCounts(allTestable), [allTestable]);
-  const names  = useMemo(() => buildUuidToName(categoryRecords), [categoryRecords]);
-  const engine = useTestEngine({ onRecordResult });
-
-  if (allTestable.length === 0) return <EmptyState onBack={onBack} />;
-  switch (engine.phase) {
-    case "selector": return <MnemonicTestSelector ... />;
-    case "reminder": return <MnemonicTestReminder ... />;
-    case "test":     return <MnemonicTestRunner ... />;
-    case "finished": return <MnemonicTestFinished ... />;
-  }
+  return a;
 }
 ```
-- Filter `useState` ostaju u `MnemonicTestSelector` (lokalni mu state — vraća konačni `filteredTestable` u `engine.startSession`).
-
-### Verifikacija (Dio B)
-- Novi test: `src/test/mnemonic-test-tree.test.ts` — `buildCategoryTree`, `filterTestable`, `buildUuidToName`.
-- Novi test: `src/test/mnemonic-test-engine.test.ts` — fake timers (`vi.useFakeTimers`): tajmer odbrojava do 0 → `timedOut=true`, `answer(true/false)` ažurira stats i napreduje queue, na kraju queue → `phase="finished"`.
 
 ---
 
-## Plan izvršavanja (jedan commit, batch)
+### 🟡 SUBOPTIMIZACIJA #5 — `useArticleMutations.open` se rekreira na svaku promjenu članaka
 
-1. Dio A: kreirati `useArticleDraft.ts`, `useArticleMutations.ts`, `useArticleIndex.ts`; refaktor `ZettelkastenView.tsx`.
-2. Dio B: kreirati `lib/mnemonic/test-tree.ts`, `hooks/mnemonic/useTestEngine.ts`, 4 pod-komponente; refaktor `MnemonicTest.tsx`.
-3. Dodati 4 nova test fajla.
-4. `vitest run` lokalno (sva postojeća + nova) — paritet ponašanja je nepregovorljiv.
+**Fajl:** `src/hooks/zettelkasten/useArticleMutations.ts`, linije 66–71
 
-### Garancije pariteta
-- **Toast poruke** identične (tekst, tip, vrijeme prikaza).
-- **Event-bus emiti** identični (`KB_ARTICLE_UPSERTED`, `KB_ARTICLE_REMOVED`).
-- **In-flight dedupe** za wiki-link sačuvan (paralelni klikovi → jedan IDB write).
-- **Tajmer ponašanje** identično (interval 100ms, korak 0.1s, prag `prev <= 0.1`).
-- `SourceReader.tsx` i ostali konzumenti ostaju nepromijenjeni (oba refaktora su interna).
+```ts
+const open = useCallback((id: string) => {
+  ...
+  const target = articles.find(a => a.id === id) ?? null;
+  draftApi.resetForArticle(target, { autoEditEmpty: true });
+}, [articles, setActiveId, setReadingSourceId, draftApi]);
+```
 
-### Procjena ocjena nakon refaktora
-| Modul | SSOT | SOA | UI vs Logika |
-|---|---|---|---|
-| `ZettelkastenView` (shell) | A | A | A |
-| `useArticleDraft` | A | A | A |
-| `useArticleMutations` | A | A | A |
-| `MnemonicTest` (shell) | A | A | A |
-| `useTestEngine` | A | A | A |
-| `lib/mnemonic/test-tree` | A | A | A |
+`articles` u dep-u znači da se `open` rekreira pri svakom upsert/delete. Pošto se `open` prosljeđuje u `ZettelExplorerPanel` kao `onOpen`, panel re-renderuje (osim ako koristi memo komparator). Wiki-link auto-create rekonstruiše više članaka u nizu — ovo postaje kaskadno.
+
+**Fix:** Držati `articles` u ref-u (`articlesRef.current = articles`) i pristupiti mu unutar callback-a:
+
+```ts
+const articlesRef = useRef(articles);
+useEffect(() => { articlesRef.current = articles; }, [articles]);
+const open = useCallback((id: string) => {
+  ...
+  const target = articlesRef.current.find(a => a.id === id) ?? null;
+  ...
+}, [setActiveId, setReadingSourceId, draftApi]);
+```
+
+---
+
+### 🟡 SUBOPTIMIZACIJA #6 — Auto-Split mid-import re-reset rizik
+
+**Fajl:** `src/hooks/useAutoSplitImport.ts` (povezano sa #2)
+
+`executeImportPlan` poziva `persistQueue.flush()` koji u kontekstu CardActions može sinkronisati cards prije `setPhase("done")`. To znači da postoji prozor u kojem efekat resetuje `progress` na 0 dok je faza još uvijek `"importing"`. UX glich.
+
+Pokriveno fix-om iz #2.
+
+---
+
+### Sažetak prioriteta
+
+| # | Težina | Fajl | Problem |
+|---|--------|------|---------|
+| 1 | 🔴 Kritična | `useArticleDraft.ts` | Cleanup-flush gubi izmjene pri navigaciji A→B |
+| 2 | 🔴 Kritična | `useAutoSplitImport.ts` | "Done" ekran nestaje odmah nakon import-a |
+| 3 | 🟠 Funkcionalna | `useArticleDraft.ts` | Lažni success toast nakon save-greške |
+| 4 | 🟡 Subopt. | `useTestEngine.ts` | Pristrasan shuffle |
+| 5 | 🟡 Subopt. | `useArticleMutations.ts` | `open` callback re-kreira preterano |
+| 6 | 🟡 Subopt. | `useAutoSplitImport.ts` | Glich u progress baru tokom importa |
+
+### Plan implementacije (kad odobriš)
+
+1. **#1 i #3** — `useArticleDraft.ts`: zamijeniti cleanup ref pattern tako da koristi `flush` iz closure-a starog efekta; conditional toast u `saveAndClose`.
+2. **#2 i #6** — `useAutoSplitImport.ts`: razdvojiti reset (zavisi od `open`, `source.id`) od refresh-a redova (zavisi od `linkedCards`, samo u fazi "preview").
+3. **#4** — Premjestiti `shuffle` u `test-tree.ts` kao pure helper, koristiti u `startSession`.
+4. **#5** — `articlesRef` pattern u `useArticleMutations.ts`.
+5. **Tests:**
+   - Novi test za `useArticleDraft`: navigation A→B čuva A-jeve izmjene.
+   - Novi test za `useAutoSplitImport`: faza ostaje "done" nakon što kartice u kontekstu apdejtuju.
+
+Procjena: ~30 LOC izmjena + 2 nova testa. Svi fix-evi su lokalni, bez API-promjena.

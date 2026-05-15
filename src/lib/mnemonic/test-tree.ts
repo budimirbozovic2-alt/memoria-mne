@@ -33,6 +33,16 @@ export function filterTestable(cards: MnemonicCard[], filter: TestFilter): Mnemo
   return result;
 }
 
+/** Unbiased Fisher–Yates shuffle (returns a new array). */
+export function shuffle<T>(arr: ReadonlyArray<T>): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function buildUuidToName(records: CategoryRecord[]): Record<string, string> {
   const map: Record<string, string> = {};
   for (const r of records) {

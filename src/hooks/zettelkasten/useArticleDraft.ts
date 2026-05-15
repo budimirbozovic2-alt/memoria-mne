@@ -116,14 +116,11 @@ export function useArticleDraft({ activeId, categoryId, setArticles }: Input): A
     return next;
   }, [activeId, categoryId, setArticles]); // Removed 'draft' from dependencies
 
-  // Flush ref so cleanup effect always sees the latest closure.
-  const flushRef = useRef(flush);
-  useEffect(() => { flushRef.current = flush; }, [flush]);
-
-  // Cleanup-flush on activeId change OR unmount.
+  // Cleanup-flush on activeId change OR unmount. Capture the CURRENT flush
+  // (bound to the OLD activeId) so navigation A→B saves A, not B.
   useEffect(() => {
-    return () => { void flushRef.current(); };
-  }, [activeId]);
+    return () => { void flush(); };
+  }, [flush]);
 
   const enterEdit = useCallback((article: KnowledgeBaseArticle) => {
     setDraft(fromArticle(article));
@@ -140,11 +137,11 @@ export function useArticleDraft({ activeId, categoryId, setArticles }: Input): A
   }, []);
 
   const saveAndClose = useCallback(async () => {
-    await flushRef.current();
+    const saved = await flush();
     setIsEditing(false);
     setDraft(null);
-    toast.success("Sačuvano");
-  }, []);
+    if (saved) toast.success("Sačuvano");
+  }, [flush]);
 
   const resetForArticle = useCallback(
     (article: KnowledgeBaseArticle | null, opts?: { autoEditEmpty?: boolean }) => {

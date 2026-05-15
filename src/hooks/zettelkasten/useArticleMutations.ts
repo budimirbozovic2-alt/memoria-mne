@@ -10,7 +10,7 @@
  * The wiki-link in-flight dedupe guards against parallel clicks on the same
  * placeholder title (one IDB transaction, one toast).
  */
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
   saveArticle,
@@ -51,6 +51,11 @@ export function useArticleMutations(input: Input): ArticleMutationsApi {
 
   const wikiLinkInFlightRef = useRef<Map<string, Promise<string | null>>>(new Map());
 
+  // Mirror articles into a ref so `open` doesn't churn its identity on every
+  // upsert/delete (would cascade re-renders into ZettelExplorerPanel).
+  const articlesRef = useRef(articles);
+  useEffect(() => { articlesRef.current = articles; }, [articles]);
+
   const create = useCallback(async (title?: string) => {
     if (!categoryId) return;
     const t = (title ?? prompt("Naslov novog članka:") ?? "").trim();
@@ -66,9 +71,9 @@ export function useArticleMutations(input: Input): ArticleMutationsApi {
   const open = useCallback((id: string) => {
     setReadingSourceId(null);
     setActiveId(id);
-    const target = articles.find(a => a.id === id) ?? null;
+    const target = articlesRef.current.find(a => a.id === id) ?? null;
     draftApi.resetForArticle(target, { autoEditEmpty: true });
-  }, [articles, setActiveId, setReadingSourceId, draftApi]);
+  }, [setActiveId, setReadingSourceId, draftApi]);
 
   const backToIndex = useCallback(async () => {
     await draftApi.flush();
