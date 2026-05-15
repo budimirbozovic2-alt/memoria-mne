@@ -29,9 +29,10 @@ import {
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
-import { backlinkIndex } from "@/lib/backlink-index";
+import { backlinkIndex, initBacklinkIndexSubscriptions } from "@/lib/backlink-index";
 
 const SUBJECT = "subject-integration";
+let unsubBacklink: (() => void) | null = null;
 
 /**
  * Mirrors `ZettelkastenView.handleWikiLink` precisely — same coalescing map,
