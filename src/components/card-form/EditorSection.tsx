@@ -1,8 +1,8 @@
 import { Plus, X, ChevronUp, ChevronDown, Scissors, Zap, FileText } from "lucide-react";
 import React, { memo } from "react";
-import { sanitizeHtml } from "@/lib/sanitize";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SafeHtml } from "@/components/ui/safe-html";
 import RichTextEditor from "@/components/RichTextEditor";
 import { parseHtmlToParagraphs } from "@/hooks/useCardActions";
 import type { SectionInput, CardType, ValidationErrors } from "@/hooks/useCardActions";
@@ -40,7 +40,7 @@ function CuttingView({ content, onCut, onCancel }: {
               <div className="flex-1 h-px bg-warning/30 group-hover:bg-warning" />
             </button>
           )}
-          <div className="text-sm px-2 py-1 rounded" dangerouslySetInnerHTML={{ __html: sanitizeHtml(p) }} />
+          <SafeHtml className="text-sm px-2 py-1 rounded" html={p} />
         </div>
       ))}
     </div>

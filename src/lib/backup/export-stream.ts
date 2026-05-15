@@ -36,6 +36,29 @@ interface StreamTableSpec {
   collection?: () => { each: (cb: (row: unknown) => unknown) => Promise<unknown> };
 }
 
+/**
+ * Build a `StreamTableSpec` from a typed Dexie table. Concentrates the single
+ * unavoidable Dexie variance cast (`Table<T,K>` is invariant in T/K) in one
+ * generic helper instead of leaking `as unknown as Table<unknown,unknown>` to
+ * every call site.
+ */
+export function tableSpec<T, K>(
+  key: string,
+  table: Table<T, K>,
+  collection?: () => { each: (cb: (row: T) => unknown) => Promise<unknown> },
+): StreamTableSpec {
+  return {
+    key,
+    table: table as unknown as Table<unknown, unknown>,
+    collection: collection as StreamTableSpec["collection"],
+  };
+}
+
+/** Same idea as `tableSpec` but for the `txTables` scope array. */
+export function txScope(...tables: Table<unknown, unknown>[] | Table<unknown>[]): Table<unknown, unknown>[] {
+  return tables as Table<unknown, unknown>[];
+}
+
 const YIELD_EVERY = 500;
 
 async function emitArray(

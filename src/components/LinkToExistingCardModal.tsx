@@ -9,6 +9,7 @@ import type { Card } from "@/lib/spaced-repetition";
 import { useCategoryData } from "@/contexts/AppContext";
 import { sanitizeHtml } from "@/lib/sanitize";
 import { afterDialogClose } from "@/lib/dialog-utils";
+import { SafeHtml } from "@/components/ui/safe-html";
 
 interface Props {
   open: boolean;
@@ -84,9 +85,9 @@ export default function LinkToExistingCardModal({
           {selectedText && (
             <div className="rounded-md border bg-muted/50 p-2.5 max-h-24 overflow-y-auto">
               <p className="text-xs text-muted-foreground mb-1">Označeni tekst:</p>
-              <div
+              <SafeHtml
                 className="text-xs prose prose-xs max-w-none card-prose line-clamp-4"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
+                html={previewHtml}
               />
             </div>
           )}
