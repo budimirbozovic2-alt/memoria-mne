@@ -55,9 +55,11 @@ export default function ExaminerProfileDialog({ open, onOpenChange, categoryName
       preferredAnswerType: answerType === NONE ? undefined : (answerType as PreferredAnswerType),
       notes: trimmed || undefined,
     };
-    onSave(profile);
-    toast.success("Profil ispitivača sačuvan");
     onOpenChange(false);
+    afterDialogClose(() => {
+      onSave(profile);
+      toast.success("Profil ispitivača sačuvan");
+    });
   };
 
   return (
