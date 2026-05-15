@@ -10,6 +10,7 @@ import { migrateBackup, migrateRaw, BackupVersionError } from "@/lib/backup/migr
 import { yieldUI } from "@/lib/backup/yield-ui";
 import { applyImportAtomically, type ImportStrategy } from "@/lib/backup/import-transaction";
 import { parseJsonInWorker } from "@/lib/zip-service";
+import { clearReviewSession } from "@/lib/review-session-storage";
 
 export type ImportProgress = (pct: number, label: string) => void;
 
