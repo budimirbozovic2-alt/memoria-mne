@@ -1,32 +1,37 @@
 /**
  * Globalni guard protiv Radix Dialog "pointer-events: none" leak-a na <body>.
  *
- * Radix DismissableLayer postavlja `pointer-events: none` na <body> dok je
- * dialog otvoren i čisti ga u cleanup-u. Kada se dialog zatvori istovremeno
- * sa mountovanjem drugog portala (npr. Sonner toast), cleanup-i se rasporede
- * van reda i `pointer-events: none` ostane — cijela aplikacija postaje
- * neklikabilna iako je vizuelno ispravna.
+ * Body se NE oslobađa ako bilo koji aktivni overlay i dalje treba lock:
+ *   - Radix Dialog/Sheet:        [role="dialog"][data-state="open"]
+ *   - Radix AlertDialog:         [role="alertdialog"][data-state="open"]
+ *   - Vaul Drawer:               [data-vaul-drawer][data-state="open"]
+ *   - Bilo koji aktivni Radix
+ *     FocusScope guard:          [data-radix-focus-guard]
+ *     (postoji jedan par po otvorenom dismissable layer-u — pouzdan
+ *     indikator čak i za nested/stacked dijaloge)
+ *   - react-remove-scroll lock:  body[data-scroll-locked]
  *
- * Optimizacije:
- *  - MutationObserver se okida na `body[style]`, ali se sve provjere
- *    coalesce-uju u jedan rAF tick (throttle do 1× po frame-u).
- *  - `animationend` listener sluša samo overlay/content node-ove preko
- *    `data-state="closed"` filtera, sa istim rAF coalescing-om.
- *  - `installBodyPointerEventsGuard()` vraća `dispose()` koji uklanja
- *    observer + listener i otkazuje pending rAF.
+ * Throttle: jedan provjeri-i-očisti tick po frame-u (rAF coalesced).
  */
 let installed: { dispose: () => void } | null = null;
 
-function hasOpenOverlay(): boolean {
-  return !!document.querySelector(
-    '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
-  );
+const OPEN_OVERLAY_SELECTOR = [
+  '[role="dialog"][data-state="open"]',
+  '[role="alertdialog"][data-state="open"]',
+  '[data-vaul-drawer][data-state="open"]',
+  "[data-radix-focus-guard]",
+].join(",");
+
+export function isOverlayOpen(): boolean {
+  if (typeof document === "undefined") return false;
+  if (document.body.hasAttribute("data-scroll-locked")) return true;
+  return !!document.querySelector(OPEN_OVERLAY_SELECTOR);
 }
 
 function clearIfStuck() {
   const body = document.body;
   if (!body) return;
-  if (body.style.pointerEvents === "none" && !hasOpenOverlay()) {
+  if (body.style.pointerEvents === "none" && !isOverlayOpen()) {
     body.style.pointerEvents = "";
   }
 }
@@ -37,18 +42,39 @@ export function installBodyPointerEventsGuard(): () => void {
 
   let rafId: number | null = null;
   const schedule = () => {
-    if (rafId !== null) return; // throttle: jedan check po frame-u
+    if (rafId !== null) return;
     rafId = requestAnimationFrame(() => {
       rafId = null;
       clearIfStuck();
     });
   };
 
+  // Posmatraj body style (gdje Radix lock-uje pointer-events) + body atribute
+  // (gdje react-remove-scroll skida `data-scroll-locked` pri unlock-u).
   const observer = new MutationObserver(schedule);
   observer.observe(document.body, {
     attributes: true,
-    attributeFilter: ["style"],
+    attributeFilter: ["style", "data-scroll-locked"],
   });
+
+  // Dodatni observer na cijelo stablo prati pojavu/nestanak focus-guard
+  // node-ova (svaki Radix dismissable layer ih mountuje u par). Ovo hvata
+  // tačan trenutak kada se posljednji nested overlay zatvori.
+  const treeObserver = new MutationObserver((muts) => {
+    for (const m of muts) {
+      for (const n of m.removedNodes) {
+        if (
+          n instanceof HTMLElement &&
+          (n.hasAttribute("data-radix-focus-guard") ||
+            n.querySelector?.("[data-radix-focus-guard]"))
+        ) {
+          schedule();
+          return;
+        }
+      }
+    }
+  });
+  treeObserver.observe(document.body, { childList: true, subtree: true });
 
   const onAnimationEnd = (e: Event) => {
     const t = e.target as HTMLElement | null;
@@ -59,6 +85,7 @@ export function installBodyPointerEventsGuard(): () => void {
 
   const dispose = () => {
     observer.disconnect();
+    treeObserver.disconnect();
     document.removeEventListener("animationend", onAnimationEnd, true);
     if (rafId !== null) {
       cancelAnimationFrame(rafId);
