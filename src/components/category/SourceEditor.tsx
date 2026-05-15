@@ -23,6 +23,7 @@ import { ChevronRight } from "lucide-react";
 import SourceDiffPreview from "@/components/source-reader/SourceDiffPreview";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import DirtyConfirmBar from "@/components/ui/dirty-confirm-bar";
+import { afterDialogClose } from "@/lib/dialog-utils";
 
 interface Props {
   source: Source;
@@ -173,33 +174,35 @@ export default function SourceEditor({ source, categoryId, onClose, onSourceUpda
       updatedAt: Date.now(),
     };
     await saveSource(updated);
-    onSourceUpdated(updated);
     setDirty(false);
     setNewText("");
-    toast.success("Izvor sačuvan", { description: updated.title });
     onClose();
+    afterDialogClose(() => {
+      onSourceUpdated(updated);
+      toast.success("Izvor sačuvan", { description: updated.title });
+    });
   }, [source, title, slMarkings, dateStr, isExclusive, newText, onSourceUpdated, onClose]);
 
   const handleDiffConfirm = useCallback(async () => {
     if (!diffPending) return;
     const { affectedCardIds, updatedSource } = diffPending;
 
-    // Flag affected cards
-    if (affectedCardIds.length > 0 && bulkFlagNeedsReview) {
-      bulkFlagNeedsReview(affectedCardIds);
-    }
-
     await saveSource(updatedSource);
-    onSourceUpdated(updatedSource);
     setDirty(false);
     setNewText("");
     setDiffPending(null);
-    toast.success("Izvor ažuriran", {
-      description: affectedCardIds.length > 0
-        ? `${affectedCardIds.length} kartica označeno za provjeru.`
-        : updatedSource.title,
-    });
     onClose();
+    afterDialogClose(() => {
+      if (affectedCardIds.length > 0 && bulkFlagNeedsReview) {
+        bulkFlagNeedsReview(affectedCardIds);
+      }
+      onSourceUpdated(updatedSource);
+      toast.success("Izvor ažuriran", {
+        description: affectedCardIds.length > 0
+          ? `${affectedCardIds.length} kartica označeno za provjeru.`
+          : updatedSource.title,
+      });
+    });
   }, [diffPending, bulkFlagNeedsReview, onSourceUpdated, onClose]);
 
   const isDirty = dirty || newText.trim().length > 0;

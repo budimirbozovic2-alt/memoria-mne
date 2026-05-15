@@ -10,6 +10,7 @@ import {
 import { AddCardDialog } from "./CardViewDialogs";
 import MassFlashImportTrigger from "./MassFlashImportTrigger";
 import type { Card } from "@/lib/spaced-repetition";
+import { afterDialogClose } from "@/lib/dialog-utils";
 
 const DocxImporter = lazy(() => import("@/components/DocxImporter"));
 
@@ -172,19 +173,21 @@ export default function CardCreateMenu({
             onClose={() => setDocxOpen(false)}
             categories={allCategoryNames}
             onImport={(cards, cat, type) => {
-              if (type === "flash") {
-                // Single batched commit instead of N×addFlashCard.
-                bulkAddFlashCards(
-                  cards.map((c) => ({
-                    question: c.question,
-                    answer: c.sections.map((s) => s.content).join("\n"),
-                  })),
-                  cat,
-                );
-              } else {
-                importEssays(cards, cat);
-              }
               setDocxOpen(false);
+              afterDialogClose(() => {
+                if (type === "flash") {
+                  // Single batched commit instead of N×addFlashCard.
+                  bulkAddFlashCards(
+                    cards.map((c) => ({
+                      question: c.question,
+                      answer: c.sections.map((s) => s.content).join("\n"),
+                    })),
+                    cat,
+                  );
+                } else {
+                  importEssays(cards, cat);
+                }
+              });
             }}
           />
         </Suspense>
