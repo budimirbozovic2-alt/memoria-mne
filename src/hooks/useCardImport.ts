@@ -147,9 +147,7 @@ export function useCardImport({
           }
         }
         if (strategy === "overwrite") {
-          try { localStorage.removeItem("sr-review-session"); } catch {
-            /* localStorage may be disabled */
-          }
+          clearReviewSession();
         }
 
         // ── 8. Toast summary ──
