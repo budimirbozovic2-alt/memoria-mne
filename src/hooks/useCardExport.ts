@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { Card, SRSettings } from "@/lib/spaced-repetition";
 import { setLastBackupTime } from "@/lib/storage";
 import type { CategoryRecord } from "@/lib/db-schema";
-import { streamBackup, type ProgressFn } from "@/lib/backup/export-stream";
+import { streamBackup, tableSpec, type ProgressFn } from "@/lib/backup/export-stream";
 
 const IPC_BASE64_LIMIT_MB = 50;
 const IPC_BYTES_LIMIT_MB = 500;
@@ -176,24 +176,23 @@ export function useCardExport({ cards, srSettings }: UseCardExportDeps) {
           localStorageData,
         },
         tables: [
-          { key: "cards", table: db.cards as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "categories", table: db.categories as unknown as import("dexie").Table<unknown, unknown>,
-            collection: () => db.categories.orderBy("sortOrder") as unknown as { each: (cb: (r: unknown) => unknown) => Promise<unknown> } },
-          { key: "sources", table: db.sources as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "mindMaps", table: db.mindMaps as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "knowledgeBaseArticles", table: db.knowledgeBaseArticles as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "diary", table: db.diary as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "calibrationLog", table: db.calibrationLog as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "latencyLog", table: db.latencyLog as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "slippageLog", table: db.slippageLog as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "activityLog", table: db.activityLog as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "disciplineLog", table: db.disciplineLog as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "pomodoroLog", table: db.pomodoroLog as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "reviewLog", table: db.reviewLog as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "mnemonics", table: db.mnemonics as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "majorSystem", table: db.majorSystem as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "mnemonicTestLog", table: db.mnemonicTestLog as unknown as import("dexie").Table<unknown, unknown> },
-          { key: "settings", table: db.settings as unknown as import("dexie").Table<unknown, unknown> },
+          tableSpec("cards", db.cards),
+          tableSpec("categories", db.categories, () => db.categories.orderBy("sortOrder")),
+          tableSpec("sources", db.sources),
+          tableSpec("mindMaps", db.mindMaps),
+          tableSpec("knowledgeBaseArticles", db.knowledgeBaseArticles),
+          tableSpec("diary", db.diary),
+          tableSpec("calibrationLog", db.calibrationLog),
+          tableSpec("latencyLog", db.latencyLog),
+          tableSpec("slippageLog", db.slippageLog),
+          tableSpec("activityLog", db.activityLog),
+          tableSpec("disciplineLog", db.disciplineLog),
+          tableSpec("pomodoroLog", db.pomodoroLog),
+          tableSpec("reviewLog", db.reviewLog),
+          tableSpec("mnemonics", db.mnemonics),
+          tableSpec("majorSystem", db.majorSystem),
+          tableSpec("mnemonicTestLog", db.mnemonicTestLog),
+          tableSpec("settings", db.settings),
         ],
         txTables: [
           db.cards, db.categories, db.sources, db.mindMaps, db.knowledgeBaseArticles,
