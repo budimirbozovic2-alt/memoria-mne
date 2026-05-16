@@ -137,4 +137,35 @@ export default tseslint.config(
       ],
     },
   },
+
+  // Phase A / P0-3: Ban raw `dangerouslySetInnerHTML` everywhere except the
+  // central `<SafeHtml>` wrapper and the few sanctioned read-only renderers
+  // that already feed pre-sanitized HTML straight from their pipeline.
+  // Every other call-site MUST route through `<SafeHtml>` so DOMPurify runs
+  // at render-time as defense-in-depth against XSS from user import.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "src/components/ui/safe-html.tsx",
+      "src/components/source-reader/SourceContent.tsx",
+      "src/test/**",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+          message:
+            "Koristi <SafeHtml html={...} /> umjesto sirovog `dangerouslySetInnerHTML`. Render-time DOMPurify je obavezna XSS odbrana (P0-3).",
+        },
+        {
+          selector:
+            "Property[key.name='dangerouslySetInnerHTML'][value.type='ObjectExpression']",
+          message:
+            "Koristi <SafeHtml html={...} /> umjesto sirovog `dangerouslySetInnerHTML` u createElement props-u (P0-3).",
+        },
+      ],
+    },
+  },
 );
+
