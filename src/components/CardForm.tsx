@@ -1,5 +1,5 @@
 import { X, FileText, Loader2, Scissors, Save, RotateCcw, ArrowLeft } from "lucide-react";
-import { useEffect, lazy, Suspense } from "react"; // 👈 DODAT useEffect
+import { lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/lib/spaced-repetition";
 import { Button } from "@/components/ui/button";

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/lib/spaced-repetition";
 import { highlightKeyParts } from "@/lib/highlight-key-parts";
+import { SafeHtml } from "@/components/ui/safe-html";
 import { useEffect, useState } from "react";
 
 import { getSource, confirmCardReview, type Source } from "@/lib/sources-storage";
@@ -67,7 +68,7 @@ export default function SourceSnippetDialog({ card, open, onOpenChange, onReview
             </h4>
             <div className="flex-1 overflow-y-auto rounded-lg border bg-card p-4 prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground/90 prose-ul:text-foreground/90 prose-ol:text-foreground/90 prose-li:text-foreground/90">
               <p className="font-medium text-foreground mb-3">{card.question}</p>
-              <div dangerouslySetInnerHTML={{ __html: highlightKeyParts(essayHtml, card.keyParts) }} />
+              <SafeHtml html={highlightKeyParts(essayHtml, card.keyParts)} trusted />
             </div>
           </div>
 

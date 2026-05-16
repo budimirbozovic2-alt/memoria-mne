@@ -1,5 +1,6 @@
 import { sanitizeHtml } from "@/lib/sanitize";
 import React, { useMemo } from "react";
+import { SafeHtml } from "@/components/ui/safe-html";
 
 /**
  * Highlights key parts in HTML content by wrapping matched text
@@ -12,9 +13,7 @@ export function highlightKeyParts(html: string, keyParts?: string[]): string {
   let result = html;
   for (const part of keyParts) {
     if (!part || part.length < 3) continue;
-    // Escape special regex chars
     const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    // Match across whitespace variations but not inside HTML tags
     const pattern = new RegExp(
       `(?![^<]*>)(${escaped.replace(/\s+/g, "\\s+")})`,
       "gi"
@@ -29,8 +28,10 @@ export function highlightKeyParts(html: string, keyParts?: string[]): string {
 
 /**
  * Memoized highlighted section component for use inside .map() loops.
+ * Phase A / P0-3: render kroz `<SafeHtml trusted>` — `highlightKeyParts`
+ * već sanitizuje, drugi prolaz DOMPurify-a bi odbacio `<mark>` klase.
  */
 export function HighlightedSection({ content, keyParts, className }: { content: string; keyParts?: string[]; className?: string }) {
   const html = useMemo(() => highlightKeyParts(content, keyParts), [content, keyParts]);
-  return React.createElement("div", { className, dangerouslySetInnerHTML: { __html: html } });
+  return React.createElement(SafeHtml, { html, className, trusted: true });
 }

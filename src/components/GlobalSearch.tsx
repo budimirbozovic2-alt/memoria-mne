@@ -9,6 +9,7 @@ import { useAllSources } from "@/hooks/useCategorySources";
 import { useMindMaps } from "@/hooks/useMindMaps";
 import { useCardData, useCategoryData } from "@/contexts/AppContext";
 import Modal from "@/components/ui/DialogShell";
+import { SafeHtml } from "@/components/ui/safe-html";
 
 interface Props {
   open: boolean;
@@ -270,9 +271,11 @@ export default function GlobalSearch({ open, onClose, onNavigateToCard }: Props)
                   >
                     <div className="flex items-center gap-2">
                       {iconMap[result.icon]}
-                      <span
+                      <SafeHtml
+                        as="span"
                         className="font-medium truncate flex-1"
-                        dangerouslySetInnerHTML={{ __html: highlightMatch(result.title, query) }}
+                        html={highlightMatch(result.title, query)}
+                        trusted
                       />
                       {result.type !== "card" && (
                         <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />

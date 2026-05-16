@@ -38,10 +38,30 @@ function createPersistQueue() {
   const pendingDeletes = new Set<string>();
   let timer: number | null = null;
 
+  // ─── Observable: subscribers notified on every queue state change ──
+  // Phase A / P0-2: replaces the 100ms polling in `usePersistingState`.
+  // Notification is fire-and-forget; subscribers must read `hasPending()` /
+  // `getPendingCount()` themselves (push the event, pull the state).
+  const listeners = new Set<() => void>();
+  let notifyScheduled = false;
+  function notify() {
+    if (notifyScheduled) return;
+    notifyScheduled = true;
+    // Coalesce bursts (e.g. bulk enqueue then immediate flush) into one tick.
+    queueMicrotask(() => {
+      notifyScheduled = false;
+      for (const l of listeners) {
+        try { l(); } catch (e) { console.warn("[persistQueue] listener threw", e); }
+      }
+    });
+  }
+  function subscribe(listener: () => void): () => void {
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+  }
+
   function enqueue(action: PersistAction) {
     if (action.type === "put") {
-      // V11: warn on put-after-delete OR put-replacing-newer in same batch.
-      // Same-id put after delete is legal (resurrection), but useful to flag in DEV.
       if (import.meta.env.DEV && pendingDeletes.has(action.card.id)) {
         console.warn("[persistQueue] put after pending delete for id", action.card.id);
       }
@@ -59,15 +79,12 @@ function createPersistQueue() {
       pendingDeletes.delete(action.card.id);
       pendingPuts.set(action.card.id, action.card);
     } else if (action.type === "delete") {
-      // V11: delete after put in the same batch coalesces — DEV warn so any
-      // accidental "put then delete same id" in higher-level code is visible.
       if (import.meta.env.DEV && pendingPuts.has(action.id)) {
         console.warn("[persistQueue] delete cancelling pending put for id", action.id);
       }
       pendingPuts.delete(action.id);
       pendingDeletes.add(action.id);
     } else {
-      // bulk
       for (const c of action.cards) {
         if (import.meta.env.DEV && pendingDeletes.has(c.id)) {
           console.warn("[persistQueue] bulk put after pending delete for id", c.id);
@@ -76,15 +93,13 @@ function createPersistQueue() {
         pendingPuts.set(c.id, c);
       }
     }
+    notify();
   }
 
   function hasPending() {
     return pendingPuts.size > 0 || pendingDeletes.size > 0;
   }
 
-  // V1: Re-enqueue + bounded exponential backoff retry. On failure we MUST
-  // restore the in-flight batch into the pending maps (without clobbering any
-  // newer writes that arrived during the in-flight window — newer wins).
   let _retryAttempt = 0;
   const MAX_RETRY = 3;
 
@@ -98,6 +113,7 @@ function createPersistQueue() {
     const deletes = Array.from(pendingDeletes);
     pendingPuts.clear();
     pendingDeletes.clear();
+    notify();
 
     try { sessionStorage.setItem("codex-flush-pending", "1"); } catch { /* noop */ }
     const t0 = import.meta.env.DEV ? performance.now() : 0;
@@ -111,9 +127,6 @@ function createPersistQueue() {
       }
     } catch (err: unknown) {
       const e = err instanceof Error ? err : new Error(String(err));
-      // Re-enqueue: NEWER writes (already in pending maps) must win over the
-      // failed in-flight batch. Only re-add ids that have NOT been touched
-      // since we drained.
       for (const c of puts) {
         if (!pendingPuts.has(c.id) && !pendingDeletes.has(c.id)) {
           pendingPuts.set(c.id, c);
@@ -124,9 +137,9 @@ function createPersistQueue() {
           pendingDeletes.add(id);
         }
       }
+      notify();
 
       if (e.message === "QUOTA_EXCEEDED") {
-        // Quota errors will not improve with retry — surface and stop.
         try { sessionStorage.removeItem("codex-flush-pending"); } catch { /* noop */ }
         toast.error("Memorija browsera je puna! Exportuj backup i očisti nepotrebne podatke.");
         return;
@@ -153,11 +166,6 @@ function createPersistQueue() {
     timer = window.setTimeout(flush, 16);
   }
 
-  /**
-   * Async cleanup — cancels pending timer and **awaits** flush so callers can
-   * guarantee all queued writes hit IndexedDB before returning. Use this in
-   * Electron beforeQuit / quit-backup paths and other shutdown handlers.
-   */
   async function cleanup(): Promise<void> {
     if (timer !== null) {
       clearTimeout(timer);
@@ -169,7 +177,14 @@ function createPersistQueue() {
     }
   }
 
-  return { schedule, cleanup, flush, hasPending, getPendingCount: () => pendingPuts.size + pendingDeletes.size };
+  return {
+    schedule,
+    cleanup,
+    flush,
+    hasPending,
+    getPendingCount: () => pendingPuts.size + pendingDeletes.size,
+    subscribe,
+  };
 }
 
 // Singleton persist queue — created once per module, safe for StrictMode double-mount
@@ -177,10 +192,6 @@ export const persistQueue = createPersistQueue();
 export const schedulePersist = persistQueue.schedule;
 
 // ─── Eager flush on tab hide (most reliable cross-browser signal) ────
-// M4 fix: HMR re-evaluates this module with a fresh `_onVisibilityChange`
-// closure each time. We pin the active handler to a `globalThis` slot so we
-// can reliably remove the *previous* version (whose function reference is
-// now lost from this module's scope) before registering the new one.
 declare global {
   // eslint-disable-next-line no-var
   var __codexPersistVisHandler: (() => void) | undefined;
@@ -201,8 +212,6 @@ if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", _onVisibilityChange);
 }
 
-// HMR cleanup — flush pending writes and detach this module's handler before
-// the next evaluation registers its replacement.
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
     try {
