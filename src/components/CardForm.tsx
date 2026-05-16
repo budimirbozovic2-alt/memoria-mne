@@ -66,14 +66,10 @@ export default function CardForm({
   const a = useCardActions({ categories, subcategories, categoryRecords, editCard, onSave, onSaveFlash, onUpdate });
   const navigate = useNavigate();
 
-  // ── Prisilno otključavanje ekrana (Radix UI bug fix) ──
-  useEffect(() => {
-    return () => {
-      // Kada se forma ugasi (bilo na Cancel ili Save), prisilno oslobađamo ekran!
-      document.body.style.pointerEvents = "auto";
-    };
-  }, []);
-  // ──────────────────────────────────────────────────────
+  // NOTE: Vlasništvo nad `document.body.style.pointerEvents` je isključivo u
+  // `installBodyPointerEventsGuard` (App.tsx). Bilo kakvo direktno mutiranje
+  // `body.style` ovdje stvara dva pisca i race protiv guard-a. Ako se forma
+  // zatvara unutar Radix dijaloga, koristi `afterDialogClose()` helper.
 
   const draftAgeLabel = a.pendingDraftSavedAt
     ? new Date(a.pendingDraftSavedAt).toLocaleString("bs-BA", {
