@@ -1,18 +1,22 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { persistQueue } from "@/lib/persist-queue";
 
+/**
+ * Phase A / P0-2: zamijenjen 100ms `setInterval` polling sa observable
+ * `persistQueue.subscribe()`. Re-render samo kad se queue stvarno mijenja.
+ */
 export function usePersistingState() {
-  const [hasPending, setHasPending] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [hasPending, setHasPending] = useState<boolean>(() => persistQueue.hasPending());
+  const [pendingCount, setPendingCount] = useState<number>(() => persistQueue.getPendingCount());
 
   useEffect(() => {
-    // Provjeravamo svakih 100ms da li ima nečega u redu čekanja
-    const interval = setInterval(() => {
+    const sync = () => {
       setHasPending(persistQueue.hasPending());
       setPendingCount(persistQueue.getPendingCount());
-    }, 100);
-    
-    return () => clearInterval(interval);
+    };
+    // Initial sync in case queue mutated between render and effect commit.
+    sync();
+    return persistQueue.subscribe(sync);
   }, []);
 
   return { hasPending, pendingCount };
