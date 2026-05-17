@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   bulkCreateArticlesIfMissing,
@@ -6,6 +6,7 @@ import {
 } from "@/lib/zettelkasten-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { iterateWikiLinks, normalizeKey } from "@/lib/zettelkasten-wiki-link";
+import { useLatestRef } from "@/hooks/useLatestRef";
 
 /**
  * Auto-creates placeholder articles for new `[[Wiki Links]]` typed inside
@@ -76,6 +77,20 @@ export function useWikiLinkAutoCreate({
   const lastIntervalRef = useRef<number>(Number.POSITIVE_INFINITY);
   const lastOverflowNotifiedRef = useRef<number>(0);
 
+  // Idempotency token bumped after every successful batch persist. Replaces
+  // the previous `articles` dependency on the auto-create effect: instead of
+  // re-running on every backlink/list update (which reset the debounce timer
+  // on each keystroke that hit `setArticles`), we re-run only when the
+  // persisted set actually grew. Tail drain after a capped batch still works
+  // because the persist callback bumps the token explicitly.
+  const [drainTick, setDrainTick] = useState(0);
+
+  // Always-fresh refs for collaborators read inside the debounced setTimeout.
+  // Switching to refs prevents re-binding the effect on identity changes of
+  // `setArticles` / `rootSubcategoryId`.
+  const setArticlesRef = useLatestRef(setArticles);
+  const rootSubcategoryIdRef = useLatestRef(rootSubcategoryId ?? null);
+
   // Reset cadence tracking when switching articles.
   useEffect(() => {
     lastKeystrokeAtRef.current = 0;
@@ -107,19 +122,14 @@ export function useWikiLinkAutoCreate({
       t => !existingTitlesLowerRef.current.has(normalizeKey(t)),
     );
     if (pendingAll.length === 0) {
-      // Nothing pending → reset overflow latch so a future burst notifies fresh.
       lastOverflowNotifiedRef.current = 0;
       return;
     }
 
-    // Apply hard cap. Overflow tail is drained on subsequent ticks once the
-    // current batch persists and grows `existingTitlesLowerRef`.
     const overflow = pendingAll.length > WIKI_LINK_BATCH_CAP;
     const pending = overflow ? pendingAll.slice(0, WIKI_LINK_BATCH_CAP) : pendingAll;
 
     if (overflow) {
-      // Latch on the *current* overflow size; only re-notify if the size shifts
-      // (e.g. the user pasted more, or one chunk drained). Same size = silent.
       if (lastOverflowNotifiedRef.current !== pendingAll.length) {
         lastOverflowNotifiedRef.current = pendingAll.length;
         console.warn(
@@ -130,15 +140,13 @@ export function useWikiLinkAutoCreate({
         );
       }
     } else if (lastOverflowNotifiedRef.current !== 0) {
-      // Burst drained back under the cap — clear latch so future overflow re-notifies.
       lastOverflowNotifiedRef.current = 0;
     }
 
-    // Adaptive delay computation.
     const BASE_MIN = 300;
     const BASE_MAX = 1000;
-    const VEL_FAST = 120;   // <=120ms between keystrokes ⇒ fast typing
-    const VEL_IDLE = 400;   // >=400ms ⇒ effectively idle
+    const VEL_FAST = 120;
+    const VEL_IDLE = 400;
     const interval = lastIntervalRef.current;
     const velocityWeight = !Number.isFinite(interval)
       ? 0
@@ -147,15 +155,23 @@ export function useWikiLinkAutoCreate({
     const weight = Math.max(velocityWeight, batchWeight);
     const delay = Math.round(BASE_MIN + (BASE_MAX - BASE_MIN) * weight);
 
+    let cancelled = false;
     const handle = setTimeout(async () => {
       const created = await bulkCreateArticlesIfMissing(
         categoryId,
         pending,
-        rootSubcategoryId ?? undefined,
+        rootSubcategoryIdRef.current ?? undefined,
       );
+      if (cancelled) return;
       if (created.length > 0) {
-        setArticles(prev => [...created, ...prev]);
-        // Keep backlink index hot — each new article may target existing titles.
+        // Optimistically expand the in-memory title set so the next keystroke
+        // doesn't re-queue the same targets before React commits the new
+        // `articles` prop.
+        const expanded = new Set(existingTitlesLowerRef.current);
+        for (const a of created) expanded.add(normalizeKey(a.title));
+        existingTitlesLowerRef.current = expanded;
+
+        setArticlesRef.current(prev => [...created, ...prev]);
         for (const a of created) {
           eventBus.emit(EVENT_TYPES.KB_ARTICLE_UPSERTED, { subjectId: categoryId, article: a });
         }
@@ -164,9 +180,14 @@ export function useWikiLinkAutoCreate({
             ? `Kreiran placeholder članak "${created[0].title}"`
             : `Kreirano ${created.length} placeholder članaka`,
         );
+        // Idempotency: re-trigger this effect so any cap-overflow tail can
+        // drain now that the persisted set has grown — without reacting to
+        // every unrelated `articles` mutation.
+        if (overflow) setDrainTick(t => t + 1);
       }
     }, delay);
-    return () => clearTimeout(handle);
-    // `articles` dep is intentional — see header comment.
-  }, [draftContent, isEditing, categoryId, articles, rootSubcategoryId, setArticles]);
+    return () => { cancelled = true; clearTimeout(handle); };
+    // `articles` intentionally NOT a dep: `existingTitlesLowerRef` stays
+    // fresh via the separate effect above, and `drainTick` covers tail drain.
+  }, [draftContent, isEditing, categoryId, drainTick, rootSubcategoryIdRef, setArticlesRef]);
 }

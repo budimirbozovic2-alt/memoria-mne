@@ -88,9 +88,17 @@ async function applyRemapToParsed(
     if (r) card.categoryId = r;
     if (++i % 1000 === 0) await yieldUI();
   }
-  for (const card of Object.values(cardMap)) {
+  // Stream-iterate the in-memory map instead of materializing
+  // `Object.values(cardMap)` (which allocates an N-sized array for a
+  // 15k+ card DB). `for…in` over a plain object enumerates own keys
+  // without any auxiliary allocation; periodic yields keep the UI thread
+  // responsive on very large maps.
+  let j = 0;
+  for (const id in cardMap) {
+    const card = cardMap[id];
     const r = remap.get(card.categoryId);
     if (r) card.categoryId = r;
+    if (++j % 1000 === 0) await yieldUI();
   }
   for (const src of parsed.sources) {
     const r = remap.get(src.categoryId);

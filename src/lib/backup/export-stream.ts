@@ -24,6 +24,7 @@ import type Dexie from "dexie";
 import type { Table } from "dexie";
 import { db } from "@/lib/db";
 import { yieldUI } from "@/lib/backup/yield-ui";
+import { serializeRowsInWorker } from "@/lib/backup/json-serialize-client";
 
 export type ProgressFn = (pct: number, message: string) => void;
 
@@ -59,7 +60,13 @@ export function txScope(...tables: Table<unknown, unknown>[] | Table<unknown>[])
   return tables as Table<unknown, unknown>[];
 }
 
-const YIELD_EVERY = 500;
+// Rows per worker batch. Tuned for two competing concerns:
+// - Larger batches amortize postMessage overhead and let the worker keep
+//   the main thread idle for longer between handoffs.
+// - Smaller batches keep the structured-clone payload bounded so we never
+//   spike the heap when a single row (e.g. a Source with a fat HTML blob)
+//   is large.
+const WORKER_BATCH = 500;
 
 async function emitArray(
   parts: BlobPart[],
@@ -74,19 +81,39 @@ async function emitArray(
   }
   const total = spec.table ? await spec.table.count() : 0;
   parts.push(`"${spec.key}":[`);
+
+  // Buffer rows up to WORKER_BATCH, then off-thread `JSON.stringify` the
+  // batch and push the result into `parts`. Dexie's `Collection.each`
+  // awaits an async callback before advancing the IDB cursor, so this
+  // bounded-buffer pattern keeps peak heap at one batch × row size while
+  // still doing the heavy work off the main thread.
   let i = 0;
+  let batch: unknown[] = [];
+  let isFirstBatch = true;
+
+  const flush = async () => {
+    if (batch.length === 0) return;
+    const chunk = await serializeRowsInWorker(batch);
+    parts.push(isFirstBatch ? chunk : "," + chunk);
+    isFirstBatch = false;
+    batch = [];
+    const pct = total > 0
+      ? pStart + Math.round(((pEnd - pStart) * Math.min(i, total)) / Math.max(total, 1))
+      : pEnd;
+    onProgress(pct, `${spec.key} ${i}/${total || i}`);
+    await yieldUI();
+  };
+
   const cursor = spec.collection ? spec.collection() : spec.table!;
-  await cursor.each((row: unknown) => {
-    parts.push((i === 0 ? "" : ",") + JSON.stringify(row));
+  await cursor.each(async (row: unknown) => {
+    batch.push(row);
     i++;
+    if (batch.length >= WORKER_BATCH) await flush();
   });
+  await flush();
+
   parts.push("]");
-  // We can only yield between tables (Table.each does not pause mid-cursor),
-  // but report progress and yield once per emitted table.
-  const pct = total > 0
-    ? pStart + Math.round(((pEnd - pStart) * Math.min(i, total)) / Math.max(total, 1))
-    : pEnd;
-  onProgress(pct, `${spec.key} ${i}/${total || i}`);
+  onProgress(pEnd, `${spec.key} ${i}/${total || i}`);
   await yieldUI();
   return i;
 }

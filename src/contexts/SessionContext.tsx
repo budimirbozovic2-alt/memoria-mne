@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, useRef, useMemo, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useMemo, useEffect, ReactNode } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
+import { persistQueue } from "@/lib/persist-queue";
 
 // ─── Types ──────────────────────────────────────────────
 export interface QueuedReview {
@@ -61,8 +62,29 @@ export function useSessionContext() {
 
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
+  // `isEnding` is the local intent ("user pressed End"); the visible
+  // `isProcessing` indicator is derived from `isEnding || persistQueue.hasPending()`
+  // so it stays on until the queue actually drains — no arbitrary setTimeout
+  // padding, no risk of hiding while writes are still in flight.
+  const [isEnding, setIsEnding] = useState(false);
+  const [queuePending, setQueuePending] = useState(false);
   const [snapshot, setSnapshot] = useState<SessionSnapshot | null>(null);
+
+  useEffect(() => {
+    const update = () => setQueuePending(persistQueue.hasPending());
+    update();
+    return persistQueue.subscribe(update);
+  }, []);
+
+  const isProcessing = isEnding || queuePending;
+
+  // Drop the snapshot once both flags are clear. Effect, not setTimeout —
+  // fires synchronously on the commit that flips both to false.
+  useEffect(() => {
+    if (!isEnding && !queuePending && snapshot && !isSessionActive) {
+      setSnapshot(null);
+    }
+  }, [isEnding, queuePending, snapshot, isSessionActive]);
 
   const reviewQueue = useRef<QueuedReview[]>([]);
   const errorQueue = useRef<QueuedError[]>([]);
@@ -85,7 +107,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     flushReads: (reads: QueuedMarkRead[]) => void,
   ) => {
     setIsSessionActive(false);
-    setIsProcessing(true);
+    setIsEnding(true);
 
     // Flush all queued actions to main state
     const reviews = [...reviewQueue.current];
@@ -102,19 +124,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (errors.length > 0) flushErrors(errors);
     if (reads.length > 0) flushReads(reads);
 
-    // G2 fix: wait for actual persist flush, then show brief indicator
+    // Wait for persist queue to drain. `isProcessing` stays true via the
+    // queue subscription above until the last write resolves.
     try {
-      const { persistQueue } = await import("@/lib/persist-queue");
       await persistQueue.flush();
     } catch (e) {
       console.warn("[session] persist flush failed", e);
     }
 
-    // Brief visual indicator after flush completes
-    setTimeout(() => {
-      setIsProcessing(false);
-      setSnapshot(null);
-    }, 200);
+    setIsEnding(false);
   }, []);
 
   const queueReview = useCallback((cardId: string, sectionId: string, grade: number) => {
