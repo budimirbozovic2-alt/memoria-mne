@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback, useRef, useMemo, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, useMemo, useEffect, ReactNode } from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
+import { persistQueue } from "@/lib/persist-queue";
 
 // ─── Types ──────────────────────────────────────────────
 export interface QueuedReview {
