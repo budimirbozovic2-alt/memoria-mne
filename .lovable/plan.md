@@ -74,3 +74,16 @@ useEffect(() => {
 **Out of scope:** P0/P1/P2 stavke; bilo kakva promjena event-bus runtime semantike (kanal, listeneri, soft-reset); refactor `body-pointer-events-guard` interne logike.
 
 **Predloženi redoslijed:** 1 → 2 → 3 (svi su L-risk, neovisni; redoslijed nebitan).
+---
+
+## Faza B (P1) — implementirano
+
+| # | Fajl | Promjena |
+|---|---|---|
+| 4 | `src/workers/json-serialize-worker.ts` (new), `src/lib/backup/json-serialize-client.ts` (new), `src/lib/backup/export-stream.ts` | `emitArray` puni bounded batch (WORKER_BATCH=500) i `JSON.stringify` se izvršava off-thread; cursor pauzira preko `await` u `Collection.each` callback-u |
+| 5 | `src/hooks/useWikiLinkAutoCreate.ts` | `articles` izbačen iz deps glavnog efekta; `useLatestRef` za `setArticles`/`rootSubcategoryId`; `drainTick` token za tail drain nakon cap-overflow batch-a; in-memory `existingTitlesLowerRef` eager-update da spriječi duplicirane queue-ove |
+| 6 | `src/lib/event-bus.ts` | Već riješeno ranije (`_softReset` u `import.meta.hot.dispose`, `beforeunload` se čisti u `destroy`) |
+| 7 | `src/lib/backup/import-transaction.ts` | `Object.values(cardMap)` → `for…in` iteracija + periodični `yieldUI()` na 1k karata; bez alokacije N-array-a |
+| 8 | `src/contexts/SessionContext.tsx` | `isProcessing` derived iz `isEnding || persistQueue.hasPending()` preko `persistQueue.subscribe`; obrisan 200ms `setTimeout` padding |
+
+**Testovi:** `src/test/phase-b-p1.test.tsx` (4 testa, svi prolaze). Ukupno 407/407 testova zeleno.
