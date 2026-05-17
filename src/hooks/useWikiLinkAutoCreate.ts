@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   bulkCreateArticlesIfMissing,
@@ -6,6 +6,7 @@ import {
 } from "@/lib/zettelkasten-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
 import { iterateWikiLinks, normalizeKey } from "@/lib/zettelkasten-wiki-link";
+import { useLatestRef } from "@/hooks/useLatestRef";
 
 /**
  * Auto-creates placeholder articles for new `[[Wiki Links]]` typed inside
