@@ -304,6 +304,19 @@ db.on("versionchange", () => {
 let reloadScheduled = false;
 let unblockIntervalId: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * Phase C / P2-2: stop and reset the unblock watchdog. Exposed so HMR can
+ * dispose the stale `setInterval` before the module re-evaluates — otherwise
+ * Vite leaves orphaned timers ticking every 2s across reloads.
+ */
+export function __teardownDbWatchdog(): void {
+  if (unblockIntervalId !== null) {
+    clearInterval(unblockIntervalId);
+    unblockIntervalId = null;
+  }
+  reloadScheduled = false;
+}
+
 export function startUnblockWatch() {
   if (unblockIntervalId) return; // already running
   unblockIntervalId = setInterval(() => {
