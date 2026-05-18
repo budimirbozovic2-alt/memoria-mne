@@ -1,89 +1,70 @@
-# P3 — Polish
+## Faza C — P2 Cleanup
 
-Tri male, nezavisne čistke. Sve mogu ići u jednom commit-u; nijedna ne mijenja runtime ponašanje.
+### 1. Regex pre-kompilacija (`src/lib/highlight-key-parts.ts`)
 
-## Korak 1 — Centralizovati session-key brisanje (`useCardImport.ts`)
+Trenutno `highlightKeyParts` instancira `new RegExp(...)` u `for` petlji za **svaki** `keyPart` na **svaki** render — pri 1000 sekcija × 50 ključeva to je 50k regex kompilacija po prolazu.
 
-**Trenutno:** `src/hooks/useCardImport.ts:150` direktno zove `localStorage.removeItem("sr-review-session")` sa try/catch. String literal je takođe duplikat — `src/components/ReviewSession.tsx:11` definiše `const SESSION_KEY = "sr-review-session"`.
+**Promjene:**
+- Dodati `compileKeyPartsMatcher(keyParts: string[]): RegExp | null` — vraća **jedan** alternacijski regex `/(?![^<]*>)(esc1|esc2|...)/gi`, sortiran po dužini opadajuće (duži match prvo, izbjegava prefix-shadow). Memoizirano kroz `WeakMap`/`Map` po referenci niza nije korisno jer su to literali; umjesto toga eksportovati pure factory.
+- `highlightKeyParts(html, keyParts | matcher)` prihvata gotov matcher kao alternativu — back-compat za niz `string[]`.
+- `HighlightedSection` koristi `useMemo` na nivou roditelja preko novog hooka **`useKeyPartsMatcher(keyParts)`** koji jednom po kartici pravi matcher; mapped sekcije dobijaju isti matcher (O(N) umjesto O(N×M)).
+- Test: `src/test/highlight-key-parts.test.ts` — provjera (a) ispravan output, (b) jedna regex kompilacija za N poziva s istim matcher-om.
 
-**Plan:**
-1. U `src/lib/review-session-storage.ts` (novi mali modul) izvući:
-   ```ts
-   export const REVIEW_SESSION_KEY = "sr-review-session";
-   export function clearReviewSession(): void {
-     try { localStorage.removeItem(REVIEW_SESSION_KEY); } catch { /* disabled */ }
-   }
-   ```
-2. `ReviewSession.tsx` importuje `REVIEW_SESSION_KEY` umjesto lokalne kopije.
-3. `useCardImport.ts:150` zamijeniti sa `clearReviewSession()`.
+### 2. HMR watchdog teardown (`src/lib/db-schema.ts`)
 
-**Acceptance:** 0 hard-coded `"sr-review-session"` literala van novog modula; postojeći test suite zelen.
+`startUnblockWatch()` postavlja `setInterval(..., 2000)` u `unblockIntervalId`; pri Vite HMR-u modul se evaluira ponovo, stari interval ostaje da visi (memory + duplicate side-effects).
 
-## Korak 2 — Komentar uz `installBodyPointerEventsGuard` (`App.tsx`)
+**Promjene:**
+- Eksportovati `__teardownDbWatchdog()`: `clearInterval(unblockIntervalId)` + reset `unblockIntervalId = null`, `reloadScheduled = false`.
+- Na dnu fajla: `if (import.meta.hot) { import.meta.hot.dispose(() => __teardownDbWatchdog()); }`.
+- Smoke test: `src/test/db-watchdog-teardown.test.ts` — `startUnblockWatch()` → `__teardownDbWatchdog()` → `unblockIntervalId === null`.
 
-**Trenutno:** `src/App.tsx:53`
-```ts
-useEffect(() => installBodyPointerEventsGuard(), []);
-```
-Funkcionalno tačno (vraća dispose), ali bez objašnjenja — pri budućoj refaktorizaciji neko može omaškom razdvojiti install/cleanup ili dodati drugi side-effect u isti useEffect.
+### 3. Settings panel type-safety (`src/components/SRSettingsPanel.tsx`)
 
-**Plan:** dodati explicit blok-komentar i izričito vratiti dispose:
-```ts
-// Install global guard for Radix Dialog `pointer-events: none` leak.
-// IMPORTANT: returned dispose MUST be wired into useEffect cleanup —
-// StrictMode double-invoke and HMR rely on it to avoid duplicate listeners.
-// Do not collapse this into another effect; keep install/dispose 1:1.
-useEffect(() => {
-  const dispose = installBodyPointerEventsGuard();
-  return dispose;
-}, []);
-```
+**Nalaz nakon revizije:** Faza B je već uklonila špageti `useEffect` sinhronizacije i sve refove kanalisala kroz `useLatestRef`. **Nema `as unknown as` cast-ova u trenutnom fajlu** (provjera: `rg "as unknown as" src/components/SRSettingsPanel.tsx` → 0 rezultata). Tačka 3 je **largely already addressed**; preostaje samo manja kozmetika:
 
-**Acceptance:** runtime nepromijenjen; namjera čitljiva u review-u.
+- Izvući `OVERRIDABLE_KEYS = ["leechThreshold","dailyGoal","resistanceWeights","targetRetention"] as const` u `subject-settings.ts` i koristiti tipiziranu `mergeSubjectOverrides(base, overrides)` helper umjesto inline spread-with-conditional u `useState` inicijalizatoru (linije 51–69). To eliminiše manuelna `!== undefined` provjeravanja po polju.
+- Test već postoji za subject-settings; dopuniti ako helper donosi novu granu.
 
-## Korak 3 — `Symbol.for` ključevi za event-bus singleton (`event-bus.ts`)
+### 4. Standardizacija unmount zaštite
 
-**Trenutno:** `src/lib/event-bus.ts` koristi imenovane stringove `globalThis.__codexEventBus` i `globalThis.__codexTabId`. Drugi moduli/biblioteke koje slučajno koriste isti naming pattern mogu kolidirati u istom realm-u.
+Trenutno stanje: 9 različitih mjesta sa `let cancelled = false` / `let isMounted = true` paternom (npr. `useCategorySources`, `useMindMaps`, `useScrollRestore`, `useWikiLinkAutoCreate`, `useDeferredCompute`, `useZettelkastenBootstrap`, `MnemonicModule`). Iste semantike, različita imena.
 
-**Plan:**
-1. Zamijeniti string-named globals sa `Symbol.for()` registry-keyed slotovima:
-   ```ts
-   const BUS_KEY = Symbol.for("codex.eventbus");
-   const TAB_KEY = Symbol.for("codex.tabId");
+**Promjene:**
+- Kreirati `src/hooks/useIsMountedRef.ts`:
+  ```ts
+  export function useIsMountedRef() {
+    const ref = useRef(true);
+    useEffect(() => () => { ref.current = false; }, []);
+    return ref;
+  }
+  ```
+- Kreirati `src/hooks/useAbortOnUnmount.ts` za async fetch/audio/Dexie scenarije gdje `AbortController` ima smisla.
+- Migrirati 9 navedenih call-site-ova u dvije runde:
+  - **Runda 4a** (per-effect lokalna varijabla → `useIsMountedRef`): `useCategorySources`, `useMindMaps`, `useScrollRestore`, `useDeferredCompute`, `useZettelkastenBootstrap`, `MnemonicModule`.
+  - **Runda 4b** (`useWikiLinkAutoCreate` već koristi `useLatestRef` + tail-drain idempotency → samo preimenovanje `cancelled` u `useIsMountedRef` radi konzistentnosti; semantiku ne mijenjamo).
+- Test: `src/test/use-is-mounted-ref.test.tsx` — ref postaje `false` nakon unmount-a.
 
-   type GlobalSlots = {
-     [BUS_KEY]?: EventBus;
-     [TAB_KEY]?: string;
-   };
-   const slots = globalThis as typeof globalThis & GlobalSlots;
-   ```
-2. `var __codexEventBus` / `var __codexTabId` declare-globalThis blok obrisati.
-3. HMR singleton i TAB_ID inicijalizacija čitaju/pišu kroz `slots[BUS_KEY]` / `slots[TAB_KEY]`.
-4. `Symbol.for` registry je svjesno globalan po realm-u (ista garancija kao prije za HMR), ali key prostor je odvojen od string properties.
+### 5. Bonus — dekompozicija SmartSplitSummaryDialog
 
-**Acceptance:** event-bus singleton i dalje preživljava HMR (`_softReset` putanja ostaje); 0 referenci na `__codexEventBus` / `__codexTabId` string identifikatore u `src/`; postojeći testovi zeleni (`db-emitter-di.test.ts`, integracioni backlink test koji koristi event-bus).
+**Nalaz:** Trenutno **221 linija** (već dekomponovan u prošlom PR-u: `useSplitModules`, `ModuleCard`, `MetadataPanel`, `CuttingView`). Ispod ciljne granice od 250 linija — **odustaje se od daljnje dekompozicije**, dodaje se samo ekstrakcija dirty-close + cutting orchestration u `src/hooks/smart-split/useSmartSplitSummary.ts` ako se zadrži ispod 180 linija renderera. Inače skip.
 
-## Tehnički sažetak
-
-| Korak | Fajlovi | Dodaje | Briše |
-|---|---|---|---|
-| 1 | new `lib/review-session-storage.ts`, `useCardImport.ts`, `ReviewSession.tsx` | 1 helper modul | 1 hard-coded literal + ad-hoc try/catch |
-| 2 | `App.tsx` | 4-redni komentar + eksplicitna dispose return | — |
-| 3 | `event-bus.ts` | 2 `Symbol.for` slot-a | `declare global var` blok |
-
-**Out of scope:** P0/P1/P2 stavke; bilo kakva promjena event-bus runtime semantike (kanal, listeneri, soft-reset); refactor `body-pointer-events-guard` interne logike.
-
-**Predloženi redoslijed:** 1 → 2 → 3 (svi su L-risk, neovisni; redoslijed nebitan).
 ---
 
-## Faza B (P1) — implementirano
+### Tehnički detalji (sažeto)
 
-| # | Fajl | Promjena |
+| Item | Files added | Files edited |
 |---|---|---|
-| 4 | `src/workers/json-serialize-worker.ts` (new), `src/lib/backup/json-serialize-client.ts` (new), `src/lib/backup/export-stream.ts` | `emitArray` puni bounded batch (WORKER_BATCH=500) i `JSON.stringify` se izvršava off-thread; cursor pauzira preko `await` u `Collection.each` callback-u |
-| 5 | `src/hooks/useWikiLinkAutoCreate.ts` | `articles` izbačen iz deps glavnog efekta; `useLatestRef` za `setArticles`/`rootSubcategoryId`; `drainTick` token za tail drain nakon cap-overflow batch-a; in-memory `existingTitlesLowerRef` eager-update da spriječi duplicirane queue-ove |
-| 6 | `src/lib/event-bus.ts` | Već riješeno ranije (`_softReset` u `import.meta.hot.dispose`, `beforeunload` se čisti u `destroy`) |
-| 7 | `src/lib/backup/import-transaction.ts` | `Object.values(cardMap)` → `for…in` iteracija + periodični `yieldUI()` na 1k karata; bez alokacije N-array-a |
-| 8 | `src/contexts/SessionContext.tsx` | `isProcessing` derived iz `isEnding || persistQueue.hasPending()` preko `persistQueue.subscribe`; obrisan 200ms `setTimeout` padding |
+| 1 | `src/test/highlight-key-parts.test.ts` | `src/lib/highlight-key-parts.ts` |
+| 2 | `src/test/db-watchdog-teardown.test.ts` | `src/lib/db-schema.ts` |
+| 3 | — | `src/lib/subject-settings.ts`, `src/components/SRSettingsPanel.tsx` |
+| 4 | `src/hooks/useIsMountedRef.ts`, `src/hooks/useAbortOnUnmount.ts`, `src/test/use-is-mounted-ref.test.tsx` | 6–7 hooks/komponenti |
+| 5 | (uslovno) `src/hooks/smart-split/useSmartSplitSummary.ts` | `SmartSplitSummaryDialog.tsx` |
 
-**Testovi:** `src/test/phase-b-p1.test.tsx` (4 testa, svi prolaze). Ukupno 407/407 testova zeleno.
+### Verifikacija
+- `bunx vitest run` — sve postojeće 407 testova + 3 nova moraju proći.
+- ESLint čist, bez novih `any`/`as unknown` regresija.
+
+### Out of scope
+- Workshop/MindMap node dekompozicija (završeno u P2 fazi).
+- Wiki auto-create idempotency rework (završeno u Fazi B).
