@@ -12,6 +12,7 @@ import {
   getMnemonicStats,
 } from "@/lib/mnemonic-storage";
 import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
+import { useIsMountedRef } from "@/hooks/useIsMountedRef";
 
 import { motion, AnimatePresence } from "framer-motion";
 import MnemonicWorkshop from "./MnemonicWorkshop";
@@ -78,9 +79,8 @@ export default function MnemonicModule({ embedded = false, categoryFilter }: Pro
   // ═══════════════════════════════════════════════════════════════════════════
   // FIX S3: Memory Leak & Race Condition Prevention
   // ═══════════════════════════════════════════════════════════════════════════
+  const mounted = useIsMountedRef();
   useEffect(() => {
-    let isMounted = true;
-
     // B2: when scoped to a single subject, use the indexed loader instead of
     // pulling the global mnemonic table only to discard most rows in memory.
     const load = (): Promise<MnemonicCard[]> =>
@@ -89,20 +89,15 @@ export default function MnemonicModule({ embedded = false, categoryFilter }: Pro
         : loadMnemonicCards();
 
     load().then((loadedCards) => {
-      if (isMounted) setCardsState(loadedCards);
+      if (mounted.current) setCardsState(loadedCards);
     });
 
-    const unsub = eventBus.subscribe(EVENT_TYPES.MNEMONICS_UPDATED, () => {
+    return eventBus.subscribe(EVENT_TYPES.MNEMONICS_UPDATED, () => {
       load().then((loadedCards) => {
-        if (isMounted) setCardsState(loadedCards);
+        if (mounted.current) setCardsState(loadedCards);
       });
     });
-
-    return () => {
-      isMounted = false;
-      unsub();
-    };
-  }, [categoryFilter]);
+  }, [categoryFilter, mounted]);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FIX S3: Idempotent React Updater (Separating side-effects from setState)
