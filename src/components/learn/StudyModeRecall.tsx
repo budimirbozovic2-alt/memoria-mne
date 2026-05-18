@@ -4,7 +4,7 @@ import { Card } from "@/lib/spaced-repetition";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import TextSelectionTooltip from "@/components/TextSelectionTooltip";
-import { HighlightedSection } from "@/lib/highlight-key-parts";
+import { HighlightedSection, useKeyPartsMatcher } from "@/lib/highlight-key-parts";
 import SessionHeader from "./SessionHeader";
 import QuestionDots from "./QuestionDots";
 import GradeButtons from "./GradeButtons";
@@ -47,6 +47,8 @@ export default function StudyModeRecall({
   strictRecall = false,
 }: Props) {
   const [phase, setPhase] = useState<RecallPhase>("open");
+  // Phase C / P2-1: compile keypart matcher once per card, share across sections.
+  const keyPartsMatcher = useKeyPartsMatcher(card.keyParts);
   const [leechCount, setLeechCount] = useState(0);
 
   const sections = card.sections ?? [];

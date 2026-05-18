@@ -304,6 +304,19 @@ db.on("versionchange", () => {
 let reloadScheduled = false;
 let unblockIntervalId: ReturnType<typeof setInterval> | null = null;
 
+/**
+ * Phase C / P2-2: stop and reset the unblock watchdog. Exposed so HMR can
+ * dispose the stale `setInterval` before the module re-evaluates — otherwise
+ * Vite leaves orphaned timers ticking every 2s across reloads.
+ */
+export function __teardownDbWatchdog(): void {
+  if (unblockIntervalId !== null) {
+    clearInterval(unblockIntervalId);
+    unblockIntervalId = null;
+  }
+  reloadScheduled = false;
+}
+
 export function startUnblockWatch() {
   if (unblockIntervalId) return; // already running
   unblockIntervalId = setInterval(() => {
@@ -397,4 +410,11 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
   }
 
   return ok;
+}
+
+// Phase C / P2-2: HMR teardown so Vite reload doesn't leak watchdog intervals.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    __teardownDbWatchdog();
+  });
 }
