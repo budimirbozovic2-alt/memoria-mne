@@ -411,3 +411,10 @@ export async function ensureDbOpen(timeoutMs = 6000): Promise<boolean> {
 
   return ok;
 }
+
+// Phase C / P2-2: HMR teardown so Vite reload doesn't leak watchdog intervals.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    __teardownDbWatchdog();
+  });
+}
