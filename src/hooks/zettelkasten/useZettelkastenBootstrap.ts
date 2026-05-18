@@ -21,6 +21,7 @@ import {
   type KnowledgeBaseArticle,
 } from "@/lib/zettelkasten-storage";
 import { backlinkIndex } from "@/lib/backlink-index";
+import { useIsMountedRef } from "@/hooks/useIsMountedRef";
 
 interface BootstrapInput {
   categoryId: string | undefined;
@@ -46,14 +47,15 @@ export function useZettelkastenBootstrap(
   // unless their *content* differs.
   const seedNamesKey = useMemo(() => subcategoryNames.join("\u0001"), [subcategoryNames]);
 
+  const mounted = useIsMountedRef();
+
   useEffect(() => {
     if (!categoryId || !subjectName) return;
-    let cancelled = false;
     setLoading(true);
     loadArticlesBySubject(categoryId).then(async (list) => {
-      if (cancelled) return;
+      if (!mounted.current) return;
       const idx = await ensureIndexArticle(categoryId, subjectName, subcategoryNames);
-      if (cancelled) return;
+      if (!mounted.current) return;
 
       const merged = list.some(a => a.id === idx.id)
         ? list.map(a => a.id === idx.id ? idx : a)
@@ -67,7 +69,6 @@ export function useZettelkastenBootstrap(
       setInitialActiveId(prev => prev ?? idx.id);
       setLoading(false);
     });
-    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryId, subjectName, seedNamesKey]);
 
