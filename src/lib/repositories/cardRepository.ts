@@ -168,8 +168,6 @@ export function clearNeedsReview(id: string): Card | undefined {
  */
 export function applySyncDelta(rows: Card[], deletedIds: string[]): void {
   if (rows.length === 0 && deletedIds.length === 0) return;
-  for (const c of rows) cardMapRefFacade.current[c.id] = c;
-  for (const id of deletedIds) delete cardMapRefFacade.current[id];
   setCardMap((prev) => {
     const next = { ...prev };
     for (const c of rows) next[c.id] = c;
@@ -181,7 +179,6 @@ export function applySyncDelta(rows: Card[], deletedIds: string[]): void {
 
 /** Replace the entire cardMap atom. Bootstrap / restore only. */
 export function replaceAll(map: CardMap): void {
-  cardMapRefFacade.current = map;
   setCardMap({ ...map });
   bumpMapVersion();
 }
