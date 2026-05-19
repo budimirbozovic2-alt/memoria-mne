@@ -126,8 +126,12 @@ export function useCardCRUD(_params: UseCardCRUDParams) {
   );
 
   const deleteCard = useCallback((id: string) => {
-    void cardCommandBus.dispatch({ type: "delete", id: id });
-    toast.success("Kartica obrisana.");
+    cardCommandBus.dispatch({ type: "delete", id: id })
+      .then(() => toast.success("Kartica obrisana."))
+      .catch((err: unknown) => {
+        console.error("[useCardCRUD.deleteCard] dispatch failed", err);
+        toast.error("Brisanje nije uspjelo.");
+      });
   }, []);
 
   const splitCard = useCallback((id: string) => {

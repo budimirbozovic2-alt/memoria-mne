@@ -32,8 +32,14 @@ export function snapshot(): CardMap {
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────
+// NOTE (C4 follow-up): `cardMapRefFacade.current` and the Zustand store atom
+// are the SAME reference. In-place mutation of `current` therefore mutates
+// the very `prev` object that `setCardMap`'s updater is about to inspect,
+// which defeats any "skip-if-noop" guard (notably in commitDelete, where
+// `prev[id]` is already gone, the guard returns `prev`, no notify fires,
+// and the UI never re-renders the deletion). Single source of truth: write
+// via `setCardMap`; the ref getter reads the live atom right after.
 function commitSingle(card: Card): void {
-  cardMapRefFacade.current[card.id] = card; // in-place ref delta
   schedulePersist({ type: "put", card });
   setCardMap((prev) => ({ ...prev, [card.id]: card }));
   bumpMapVersion();
@@ -41,7 +47,6 @@ function commitSingle(card: Card): void {
 
 function commitBulk(cards: Card[]): void {
   if (cards.length === 0) return;
-  for (const c of cards) cardMapRefFacade.current[c.id] = c;
   schedulePersist({ type: "bulk", cards });
   setCardMap((prev) => {
     const next = { ...prev };
@@ -52,10 +57,9 @@ function commitBulk(cards: Card[]): void {
 }
 
 function commitDelete(id: string): void {
-  delete cardMapRefFacade.current[id];
   schedulePersist({ type: "delete", id });
   setCardMap((prev) => {
-    if (!prev[id]) return prev;
+    if (!(id in prev)) return prev;
     const next = { ...prev };
     delete next[id];
     return next;
@@ -164,8 +168,6 @@ export function clearNeedsReview(id: string): Card | undefined {
  */
 export function applySyncDelta(rows: Card[], deletedIds: string[]): void {
   if (rows.length === 0 && deletedIds.length === 0) return;
-  for (const c of rows) cardMapRefFacade.current[c.id] = c;
-  for (const id of deletedIds) delete cardMapRefFacade.current[id];
   setCardMap((prev) => {
     const next = { ...prev };
     for (const c of rows) next[c.id] = c;
@@ -177,7 +179,6 @@ export function applySyncDelta(rows: Card[], deletedIds: string[]): void {
 
 /** Replace the entire cardMap atom. Bootstrap / restore only. */
 export function replaceAll(map: CardMap): void {
-  cardMapRefFacade.current = map;
   setCardMap({ ...map });
   bumpMapVersion();
 }

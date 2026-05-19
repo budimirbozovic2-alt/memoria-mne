@@ -211,7 +211,7 @@ export default function CardViewTable({
                     Premjesti
                   </Button>
                   {onDelete && (
-                    <Button variant="outline" size="sm" className="gap-1.5 text-xs text-destructive hover:bg-destructive/10" onClick={() => { onDelete(card.id); toast.success("Kartica obrisana."); }}>
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs text-destructive hover:bg-destructive/10" onClick={() => { onDelete(card.id); }}>
                       <Trash2 className="h-3.5 w-3.5" /> Obriši
                     </Button>
                   )}
