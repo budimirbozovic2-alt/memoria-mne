@@ -311,35 +311,29 @@ function tableFor<K extends keyof ParsedBackup & string, T, PK extends keyof T &
   return (db as unknown as Record<string, IdbBulkTable<T, PK>>)[desc.table];
 }
 
-// Element types of the relevant ParsedBackup arrays — extracted once so the
-// descriptor list below stays a single source of truth.
-type DiaryRec = ParsedBackup["diary"][number];
-type MnemonicsRec = ParsedBackup["mnemonics"][number];
-type MajorSystemRec = ParsedBackup["majorSystem"][number];
-type SettingsRec = ParsedBackup["settings"][number];
-type CalibrationRec = ParsedBackup["calibrationLog"][number];
-type LatencyRec = ParsedBackup["latencyLog"][number];
-type SlippageRec = ParsedBackup["slippageLog"][number];
-type ActivityRec = ParsedBackup["activityLog"][number];
-type DisciplineRec = ParsedBackup["disciplineLog"][number];
-type PomodoroRec = ParsedBackup["pomodoroLog"][number];
-type MnemonicTestRec = ParsedBackup["mnemonicTestLog"][number];
+// Element types of the relevant satellite tables. Imported directly from the
+// owning storage modules rather than reached for through `ParsedBackup`,
+// because the Zod schema there relaxes some fields to `unknown` which would
+// collapse `keyof T` to `never` and defeat the compile-time PK check.
+type SettingsRec = { key: string; value: unknown };
+type MajorSystemRec = { id: number; peg: string };
+type AutoIncLog<T> = T & { id?: number };
 
 const UUID_TABLES = [
-  makeDescriptor<"diary", DiaryRec, "id">({ key: "diary", table: "diary", pkField: "id" }),
-  makeDescriptor<"mnemonics", MnemonicsRec, "id">({ key: "mnemonics", table: "mnemonics", pkField: "id" }),
+  makeDescriptor<"diary", DiaryEntry, "id">({ key: "diary", table: "diary", pkField: "id" }),
+  makeDescriptor<"mnemonics", MnemonicCard, "id">({ key: "mnemonics", table: "mnemonics", pkField: "id" }),
   makeDescriptor<"majorSystem", MajorSystemRec, "id">({ key: "majorSystem", table: "majorSystem", pkField: "id" }),
   makeDescriptor<"settings", SettingsRec, "key">({ key: "settings", table: "settings", pkField: "key" }),
 ] as const;
 
 const AUTO_INC_TABLES = [
-  makeDescriptor<"calibrationLog", CalibrationRec, "id">({ key: "calibrationLog", table: "calibrationLog", pkField: "id" }),
-  makeDescriptor<"latencyLog", LatencyRec, "id">({ key: "latencyLog", table: "latencyLog", pkField: "id" }),
-  makeDescriptor<"slippageLog", SlippageRec, "id">({ key: "slippageLog", table: "slippageLog", pkField: "id" }),
-  makeDescriptor<"activityLog", ActivityRec, "id">({ key: "activityLog", table: "activityLog", pkField: "id" }),
-  makeDescriptor<"disciplineLog", DisciplineRec, "id">({ key: "disciplineLog", table: "disciplineLog", pkField: "id" }),
-  makeDescriptor<"pomodoroLog", PomodoroRec, "id">({ key: "pomodoroLog", table: "pomodoroLog", pkField: "id" }),
-  makeDescriptor<"mnemonicTestLog", MnemonicTestRec, "id">({ key: "mnemonicTestLog", table: "mnemonicTestLog", pkField: "id" }),
+  makeDescriptor<"calibrationLog", AutoIncLog<CalibrationEntry>, "id">({ key: "calibrationLog", table: "calibrationLog", pkField: "id" }),
+  makeDescriptor<"latencyLog", AutoIncLog<LatencyEntry>, "id">({ key: "latencyLog", table: "latencyLog", pkField: "id" }),
+  makeDescriptor<"slippageLog", AutoIncLog<SlippageEntry>, "id">({ key: "slippageLog", table: "slippageLog", pkField: "id" }),
+  makeDescriptor<"activityLog", AutoIncLog<ActivityEntry>, "id">({ key: "activityLog", table: "activityLog", pkField: "id" }),
+  makeDescriptor<"disciplineLog", AutoIncLog<DisciplineEntry>, "id">({ key: "disciplineLog", table: "disciplineLog", pkField: "id" }),
+  makeDescriptor<"pomodoroLog", AutoIncLog<PomodoroLogEntry>, "id">({ key: "pomodoroLog", table: "pomodoroLog", pkField: "id" }),
+  makeDescriptor<"mnemonicTestLog", AutoIncLog<MnemonicTestLogEntry>, "id">({ key: "mnemonicTestLog", table: "mnemonicTestLog", pkField: "id" }),
 ] as const;
 
 type AnyDescriptor =
