@@ -23,6 +23,16 @@ import { ReviewLogEntry } from "@/lib/storage";
 import { resolveLegacyTaxonomyNames } from "@/lib/migrations/resolve-legacy-taxonomy";
 import { yieldUI } from "@/lib/backup/yield-ui";
 import type { ParsedBackup } from "@/lib/migrations/backup-schema";
+import type {
+  DiaryEntry,
+  CalibrationEntry,
+  LatencyEntry,
+  SlippageEntry,
+  ActivityEntry,
+} from "@/lib/metacognitive-storage";
+import type { DisciplineEntry } from "@/lib/planner/types";
+import type { PomodoroLogEntry } from "@/lib/types/logs";
+import type { MnemonicCard, MnemonicTestLogEntry } from "@/lib/mnemonic-storage";
 
 export type ImportStrategy = "keep" | "overwrite" | "skip" | "newer";
 
