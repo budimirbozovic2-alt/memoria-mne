@@ -394,7 +394,15 @@ async function writeSatelliteTablesTx(
 
   let i = 0;
   for (const desc of idbTables) {
-    await writeOneSatelliteTable(parsed, desc, strategy, autoIncKeys.has(desc.key));
+    // Erase the per-descriptor PK/T generics for the call site — the helper
+    // re-reifies them internally. The compile-time pk-vs-T check still fires
+    // at the `makeDescriptor(...)` declaration sites above.
+    await writeOneSatelliteTable(
+      parsed,
+      desc as BulkTableDescriptor<string, Record<string, unknown>, string>,
+      strategy,
+      autoIncKeys.has(desc.key),
+    );
     i++;
     progress(85 + Math.round((i / idbTables.length) * 10), `Logovi (${i}/${idbTables.length})…`);
     await yieldUI();
