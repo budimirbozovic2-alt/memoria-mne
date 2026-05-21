@@ -34,7 +34,7 @@ import type { DisciplineEntry } from "@/lib/planner/types";
 import type { PomodoroLogEntry } from "@/lib/types/logs";
 import type { MnemonicCard, MnemonicTestLogEntry } from "@/lib/mnemonic-storage";
 
-import { logger } from "@/lib/logger";
+import { backupLog } from "@/lib/backup/backup-logger";
 export type ImportStrategy = "keep" | "overwrite" | "skip" | "newer";
 
 export interface ImportTxResult {
@@ -458,8 +458,16 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
   const { parsed, strategy, currentMap, onProgress } = ctx;
   const progress = onProgress ?? (() => { /* noop */ });
 
-  // ── 1. Pre-merge cards (in-memory only — IDB writes happen in tx below) ──
-  const { merged, nextMap } = mergeCardsByStrategy(parsed.cards, currentMap, strategy);
+  backupLog.start("import", "atomic restore begin", {
+    strategy,
+    cards: parsed.cards.length,
+    categories: parsed.categories.length,
+    schemaVersion: (parsed as { version?: number }).version ?? null,
+  });
+
+  try {
+    // ── 1. Pre-merge cards (in-memory only — IDB writes happen in tx below) ──
+    const { merged, nextMap } = mergeCardsByStrategy(parsed.cards, currentMap, strategy);
 
   // ── 2. Pre-tx remap (Phase 2.1) ──
   // Read existing categories OUTSIDE the rw tx so we can compute the remap
@@ -476,7 +484,7 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
     legacyResolveReport = resolveLegacyTaxonomyNames(merged, freshCategories);
     for (const c of merged) nextMap[c.id] = c;
   } catch (err) {
-    logger.warn("[applyImportAtomically] legacy taxonomy resolve failed:", err);
+    backupLog.warn("import", "legacy taxonomy resolve failed", err instanceof Error ? err.message : String(err));
   }
 
   await yieldUI();
@@ -517,15 +525,25 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
     await writeSatelliteTablesTx(parsed, strategy, progress);
   });
 
-  // ── 5. Re-read final categories snapshot for AppContext ──
-  freshCategories = await idbLoadCategories();
+    // ── 5. Re-read final categories snapshot for AppContext ──
+    freshCategories = await idbLoadCategories();
 
-  return {
-    merged,
-    nextMap,
-    freshCategories,
-    legacyResolveReport,
-    srSettingsApplied,
-    reviewLogApplied,
-  };
+    backupLog.success("import", "atomic restore committed", {
+      strategy,
+      cards: merged.length,
+      categories: freshCategories.length,
+    });
+
+    return {
+      merged,
+      nextMap,
+      freshCategories,
+      legacyResolveReport,
+      srSettingsApplied,
+      reviewLogApplied,
+    };
+  } catch (err) {
+    backupLog.error("import", "atomic restore failed — rolled back", err);
+    throw err;
+  }
 }
