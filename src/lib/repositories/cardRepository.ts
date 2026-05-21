@@ -21,6 +21,31 @@ import {
   setCardMap,
   getCardMap,
 } from "@/store/useCardMapStore";
+import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
+
+// ─── Phase 3 — invalidation broadcast ──────────────────────────────────────
+// Every repository write fans out a CARDS_UPDATED event tagged with the
+// commit source. The module-level `cardMapInvalidator` filters our own
+// "repository" / "repository-sync" emissions back out so we don't double-
+// apply (RAM is already up-to-date inline). External emitters (HealthMonitor,
+// RemapFromBackupDialog, future remote sync) keep using their own source
+// strings and the invalidator does the bulkGet → applySyncDelta dance.
+export type CardsUpdatedSource =
+  | "repository"
+  | "repository-sync"
+  | "repository-replace"
+  | string; // external (orphan-cleanup, delete-cards, remap-from-backup, …)
+
+export interface CardsUpdatedPayload {
+  source: CardsUpdatedSource;
+  cardIds?: string[];
+  deletedIds?: string[];
+}
+
+function emitCardsUpdated(payload: CardsUpdatedPayload): void {
+  try { eventBus.emit(EVENT_TYPES.CARDS_UPDATED, payload); }
+  catch { /* bus failures must not break a commit */ }
+}
 
 // ─── Read primitives ──────────────────────────────────────────────────────
 export function getCard(id: string): Card | undefined {
