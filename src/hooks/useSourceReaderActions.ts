@@ -11,6 +11,7 @@
  */
 import { useMemo } from "react";
 import { useCardData } from "@/contexts/AppContext";
+import { useCardsBySource } from "@/store/useCardsBySource";
 import { sanitizeHtml } from "@/lib/sanitize";
 import type { Source } from "@/lib/sources-storage";
 import { useSourceSelection } from "@/hooks/source-reader/useSourceSelection";
@@ -19,6 +20,9 @@ import { useSourceEditing } from "@/hooks/source-reader/useSourceEditing";
 import { useSourceReaderShortcuts } from "@/hooks/source-reader/useSourceReaderShortcuts";
 
 export function useSourceReaderActions(source: Source, onSourceUpdated?: (source: Source) => void) {
+  // `cards` still flows through `derived.cards` for LinkToExistingCardModal,
+  // which filters by categoryId (not sourceId). Granular optimisation for
+  // that modal is a separate follow-up.
   const { cards } = useCardData();
 
   const sel = useSourceSelection();
@@ -26,10 +30,7 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
   const editing = useSourceEditing(source, sel.contentRef, onSourceUpdated);
   useSourceReaderShortcuts({ onConvertToEssay: mapping.handleConvertToEssay });
 
-  const sourceCards = useMemo(
-    () => cards.filter((c) => c.sourceId === source.id),
-    [cards, source.id],
-  );
+  const sourceCards = useCardsBySource(source.id);
   const safeHtml = useMemo(() => sanitizeHtml(source.htmlContent), [source.htmlContent]);
 
   return {
