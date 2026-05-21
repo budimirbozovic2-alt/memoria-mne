@@ -525,15 +525,25 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
     await writeSatelliteTablesTx(parsed, strategy, progress);
   });
 
-  // ── 5. Re-read final categories snapshot for AppContext ──
-  freshCategories = await idbLoadCategories();
+    // ── 5. Re-read final categories snapshot for AppContext ──
+    freshCategories = await idbLoadCategories();
 
-  return {
-    merged,
-    nextMap,
-    freshCategories,
-    legacyResolveReport,
-    srSettingsApplied,
-    reviewLogApplied,
-  };
+    backupLog.success("import", "atomic restore committed", {
+      strategy,
+      cards: merged.length,
+      categories: freshCategories.length,
+    });
+
+    return {
+      merged,
+      nextMap,
+      freshCategories,
+      legacyResolveReport,
+      srSettingsApplied,
+      reviewLogApplied,
+    };
+  } catch (err) {
+    backupLog.error("import", "atomic restore failed — rolled back", err);
+    throw err;
+  }
 }
