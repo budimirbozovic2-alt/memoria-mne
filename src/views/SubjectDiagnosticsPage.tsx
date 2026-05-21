@@ -6,6 +6,7 @@ import { useCardsByCategory } from "@/store/useCardSelectors";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import FrequentErrors from "@/pages/FrequentErrors";
+import type { Card } from "@/lib/spaced-repetition";
 
 const CognitiveAnalytics = lazy(() => import("@/components/CognitiveAnalytics"));
 
