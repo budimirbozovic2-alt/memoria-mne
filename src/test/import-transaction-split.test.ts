@@ -337,7 +337,7 @@ function makeManyCards(n: number, categoryId: string): {
 }
 
 describe("applyRemapToParsed — edge cases", () => {
-  it("selectively remaps only entries whose categoryId is in the map", () => {
+  it("selectively remaps only entries whose categoryId is in the map", async () => {
     const parsed = emptyParsed();
     parsed.sources = [
       { id: "s1", categoryId: "old" },
