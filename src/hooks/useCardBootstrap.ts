@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { SRSettings } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
-import { CardMap, arrayToMap, bumpMapVersion } from "@/lib/persist-queue";
+import { CardMap, arrayToMap } from "@/lib/persist-queue";
 import { type CategoryRecord } from "@/lib/db";
 import { markBootStep } from "@/lib/boot-trace";
+import { cardRepository } from "@/lib/repositories/cardRepository";
 import {
   splashProgress,
   showSplashError,
@@ -61,10 +62,13 @@ export function useCardBootstrap(setters: BootSetters) {
         markBootStep("cards:data-load-done", `${cards.length} cards`);
 
         if (import.meta.env.DEV) logger.log("[boot:diag] setting state — cards:", cards.length, "categories:", finalRecords.length);
-        const initialMap = arrayToMap(cards);
-        cardMapRef.current = initialMap; // Seed Ref-Delta mirror once at boot
-        setCardMapState(initialMap);
-        bumpMapVersion();
+        // Phase 3b — route through cardRepository.replaceAll, which handles
+        // setCardMap + bumpMapVersion + CARDS_UPDATED emit in one call.
+        // `cardMapRef.current = initialMap` was a no-op under the unified
+        // atom (C4) and `setCardMapState(initialMap)` is now redundant.
+        cardRepository.replaceAll(arrayToMap(cards));
+        // cardMapRef still seeded by replaceAll's setState (atom = ref).
+        void cardMapRef; // kept in props for backwards compat; no direct write
         setCategoryRecordsState(finalRecords);
         setReviewLogState(log);
         setSrSettingsState(settings);
