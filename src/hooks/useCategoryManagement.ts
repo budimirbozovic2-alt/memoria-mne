@@ -179,45 +179,26 @@ export function useCategoryManagement({
         "deleteSubcategory"
       );
       
+      // Phase 3b — repository.bulkPut handles persist + RAM + emit.
       const now = Date.now();
+      const ref = cardMapRef.current;
       const changed: Card[] = [];
-      const nextRef = { ...cardMapRef.current };
-      for (const [id, c] of Object.entries(nextRef)) {
+      for (const [id, c] of Object.entries(ref)) {
         if (c.categoryId === categoryId && c.subcategoryId === subcategoryId) {
-          // ✓ FIX: Samo UUID reset
-          const u = { ...c, subcategoryId: undefined, chapterId: undefined, updatedAt: now };
-          nextRef[id] = u;
-          changed.push(u);
+          changed.push({ ...c, subcategoryId: undefined, chapterId: undefined, updatedAt: now });
+          void id;
         }
       }
-      if (changed.length > 0) {
-        cardMapRef.current = nextRef;
-        schedulePersist({ type: "bulk", cards: changed });
-        setCardMapState(() => nextRef);
-        bumpMapVersion();
-      }
+      if (changed.length > 0) cardRepository.bulkPut(changed);
     },
-    [setCategoryRecords, setCardMapState, cardMapRef],
+    [setCategoryRecords, cardMapRef],
   );
 
   const bulkUpdateSubcategory = useCallback((ids: string[], subcategoryId: string) => {
-    const now = Date.now();
-    const changed: Card[] = [];
-    const nextRef = { ...cardMapRef.current };
-    for (const id of ids) {
-      if (nextRef[id]) {
-        const u = { ...nextRef[id], subcategoryId, updatedAt: now };
-        nextRef[id] = u;
-        changed.push(u);
-      }
-    }
-    if (changed.length > 0) {
-      cardMapRef.current = nextRef;
-      schedulePersist({ type: "bulk", cards: changed });
-      setCardMapState(() => nextRef);
-      bumpMapVersion();
-    }
-  }, [setCardMapState, cardMapRef]);
+    // Phase 3b — bulkPatch resolves ids → patches → bulkPut atomically.
+    if (ids.length === 0) return;
+    cardRepository.bulkPatch(ids, (c) => ({ ...c, subcategoryId }));
+  }, []);
 
   const addChapter = useCallback((categoryId: string, subcategoryId: string, chapterName: string) => {
     optimisticCategoryUpdate(
@@ -257,23 +238,34 @@ export function useCategoryManagement({
   }, [setCategoryRecords]);
 
   const deleteChapter = useCallback((categoryId: string, subcategoryId: string, chapterId: string) => {
+    // Phase 3b — repository.bulkPut handles persist + RAM + emit.
     const now = Date.now();
+    const ref = cardMapRef.current;
     const changed: Card[] = [];
-    const nextRef = { ...cardMapRef.current };
-    for (const [id, c] of Object.entries(nextRef)) {
+    for (const [id, c] of Object.entries(ref)) {
       if (c.categoryId === categoryId && c.subcategoryId === subcategoryId && c.chapterId === chapterId) {
-        // ✓ FIX: chapterId na undefined
-        const u = { ...c, chapterId: undefined, updatedAt: now };
-        nextRef[id] = u;
-        changed.push(u);
+        changed.push({ ...c, chapterId: undefined, updatedAt: now });
+        void id;
       }
     }
-    if (changed.length > 0) {
-      cardMapRef.current = nextRef;
-      schedulePersist({ type: "bulk", cards: changed });
-      setCardMapState(() => nextRef);
-      bumpMapVersion();
-    }
+    if (changed.length > 0) cardRepository.bulkPut(changed);
+
+    optimisticCategoryUpdate(
+      setCategoryRecords,
+      prev => prev.map(r => {
+        if (r.id !== categoryId) return r;
+        const nodes = getNodes(r);
+        return {
+          ...r,
+          subcategories: nodes.map(n => {
+            if (n.id !== subcategoryId) return n;
+            return { ...n, chapters: n.chapters.filter(ch => ch.id !== chapterId) };
+          }),
+        };
+      }),
+      "deleteChapter"
+    );
+  }, [setCategoryRecords, cardMapRef]);
 
     optimisticCategoryUpdate(
       setCategoryRecords,
