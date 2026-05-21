@@ -12,10 +12,8 @@ import { Card, SRSettings, DEFAULT_SR_SETTINGS } from "@/lib/spaced-repetition";
 import { ReviewLogEntry } from "@/lib/storage";
 import { CardMap, mapToArray, persistQueue } from "@/lib/persist-queue";
 import { flushReviewLogQueue } from "@/lib/db";
-import { cardCommandBus } from "@/lib/repositories/cardCommandBus";
 import { useCardMap, setCardMap, cardMapRefFacade, type CardMapRefFacade } from "@/store/useCardMapStore";
 import { useCardBootstrap } from "@/hooks/useCardBootstrap";
-import { EMPTY_BUCKETS, type CardBuckets } from "@/lib/card-buckets";
 import { useCategoryData, useCategoryStateSetter } from "./CategoryStateProvider";
 import { useCardSyncEffects } from "./useCardSyncEffects";
 import { useReviewSettingsStore } from "./useReviewSettingsStore";
@@ -27,7 +25,6 @@ interface CardStateContextValue {
   dueCards: Card[];
   stats: { due: number; total: number; totalSections: number; learnedSections: number; leechCount: number };
   cardCountByCategory: Record<string, number>;
-  buckets: CardBuckets;
   ready: boolean;
 }
 
@@ -38,7 +35,6 @@ const EMPTY_CARD_STATE: CardStateContextValue = {
   dueCards: [],
   stats: { due: 0, total: 0, totalSections: 0, learnedSections: 0, leechCount: 0 },
   cardCountByCategory: {},
-  buckets: EMPTY_BUCKETS,
   ready: false,
 };
 
@@ -138,14 +134,15 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
   // Bus subscriptions, source-link / review-confirmed sync, CARDS_UPDATED.
   useCardSyncEffects();
 
-  // Quit / unmount drain — drain command bus, flush review log, persist queue.
+  // Quit / unmount drain — flush review log + persist queue. The command
+  // bus was retired in Phase 4; repository writes are RAM-synchronous and
+  // only the IDB persist queue still needs draining at shutdown.
   useEffect(() => {
     const electron = typeof window !== "undefined" ? window.electronAPI : undefined;
     let unsubQuit: (() => void) | undefined;
     if (electron?.onQuitBackupRequested) {
       unsubQuit = electron.onQuitBackupRequested(async () => {
         try {
-          await cardCommandBus.drain();
           await flushReviewLogQueue();
           await persistQueue.cleanup();
         } catch (err) {
@@ -157,20 +154,18 @@ export function CardStateProvider({ children }: { children: ReactNode }) {
     }
     return () => {
       try { unsubQuit?.(); } catch { /* noop */ }
-      void cardCommandBus.drain().then(() => {
-        void flushReviewLogQueue();
-        void persistQueue.cleanup();
-      });
+      void flushReviewLogQueue();
+      void persistQueue.cleanup();
     };
   }, []);
 
   const cards = useMemo(() => mapToArray(cardMap), [cardMap]);
-  const { dueCards, stats, cardCountByCategory, buckets, categoryStats } =
+  const { dueCards, stats, cardCountByCategory, categoryStats } =
     useCardAggregates(cards, categories);
 
   const cardState = useMemo<CardStateContextValue>(
-    () => ({ cards, dueCards, stats, cardCountByCategory, buckets, ready }),
-    [cards, dueCards, stats, cardCountByCategory, buckets, ready],
+    () => ({ cards, dueCards, stats, cardCountByCategory, ready }),
+    [cards, dueCards, stats, cardCountByCategory, ready],
   );
 
   const reviewState = useMemo<ReviewStateContextValue>(

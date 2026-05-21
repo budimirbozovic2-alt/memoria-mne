@@ -1,5 +1,15 @@
-// M1 decomposition — aggregates (buckets, dueCards, stats, per-category
-// stats) extracted from CardStateProvider. Pure derivation layer.
+// M1 — aggregates (dueCards, stats, per-category) for CardStateProvider.
+//
+// Phase 4: bucket index retired. Bucket consumers (SubjectDashboard,
+// SubjectDiagnosticsPage) now read via granular store selectors
+// (`useCardsByCategory`, `useCardsBySubcategory`, `useCardsByChapter`) which
+// are O(1) lookups against `cardMapStore` with stable identity.
+//
+// What remains here are the *global* derivations that are still expensive
+// to recompute from selectors at the AppContext layer:
+//   • dueCards across all categories
+//   • global stats (due/total/sections/leech)
+//   • per-category counts and per-category mastery score
 import { useCallback, useMemo, useRef } from "react";
 import {
   Card,
@@ -7,12 +17,6 @@ import {
   isLeech,
   getSectionScore,
 } from "@/lib/spaced-repetition";
-import {
-  buildCardBuckets,
-  bucketFingerprint,
-  EMPTY_BUCKETS,
-  type CardBuckets,
-} from "@/lib/card-buckets";
 
 interface CardSummary {
   totalSections: number;
@@ -27,27 +31,10 @@ export interface CardAggregates {
   dueCards: Card[];
   stats: { due: number; total: number; totalSections: number; learnedSections: number; leechCount: number };
   cardCountByCategory: Record<string, number>;
-  buckets: CardBuckets;
   categoryStats: Record<string, { score: number; total: number; due: number }>;
 }
 
 export function useCardAggregates(cards: Card[], categories: string[]): CardAggregates {
-  const bucketCacheRef = useRef<{ fp: string; buckets: CardBuckets } | null>(null);
-
-  // Audit V4: Incremental Bucketing.
-  // We keep the bucket reference stable across renders. Instead of O(N) rebuilds
-  // when a single card is graded (which happens often), we only do a full rebuild
-  // if the card array length changes or taxonomy keys are mutated (detected via fingerprint).
-  const buckets = useMemo(() => {
-    const fp = bucketFingerprint(cards);
-    const cached = bucketCacheRef.current;
-    if (cached && cached.fp === fp) return cached.buckets;
-
-    const fresh = cards.length === 0 ? EMPTY_BUCKETS : buildCardBuckets(cards);
-    bucketCacheRef.current = { fp, buckets: fresh };
-    return fresh;
-  }, [cards]);
-
   const cardSummaryCacheRef = useRef<WeakMap<Card, CardSummary>>(new WeakMap());
   const summarizeCard = useCallback((card: Card): CardSummary => {
     const cached = cardSummaryCacheRef.current.get(card);
@@ -160,5 +147,5 @@ export function useCardAggregates(cards: Card[], categories: string[]): CardAggr
     return out;
   }, [aggregate.perCatAccum, categories]);
 
-  return { dueCards, stats, cardCountByCategory, buckets, categoryStats };
+  return { dueCards, stats, cardCountByCategory, categoryStats };
 }
