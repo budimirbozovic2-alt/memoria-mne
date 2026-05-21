@@ -126,4 +126,3 @@ export function useCardById(id: string | undefined | null): Card | null {
     () => null,
   );
 }
-}
