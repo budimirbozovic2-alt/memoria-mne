@@ -133,6 +133,13 @@ export default tseslint.config(
               importNames: ["db"],
             },
           ],
+          patterns: [
+            {
+              group: ["@/features/*/*"],
+              message:
+                "Deep imports into a feature are forbidden. Import from the feature barrel: `@/features/<name>`.",
+            },
+          ],
         },
       ],
     },
@@ -163,6 +170,50 @@ export default tseslint.config(
             "Property[key.name='dangerouslySetInnerHTML'][value.type='ObjectExpression']",
           message:
             "Koristi <SafeHtml html={...} /> umjesto sirovog `dangerouslySetInnerHTML` u createElement props-u (P0-3).",
+        },
+      ],
+    },
+  },
+
+  // Feature-Sliced boundaries: outside `src/features/X/`, code may only
+  // import `@/features/X` (its barrel). Deep imports like
+  // `@/features/X/lib/internal` are forbidden — they bypass the public API
+  // and re-introduce the cross-module coupling we are eliminating.
+  //
+  // The override block below relaxes this rule INSIDE `src/features/**`
+  // so a feature can freely import its own internals, but still cannot
+  // reach into a SIBLING feature's internals.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/features/**", "src/test/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*/*"],
+              message:
+                "Deep imports into a feature are forbidden. Import from the feature barrel: `@/features/<name>`.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/features/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*/*"],
+              message:
+                "Deep import into another feature is forbidden. Use that feature's barrel `@/features/<name>`.",
+            },
+          ],
         },
       ],
     },

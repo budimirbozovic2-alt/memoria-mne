@@ -1,90 +1,109 @@
-# P0 — Brisanje kartice ne ažurira UI (C4 regression)
+# Hirurški refaktor — Cilj: kraj domino efekta
 
-## Korijenski uzrok
+Cilj nije "preseliti fajlove", nego **uvesti barijere** koje sprečavaju da se modul X slučajno spregne sa internom strukturom modula Y. Bez barijere, refaktor je samo kozmetika — domino se vraća za par mjeseci.
 
-`src/lib/repositories/cardRepository.ts → commitDelete()` prvo radi `delete cardMapRefFacade.current[id]` (in-place mutacija), pa onda `setCardMap((prev) => { if (!prev[id]) return prev; … })`. Pošto C4 ujedinjuje ref i store u **isti atom** (`cardMapRefFacade.current === cardMapStore.getState().cardMap`), `prev[id]` je već `undefined` u trenutku poziva updater-a. Guard ranog izlaska vraća `prev` bez kreiranja novog objekta → Zustand ne emituje promjenu → `useSyncExternalStore` ne re-renderuje → kartica ostaje u listi.
+## Princip
 
-Toast "Kartica obrisana" se i dalje pojavljuje jer `useCardCRUD.deleteCard` ga ispaljuje **prije** dispatch-a (sinkrono, bez čekanja). IndexedDB delete prolazi normalno, tako da nakon refresh-a kartica zaista nestane — ali korisniku to izgleda kao da klik ništa nije uradio.
+Svaki feature folder dobija jedan ulaz: `index.ts` (barrel). Sve van foldera smije da importuje **samo** iz tog barrel-a. Sve unutar foldera je interno. To se programatski osigurava ESLint pravilom — nije stvar discipline.
 
-Isti anti-paterni postoje i u `commitSingle`, `commitBulk`, `applySyncDelta`, `replaceAll` — slučajno rade jer ti updateri uvijek prave nov `{...prev}` objekat, ali su konceptualno pogrešni i predstavljaju tempiranu bombu (svaka buduća "skip-if-noop" optimizacija u tim metodama ponovo ulazi u istu rupu).
-
-## Rješenje (root-cause, ne maskiranje)
-
-Ukinuti sve in-place mutacije `cardMapRefFacade.current[...] = …` u repozitorijumu. U C4 modelu **`setCardMap` JE i ref-update i state-update u istom potezu**, jer Zustand sinkrono prepiše atom prije nego što izađe iz `setState`. Naredni `cardMapRefFacade.current` read odmah vraća novi objekat. Time pravimo jednosmjerni tok: writer → `setCardMap` → store atom → sync ref read + React subscribe.
-
-### `src/lib/repositories/cardRepository.ts`
-
-```ts
-function commitSingle(card: Card): void {
-  schedulePersist({ type: "put", card });
-  setCardMap((prev) => ({ ...prev, [card.id]: card }));
-  bumpMapVersion();
-}
-
-function commitBulk(cards: Card[]): void {
-  if (cards.length === 0) return;
-  schedulePersist({ type: "bulk", cards });
-  setCardMap((prev) => {
-    const next = { ...prev };
-    for (const c of cards) next[c.id] = c;
-    return next;
-  });
-  bumpMapVersion();
-}
-
-function commitDelete(id: string): void {
-  schedulePersist({ type: "delete", id });
-  setCardMap((prev) => {
-    if (!(id in prev)) return prev;
-    const next = { ...prev };
-    delete next[id];
-    return next;
-  });
-  bumpMapVersion();
-}
-
-export function applySyncDelta(rows: Card[], deletedIds: string[]): void {
-  if (rows.length === 0 && deletedIds.length === 0) return;
-  setCardMap((prev) => {
-    const next = { ...prev };
-    for (const c of rows) next[c.id] = c;
-    for (const id of deletedIds) delete next[id];
-    return next;
-  });
-  bumpMapVersion();
-}
-
-export function replaceAll(map: CardMap): void {
-  setCardMap({ ...map });
-  bumpMapVersion();
-}
+```text
+src/features/<domain>/
+  index.ts          ← jedini javni API (eksplicitne re-export linije)
+  components/       ← interno
+  hooks/            ← interno
+  lib/              ← interno
+  __tests__/        ← interno
 ```
 
-`get`/`snapshot` ostaju netaknuti — i dalje čitaju kroz `cardMapRefFacade.current` / `getCardMap()`, što je sad isto što i live store atom.
+Cross-cutting fajlovi (`db-schema.ts`, `category-deletion-service.ts`, `cardRepository`, `cardCommandBus`, `sanitize`, `logger`) ostaju u `src/lib/` i `src/lib/repositories/`. Oni su *infrastruktura*, ne domen.
 
-### `src/hooks/useCardCRUD.ts` — kvalitativna sitnica
+## Stvarni hot-spotovi spregnutosti (verifikovano u kodu)
 
-Premjestiti `toast.success("Kartica obrisana.")` u `then()` `dispatch`-a (Promise) tako da se toast pojavi **tek kad commit prođe kroz mutex** — sprečava lažnu pozitivnu poruku ako mutex stane:
+| Domen | Fajlova rasuto | Pravi cross-cutting? |
+|---|---|---|
+| Mnemonic | 14 (components/mnemonic, components/workshop, hooks/mnemonic, lib/mnemonic-*) | Skoro nimalo — idealan prvi kandidat |
+| Mind-maps | 12 (components/mindmap, hooks/mindmap, hooks/useMindMap*, lib/mindmap-storage) | Da: `EmbeddedMindMap` u Zettelu, `MindMapSidePanel` u SubjectCards |
+| Docx-importer | 4 (DocxImporter.tsx, docx-parser.ts, docx-worker.ts) | Ne — čist domen |
+| Zettelkasten | 11 (lib/zettelkasten-*, hooks/zettelkasten/, components/zettelkasten/, views/) | Da: `backlink-index` referencira karte, wiki-link autocreate poziva cardRepository |
+| `src/components/` root | 46 orphan komponenti | Većina pripada postojećim podfolderima |
 
-```ts
-const deleteCard = useCallback((id: string) => {
-  void cardCommandBus.dispatch({ type: "delete", id })
-    .then(() => toast.success("Kartica obrisana."))
-    .catch(() => toast.error("Brisanje nije uspjelo."));
-}, []);
-```
+## Migracija po milestone-u (svaki je samostalan PR, app ostaje radna)
 
-Isto za `updateCard` (već postojeća poruka).
+### M0 — Postavi barijere (pola dana, nula rizika)
 
-## Testovi
+1. Kreiraj `src/features/` folder.
+2. Dodaj `eslint-plugin-boundaries` ili `no-restricted-imports` pravilo:
+   - Importi u `src/features/X/**` smiju da gađaju `src/features/Y/**` **samo** preko `src/features/Y` (barrel), nikad direktno `src/features/Y/lib/...`.
+   - Komponente van features/ koje importuju feature smiju samo `import { X } from "@/features/x"`.
+3. Test: `bun run lint` mora proći na trenutnoj kodbazi (još nema features foldera — pravilo je no-op).
 
-Novi `src/test/card-repository-delete.test.ts`:
-- `commitDelete` uklanja karticu iz `getCardMap()` snapshot-a *i* trigger-uje `cardMapStore.subscribe` listener (broj poziva == 1).
-- Regresivni test: nakon `remove(id)` `getCardMap()[id]` je `undefined` **i** subscribe je dobio drugačiju referencu (`prev !== next`).
-- `commitBulk` + `applySyncDelta` slično: jedan notify po batch-u, listener vidi nov objekat.
-- `useCardCRUD.deleteCard` test (postojeći `card-command-bus.test.ts` stil): nakon `await drain()`, `getCardMap()` ne sadrži id; postojeći scenariji za put/patch ne regresuju.
+### M1 — Docx-importer (najlakši, 1-2h)
 
-## Out of scope (zabilježiti za kasnije)
+- Premjesti: `DocxImporter.tsx`, `lib/docx-parser.ts`, `workers/docx-worker.ts`, `lib/services/autoSplitImportService.ts` (ako se koristi samo tu).
+- Cilj: `src/features/docx-importer/index.ts` exportuje samo `DocxImporter` komponentu i `parseDocx` funkciju.
+- Verifikacija: `bunx vitest run`, otvori app, povuci jedan .docx u importer.
 
-- Konfirmacijski dijalog prije brisanja (UX) — korisnik nije tražio.
-- Audit ostalih repozitorijuma (settings/reviewLog) na isti C4 anti-paterm — odvojeni PR.
+### M2 — Mnemonic (čist domen, ~3h)
+
+- Premjesti: `components/MnemonicModule.tsx`, `MnemonicTest.tsx`, `MnemonicWorkshop.tsx`, `MajorSystemSettings.tsx`, `components/mnemonic/*`, `components/workshop/*`, `hooks/mnemonic/*`, `hooks/workshop/*`, `lib/mnemonic-storage.ts`, `lib/mnemonic/*`.
+- `views/SubjectMnemonicPage.tsx` ostaje u `views/` ali importuje samo iz `@/features/mnemonic`.
+- Barrel exportuje: page entrypoint komponente + `mnemonicStorage` API koji koristi `runMigrations`/`category-deletion-service`.
+- Verifikacija: testovi `mnemonic-*.test.ts`, otvori Mnemonic stranicu, dodaj test peg.
+
+### M3 — Mind-maps (sa pažnjom na embeds, ~4h)
+
+- Premjesti: `components/mindmap/*`, `hooks/mindmap/*`, `hooks/useMindMaps.ts`, `hooks/useMindMapCanvas.ts`, `lib/mindmap-storage.ts`, `components/category/MindMapViewer.tsx`.
+- Cross-cutting tačke ostaju kao **eksplicitan public API**:
+  - `EmbeddedMindMap` (koristi ga Zettel) → exportovati iz barrel-a.
+  - `MindMapSidePanel` (koristi ga SubjectCards) → exportovati iz barrel-a.
+  - `useMindMaps` hook → exportovati.
+- Zabrana: nikakav direktan import `@/features/mind-maps/lib/...` iz Zettela.
+- Verifikacija: otvori mind-map, otvori Zettel članak koji embed-uje mind-map (`::mindmap[id]`).
+
+### M4 — Zettelkasten (najsloženiji zbog backlink/wiki-link, ~5h)
+
+- Premjesti: `components/zettelkasten/*`, `hooks/zettelkasten/*`, `hooks/useWikiLinkAutoCreate.ts`, `lib/zettelkasten-*.ts`, `lib/backlink-index.ts`, `views/ZettelkastenView.tsx` (page wrapper ostaje u views/).
+- Cross-cutting kritične tačke:
+  - `backlink-index` čita karte → koristi javni `cardRepository.snapshot()` (već postoji), ne reach-into-internals.
+  - `useWikiLinkAutoCreate` poziva `cardRepository.put` → OK, repository je infrastruktura.
+- Barrel exportuje: `ZettelkastenView` (ili njegove building blocks), `backlinkIndex` (za GlobalSearch), `zettelkastenStorage` (za backup layer).
+- Verifikacija: kreiranje članka, wiki-link auto-create, backlink count, alias rezolucija.
+
+### M5 — Čišćenje `src/components/` root (~2h, kozmetika ali smanjuje šum)
+
+Premjesti u postojeće podfoldere ili u relevantne features:
+- `Dashboard.tsx`, `DashboardChart.tsx`, `ActivityHeatmap.tsx`, `ForgettingCurve.tsx`, `RetentionChart.tsx`, `ProgressRing.tsx`, `MyStats.tsx`, `CognitiveAnalytics.tsx` → `src/components/dashboard/` ili `features/analytics/`.
+- `ReviewSession.tsx`, `LearnSession.tsx`, `SessionFilters.tsx`, `ZenMode.tsx` → `src/components/review/` (već postoji).
+- `SourceReader.tsx`, `SourceSnippetDialog.tsx` → `src/components/source-reader/` (već postoji).
+- `StrategicPlanner.tsx` → `src/components/planner/` (već postoji).
+- `CardForm.tsx`, `RichTextEditor.tsx` → `src/components/card-form/` (već postoji).
+- `DocxImporter.tsx` → već premješten u M1.
+- `MnemonicModule.tsx` itd. → već premješten u M2.
+
+Cilj: `src/components/` root drži samo true app-shell komponente (`MainLayout`, `AppSidebar`, `TitleBar`, `Breadcrumbs`, `ErrorBoundary`, `MainNav`, `ProcessingOverlay`, ~10 fajlova umjesto 46).
+
+## Što se NE radi (eksplicitno)
+
+- **Ne** dira se `cardCommandBus`, `cardRepository`, `Ref-Delta pattern`, `cardMapStore`. Te odluke su tačne za skalu i memorijski upisane.
+- **Ne** uvodi se `useLiveQuery` u primary views. Krši Core memoriju.
+- **Ne** mijenja se `CardStateProvider` u ovoj rundi (odvojen PR, treba pažljiv selector audit sa `useShallow`).
+- **Ne** mijenja se vizuelni dizajn ni UX flow.
+
+## Sigurnosna mreža
+
+- Svaki milestone je samostalan PR sa svojim testovima.
+- Nakon svakog milestone-a: `bunx vitest run` mora biti 100% zelen prije nego što se krene na sljedeći.
+- Backup baze podataka (Export full backup) prije M2 i M4 (oni dotiču domene sa korisničkim podacima preko `category-deletion-service` re-importa).
+- Ako bilo koji milestone otkrije skrivenu spregu koja ne može da se izolira preko barrel API-ja, dokumentujemo je i ide u zaseban "cross-cutting infrastructure" PR.
+
+## Procjena
+
+- Ukupno: **~15-20 sati efektivnog rada**, raspoređeno u 5 milestone-a.
+- Rizik na podatke: nula (samo file moves + import path updates).
+- Rizik na regresije: nizak po milestone-u, hvataju ga postojeći testovi (446+ testova) + smoke check otvaranja relevantne stranice.
+- Trajni dobitak: ESLint blokira buduće domino spregove na CI-ju, ne na code-review-u.
+
+## Otvorena pitanja prije starta
+
+1. Da li želiš `eslint-plugin-boundaries` (deklarativan, opisuje arhitekturu) ili jednostavniji `no-restricted-imports` (manje pravila, manji overhead)?
+2. Smije li M5 (čišćenje `components/` root) ići paralelno sa M1-M4, ili tek na kraju da ne komplikuje review?

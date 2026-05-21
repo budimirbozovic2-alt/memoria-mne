@@ -14,7 +14,7 @@ export function parseDocxInWorker(arrayBuffer: ArrayBuffer): Promise<string> {
 
     try {
       const worker = new Worker(
-        new URL("../workers/docx-worker.ts", import.meta.url),
+        new URL("./docx-worker.ts", import.meta.url),
         { type: "module" }
       );
 
