@@ -133,6 +133,13 @@ export default tseslint.config(
               importNames: ["db"],
             },
           ],
+          patterns: [
+            {
+              group: ["@/features/*/*"],
+              message:
+                "Deep imports into a feature are forbidden. Import from the feature barrel: `@/features/<name>`.",
+            },
+          ],
         },
       ],
     },
