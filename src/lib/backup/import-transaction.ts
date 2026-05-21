@@ -476,7 +476,7 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
     legacyResolveReport = resolveLegacyTaxonomyNames(merged, freshCategories);
     for (const c of merged) nextMap[c.id] = c;
   } catch (err) {
-    backupLog.warn("import", "legacy taxonomy resolve failed", err as Meta);
+    backupLog.warn("import", "legacy taxonomy resolve failed", err instanceof Error ? err.message : String(err));
   }
 
   await yieldUI();
