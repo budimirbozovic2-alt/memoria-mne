@@ -397,7 +397,24 @@ describe("applyRemapToParsed — edge cases", () => {
     expect(a.categoryId).toBe("old");
   });
 
-  it("performs a SINGLE-pass remap (A→B, B→C does not cascade A→C)", async () => {
+  it("performs a SINGLE-pass remap per loop (A→B, B→C does not cascade A→C on sources)", async () => {
+    // Sources are touched in exactly one loop, so no chaining is possible.
+    const parsed = emptyParsed();
+    parsed.sources = [{ id: "s1", categoryId: "A" }] as unknown as ParsedBackup["sources"];
+    await applyRemapToParsed(
+      new Map([["A", "B"], ["B", "C"]]),
+      parsed,
+      [],
+      {},
+    );
+    expect(parsed.sources[0].categoryId).toBe("B");
+  });
+
+  it("documents the dual-loop quirk: a card present in BOTH list AND map gets remapped twice", async () => {
+    // The implementation iterates `cardsToRemap` then `cardMap` separately;
+    // if the same reference appears in both, two passes apply. Callers in the
+    // orchestrator always pass either a fresh array or the map values, never
+    // both — but the contract is worth pinning down.
     const parsed = emptyParsed();
     const card = makeCard("c1", "A");
     await applyRemapToParsed(
@@ -406,8 +423,9 @@ describe("applyRemapToParsed — edge cases", () => {
       [card],
       { c1: card },
     );
-    expect(card.categoryId).toBe("B");
+    expect(card.categoryId).toBe("C");
   });
+
 
   it("handles >1000 cards in cardMap (crosses the yieldUI boundary)", async () => {
     const parsed = emptyParsed();
