@@ -10,7 +10,7 @@
  * handling. Decomposed in line with the orchestrator architecture.
  */
 import { useMemo } from "react";
-import { useCardData } from "@/contexts/AppContext";
+import { useCardsByCategory } from "@/store/useCardSelectors";
 import { useCardsBySource } from "@/store/useCardsBySource";
 import { sanitizeHtml } from "@/lib/sanitize";
 import type { Source } from "@/lib/sources-storage";
@@ -20,10 +20,11 @@ import { useSourceEditing } from "@/hooks/source-reader/useSourceEditing";
 import { useSourceReaderShortcuts } from "@/hooks/source-reader/useSourceReaderShortcuts";
 
 export function useSourceReaderActions(source: Source, onSourceUpdated?: (source: Source) => void) {
-  // `cards` still flows through `derived.cards` for LinkToExistingCardModal,
-  // which filters by categoryId (not sourceId). Granular optimisation for
-  // that modal is a separate follow-up.
-  const { cards } = useCardData();
+  // Phase 1 — granular selector: `derived.cards` previously pulled the
+  // full library (~15k entries) so LinkToExistingCardModal could filter
+  // by categoryId. Now we subscribe only to cards in this source's
+  // category — the modal's filter narrows further by source/unlinked.
+  const cards = useCardsByCategory(source.categoryId) as ReturnType<typeof useCardsByCategory>;
 
   const sel = useSourceSelection();
   const mapping = useSourceMapping(source);
