@@ -21,6 +21,31 @@ import {
   setCardMap,
   getCardMap,
 } from "@/store/useCardMapStore";
+import { eventBus, EVENT_TYPES } from "@/lib/event-bus";
+
+// ─── Phase 3 — invalidation broadcast ──────────────────────────────────────
+// Every repository write fans out a CARDS_UPDATED event tagged with the
+// commit source. The module-level `cardMapInvalidator` filters our own
+// "repository" / "repository-sync" emissions back out so we don't double-
+// apply (RAM is already up-to-date inline). External emitters (HealthMonitor,
+// RemapFromBackupDialog, future remote sync) keep using their own source
+// strings and the invalidator does the bulkGet → applySyncDelta dance.
+export type CardsUpdatedSource =
+  | "repository"
+  | "repository-sync"
+  | "repository-replace"
+  | string; // external (orphan-cleanup, delete-cards, remap-from-backup, …)
+
+export interface CardsUpdatedPayload {
+  source: CardsUpdatedSource;
+  cardIds?: string[];
+  deletedIds?: string[];
+}
+
+function emitCardsUpdated(payload: CardsUpdatedPayload): void {
+  try { eventBus.emit(EVENT_TYPES.CARDS_UPDATED, payload); }
+  catch { /* bus failures must not break a commit */ }
+}
 
 // ─── Read primitives ──────────────────────────────────────────────────────
 export function getCard(id: string): Card | undefined {
@@ -43,6 +68,7 @@ function commitSingle(card: Card): void {
   schedulePersist({ type: "put", card });
   setCardMap((prev) => ({ ...prev, [card.id]: card }));
   bumpMapVersion();
+  emitCardsUpdated({ source: "repository", cardIds: [card.id] });
 }
 
 function commitBulk(cards: Card[]): void {
@@ -54,6 +80,10 @@ function commitBulk(cards: Card[]): void {
     return next;
   });
   bumpMapVersion();
+  emitCardsUpdated({
+    source: "repository",
+    cardIds: cards.map((c) => c.id),
+  });
 }
 
 function commitDelete(id: string): void {
@@ -65,6 +95,7 @@ function commitDelete(id: string): void {
     return next;
   });
   bumpMapVersion();
+  emitCardsUpdated({ source: "repository", deletedIds: [id] });
 }
 
 // ─── Write primitives ─────────────────────────────────────────────────────
@@ -175,12 +206,21 @@ export function applySyncDelta(rows: Card[], deletedIds: string[]): void {
     return next;
   });
   bumpMapVersion();
+  // Tagged "repository-sync" so the invalidator can identify (and skip) its
+  // own re-entry — applySyncDelta is invoked BY the invalidator after a
+  // bulkGet, and re-broadcasting "repository" would feed back into itself.
+  emitCardsUpdated({
+    source: "repository-sync",
+    cardIds: rows.map((c) => c.id),
+    deletedIds,
+  });
 }
 
 /** Replace the entire cardMap atom. Bootstrap / restore only. */
 export function replaceAll(map: CardMap): void {
   setCardMap({ ...map });
   bumpMapVersion();
+  emitCardsUpdated({ source: "repository-replace" });
 }
 
 export const cardRepository = {
