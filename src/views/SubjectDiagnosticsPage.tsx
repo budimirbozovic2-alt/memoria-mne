@@ -2,6 +2,7 @@ import { useMemo, lazy, Suspense } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, AlertTriangle, Brain } from "lucide-react";
 import { useCardData, useCategoryData, useReviewData, useCardOnlyActions } from "@/contexts/AppContext";
+import { useCardsByCategory } from "@/store/useCardSelectors";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import FrequentErrors from "@/pages/FrequentErrors";
@@ -10,7 +11,7 @@ const CognitiveAnalytics = lazy(() => import("@/components/CognitiveAnalytics"))
 
 export default function SubjectDiagnosticsPage() {
   const { categoryId } = useParams<{ categoryId: string }>();
-  const { cards, ready, buckets } = useCardData();
+  const { ready } = useCardData();
   const { categoryRecords } = useCategoryData();
   const { reviewLog } = useReviewData();
   const { clearErrorLog } = useCardOnlyActions();
@@ -21,10 +22,8 @@ export default function SubjectDiagnosticsPage() {
   );
   const categoryName = categoryRec?.name ?? "Nepoznat predmet";
 
-  const subjectCards = useMemo(
-    () => (categoryId ? buckets.byCategory.get(categoryId) ?? [] : []),
-    [buckets, categoryId],
-  );
+  const subjectCardsRo = useCardsByCategory(categoryId);
+  const subjectCards = useMemo(() => subjectCardsRo as readonly Card[] as Card[], [subjectCardsRo]);
 
   const subjectCardIds = useMemo(
     () => new Set(subjectCards.map(c => c.id)),
