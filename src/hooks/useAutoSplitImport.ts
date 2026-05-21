@@ -6,7 +6,8 @@
  */
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { toast } from "sonner";
-import { useCardData, useCardOnlyActions } from "@/contexts/AppContext";
+import { useCardOnlyActions } from "@/contexts/AppContext";
+import { useCardsBySource } from "@/store/useCardsBySource";
 import { detectArticles } from "@/lib/auto-split-engine";
 import type { Source } from "@/lib/sources-storage";
 import {
@@ -46,7 +47,6 @@ function rowsReducer(state: RowsState, action: RowsAction): RowsState {
 }
 
 export function useAutoSplitImport(open: boolean, source: Source) {
-  const { cards } = useCardData();
   const { bulkAddCards, updateCard } = useCardOnlyActions();
 
   const [phase, setPhase] = useState<AutoSplitPhase>("preview");
@@ -59,10 +59,10 @@ export function useAutoSplitImport(open: boolean, source: Source) {
     () => (open ? detectArticles(source.htmlContent) : []),
     [open, source.htmlContent],
   );
-  const linkedCards = useMemo(
-    () => cards.filter((c) => c.sourceId === source.id),
-    [cards, source.id],
-  );
+  // Granular selector — re-renders only when cards linked to THIS source
+  // change. The defensive `phase === "preview"` guard below remains, but it
+  // is now belt-and-suspenders rather than a load-bearing workaround.
+  const linkedCards = useCardsBySource(source.id);
 
   const [state, dispatch] = useReducer(rowsReducer, { rows: [] });
 
