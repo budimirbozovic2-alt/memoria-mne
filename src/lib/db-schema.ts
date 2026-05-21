@@ -4,7 +4,7 @@ import { ReviewLogEntry, PomodoroLogEntry } from "./types/logs";
 import type { DiaryEntry, CalibrationEntry, LatencyEntry, SlippageEntry, ActivityEntry } from "./metacognitive-storage";
 import type { DisciplineEntry } from "./planner-storage";
 import { EVENT_TYPES, type EventType } from "./event-bus-types";
-import { MnemonicCard, MnemonicTestLogEntry } from "./mnemonic-storage";
+import { MnemonicCard, MnemonicTestLogEntry } from "@/features/mnemonic";
 
 // ─── W1: Inversion-of-Control emitter ─────────────────────
 // `db-schema` does NOT import the EventBus instance — instead, the bootstrap

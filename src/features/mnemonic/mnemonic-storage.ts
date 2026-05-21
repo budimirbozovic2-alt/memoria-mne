@@ -1,6 +1,6 @@
 // Isolated mnemonic cards storage — completely separate from main FSRS system
 
-import { db } from "./db";
+import { db } from "@/lib/db";
 
 import { logger } from "@/lib/logger";
 export type MnemonicStatus = "new" | "in-workshop" | "ready";
