@@ -458,8 +458,16 @@ export async function applyImportAtomically(ctx: Ctx): Promise<ImportTxResult> {
   const { parsed, strategy, currentMap, onProgress } = ctx;
   const progress = onProgress ?? (() => { /* noop */ });
 
-  // ── 1. Pre-merge cards (in-memory only — IDB writes happen in tx below) ──
-  const { merged, nextMap } = mergeCardsByStrategy(parsed.cards, currentMap, strategy);
+  backupLog.start("import", "atomic restore begin", {
+    strategy,
+    cards: parsed.cards.length,
+    categories: parsed.categories.length,
+    schemaVersion: (parsed as { version?: number }).version ?? null,
+  });
+
+  try {
+    // ── 1. Pre-merge cards (in-memory only — IDB writes happen in tx below) ──
+    const { merged, nextMap } = mergeCardsByStrategy(parsed.cards, currentMap, strategy);
 
   // ── 2. Pre-tx remap (Phase 2.1) ──
   // Read existing categories OUTSIDE the rw tx so we can compute the remap
