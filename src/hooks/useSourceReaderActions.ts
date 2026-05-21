@@ -24,7 +24,9 @@ export function useSourceReaderActions(source: Source, onSourceUpdated?: (source
   // full library (~15k entries) so LinkToExistingCardModal could filter
   // by categoryId. Now we subscribe only to cards in this source's
   // category — the modal's filter narrows further by source/unlinked.
-  const cards = useCardsByCategory(source.categoryId) as ReturnType<typeof useCardsByCategory>;
+  // Cast to mutable Card[] for backward-compat with consumers; the array
+  // is treated read-only downstream (modal only filters/maps).
+  const cards = useCardsByCategory(source.categoryId) as unknown as import("@/lib/spaced-repetition").Card[];
 
   const sel = useSourceSelection();
   const mapping = useSourceMapping(source);
