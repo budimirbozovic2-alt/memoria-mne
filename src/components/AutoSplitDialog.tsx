@@ -1,12 +1,22 @@
-import { Wand2, Check, RefreshCw, GitMerge as Merge, Ungroup, Sparkles } from "lucide-react";
+import { Wand2, Check, RefreshCw, GitMerge as Merge, Ungroup, Sparkles, BookOpenText, FolderPlus } from "lucide-react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import type { Source } from "@/domains/sources/sources-storage";
+import type { ChapterHeadingType } from "@/lib/auto-split-engine";
+import { findMatchingChapterForRow } from "@/lib/auto-split/import-planner";
 import { cn } from "@/lib/utils";
 import { useAutoSplitImport } from "@/hooks/useAutoSplitImport";
+
+const CHAPTER_HEADING_LABELS: Record<ChapterHeadingType, string> = {
+  DIO: "Dio", GLAVA: "Glava", POGLAVLJE: "Poglavlje", ODJELJAK: "Odjeljak",
+};
 
 interface Props {
   open: boolean;
@@ -22,6 +32,11 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
   const a = useAutoSplitImport(open, source);
   const importing = a.phase === "importing";
   const done = a.phase === "done";
+  const targetSubcategory = a.subcategories.find((s) => s.id === a.targetSubcategoryId);
+  // Toggle "on" with no subcategory picked would otherwise silently import
+  // with ZERO assignment (see useAutoSplitImport.startImport) while looking
+  // engaged — block the action instead of failing quietly.
+  const chapterAssignNeedsSubcategory = a.chapterAssignEnabled && !a.targetSubcategoryId;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -54,6 +69,76 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
             </Badge>
           )}
         </div>
+
+        {!importing && !done && source.sourceKind !== "skripta" && (
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <label htmlFor="chapter-assign-toggle" className="text-xs font-medium flex items-center gap-1.5">
+                <BookOpenText className="h-3.5 w-3.5 text-primary" />
+                Dodijeli glave automatski
+              </label>
+              <Switch
+                id="chapter-assign-toggle"
+                checked={a.chapterAssignEnabled}
+                onCheckedChange={a.setChapterAssignEnabled}
+              />
+            </div>
+            {a.chapterAssignEnabled && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground">Nivo naslova u propisu</span>
+                  <Select value={a.chapterHeadingType} onValueChange={(v) => a.setChapterHeadingType(v as ChapterHeadingType)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Izaberi..." /></SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(CHAPTER_HEADING_LABELS) as ChapterHeadingType[]).map((t) => (
+                        <SelectItem key={t} value={t}>{CHAPTER_HEADING_LABELS[t]}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-muted-foreground">Ciljna potkategorija</span>
+                  <Select value={a.targetSubcategoryId} onValueChange={a.setTargetSubcategoryId}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Izaberi..." /></SelectTrigger>
+                    <SelectContent>
+                      {a.subcategories.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+            {a.chapterAssignEnabled && a.subcategories.length === 0 && (
+              <p className="text-[10px] text-warning">
+                Nema potkategorija u ovom predmetu — dodaj ih u Podešavanjima da bi dodjela glava radila.
+              </p>
+            )}
+            {a.chapterAssignEnabled && a.subcategories.length > 0 && !a.targetSubcategoryId && (
+              <p className="text-[10px] text-warning">
+                Izaberi ciljnu potkategoriju — dok je ne izabereš, uvoz neće dodijeliti ni potkategoriju ni glavu nijednoj kartici.
+              </p>
+            )}
+            {a.chapterAssignEnabled && a.targetSubcategoryId && (
+              <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
+                <label htmlFor="create-missing-chapters" className="text-xs font-medium flex items-center gap-1.5">
+                  <FolderPlus className="h-3.5 w-3.5 text-primary" />
+                  Kreiraj glave koje ne postoje
+                </label>
+                <Switch
+                  id="create-missing-chapters"
+                  checked={a.createMissingChapters}
+                  onCheckedChange={a.setCreateMissingChapters}
+                />
+              </div>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              {a.createMissingChapters
+                ? "Glave koje ne postoje biće kreirane iz naslova u dokumentu i dodijeljene karticama."
+                : "Dodjeljuje se samo postojećim glavama (po nazivu) — nove se ne kreiraju automatski."}
+            </p>
+          </div>
+        )}
 
         {importing && (
           <div className="space-y-1.5">
@@ -166,6 +251,39 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
                         <span className="text-[10px] text-warning">Auto-naslov</span>
                       </div>
                     )}
+                    {a.chapterAssignEnabled && (() => {
+                      const { chapter, ambiguous } = findMatchingChapterForRow(
+                        row,
+                        targetSubcategory?.chapters ?? [],
+                      );
+                      // When no existing glava matches but auto-create is on,
+                      // surface the heading that will be created as a new glava.
+                      const willCreate =
+                        !chapter && !ambiguous && a.createMissingChapters
+                          ? row.articles[0]?.chapterHeadingText ?? null
+                          : null;
+                      const Icon = willCreate ? FolderPlus : BookOpenText;
+                      return (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Icon className={cn(
+                            "h-3 w-3",
+                            willCreate ? "text-primary" : ambiguous ? "text-warning" : "text-muted-foreground",
+                          )} />
+                          <span className={cn(
+                            "text-[10px]",
+                            chapter || willCreate ? "text-primary" : ambiguous ? "text-warning" : "text-muted-foreground",
+                          )}>
+                            {chapter
+                              ? chapter.name
+                              : willCreate
+                                ? `nova glava: ${willCreate}`
+                                : ambiguous
+                                  ? "dvosmisleno — poveži ručno"
+                                  : "bez poklapanja glave"}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {row.isGroup && (
@@ -202,7 +320,8 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
               <Button
                 onClick={a.startImport}
                 className="flex-1 gap-2"
-                disabled={importing || a.selectedCount === 0 || a.mergeNameDialog}
+                disabled={importing || a.selectedCount === 0 || a.mergeNameDialog || chapterAssignNeedsSubcategory}
+                title={chapterAssignNeedsSubcategory ? "Izaberi ciljnu potkategoriju za dodjelu glava" : undefined}
               >
                 <Wand2 className="h-4 w-4" />
                 Generiši {a.selectedCount} eseja
