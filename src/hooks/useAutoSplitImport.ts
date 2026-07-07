@@ -15,6 +15,7 @@ import type { Source } from "@/domains/sources/sources-storage";
 import type { SubcategoryNode } from "@/lib/db-types";
 import {
   buildArticleRows, mergeRows, ungroupRow, buildImportPlan, collectMissingChapterNames,
+  chapterNameFromHeading,
   type ArticleRow, type ChapterAssignment,
 } from "@/lib/auto-split/import-planner";
 import { executeImportPlan } from "@/lib/services/autoSplitImportService";
@@ -212,8 +213,8 @@ export function useAutoSplitImport(open: boolean, source: Source) {
         const missing = collectMissingChapterNames(rows, chapters);
         if (missing.length > 0) {
           const startOrder = chapters.length;
-          const newChapters: ChapterNode[] = missing.map((name, i) => ({
-            id: newUuid(), name, sortOrder: startOrder + i,
+          const newChapters: ChapterNode[] = missing.map((heading, i) => ({
+            id: newUuid(), name: chapterNameFromHeading(heading), sortOrder: startOrder + i,
           }));
           const updated = await categoryRepository.commit(
             (prev) => prev.map((r) =>

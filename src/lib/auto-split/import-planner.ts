@@ -132,6 +132,36 @@ export function findMatchingChapterForRow(
   return { chapter: resolved[0], ambiguous: false };
 }
 
+/** Sentence case: whole string lowercased, first letter capitalized. Keeps
+ * Serbian/Montenegrin diacritics + digraphs correct (Unicode lower/upper). */
+function toSentenceCase(s: string): string {
+  const lower = s.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+/**
+ * Human-friendly chapter name derived from a raw structural heading, for glave
+ * created during auto-split. Strips the leading structural marker + its ordinal
+ * and separator ("GLAVA 1 - OPŠTE ODREDBE" or "1. GLAVA - OSNOVNE ODREDBE" →
+ * "Opšte odredbe" / "Osnovne odredbe") and renders the rest in Sentence case.
+ * If nothing remains after stripping (e.g. bare "GLAVA 1"), the whole heading
+ * is sentence-cased instead so the chapter is never left nameless.
+ *
+ * Note: matching created chapters back to headings on re-import stays correct
+ * because `findMatchingChapter` compares case-insensitively — "opšte odredbe"
+ * is still a substring of "glava 1 - opšte odredbe".
+ */
+export function chapterNameFromHeading(heading: string): string {
+  let t = heading.trim();
+  // Leading ordinal + structural keyword: "1. GLAVA", "10a. POGLAVLJE", "GLAVA".
+  t = t.replace(/^(?:\d+[a-z]?\.?\s*)?(?:DIO|GLAVA|POGLAVLJE|ODJELJAK)\b/i, "");
+  // A keyword-trailing ordinal ("GLAVA 1", "GLAVA III"), only as its own token.
+  t = t.replace(/^\s*(?:\d+[a-z]?|[IVXLCDM]+)(?=[\s\-–—:.]|$)/i, "");
+  // Leftover separators between marker and name.
+  t = t.replace(/^[\s\-–—:.]+/, "").trim();
+  return toSentenceCase(t || heading.trim());
+}
+
 /**
  * Distinct chapter-heading texts among the SELECTED rows that do NOT already
  * match an existing chapter — the input to the optional "create missing glave"

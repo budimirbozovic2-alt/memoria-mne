@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildArticleRows, mergeRows, ungroupRow, buildImportPlan, findMatchingChapter,
-  findMatchingChapterForRow, collectMissingChapterNames,
+  findMatchingChapterForRow, collectMissingChapterNames, chapterNameFromHeading,
   type ArticleRow,
 } from "@/lib/auto-split/import-planner";
 import type { DetectedArticle } from "@/lib/auto-split-engine";
@@ -329,6 +329,40 @@ describe("auto-split import-planner", () => {
       expect(collectMissingChapterNames(rows, [
         { id: "ch-1", name: "OPŠTE ODREDBE", sortOrder: 0 },
       ])).toEqual([]);
+    });
+  });
+
+  describe("chapterNameFromHeading", () => {
+    it("strips 'GLAVA N -' and returns Sentence case", () => {
+      expect(chapterNameFromHeading("GLAVA 1 - OPŠTE ODREDBE")).toBe("Opšte odredbe");
+      expect(chapterNameFromHeading("GLAVA 2 - NADLEŽNOST SUDA")).toBe("Nadležnost suda");
+    });
+
+    it("strips the 'N. GLAVA -' ordinal-first form too", () => {
+      expect(chapterNameFromHeading("1. GLAVA - OSNOVNE ODREDBE")).toBe("Osnovne odredbe");
+      expect(chapterNameFromHeading("11. GLAVA - DOSTAVLjANjE PISMENA I RAZMATRANjE SPISA"))
+        .toBe("Dostavljanje pismena i razmatranje spisa");
+    });
+
+    it("keeps the rest of the sentence lowercase (not Title Case)", () => {
+      expect(chapterNameFromHeading("GLAVA 17 - UČEŠĆE TREĆIH LICA U PARNICI"))
+        .toBe("Učešće trećih lica u parnici");
+    });
+
+    it("handles roman numerals and em-dash", () => {
+      expect(chapterNameFromHeading("GLAVA III — Krivična djela")).toBe("Krivična djela");
+    });
+
+    it("falls back to the whole heading when nothing remains after the marker", () => {
+      expect(chapterNameFromHeading("GLAVA 1")).toBe("Glava 1");
+    });
+
+    it("produces a name that still matches its source heading on re-import", () => {
+      const name = chapterNameFromHeading("GLAVA 2 - NADLEŽNOST SUDA");
+      const { chapter } = findMatchingChapter("GLAVA 2 - NADLEŽNOST SUDA", [
+        { id: "x", name, sortOrder: 0 },
+      ]);
+      expect(chapter?.id).toBe("x");
     });
   });
 });

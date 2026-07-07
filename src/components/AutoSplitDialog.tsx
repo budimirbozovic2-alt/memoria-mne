@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import type { Source } from "@/domains/sources/sources-storage";
 import type { ChapterHeadingType } from "@/lib/auto-split-engine";
-import { findMatchingChapterForRow } from "@/lib/auto-split/import-planner";
+import { findMatchingChapterForRow, chapterNameFromHeading } from "@/lib/auto-split/import-planner";
 import { cn } from "@/lib/utils";
 import { useAutoSplitImport } from "@/hooks/useAutoSplitImport";
 
@@ -258,10 +258,13 @@ export default function AutoSplitDialog({ open, onClose, source }: Props) {
                       );
                       // When no existing glava matches but auto-create is on,
                       // surface the heading that will be created as a new glava.
-                      const willCreate =
+                      const willCreateHeading =
                         !chapter && !ambiguous && a.createMissingChapters
                           ? row.articles[0]?.chapterHeadingText ?? null
                           : null;
+                      const willCreate = willCreateHeading
+                        ? chapterNameFromHeading(willCreateHeading)
+                        : null;
                       const Icon = willCreate ? FolderPlus : BookOpenText;
                       return (
                         <div className="flex items-center gap-1 mt-1">
