@@ -15,6 +15,7 @@ import { afterDialogClose } from "@/lib/dialog-utils";
 
 export interface MatrixFilters {
   subcategoryId: string | null;
+  chapterId: string | null;
   type: "all" | "essay" | "flash";
   frequencyTag: "all" | FrequencyTag;
   sortMode: "order" | "weakest";
@@ -26,18 +27,21 @@ interface Props {
   categoryName: string;
   cards: Card[];
   subcategories: { id: string; name: string }[];
+  /** Chapters (glave) per subcategory id — used for the optional glava filter. */
+  chaptersBySub: Record<string, { id: string; name: string }[]>;
   onStart: (filters: MatrixFilters) => void;
 }
 
 const DEFAULT_FILTERS: MatrixFilters = {
   subcategoryId: null,
+  chapterId: null,
   type: "all",
   frequencyTag: "all",
   sortMode: "order",
 };
 
 export default function MatrixFilterDialog({
-  open, onOpenChange, categoryName, cards, subcategories, onStart,
+  open, onOpenChange, categoryName, cards, subcategories, chaptersBySub, onStart,
 }: Props) {
   const [filters, setFilters] = useState<MatrixFilters>(DEFAULT_FILTERS);
 
@@ -45,9 +49,23 @@ export default function MatrixFilterDialog({
     if (open) setFilters(DEFAULT_FILTERS);
   }, [open]);
 
+  // Glave for the chosen Oblast, limited to those that actually appear on
+  // cards in that subcategory (an empty list hides the glava filter entirely).
+  const chapterOptions = useMemo(() => {
+    if (!filters.subcategoryId) return [];
+    const all = chaptersBySub[filters.subcategoryId] ?? [];
+    const present = new Set(
+      cards
+        .filter(c => c.subcategoryId === filters.subcategoryId && c.chapterId)
+        .map(c => c.chapterId),
+    );
+    return all.filter(ch => present.has(ch.id));
+  }, [chaptersBySub, filters.subcategoryId, cards]);
+
   const matchedCount = useMemo(() => {
     let f = cards;
     if (filters.subcategoryId) f = f.filter(c => c.subcategoryId === filters.subcategoryId);
+    if (filters.chapterId) f = f.filter(c => c.chapterId === filters.chapterId);
     if (filters.type === "essay") f = f.filter(c => c.type === "essay");
     else if (filters.type === "flash") f = f.filter(c => c.type === "flash");
     if (filters.frequencyTag !== "all") f = f.filter(c => c.frequencyTag === filters.frequencyTag);
@@ -77,7 +95,7 @@ export default function MatrixFilterDialog({
             <Label className="text-xs uppercase text-muted-foreground tracking-wider">Oblast</Label>
             <Select
               value={filters.subcategoryId ?? "all"}
-              onValueChange={(v) => setFilters(f => ({ ...f, subcategoryId: v === "all" ? null : v }))}
+              onValueChange={(v) => setFilters(f => ({ ...f, subcategoryId: v === "all" ? null : v, chapterId: null }))}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -88,6 +106,24 @@ export default function MatrixFilterDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {filters.subcategoryId && chapterOptions.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground tracking-wider">Glava</Label>
+              <Select
+                value={filters.chapterId ?? "all"}
+                onValueChange={(v) => setFilters(f => ({ ...f, chapterId: v === "all" ? null : v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Sve glave</SelectItem>
+                  {chapterOptions.map(ch => (
+                    <SelectItem key={ch.id} value={ch.id}>{ch.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label className="text-xs uppercase text-muted-foreground tracking-wider">Tip</Label>

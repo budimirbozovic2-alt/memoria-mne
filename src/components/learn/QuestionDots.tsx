@@ -16,7 +16,7 @@ const QuestionDots = React.memo(function QuestionDots({
   if (cards.length <= 1) return null;
 
   return (
-    <div className="flex gap-1.5 flex-wrap mb-4">
+    <div className="flex flex-wrap gap-1.5 mb-4 lg:mb-0 lg:flex-col lg:flex-nowrap lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:px-1.5 lg:py-1">
       {cards.map((c, i) => {
         const isActive = i === currentIndex;
         let dotColor = "bg-secondary";

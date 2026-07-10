@@ -472,7 +472,17 @@ export default function StudyModeRecall({
 
     <div className={`${viewWidthClasses[viewWidth]} mx-auto space-y-6 transition-all duration-300`}>
 
-      <div className={showSidebar ? "flex flex-col lg:flex-row gap-4 items-start" : undefined}>
+      <div className="flex flex-col lg:flex-row gap-4 items-start">
+
+        {/* Progress dots: left vertical rail on desktop, horizontal on mobile */}
+        <QuestionDots
+          cards={sortedCards}
+          currentIndex={currentIndex}
+          completedCards={completedCards}
+          chainCompletedCards={chainCompletedCards}
+          readCards={readCards}
+          onSelect={goToCard}
+        />
 
         <div className="flex-1 min-w-0 space-y-6">
 
@@ -493,24 +503,6 @@ export default function StudyModeRecall({
             hideQuestion={hideQuestion}
 
           />
-
-          <QuestionDots
-
-            cards={sortedCards}
-
-            currentIndex={currentIndex}
-
-            completedCards={completedCards}
-
-            chainCompletedCards={chainCompletedCards}
-
-            readCards={readCards}
-
-            onSelect={goToCard}
-
-          />
-
-
 
           {blicJuris && (
 

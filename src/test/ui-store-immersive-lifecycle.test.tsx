@@ -17,12 +17,6 @@ vi.mock("@/components/review/ReviewComplete", () => ({
   default: () => <div data-testid="review-complete" />,
 }));
 
-vi.mock("@/components/learn/FilterSetup", () => ({
-  default: ({ onStart }: { onStart: () => void }) => (
-    <button type="button" onClick={onStart}>Start</button>
-  ),
-}));
-
 vi.mock("@/components/learn/SessionComplete", () => ({
   default: () => null,
 }));
