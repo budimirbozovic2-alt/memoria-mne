@@ -15,7 +15,7 @@ export default function SettingsSection({ title, description, children, id, clas
       id={id}
       className={cn("rounded-lg border border-border/60 overflow-hidden bg-card/30", className)}
     >
-      <div className="sticky top-0 z-10 px-4 py-2.5 bg-background/95 backdrop-blur border-b border-border/60">
+      <div className="px-4 py-2.5 bg-muted/30 border-b border-border/60">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           {title}
         </h3>

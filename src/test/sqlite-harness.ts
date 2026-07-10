@@ -484,15 +484,22 @@ class TestExecutor implements SqlExecutor {
           row[cols[i]] = ph.replace(/^'|'$/g, "");
         }
       }
-      // OR REPLACE on PK ("id" or "key" or "date" depending on table)
+      // Upsert on PK — either `INSERT OR REPLACE` or `ON CONFLICT(col) DO UPDATE`.
+      // Both resolve to "replace the row in place" here (the mock has no FK
+      // cascade, so in-place replace matches production's non-cascading upsert).
       const isOrReplace = /INSERT\s+OR\s+REPLACE/i.test(trimmed);
-      const pkCol = cols.includes("id")
-        ? "id"
-        : cols.includes("key")
-          ? "key"
-          : cols.includes("date")
-            ? "date"
-            : null;
+      const conflictMatch = /ON\s+CONFLICT\s*\(\s*(\w+)\s*\)\s+DO\s+UPDATE/i.exec(
+        trimmed,
+      );
+      const pkCol = conflictMatch
+        ? conflictMatch[1]
+        : cols.includes("id")
+          ? "id"
+          : cols.includes("key")
+            ? "key"
+            : cols.includes("date")
+              ? "date"
+              : null;
       if (!cols.includes("id")) {
         row.id = t.nextRowid++;
       } else if (row.id === null || row.id === undefined) {
@@ -500,7 +507,7 @@ class TestExecutor implements SqlExecutor {
       } else if (typeof row.id === "number" && row.id >= t.nextRowid) {
         t.nextRowid = (row.id as number) + 1;
       }
-      if (isOrReplace && pkCol && row[pkCol] != null) {
+      if ((isOrReplace || conflictMatch) && pkCol && row[pkCol] != null) {
         const pkVal = row[pkCol];
         const idx = t.rows.findIndex((r) => r[pkCol] === pkVal);
         if (idx >= 0) {

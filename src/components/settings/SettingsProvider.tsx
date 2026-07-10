@@ -80,16 +80,14 @@ export function SettingsProvider({ settings, onUpdate, children }: SettingsProvi
 
   useEffect(() => {
     if (subjectId) return;
-
-    const appSnapshot = { ...app, targetRetention: persistedTargetRetentionRef.current };
-    const baseline = { ...initialAppRef.current, targetRetention: persistedTargetRetentionRef.current };
-    if (shallowEqual(appSnapshot, baseline)) return;
+    if (shallowEqual(app, initialAppRef.current)) return;
 
     const timer = setTimeout(() => {
-      const next = { ...appRef.current, targetRetention: persistedTargetRetentionRef.current };
+      const next = { ...appRef.current };
       void saveAppSettings(next)
         .then(() => {
           initialAppRef.current = next;
+          persistedTargetRetentionRef.current = next.targetRetention;
         })
         .catch((err) => {
           logger.error("[SettingsProvider] app auto-save failed", err);
@@ -99,6 +97,17 @@ export function SettingsProvider({ settings, onUpdate, children }: SettingsProvi
 
     return () => clearTimeout(timer);
   }, [app, subjectId, appRef]);
+
+  useEffect(() => {
+    if (subjectId) return;
+    if (shallowEqual(local, settings)) return;
+
+    const timer = setTimeout(() => {
+      onUpdate(localRef.current);
+    }, AUTO_SAVE_MS);
+
+    return () => clearTimeout(timer);
+  }, [local, settings, subjectId, onUpdate, localRef]);
 
   useEffect(() => {
     if (subjectId) return;
