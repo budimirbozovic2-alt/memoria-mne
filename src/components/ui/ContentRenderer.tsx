@@ -9,6 +9,8 @@ interface Props {
   onMindmapClick?: (mindmapId: string) => void;
   /** When set, `mindmapEmbed` nodes render live previews instead of placeholders. */
   categoryId?: string;
+  /** When set, propis blocks with a `sourceId` show a "verify against source" button. */
+  onOpenSource?: (sourceId: string) => void;
 }
 
 /**
@@ -21,7 +23,7 @@ interface Props {
  * For interactive rich surfaces (Zettelkasten article body, etc.) import
  * `<EditorView>` from `@/lib/editor-v4` directly.
  */
-export function ContentRenderer({ doc, className, onWikiLinkClick, onMindmapClick, categoryId }: Props) {
+export function ContentRenderer({ doc, className, onWikiLinkClick, onMindmapClick, categoryId, onOpenSource }: Props) {
   return (
     <AstNodeRenderer
       doc={doc}
@@ -29,6 +31,7 @@ export function ContentRenderer({ doc, className, onWikiLinkClick, onMindmapClic
       onWikiLinkClick={onWikiLinkClick}
       onMindmapClick={onMindmapClick}
       categoryId={categoryId}
+      onOpenSource={onOpenSource}
     />
   );
 }

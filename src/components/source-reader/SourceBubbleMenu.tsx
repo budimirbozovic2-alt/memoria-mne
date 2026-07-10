@@ -1,7 +1,7 @@
 import { BubbleMenu } from "@tiptap/react/menus";
 import {
-  Brain, Heading1, Heading2, Heading3, Link as LinkIcon, List, ListOrdered,
-  PenSquare, Scale, Star, Type,
+  Brain, Heading1, Heading2, Heading3, Link as LinkIcon, Link2, List, ListOrdered,
+  NotebookPen, PenSquare, Scale, Star, Type,
 } from "lucide-react";
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,10 @@ interface Props {
   onSplit: (payload: SelectionPayload) => void;
   /** Selected text + HTML + V4 AST → "Link to existing essay" modal. */
   onLinkToExisting: (payload: SelectionPayload) => void;
+  /** Selected text + HTML + V4 AST → new zettelkasten article (propis block). */
+  onExtractToArticle: (payload: SelectionPayload) => void;
+  /** Selected text + HTML + V4 AST → "Link to existing article" picker (reference-only, no embed). */
+  onLinkToExistingArticle: (payload: SelectionPayload) => void;
   /** Selected plain text → mnemonic workshop. */
   onAddMnemo: (text: string) => void;
 }
@@ -35,7 +39,8 @@ interface Props {
  *  - edit-mode only: H1 / H2 / H3 / ¶ / • / 1. / KeyPart
  */
 export function SourceBubbleMenu({
-  editor, editMode, sourceKind, onSplit, onLinkToExisting, onAddMnemo,
+  editor, editMode, sourceKind, onSplit, onLinkToExisting, onExtractToArticle,
+  onLinkToExistingArticle, onAddMnemo,
 }: Props) {
   /** Resolve current selection → `{ text, html, contentDoc }` using the V4 codec. */
   const getSelectionPayload = useCallback((): SelectionPayload | null => {
@@ -51,6 +56,16 @@ export function SourceBubbleMenu({
     const p = getSelectionPayload();
     if (p) onLinkToExisting(p);
   }, [getSelectionPayload, onLinkToExisting]);
+
+  const handleExtract = useCallback(() => {
+    const p = getSelectionPayload();
+    if (p) onExtractToArticle(p);
+  }, [getSelectionPayload, onExtractToArticle]);
+
+  const handleLinkArticle = useCallback(() => {
+    const p = getSelectionPayload();
+    if (p) onLinkToExistingArticle(p);
+  }, [getSelectionPayload, onLinkToExistingArticle]);
 
   const handleMnemo = useCallback(() => {
     const p = getSelectionPayload();
@@ -80,6 +95,12 @@ export function SourceBubbleMenu({
       </MenuButton>
       <MenuButton onClick={handleLink} title="Poveži sa postojećim esejem">
         <LinkIcon className="h-3.5 w-3.5" />
+      </MenuButton>
+      <MenuButton onClick={handleExtract} title="Izvuci u novi članak (propis)">
+        <NotebookPen className="h-3.5 w-3.5" />
+      </MenuButton>
+      <MenuButton onClick={handleLinkArticle} title="Poveži sa postojećim člankom (propis)">
+        <Link2 className="h-3.5 w-3.5" />
       </MenuButton>
       <MenuButton onClick={handleMnemo} title="Mnemo kuka">
         <Brain className="h-3.5 w-3.5" />

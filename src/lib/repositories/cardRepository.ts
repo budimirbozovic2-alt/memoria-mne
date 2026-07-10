@@ -55,6 +55,7 @@ import {
   sqlClearCardLinksIn,
   SQL_CLEAR_NEEDS_REVIEW,
   SQL_SET_NEEDS_REVIEW,
+  SQL_SET_NEEDS_REVIEW_BY_ARTICLE,
   SQL_UPDATE_CHAPTER,
 } from "@/lib/db/queries/cards-json-patches";
 import {
@@ -70,7 +71,7 @@ import { runBulkCardsWrite } from "@/lib/query/write-session";
 
 
 
-export interface BulkCardWriteOpts {
+interface BulkCardWriteOpts {
   skipNotify?: boolean;
 }
 
@@ -496,6 +497,27 @@ async function bulkSetNeedsReview(cardIds: string[], opts?: BulkCardWriteOpts): 
 
 }
 
+/**
+ * Faza 3 drift: flag every card linked to `articleId` as needsReview ("za
+ * pregled") after the article's content changes. Returns the number of cards
+ * touched. No-op when the article has no linked cards.
+ */
+async function markNeedsReviewByArticle(articleId: string): Promise<number> {
+  if (!articleId) return 0;
+  const now = Date.now();
+  let refs: CardScopeRef[] = [];
+  await runInTransaction(async (tx) => {
+    refs = await tx.all<CardScopeRef>(
+      "SELECT categoryId, subcategoryId, chapterId, sourceId FROM cards WHERE linkedArticleId = ?",
+      [articleId],
+    );
+    if (refs.length === 0) return;
+    await tx.run(SQL_SET_NEEDS_REVIEW_BY_ARTICLE, [now, now, articleId]);
+  });
+  if (refs.length > 0) emitCardsChangedForRefs(refs);
+  return refs.length;
+}
+
 
 
 export interface ChapterFieldUpdate {
@@ -733,6 +755,8 @@ export const cardRepository = {
   bulkSetNeedsReview,
 
   bulkSetNeedsReviewAuthoritative,
+
+  markNeedsReviewByArticle,
 
   bulkUpdateChapter,
 

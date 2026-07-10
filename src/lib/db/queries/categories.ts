@@ -78,7 +78,17 @@ export async function countCategories(): Promise<number> {
 
  * Replace all categories atomically (bootstrap, restore, commit).
 
- * FK CASCADE wipes subcategories + chapters when categories are deleted.
+ *
+
+ * Subcategories + chapters are rebuilt wholesale — cards do NOT reference them
+
+ * via FK, so deleting them is safe. Category ROWS, however, are the cascade
+
+ * parent of `cards` (`cards.categoryId ON DELETE CASCADE`): deleting a live
+
+ * category row wipes all its cards. So we never `DELETE FROM categories`
+
+ * wholesale — we upsert survivors and delete only genuinely-removed rows.
 
  */
 
@@ -90,13 +100,27 @@ export async function replaceAllCategories(
 
   const exec = await requireSqlExecutor("categories:replaceAll");
 
+  const keepIds = new Set(records.map((c) => c.id));
+
   await exec.transaction(async (tx) => {
 
     await tx.run("DELETE FROM chapters");
 
     await tx.run("DELETE FROM subcategories");
 
-    await tx.run("DELETE FROM categories");
+    // Drop only categories that are gone (their cards intentionally cascade).
+
+    const existing = await tx.all<{ id: string }>("SELECT id FROM categories");
+
+    for (const row of existing) {
+
+      if (!keepIds.has(row.id)) {
+
+        await tx.run("DELETE FROM categories WHERE id = ?", [row.id]);
+
+      }
+
+    }
 
     if (records.length > 0) {
 

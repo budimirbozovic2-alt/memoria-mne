@@ -40,6 +40,15 @@ export const SQL_SET_NEEDS_REVIEW = `UPDATE cards
                     )
   WHERE id = ?`;
 
+/** Faza 3 drift: flag every card linked to an article as "za pregled". */
+export const SQL_SET_NEEDS_REVIEW_BY_ARTICLE = `UPDATE cards
+    SET updatedAt = ?,
+        payload   = json_set(
+                      json_set(payload, '$.needsReview', json('true')),
+                      '$.updatedAt', ?
+                    )
+  WHERE linkedArticleId = ?`;
+
 export const SQL_UPDATE_CHAPTER = `UPDATE cards
     SET chapterId = ?,
         updatedAt = ?,

@@ -192,6 +192,124 @@ describe("BackupSchema (v7)", () => {
     }
   });
 
+  it("preserves card linkedArticleId through parse (Faza 4 backup compat)", () => {
+    const result = BackupCardSchema.safeParse({
+      id: "c1",
+      question: "Q",
+      sections: [{ id: "s1", title: "T", contentDoc: EMPTY_DOC }],
+      categoryId: "cat1",
+      type: "essay",
+      linkedArticleId: "art-42",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.linkedArticleId).toBe("art-42");
+    }
+  });
+
+  it("preserves propis block trace (sourceId/anchor) in article contentDoc", () => {
+    const contentDoc = {
+      version: 4,
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "legalProvision",
+            attrs: { sourceId: "src-9", anchor: "clan 1 svrha" },
+            content: [{ type: "paragraph", content: [{ type: "text", text: "Član 1." }] }],
+          },
+        ],
+      },
+    };
+    const result = BackupSchema.safeParse(
+      minimalBackup({
+        knowledgeBaseArticles: [
+          {
+            id: "art-42",
+            subjectId: "cat1",
+            title: "Pojam",
+            contentDoc,
+            linkedSourceIds: ["src-9"],
+          },
+        ],
+      }),
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const block = result.data.knowledgeBaseArticles[0].contentDoc.content.content?.[0];
+      expect(block?.type).toBe("legalProvision");
+      expect(block?.attrs?.sourceId).toBe("src-9");
+      expect(block?.attrs?.anchor).toBe("clan 1 svrha");
+    }
+  });
+
+  it("preserves linkedProvisions (reference-only propis links) through parse", () => {
+    const result = BackupSchema.safeParse(
+      minimalBackup({
+        knowledgeBaseArticles: [
+          {
+            id: "art-43",
+            subjectId: "cat1",
+            title: "Kazne",
+            contentDoc: EMPTY_DOC,
+            linkedSourceIds: ["src-9"],
+            linkedProvisions: [
+              { id: "lp-1", sourceId: "src-9", anchor: "clan 59", label: "Čl. 59 Kazna zatvora", createdAt: 111 },
+            ],
+          },
+        ],
+      }),
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const provisions = result.data.knowledgeBaseArticles[0].linkedProvisions;
+      expect(provisions).toHaveLength(1);
+      expect(provisions?.[0]).toEqual({
+        id: "lp-1", sourceId: "src-9", anchor: "clan 59", label: "Čl. 59 Kazna zatvora", createdAt: 111,
+      });
+    }
+  });
+
+  it("defaults linkedProvisions to undefined for legacy articles without it", () => {
+    const result = BackupSchema.safeParse(
+      minimalBackup({
+        knowledgeBaseArticles: [
+          { id: "art-44", subjectId: "cat1", title: "Star članak", contentDoc: EMPTY_DOC, linkedSourceIds: [] },
+        ],
+      }),
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.knowledgeBaseArticles[0].linkedProvisions).toBeUndefined();
+    }
+  });
+
+  it("drops an invalid linkedProvisions row instead of failing the whole restore", () => {
+    const result = BackupSchema.safeParse(
+      minimalBackup({
+        knowledgeBaseArticles: [
+          {
+            id: "art-45",
+            subjectId: "cat1",
+            title: "Mješovito",
+            contentDoc: EMPTY_DOC,
+            linkedSourceIds: [],
+            linkedProvisions: [
+              { id: "lp-ok", sourceId: "src-1", anchor: "a", label: "Ok", createdAt: 1 },
+              { sourceId: "src-1" }, // missing required id
+            ],
+          },
+        ],
+      }),
+    );
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.knowledgeBaseArticles[0].linkedProvisions).toEqual([
+        { id: "lp-ok", sourceId: "src-1", anchor: "a", label: "Ok", createdAt: 1 },
+      ]);
+    }
+  });
+
   it("sanitizes examiner profile notes when present", () => {
     const result = BackupCategoryRecordSchema.safeParse({
       id: "cat1",

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { CategoryRecord } from "@/lib/db-types";
 import {
   bulkPutCategories,
@@ -68,6 +68,48 @@ describe("category taxonomy (relational)", () => {
     expect(loaded.map((c) => c.id)).toEqual(["cat-new"]);
     expect(getTestSqliteTable("subcategories")).toHaveLength(1);
     expect(getTestSqliteTable("subcategories")[0].categoryId).toBe("cat-new");
+  });
+
+  // Regression: a taxonomy edit (rename subcategory) went through
+  // `replaceAllCategories`, which used to `DELETE FROM categories` wholesale.
+  // With `cards.categoryId ON DELETE CASCADE`, that wiped every card. The fix
+  // upserts survivors and only deletes genuinely-removed category rows.
+  it("replaceAllCategories never wipes the categories table when ids are kept", async () => {
+    const cat = makeCategory("cat-a");
+    await bulkPutCategories([cat]);
+    seedTestSqliteTable("cards", [
+      {
+        id: "card-1",
+        categoryId: "cat-a",
+        subcategoryId: "cat-a-sub-1",
+        chapterId: "cat-a-ch-1",
+        type: "basic",
+        createdAt: 1,
+        updatedAt: 1,
+        payload: "{}",
+      },
+    ]);
+
+    const runSpy = vi.spyOn(getTestSqlExecutor(), "run");
+
+    // Rename a subcategory — the top-level category id set is unchanged.
+    const edited: CategoryRecord = {
+      ...cat,
+      subcategories: [{ ...cat.subcategories[0], name: "Renamed" }],
+    };
+    await replaceAllCategories([edited]);
+
+    const wipedCategories = runSpy.mock.calls.some(([sql]) =>
+      /^\s*DELETE\s+FROM\s+categories\s*;?\s*$/i.test(String(sql)),
+    );
+    expect(wipedCategories).toBe(false);
+
+    // Card survives; the rename landed.
+    expect(getTestSqliteTable("cards").map((r) => r.id)).toContain("card-1");
+    const loaded = await listAllCategories();
+    expect(loaded[0].subcategories[0].name).toBe("Renamed");
+
+    runSpy.mockRestore();
   });
 
   it("migrateCategoryTaxonomyToRelational explodes legacy JSON payload", async () => {

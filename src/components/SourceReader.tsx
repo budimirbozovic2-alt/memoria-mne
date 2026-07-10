@@ -21,10 +21,13 @@ import type { Editor } from "@/lib/editor-v4";
 import { toast } from "sonner";
 import { createMnemonicCardFromSelection, loadMnemonicCards } from "@/domains/mnemonic";
 import { useMnemonicMutations } from "@/hooks/mnemonic/useMnemonicMutations";
+import { useCategoryData } from "@/hooks/cards/useCategoryState";
+import { useKnowledgeBaseArticlesBySubject } from "@/hooks/zettelkasten/useKnowledgeBaseArticles";
 
 import { logger } from "@/lib/logger";
 const AutoSplitDialog = lazy(() => import("@/components/AutoSplitDialog"));
 const LinkToExistingCardModal = lazy(() => import("@/components/LinkToExistingCardModal"));
+const LinkToExistingArticleModal = lazy(() => import("@/components/LinkToExistingArticleModal"));
 
 function sourceOutlineKey(outline: Source["outline"]): string {
   return JSON.stringify(outline ?? []);
@@ -138,6 +141,8 @@ export default memo(function SourceReader({ source, onBack, onSourceUpdated }: P
               sourceKind={source.sourceKind ?? "propis"}
               onSplit={actions.handleConvertToEssay}
               onLinkToExisting={actions.handleLinkToExisting}
+              onExtractToArticle={actions.handleExtractToArticle}
+              onLinkToExistingArticle={actions.handleLinkToExistingArticle}
               onAddMnemo={handleMnemoFromSelection}
             />
           )}
@@ -159,6 +164,7 @@ export default memo(function SourceReader({ source, onBack, onSourceUpdated }: P
       <SourceReaderLazyModals
         source={source}
         onLink={actions.handleLinkConfirm}
+        onLinkProvision={actions.handleLinkProvisionConfirm}
       />
     </div>
   );
@@ -249,24 +255,36 @@ function SourceReaderExamSidebar({
 function SourceReaderLazyModals({
   source,
   onLink,
+  onLinkProvision,
 }: {
   source: Source;
   onLink: (cardId: string, appendSnippet?: boolean) => void;
+  onLinkProvision: (articleId: string) => void;
 }) {
   const {
     autoSplitOpen,
     linkModalOpen,
     linkSelectedText,
     linkSelectedHtml,
+    provisionLinkModalOpen,
+    provisionLinkSelectedText,
   } = useSourceReaderStore(
     useShallow((s) => ({
       autoSplitOpen: s.autoSplitOpen,
       linkModalOpen: s.linkModalOpen,
       linkSelectedText: s.linkSelectedText,
       linkSelectedHtml: s.linkSelectedHtml,
+      provisionLinkModalOpen: s.provisionLinkModalOpen,
+      provisionLinkSelectedText: s.provisionLinkSelectedText,
     })),
   );
   const sourceCards = useCardsBySource(linkModalOpen ? source.id : undefined);
+  const { categoryRecords } = useCategoryData();
+  const subjectLabel = categoryRecords.find((r) => r.id === source.categoryId)?.name
+    ?? source.categoryId ?? "";
+  const { data: subjectArticles } = useKnowledgeBaseArticlesBySubject(
+    provisionLinkModalOpen ? source.categoryId : undefined,
+  );
 
   return (
     <Suspense fallback={null}>
@@ -287,6 +305,16 @@ function SourceReaderLazyModals({
           selectedHtml={linkSelectedHtml}
           cards={sourceCards as Card[]}
           onLink={onLink}
+        />
+      )}
+      {provisionLinkModalOpen && (
+        <LinkToExistingArticleModal
+          open={provisionLinkModalOpen}
+          onOpenChange={useSourceReaderStore.getState().setProvisionLinkModalOpen}
+          subjectLabel={subjectLabel}
+          selectedText={provisionLinkSelectedText}
+          articles={subjectArticles}
+          onLink={onLinkProvision}
         />
       )}
     </Suspense>

@@ -24,8 +24,13 @@ import { encodeCategoryPayload } from "@/lib/persistence/sqlite/category-codecs"
 
 // ─── INSERT SQL constants ────────────────────────────────────────────────
 
+// Upsert (not INSERT OR REPLACE): REPLACE deletes the existing row first, which
+// fires `cards.categoryId ON DELETE CASCADE` and wipes every card under the
+// category. ON CONFLICT DO UPDATE mutates the row in place — no cascade.
 export const CATEGORY_INSERT_SQL =
-  "INSERT OR REPLACE INTO categories (id, name, sortOrder, color, payload) VALUES (?, ?, ?, ?, ?)";
+  "INSERT INTO categories (id, name, sortOrder, color, payload) VALUES (?, ?, ?, ?, ?) " +
+  "ON CONFLICT(id) DO UPDATE SET name = excluded.name, sortOrder = excluded.sortOrder, " +
+  "color = excluded.color, payload = excluded.payload";
 
 export const SOURCE_INSERT_SQL =
   "INSERT OR REPLACE INTO sources (id, categoryId, title, version, createdAt, sourceKind, payload) VALUES (?, ?, ?, ?, ?, ?, ?)";

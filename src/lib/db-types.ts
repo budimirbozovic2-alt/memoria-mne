@@ -123,12 +123,29 @@ export interface MindMapDoc {
 
 // ─── Zettelkasten knowledge base ─────────────────────────────────────────
 
+/**
+ * Reference-only link from an article to a propis excerpt — no copy of the
+ * excerpt text is stored. `anchor` is the same opaque `createTextAnchor`
+ * string used by card↔source links; resolving it means opening the source
+ * (`sourceId`) and letting the reader locate the passage manually, same as
+ * the existing "Provjeri uz izvor" flow.
+ */
+export interface LinkedProvision {
+  id: string;
+  sourceId: string;
+  anchor: string;
+  /** Short label derived from the excerpt at link time, for display only. */
+  label: string;
+  createdAt: number;
+}
+
 export interface KnowledgeBaseArticle {
   id: string;
   subjectId: string;
   title: string;
   contentDoc: EditorDoc;
   linkedSourceIds: string[];
+  linkedProvisions?: LinkedProvision[];
   rootSubcategoryId?: string;
   isIndex?: boolean;
   tags?: string[];

@@ -11,8 +11,13 @@ import {
   buildLinkPatch,
   type AddCardArgs,
 } from "@/lib/source-reader/build-essay-payload";
+import { buildPropisArticleFromSelection } from "@/lib/source-reader/build-propis-article";
+import { buildLinkedProvision } from "@/lib/source-reader/build-linked-provision";
+import { saveArticle, getArticle } from "@/domains/zettelkasten/zettelkasten-storage";
+import { useKnowledgeBaseMutations } from "@/hooks/zettelkasten/useKnowledgeBaseMutations";
 import { commitMappingCreated } from "@/lib/services/sourceEditingService";
 import { usePlannerMutations } from "@/hooks/planner/usePlannerMutations";
+import { logger } from "@/lib/logger";
 import type { SelectionPayload } from "@/lib/source-reader/selection-payload";
 
 type AddCardFn = ReturnType<typeof useCardOnlyActions>["addCard"];
@@ -32,6 +37,7 @@ function dispatchAdd(addCard: AddCardFn, a: AddCardArgs) {
 export function useSourceMapping(source: Source) {
   const { addCard, patchCard } = useCardOnlyActions();
   const { incrementMapped } = usePlannerMutations();
+  const { save: saveArticleMutation } = useKnowledgeBaseMutations();
   const commitMapping = useCallback((count: number) => {
     if (count <= 0) return;
     incrementMapped.mutate(count);
@@ -163,17 +169,81 @@ export function useSourceMapping(source: Source) {
     }
   }, [source, addCard, commitMapping]);
 
+  // Faza 1: izvuci selekciju iz izvora u NOVI zettelkasten članak kao propis
+  // blok (kopija sa tragom). Blic i dalje ide preko autosplita (§2b plana).
+  const handleExtractToArticle = useCallback(async (payload: SelectionPayload) => {
+    if (!payload.text || payload.text.trim().length === 0) return;
+    try {
+      const article = buildPropisArticleFromSelection(payload, source);
+      await saveArticle(article);
+      toast.success("Propis izvučen u novi članak", {
+        description: `„${article.title}" — dopiši teoriju u zettelkastenu.`,
+      });
+    } catch (err) {
+      logger.error("[useSourceMapping] extractToArticle failed", err);
+      toast.error("Izvlačenje u članak nije uspjelo", { description: "Pokušajte ponovo." });
+    }
+  }, [source]);
+
+  // Poveži selekciju propisa sa POSTOJEĆIM člankom — samo referenca
+  // (sourceId + anchor), bez ugrađivanja teksta u contentDoc. Otvara picker;
+  // stvarno vezivanje se dešava u handleLinkProvisionConfirm.
+  const handleLinkToExistingArticle = useCallback((payload: SelectionPayload) => {
+    const { text, html } = payload;
+    const {
+      setProvisionLinkSelectedText, setProvisionLinkSelectedHtml, setProvisionLinkModalOpen,
+    } = useSourceReaderStore.getState();
+    if (!text) return;
+    setProvisionLinkSelectedText(text);
+    setProvisionLinkSelectedHtml(html);
+    setProvisionLinkModalOpen(true);
+  }, []);
+
+  const handleLinkProvisionConfirm = useCallback(async (articleId: string) => {
+    const {
+      provisionLinkSelectedText,
+      setProvisionLinkModalOpen, setProvisionLinkSelectedText, setProvisionLinkSelectedHtml,
+    } = useSourceReaderStore.getState();
+    if (!provisionLinkSelectedText) return;
+    try {
+      const article = await getArticle(articleId);
+      if (!article) throw new Error(`Article ${articleId} not found`);
+      const provision = buildLinkedProvision({ text: provisionLinkSelectedText }, source.id);
+      const updated = {
+        ...article,
+        linkedProvisions: [...(article.linkedProvisions ?? []), provision],
+      };
+      await saveArticleMutation.mutateAsync(updated);
+      toast.success("Propis povezan sa člankom", {
+        description: `„${article.title}" — pogledaj u panelu "Propisi" unutar članka.`,
+      });
+    } catch (err) {
+      logger.error("[useSourceMapping] linkProvisionConfirm failed", err);
+      toast.error("Povezivanje nije uspjelo", { description: "Pokušajte ponovo." });
+    } finally {
+      setProvisionLinkModalOpen(false);
+      setProvisionLinkSelectedText("");
+      setProvisionLinkSelectedHtml("");
+    }
+  }, [source.id, saveArticleMutation]);
+
   return useMemo(() => ({
     handleConvertToEssay,
     handleSmartSplitConfirm,
     handleLinkToExisting,
     handleLinkConfirm,
     handleMapSelection,
+    handleExtractToArticle,
+    handleLinkToExistingArticle,
+    handleLinkProvisionConfirm,
   }), [
     handleConvertToEssay,
     handleSmartSplitConfirm,
     handleLinkToExisting,
     handleLinkConfirm,
     handleMapSelection,
+    handleExtractToArticle,
+    handleLinkToExistingArticle,
+    handleLinkProvisionConfirm,
   ]);
 }

@@ -80,6 +80,14 @@ export function LinkedCardsPanel({
               <span className="text-[10px] text-muted-foreground shrink-0 w-7">
                 {card.type === "flash" ? "blic" : "esej"}
               </span>
+              {card.needsReview && (
+                <span
+                  className="shrink-0 rounded-full bg-warning/15 px-1.5 text-[9px] font-medium uppercase tracking-wide text-warning"
+                  title="Povezani članak je izmijenjen — provjeri karticu"
+                >
+                  za pregled
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => onOpenCard(card)}

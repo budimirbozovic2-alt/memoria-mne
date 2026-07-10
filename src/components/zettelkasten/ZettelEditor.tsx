@@ -16,10 +16,12 @@
  *
  * The wrapper itself does NOT persist — `useArticleDraft` owns flush/dirty.
  */
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { EditorV4, type EditorV4Handle } from "@/components/editor-v4/EditorV4";
-import { htmlToDoc, docToMarkdown, type EditorDoc } from "@/lib/editor-v4";
+import { htmlToDoc, docToMarkdown, type EditorDoc, type Editor } from "@/lib/editor-v4";
 import { mdToHtml } from "@/lib/editor-v4/migrate";
+import { ArticleBubbleMenu } from "@/components/zettelkasten/ArticleBubbleMenu";
+import type { SelectionPayload } from "@/lib/source-reader/selection-payload";
 
 export interface ZettelEditorHandle {
   insertText: (text: string) => void;
@@ -41,14 +43,17 @@ interface Props {
   placeholder?: string;
   onInsertMindMap?: () => void;
   categoryId?: string;
+  /** Faza 2: selection → new essay card linked to this article. */
+  onMemorizeSelection?: (payload: SelectionPayload) => void;
 }
 
 const EMPTY_DOC: EditorDoc = { version: 4, content: { type: "doc", content: [] } };
 
 const ZettelEditor = forwardRef<ZettelEditorHandle, Props>(function ZettelEditor(
-  { value, valueDoc, onChange, onChangeDoc, placeholder, onInsertMindMap, categoryId },
+  { value, valueDoc, onChange, onChangeDoc, placeholder, onInsertMindMap, categoryId, onMemorizeSelection },
   ref,
 ) {
+  const [editor, setEditor] = useState<Editor | null>(null);
   // Editor seed is captured on mount only — parent must force-remount with
   // `key={articleId}` when switching articles (ZettelkastenView already does
   // so via the `activeArticle` branch + `enterEdit` lifecycle).
@@ -88,6 +93,7 @@ const ZettelEditor = forwardRef<ZettelEditorHandle, Props>(function ZettelEditor
         categoryId={categoryId}
         embedKind="article"
         onPickMindmap={onInsertMindMap}
+        onEditorReady={onMemorizeSelection ? setEditor : undefined}
         onChange={(doc) => {
           onChangeDoc?.(doc);
           // Keep legacy markdown consumers (wiki-link auto-create, backlink
@@ -96,6 +102,9 @@ const ZettelEditor = forwardRef<ZettelEditorHandle, Props>(function ZettelEditor
         }}
         className="flex-1 min-h-[300px]"
       />
+      {editor && onMemorizeSelection && (
+        <ArticleBubbleMenu editor={editor} onMemorize={onMemorizeSelection} />
+      )}
     </div>
   );
 });

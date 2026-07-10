@@ -3,7 +3,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading2, List, ListOrdered,
-  Highlighter, Star, Undo2, Redo2, Map as MapIcon, Link2,
+  Highlighter, Star, Undo2, Redo2, Map as MapIcon, Link2, Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { editorV4Extensions, SmartPaste, type EditorDoc } from "@/lib/editor-v4";
@@ -52,6 +52,19 @@ interface EditorV4Props {
 }
 
 const SAFE_IMAGE_MIME = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+// Visual style for `legalProvision` ("Propis") blocks inside the article editor,
+// mirroring the read-view styling in SourceContent so propis vs teorija is clearly
+// distinguishable while editing. Applied only for `embedKind="article"`.
+const PROPIS_BLOCK_STYLE = cn(
+  "[&_.legal-provision]:relative [&_.legal-provision]:my-4 [&_.legal-provision]:rounded-r-md",
+  "[&_.legal-provision]:border-l-4 [&_.legal-provision]:border-primary/50",
+  "[&_.legal-provision]:bg-muted/40 [&_.legal-provision]:pl-4 [&_.legal-provision]:py-3",
+  "[&_.legal-provision]:before:content-['Propis'] [&_.legal-provision]:before:block",
+  "[&_.legal-provision]:before:text-[0.65rem] [&_.legal-provision]:before:font-semibold",
+  "[&_.legal-provision]:before:uppercase [&_.legal-provision]:before:tracking-wide",
+  "[&_.legal-provision]:before:text-primary/70 [&_.legal-provision]:before:mb-1",
+);
 
 /**
  * `<EditorV4>` — canonical write-path editor for V4 content.
@@ -202,11 +215,12 @@ export const EditorV4 = forwardRef<EditorV4Handle, EditorV4Props>(function Edito
     showKeyPartToggle,
     showMindmap: embedKind === "article" && Boolean(onPickMindmap),
     showWikiLinkHelper: embedKind === "article",
+    showLegalProvision: embedKind === "article",
     onPickMindmap,
   });
 
   return (
-    <div className="space-y-1.5">
+    <div className={cn("space-y-1.5", embedKind === "article" && PROPIS_BLOCK_STYLE)}>
       {!hideToolbar && (
       <div className="flex items-center gap-0.5 px-1 flex-wrap">
 
@@ -242,6 +256,7 @@ interface ToolbarOpts {
   showKeyPartToggle: boolean;
   showMindmap: boolean;
   showWikiLinkHelper: boolean;
+  showLegalProvision: boolean;
   onPickMindmap?: () => void;
 }
 
@@ -271,6 +286,14 @@ function buildToolbarButtons(editor: Editor, opts: ToolbarOpts): ToolbarBtn[] {
       icon: Link2,
       onClick: () => editor.chain().focus().insertContent("[[]]").run(),
       active: false,
+    });
+  }
+  if (opts.showLegalProvision) {
+    out.push({
+      title: "Propis blok (izdvoji tekst propisa od teorije)",
+      icon: Scale,
+      onClick: () => editor.chain().focus().toggleLegalProvision().run(),
+      active: editor.isActive("legalProvision"),
     });
   }
   if (opts.showKeyPartToggle) {

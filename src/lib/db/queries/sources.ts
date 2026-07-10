@@ -3,11 +3,13 @@
  * SQLite-only read/write for the `sources` table.
  */
 import type { SqlBindValue } from "@/lib/persistence/sqlite/executor";
-import type { Source } from "@/lib/db-types";
+import type { Source, KnowledgeBaseArticle } from "@/lib/db-types";
 import type { Card } from "@/lib/spaced-repetition";
 import { logger } from "@/lib/logger";
 import { withSqlTiming } from "./_shared/sql-timing";
 import { requireSqlExecutor } from "./_shared/require-sql-executor";
+import { notifyKnowledgeBaseChanged } from "./knowledge-base";
+import { stripLegalProvisionSourceRefs } from "@/lib/editor-v4";
 
 // ─── Codec ──────────────────────────────────────────────────────
 
@@ -114,20 +116,60 @@ export async function putSource(source: Source): Promise<void> {
 }
 
 /**
- * Delete a source and unlink any cards.
+ * Strip every zettelkasten reference to `sourceId` from `article`'s payload:
+ * the coarse `linkedSourceIds` array, the reference-only `linkedProvisions`
+ * entries, and any embedded `legalProvision` block's trace attrs inside
+ * `contentDoc` (the propis text itself is a static copy and stays — only
+ * the now-dangling trace back to the deleted source is cleared). Returns
+ * `null` when nothing on this article referenced the source, so the caller
+ * can skip re-writing rows that didn't need it.
+ */
+function cleanArticleSourceRefs(
+  article: KnowledgeBaseArticle,
+  sourceId: string,
+): KnowledgeBaseArticle | null {
+  let changed = false;
+
+  let linkedSourceIds = article.linkedSourceIds;
+  if (linkedSourceIds?.includes(sourceId)) {
+    linkedSourceIds = linkedSourceIds.filter((s) => s !== sourceId);
+    changed = true;
+  }
+
+  let linkedProvisions = article.linkedProvisions;
+  if (linkedProvisions?.some((p) => p.sourceId === sourceId)) {
+    linkedProvisions = linkedProvisions.filter((p) => p.sourceId !== sourceId);
+    changed = true;
+  }
+
+  const contentDoc = article.contentDoc;
+  if (contentDoc && stripLegalProvisionSourceRefs(contentDoc, sourceId)) {
+    changed = true;
+  }
+
+  if (!changed) return null;
+  return { ...article, linkedSourceIds, linkedProvisions, contentDoc };
+}
+
+/**
+ * Delete a source and unlink any cards, and sweep dangling zettelkasten
+ * references to it (linkedSourceIds, linkedProvisions, embedded
+ * legalProvision trace attrs) so a deleted source never leaves broken links
+ * behind in an article.
  */
 export async function deleteSourceAndUnlinkCards(
   id: string
 ): Promise<string[]> {
   const clearedIds: string[] = [];
+  let articlesChanged = false;
   const exec = await requireSqlExecutor("sources:deleteSourceAndUnlinkCards");
 
   await exec.transaction(async (tx) => {
     const linked = await tx.all<{ id: string; payload: string }>(
-      "SELECT id, payload FROM cards WHERE sourceId = ?", 
+      "SELECT id, payload FROM cards WHERE sourceId = ?",
       [id],
     );
-    
+
     const updateBatches: SqlBindValue[][] = [];
     const fallbackBatches: SqlBindValue[][] = [];
 
@@ -141,20 +183,20 @@ export async function deleteSourceAndUnlinkCards(
           needsReview: undefined,
         };
         updateBatches.push([
-          JSON.stringify(cleaned), 
+          JSON.stringify(cleaned),
           row.id
         ]);
       } catch (err) {
         logger.warn(
           "[sources-repo] card re-encode failed; " +
-          "nulling FK column only", 
+          "nulling FK column only",
           { id: row.id, err }
         );
         fallbackBatches.push([row.id]);
       }
-      
-      // BUG 3 FIX: clearedIds.push MORA biti ovdje, 
-      // izvan i tekstualno POSLIJE catch bloka, 
+
+      // BUG 3 FIX: clearedIds.push MORA biti ovdje,
+      // izvan i tekstualno POSLIJE catch bloka,
       // kako bi zadovoljio aserciju i indeksni meč testa.
       clearedIds.push(row.id);
     }
@@ -166,7 +208,7 @@ export async function deleteSourceAndUnlinkCards(
         updateBatches
       );
     }
-    
+
     if (fallbackBatches.length > 0) {
       await tx.runMany(
         "UPDATE cards SET sourceId = NULL WHERE id = ?",
@@ -174,8 +216,50 @@ export async function deleteSourceAndUnlinkCards(
       );
     }
 
+    // Sweep zettelkasten articles for dangling references to this source.
+    // Scoped to the source's own subject — Faza 1's builder always sets
+    // `article.subjectId = source.categoryId`, so cross-subject references
+    // aren't expected. `payload LIKE` is a cheap pre-filter (the id is a
+    // long random UUID, so an accidental substring match elsewhere in the
+    // JSON is not a realistic concern); the precise check happens in JS.
+    const sourceRows = await tx.all<{ categoryId: string }>(
+      "SELECT categoryId FROM sources WHERE id = ?",
+      [id],
+    );
+    const categoryId = sourceRows[0]?.categoryId;
+    if (categoryId) {
+      const articleRows = await tx.all<{ id: string; payload: string }>(
+        "SELECT id, payload FROM knowledgeBaseArticles WHERE subjectId = ? AND payload LIKE ?",
+        [categoryId, `%${id}%`],
+      );
+      const articleBatches: SqlBindValue[][] = [];
+      for (const row of articleRows) {
+        try {
+          const article = JSON.parse(row.payload) as KnowledgeBaseArticle;
+          const cleaned = cleanArticleSourceRefs(article, id);
+          if (cleaned) {
+            articleBatches.push([JSON.stringify(cleaned), row.id]);
+          }
+        } catch (err) {
+          logger.warn(
+            "[sources-repo] article re-encode failed while clearing source refs",
+            { id: row.id, err },
+          );
+        }
+      }
+      if (articleBatches.length > 0) {
+        await tx.runMany(
+          "UPDATE knowledgeBaseArticles SET payload = ? WHERE id = ?",
+          articleBatches,
+        );
+        articlesChanged = true;
+      }
+    }
+
     await tx.run("DELETE FROM sources WHERE id = ?", [id]);
   });
+
+  if (articlesChanged) notifyKnowledgeBaseChanged();
 
   return clearedIds;
 }

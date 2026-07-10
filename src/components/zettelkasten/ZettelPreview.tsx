@@ -199,7 +199,7 @@ export default function ZettelPreview({
         onClick={handleClick}
       >
         {useDocPath ? (
-          <ContentRenderer doc={doc} categoryId={categoryId} onWikiLinkClick={onWikiLink} />
+          <ContentRenderer doc={doc} categoryId={categoryId} onWikiLinkClick={onWikiLink} onOpenSource={onSourceClick} />
         ) : (
           <>
             {segments.length === 0 && (

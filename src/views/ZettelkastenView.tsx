@@ -13,11 +13,16 @@ import { useExplorerCollapsed } from "@/hooks/zettelkasten/useExplorerCollapsed"
 import { useArticleDraft } from "@/hooks/zettelkasten/useArticleDraft";
 import { useArticleIndex } from "@/hooks/zettelkasten/useArticleIndex";
 import { useArticleMutations } from "@/hooks/zettelkasten/useArticleMutations";
+import { useKnowledgeBaseMutations } from "@/hooks/zettelkasten/useKnowledgeBaseMutations";
 import { type Source } from "@/domains/sources/sources-storage";
 import { useCategorySources } from "@/hooks/useCategorySources";
 import type { Card } from "@/lib/spaced-repetition";
 import { useEndangeredArticleIds } from "@/hooks/card/useCardsQuery";
 import { cardRepository } from "@/lib/repositories";
+import { useCardOnlyActions } from "@/hooks/cards/useActions";
+import { buildEssayCardFromArticleSelection } from "@/lib/source-reader/build-essay-from-article";
+import type { SelectionPayload } from "@/lib/source-reader/selection-payload";
+import { logger } from "@/lib/logger";
 import { setEditingCardId } from "@/store/useUIStore";
 import { setEditReturn } from "@/lib/edit-return";
 import { Button } from "@/components/ui/button";
@@ -33,6 +38,7 @@ import ZettelEditor from "@/components/zettelkasten/ZettelEditor";
 import ZettelPreview from "@/components/zettelkasten/ZettelPreview";
 import BacklinksPanel from "@/components/zettelkasten/BacklinksPanel";
 import LinkedCardsPanel from "@/components/zettelkasten/LinkedCardsPanel";
+import LinkedProvisionsPanel from "@/components/zettelkasten/LinkedProvisionsPanel";
 import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
 import SourceSidePanel from "@/components/zettelkasten/SourceSidePanel";
 import ZettelExplorerPanel from "@/components/zettelkasten/ZettelExplorerPanel";
@@ -83,6 +89,27 @@ function ZettelkastenViewImpl() {
   const { open: openArticle } = mutations;
 
   const navigate = useNavigate();
+  const { addCard } = useCardOnlyActions();
+
+  // Faza 2: memorize a selection from the article as a NEW essay card linked to
+  // the article, then open CardForm so the taxonomy (sub/chapter) is set manually.
+  const handleMemorizeSelection = useCallback(
+    async (payload: SelectionPayload) => {
+      if (!activeArticle || !categoryId) return;
+      try {
+        const draft = buildEssayCardFromArticleSelection(payload, activeArticle.subjectId);
+        const card = await addCard(draft.question, draft.sections, draft.categoryId);
+        await cardRepository.linkCardsToArticle([card.id], activeArticle.id);
+        setEditingCardId(card.id);
+        setEditReturn({ path: `/subject/${categoryId}/zettelkasten?open=${activeArticle.id}` });
+        navigate("/edit");
+      } catch (err) {
+        logger.error("[ZettelkastenView] memorize selection failed", err);
+        toast.error("Kreiranje kartice nije uspjelo", { description: "Pokušajte ponovo." });
+      }
+    },
+    [activeArticle, categoryId, addCard, navigate],
+  );
 
   // Open a linked card for editing, returning to this article afterwards.
   const handleOpenCard = useCallback(
@@ -116,6 +143,17 @@ function ZettelkastenViewImpl() {
     await cardRepository.linkCardToArticle(cardId, undefined);
     toast.success("Veza s pojmom uklonjena.");
   }, []);
+
+  const { save: saveArticleMutation } = useKnowledgeBaseMutations();
+  const handleUnlinkProvision = useCallback(async (provisionId: string) => {
+    if (!activeArticle) return;
+    const updated = {
+      ...activeArticle,
+      linkedProvisions: (activeArticle.linkedProvisions ?? []).filter((p) => p.id !== provisionId),
+    };
+    await saveArticleMutation.mutateAsync(updated);
+    toast.success("Veza sa propisom uklonjena.");
+  }, [activeArticle, saveArticleMutation]);
 
   const endangeredArticleIds = useEndangeredArticleIds(categoryId);
 
@@ -342,6 +380,7 @@ function ZettelkastenViewImpl() {
                     onChangeDoc={(doc) => draftApi.updateDraftDoc(doc)}
                     onInsertMindMap={() => setMmPickerOpen(true)}
                     categoryId={categoryId}
+                    onMemorizeSelection={handleMemorizeSelection}
                   />
                 ) : (
                   <ZettelPreview
@@ -372,6 +411,14 @@ function ZettelkastenViewImpl() {
                   onOpenCard={handleOpenCard}
                   onLink={(ids) => void handleLinkCards(ids, activeArticle.id)}
                   onUnlink={(id) => void handleUnlinkCard(id)}
+                />
+              )}
+              {!isEditing && (
+                <LinkedProvisionsPanel
+                  linkedProvisions={activeArticle.linkedProvisions ?? []}
+                  sources={sources}
+                  onOpenSource={(sid) => setReadingSourceId(sid)}
+                  onUnlink={(id) => void handleUnlinkProvision(id)}
                 />
               )}
             </div>

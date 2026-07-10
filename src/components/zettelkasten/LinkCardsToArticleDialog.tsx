@@ -166,5 +166,3 @@ export function LinkCardsToArticleDialog({
     </Dialog>
   );
 }
-
-export default LinkCardsToArticleDialog;
