@@ -4,7 +4,7 @@ import type { Card } from "./types";
 import { SectionState } from "./types";
 
 /** Earliest non-New section nextReview for a card, or Infinity. */
-export function getCardMinNonNewNextReview(card: Card): number {
+function getCardMinNonNewNextReview(card: Card): number {
   let min = Infinity;
   for (const s of card.sections) {
     if (s.state !== SectionState.New && s.nextReview < min) {
@@ -15,7 +15,7 @@ export function getCardMinNonNewNextReview(card: Card): number {
 }
 
 /** True when any non-New section has nextReview <= now. */
-export function isCardScheduleDue(card: Card, now: number = Date.now()): boolean {
+function isCardScheduleDue(card: Card, now: number = Date.now()): boolean {
   return getCardMinNonNewNextReview(card) <= now;
 }
 

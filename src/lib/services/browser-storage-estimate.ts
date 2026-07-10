@@ -14,6 +14,3 @@ export async function getBrowserStorageEstimate(): Promise<StorageUsageEstimate>
   }
   return { usedBytes: 0, maxBytes: 0, percent: 0 };
 }
-
-/** @deprecated Use `getBrowserStorageEstimate`. Kept for migration from `@/lib/storage`. */
-export const getStorageUsage = getBrowserStorageEstimate;

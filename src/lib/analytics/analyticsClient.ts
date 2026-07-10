@@ -94,8 +94,3 @@ export const analyticsClient = {
     );
   },
 };
-
-/** @deprecated TD-ARCH-9 — worker removed; kept for test teardown compatibility. */
-export function __terminateAnalyticsWorker(): void {
-  /* noop */
-}

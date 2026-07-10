@@ -10,7 +10,6 @@
 export type {
   MnemonicStatus,
   HookType,
-  HookMode,
   MnemonicSection,
   MnemonicCard,
   MnemonicTestLogEntry,
@@ -45,13 +44,8 @@ export {
   migrateMnemonicCard,
 } from "./storage/mnemonic-section-codec";
 
-export type { LegacyMnemonicSectionPayload } from "./storage/mnemonic-section-codec";
-
 // ─── Analytics ──────────────────────────────────────────────────────────
 export {
   calcWeakHooks,
   type WeakHook,
-  type WeakHookMnemonicInput,
-  type WeakHookLatencyInput,
-  type CalcWeakHooksResult,
 } from "./analytics/weak-hooks";

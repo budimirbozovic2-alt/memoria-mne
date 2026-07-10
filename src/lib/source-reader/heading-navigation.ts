@@ -8,8 +8,8 @@ import { docToHtml, type EditorDoc } from "@/lib/editor-v4";
 
 export type SourceOutlineEntry = Source["outline"][number];
 
-export const SOURCE_HEADING_SELECTOR = "h1, h2, h3, h4";
-export const SOURCE_CONTENT_ROOT = ".source-content-host .ProseMirror";
+const SOURCE_HEADING_SELECTOR = "h1, h2, h3, h4";
+const SOURCE_CONTENT_ROOT = ".source-content-host .ProseMirror";
 
 export function headingIdForIndex(index: number): string {
   return `src-heading-${index}`;

@@ -66,3 +66,4 @@ export async function boot(signal: AbortSignal): Promise<void> {
 
 /** @deprecated Use `boot`. */
 export const runBootDag = boot;
+

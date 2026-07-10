@@ -101,7 +101,6 @@ export {
   getMindMap,
   listAllMindMaps,
   countAllMindMaps,
-  listMindMapsByCategory,
   putMindMap,
   deleteMindMap,
 } from "./mind-maps";

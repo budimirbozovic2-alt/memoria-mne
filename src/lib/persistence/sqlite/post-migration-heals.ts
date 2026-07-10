@@ -28,7 +28,7 @@ export interface PostMigrationHealContext {
   toVersion: number;
 }
 
-export interface PostMigrationHealStepReport {
+interface PostMigrationHealStepReport {
   name: string;
   minVersion: number;
   skipped: boolean;

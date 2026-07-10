@@ -34,4 +34,4 @@ export function useSrSettings(): SRSettings {
   return data ?? DEFAULT_SR_SETTINGS;
 }
 
-export { updateSrSettings, REVIEW_LOG_BOOT_DAYS };
+export { updateSrSettings };

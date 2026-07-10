@@ -48,7 +48,7 @@ export function scopesForRefs(refs: readonly CardScopeRef[]): CardsChangedScope[
   return scopes;
 }
 
-export function scopesForTransition(
+function scopesForTransition(
   before: CardScopeRef,
   after: CardScopeRef,
 ): CardsChangedScope[] {

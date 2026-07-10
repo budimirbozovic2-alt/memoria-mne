@@ -28,8 +28,6 @@ export interface WizardModuleEdit {
   skipped: boolean;
 }
 
-export type WizardMode = "separate" | "combined";
-
 /** Sane default override for a freshly detected module. */
 export function defaultEdit(mod: SelectionModule): WizardModuleEdit {
   return { question: mod.title, tags: [], skipped: false };

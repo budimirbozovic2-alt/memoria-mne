@@ -7,7 +7,7 @@ export const ENDANGERED_CONCEPT_LABEL = "Ugrožen koncept / Sadrži bube";
 export const ENDANGERED_CONCEPT_SHORT = "Ugrožen";
 
 /** Mastery level 5 — hidden when essay is flagged endangered. */
-export const MASTERED_MASTERY_LEVEL = 5;
+const MASTERED_MASTERY_LEVEL = 5;
 
 export const MASTERED_ENDANGERED_TOOLTIP =
   "Esej je FSRS savladan, ali blic sateliti imaju rupe.";

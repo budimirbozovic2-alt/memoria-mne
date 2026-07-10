@@ -155,7 +155,7 @@ export function buildCatchupItems(args: BuildArgs): DueItem[] {
 }
 
 /** All consolidation items across modes (unique by section id). */
-export function collectConsolidationItems(args: BuildArgs): DueItem[] {
+function collectConsolidationItems(args: BuildArgs): DueItem[] {
   const seen = new Set<string>();
   const out: DueItem[] = [];
   const builders = [

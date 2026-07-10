@@ -43,7 +43,7 @@ export function useAppDataReady(): boolean {
   return bootState.type === "ready" && cardsHydrated && categoriesHydrated;
 }
 
-export function useCardsHydrated(): boolean {
+function useCardsHydrated(): boolean {
   return useSyncExternalStore(subscribeCardsHydrated, getCardsHydrated, getCardsHydrated);
 }
 

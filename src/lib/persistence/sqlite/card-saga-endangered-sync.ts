@@ -13,7 +13,7 @@ import {
   decodeCard,
 } from "./row-codecs";
 
-export type EndangeredSyncAction = "marked" | "stabilized";
+type EndangeredSyncAction = "marked" | "stabilized";
 
 export interface ParentEndangeredSyncResult {
   /** Essay card id when its `isEndangered` column changed. */

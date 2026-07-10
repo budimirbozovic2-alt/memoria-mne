@@ -56,7 +56,7 @@ export interface WriteScope {
   reviewLog?: boolean;
 }
 
-export type SatelliteSyncMode =
+type SatelliteSyncMode =
   | "import"
   | "reset-progress"
   | "category-delete"
@@ -250,4 +250,3 @@ export async function abortWriteSession(
 }
 
 export { syncCategoryDeleteSatelliteCaches } from "./category-delete-satellites";
-export type { CategoryDeleteSatelliteOptions } from "./category-delete-satellites";

@@ -5,9 +5,7 @@
 // ── Granular card selectors (TanStack-backed, single SSOT) ─────────────────
 export {
   useCardsByCategory,
-  useCardsByCategoryWithStatus,
   useCardCountsByCategoryMap,
-  useCardById,
   useCardByIdWithStatus,
   useCardsBySource,
 } from "./useCardSelectors";

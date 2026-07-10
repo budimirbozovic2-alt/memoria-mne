@@ -24,7 +24,6 @@ import {
   cardCountByCategory,
   countAllCards,
   getDueCardsFromDb,
-  countDueCardsFromDb,
   countDueCardsByCategoryFromDb,
   avgMasteryScoreByCategoryFromDb,
   masteryDistributionByCategoryFromDb,
@@ -121,15 +120,6 @@ export function useCardsByCategory(
   return data ?? EMPTY;
 }
 
-/** Status-aware variant for Skeleton loading indicators. */
-export function useCardsByCategoryWithStatus(
-  categoryId: string | undefined,
-): { cards: readonly Card[]; isLoading: boolean; isFetching: boolean } {
-  const { data, isLoading, isFetching } = 
-    useCardsByCategoryQuery(categoryId);
-  return { cards: data ?? EMPTY, isLoading, isFetching };
-}
-
 /**
  * Cards linked to a Zettelkasten article (concept link). Derived from the
  * subject's category cache so it rides on existing invalidation — link/unlink
@@ -172,11 +162,6 @@ export function useCardsBySource(
   return data ?? EMPTY;
 }
 
-export function useCardById(id: string | undefined | null): Card | null {
-  const { data } = useCardByIdQuery(id);
-  return data ?? null;
-}
-
 /** Status-aware variant — avoids treating in-flight fetches as "card missing". */
 export function useCardByIdWithStatus(
   id: string | undefined | null,
@@ -217,16 +202,6 @@ export function useDueCards(limit?: number): readonly Card[] {
     staleTime: Infinity,
   });
   return data ?? EMPTY;
-}
-
-/** SQL COUNT of due cards for dashboard badges. */
-export function useDueCardCount(): number {
-  const { data } = useQuery({
-    queryKey: queryKeys.cards.countDue(),
-    queryFn: () => countDueCardsFromDb(),
-    staleTime: Infinity,
-  });
-  return data ?? 0;
 }
 
 /**

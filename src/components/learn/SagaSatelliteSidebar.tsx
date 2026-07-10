@@ -3,7 +3,7 @@ import React from "react";
 import { Card } from "@/lib/spaced-repetition";
 import { cn } from "@/lib/utils";
 
-export type SagaSidebarMode = "minimized" | "active";
+type SagaSidebarMode = "minimized" | "active";
 
 interface Props {
   satellites: Card[];
