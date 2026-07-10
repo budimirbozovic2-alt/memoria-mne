@@ -41,16 +41,6 @@ export const KNOWLEDGE_PROFILE_PRESETS: Record<
   conceptual: { targetRetention: 0.88, leechThreshold: 5 },
 };
 
-export const KNOWLEDGE_PROFILE_LABELS: Record<KnowledgeProfile, string> = {
-  memory: "Memorijski",
-  conceptual: "Konceptualni",
-};
-
-export const KNOWLEDGE_PROFILE_HINTS: Record<KnowledgeProfile, string> = {
-  memory: "Više ponavljanja, kraći intervali — fakti, definicije, liste.",
-  conceptual: "Duži intervali, fokus na razumijevanje i eseje.",
-};
-
 // In-memory cache: categoryId → settings. Populated at boot from SQLite `kv`.
 const _cache: Map<string, SubjectSettings> = new Map();
 let _initialized = false;
