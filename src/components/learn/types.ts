@@ -5,7 +5,7 @@ import type { CategoryRecord } from "@/lib/db-types";
 
 export type { LearnCardProgress };
 
-export type SortMode = "order" | "weakest" | "leastRead";
+type SortMode = "order" | "weakest" | "leastRead";
 export type VW = "compact" | "normal" | "wide" | "full";
 export type ViewWidth = VW;
 
@@ -43,6 +43,7 @@ export interface InitialFilters {
   mode: "strict-recall";
   categoryId: string | null;
   subcategoryId: string | null;
+  chapterId: string | null;
   type: "all" | "essay" | "flash";
   frequencyTag: "all" | FrequencyTag;
   sortMode: "order" | "weakest";

@@ -7,7 +7,8 @@ import SettingsLegacyRedirect from "@/components/settings/SettingsLegacyRedirect
 import SettingsShell from "@/components/settings/SettingsShell";
 import SettingsLearningView from "@/components/settings/SettingsLearningView";
 import SettingsAppView from "@/components/settings/SettingsAppView";
-import SettingsDataView from "@/components/settings/SettingsDataView";
+import SettingsSubjectsView from "@/components/settings/SettingsSubjectsView";
+import SettingsSystemView from "@/components/settings/SettingsSystemView";
 
 export default function SettingsPage() {
   const { srSettings } = useReviewData();
@@ -23,7 +24,9 @@ export default function SettingsPage() {
             <Route index element={<Navigate to="/settings/learning" replace />} />
             <Route path="learning" element={<SettingsLearningView />} />
             <Route path="app/*" element={<SettingsAppView />} />
-            <Route path="data" element={<SettingsDataView />} />
+            <Route path="subjects" element={<SettingsSubjectsView />} />
+            <Route path="system" element={<SettingsSystemView />} />
+            <Route path="data" element={<Navigate to="/settings/subjects" replace />} />
             <Route path="*" element={<Navigate to="/settings/learning" replace />} />
           </Routes>
         </SettingsShell>

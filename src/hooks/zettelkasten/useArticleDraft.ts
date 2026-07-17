@@ -21,6 +21,7 @@ import { normalizeAliasList } from "@/lib/zettelkasten-aliases";
 import { normalizeTagList } from "@/lib/zettelkasten-tags";
 import { sameStringSet } from "@/lib/struct-eq";
 import { backlinkIndex } from "@/lib/backlink-index";
+import { cardRepository } from "@/lib/repositories";
 import type { ZettelEditorHandle } from "@/components/zettelkasten/ZettelEditor";
 import { usePersistedDraftMirror } from "@/hooks/usePersistedDraftMirror";
 import { type EditorDoc } from "@/lib/editor-v4";
@@ -118,9 +119,10 @@ export function useArticleDraft({ activeId, categoryId }: Input): ArticleDraftAp
     const markdownDerived = deriveMarkdown(currentDraft.contentDoc);
     const freshMarkdown = deriveMarkdown(fresh.contentDoc);
 
+    const bodyChanged = markdownDerived !== freshMarkdown;
     const dirty =
       titleClean !== fresh.title ||
-      markdownDerived !== freshMarkdown ||
+      bodyChanged ||
       !sameStringSet(currentDraft.linkedSourceIds, fresh.linkedSourceIds ?? []) ||
       !sameStringSet(tagsClean, fresh.tags ?? []) ||
       !sameStringSet(aliasesClean, fresh.aliases ?? []);
@@ -144,6 +146,12 @@ export function useArticleDraft({ activeId, categoryId }: Input): ArticleDraftAp
     }
     if (categoryId) {
       backlinkIndex.upsertArticle(categoryId, next);
+    }
+    // Faza 3 drift: the article's content changed → flag linked cards "za pregled".
+    if (bodyChanged) {
+      void cardRepository
+        .markNeedsReviewByArticle(activeId)
+        .catch((err) => logger.error("[zettelkasten] drift flag failed", err));
     }
     return next;
   }, [activeId, categoryId]);

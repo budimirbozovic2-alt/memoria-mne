@@ -58,20 +58,6 @@ export async function countAllMindMaps(): Promise<number> {
   return Number(rows[0]?.n ?? 0);
 }
 
-export async function listMindMapsByCategory(
-  categoryId: string
-): Promise<MindMapDoc[]> {
-  const exec = await requireSqlExecutor("mindMaps:listMindMapsByCategory");
-  const rows = await exec.all<{ payload: string }>(
-    "SELECT payload FROM mindMaps WHERE categoryId = ? " +
-    "ORDER BY updatedAt DESC",
-    [categoryId],
-  );
-  return rows
-    .map(decodeMindMap)
-    .filter((d): d is MindMapDoc => d !== null);
-}
-
 // ─── Write API ──────────────────────────────────────────────────
 
 export async function putMindMap(doc: MindMapDoc): Promise<void> {

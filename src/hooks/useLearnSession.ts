@@ -26,7 +26,7 @@ export function useLearnSession({
   const { trackSection, resetSession, recordAfterSession } = useSessionDiscipline();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(restoreSnapshot?.selectedCategory ?? initialFilters?.categoryId ?? null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(restoreSnapshot?.selectedSubcategory ?? initialFilters?.subcategoryId ?? null);
-  const [selectedChapter, setSelectedChapter] = useState<string | null>(restoreSnapshot?.selectedChapter ?? null);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(restoreSnapshot?.selectedChapter ?? initialFilters?.chapterId ?? null);
   const [sortMode, setSortMode] = useState<"order" | "weakest" | "leastRead">(restoreSnapshot?.sortMode ?? initialFilters?.sortMode ?? "order");
   const [filterType, setFilterType] = useState<"all" | "essay" | "flash">(restoreSnapshot?.filterType ?? initialFilters?.type ?? "all");
   const [frequencyFilter, setFrequencyFilter] = useState<"all" | FrequencyTag>(restoreSnapshot?.frequencyFilter ?? initialFilters?.frequencyTag ?? "all");

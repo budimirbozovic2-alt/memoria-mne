@@ -1,6 +1,5 @@
 import { Suspense, lazy } from "react";
 import SessionComplete from "./learn/SessionComplete";
-import FilterSetup from "./learn/FilterSetup";
 import EmptyState from "@/components/EmptyState";
 import { SessionCardSkeleton } from "@/components/ui/loading";
 import { LearnSessionProps } from "./learn/types";
@@ -11,31 +10,12 @@ const StudyModeRecall = lazy(() => import("./learn/StudyModeRecall"));
 export default function LearnSession(props: LearnSessionProps) {
   const session = useLearnSession(props);
 
+  // Learning is subject-centric strict-recall only — the session always starts
+  // immediately from the incoming filters (or a restored one). The old global
+  // filter-setup screen was removed; if somehow not started, show the skeleton
+  // rather than a picker.
   if (!session.started) {
-    return (
-      <FilterSetup
-        cards={session.cards}
-        sortedCardsCount={session.sortedCards.length}
-        categories={session.availableCategories}
-        categoryRecords={session.categoryRecords}
-        subcategories={session.subcategories}
-        selectedCategory={session.selectedCategory}
-        selectedSubcategory={session.selectedSubcategory}
-        selectedChapter={session.selectedChapter}
-        frequencyFilter={session.frequencyFilter}
-        frequencyCounts={session.frequencyCounts}
-        filterType={session.filterType}
-        sortMode={session.sortMode}
-        onSelectCategory={session.handleSelectCategory}
-        onSelectSubcategory={session.handleSelectSubcategory}
-        onSelectChapter={session.setSelectedChapter}
-        onFrequencyFilterChange={session.setFrequencyFilter}
-        onFilterTypeChange={session.setFilterType}
-        onSortModeChange={session.setSortMode}
-        onStart={session.handleStart}
-        onBack={session.onBack}
-      />
-    );
+    return <SessionCardSkeleton />;
   }
 
   if (!session.card && session.sortedCards.length === 0) {

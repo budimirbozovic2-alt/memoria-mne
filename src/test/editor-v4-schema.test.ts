@@ -62,4 +62,31 @@ describe("editor-v4 schema", () => {
     expect(html).toContain('class="legal-provision"');
     expect(html).toContain("Član 1. Tekst propisa.");
   });
+
+  // Faza 0 (zettelkasten-centric plan): copy-with-trace attributes on propis blocks.
+  it("legalProvision declares sourceId + anchor attributes", () => {
+    const attrs = schema.nodes.legalProvision.spec.attrs ?? {};
+    expect(attrs.sourceId).toBeDefined();
+    expect(attrs.anchor).toBeDefined();
+    expect(attrs.sourceId.default).toBeNull();
+    expect(attrs.anchor.default).toBeNull();
+  });
+
+  it("docToHtml round-trips the propis trace (data-source-id + data-anchor)", () => {
+    const input =
+      '<div class="legal-provision" data-source-id="src-42" data-anchor="anchor-abc"><p>Član 1.</p></div>';
+    const doc = htmlToDoc(input);
+    const html = docToHtml(doc);
+    expect(html).toContain('data-source-id="src-42"');
+    expect(html).toContain('data-anchor="anchor-abc"');
+  });
+
+  it("pre-trace legal-provision parses with null trace (backward compatible)", () => {
+    const doc = htmlToDoc('<div class="legal-provision"><p>Stari propis.</p></div>');
+    const html = docToHtml(doc);
+    // No trace attributes are emitted when absent — old notes stay unchanged.
+    expect(html).not.toContain("data-source-id");
+    expect(html).not.toContain("data-anchor");
+    expect(html).toContain('class="legal-provision"');
+  });
 });

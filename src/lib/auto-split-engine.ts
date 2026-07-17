@@ -21,7 +21,35 @@ export interface DetectedArticle {
   contentHtml: string;
   /** Plain text snippet for backlink */
   plainSnippet: string;
+  /**
+   * Full text of the nearest preceding structural heading of the caller-chosen
+   * type (see `ChapterHeadingType`), e.g. "GLAVA III — Krivična djela protiv
+   * života". Only populated when `detectArticles` is called with a
+   * `chapterHeadingType`; `null` when no such heading precedes this article.
+   */
+  chapterHeadingText?: string | null;
 }
+
+/**
+ * Which structural marker to treat as the "chapter" boundary for optional
+ * glava-assignment during propis auto-split. The user picks this per import
+ * since different laws use different terminology for the same conceptual
+ * level (some use "Glava", others "Poglavlje", etc.) — no single default
+ * would be correct for every document.
+ */
+export type ChapterHeadingType = "DIO" | "GLAVA" | "POGLAVLJE" | "ODJELJAK";
+
+// Optional ordinal prefix before the chapter keyword. Some laws number the
+// marker *before* the keyword ("1. GLAVA - OSNOVNE ODREDBE", "10a. GLAVA …")
+// instead of after it ("GLAVA I — …"). Both forms must be recognised, so the
+// keyword is allowed to be preceded by an arabic ordinal like "1." / "10a.".
+const ORDINAL_PREFIX = String.raw`(?:\d+[a-z]?\.?\s*)?`;
+const CHAPTER_HEADING_REGEX: Record<ChapterHeadingType, RegExp> = {
+  DIO: new RegExp(String.raw`^\s*${ORDINAL_PREFIX}DIO\b`, "i"),
+  GLAVA: new RegExp(String.raw`^\s*${ORDINAL_PREFIX}GLAVA\b`, "i"),
+  POGLAVLJE: new RegExp(String.raw`^\s*${ORDINAL_PREFIX}POGLAVLJE\b`, "i"),
+  ODJELJAK: new RegExp(String.raw`^\s*${ORDINAL_PREFIX}ODJELJAK\b`, "i"),
+};
 
 /** Extract first N words from text for auto-title */
 function firstWords(text: string, n = 6): string {
@@ -46,6 +74,46 @@ function isStructuralLine(text: string): boolean {
   return false;
 }
 
+/** Wrapper tags/classes whose children must be flattened before boundary
+ * detection — otherwise a multi-paragraph wrap merges "Član X" and its
+ * content into one text blob that never matches the boundary regex, and the
+ * whole article silently disappears from detection. */
+function isFlattenableWrapper(el: Element): boolean {
+  if (el.tagName === "BLOCKQUOTE") return true;
+  if (el.tagName === "DIV" && el.classList.contains("legal-provision")) return true;
+  return false;
+}
+
+interface FlattenedElement {
+  el: Element;
+  /** The wrapper element this line was pulled out of, or `null` for a
+   * genuine top-level sibling. Identity (not a boolean) matters: a line is
+   * only safe to treat as an independent title candidate for a *different*
+   * article when it is the FIRST line extracted from its wrapper — a later
+   * sibling from the same wrapper is part of a multi-paragraph group that
+   * must stay together, see `isFirstInWrapperGroup` below. */
+  wrapper: Element | null;
+}
+
+/**
+ * Recursively expand wrapper elements into their block children so a
+ * "Član X" marker nested inside one (e.g. a `legal-provision` div spanning
+ * a whole article, or a blockquote with several paragraphs) is still seen
+ * as its own line. Wrappers with no element children (raw text only) are
+ * kept as-is — there is nothing to flatten into.
+ */
+function flattenElements(elements: Element[], wrapper: Element | null = null): FlattenedElement[] {
+  const out: FlattenedElement[] = [];
+  for (const el of elements) {
+    if (isFlattenableWrapper(el) && el.children.length > 0) {
+      out.push(...flattenElements(Array.from(el.children), el));
+    } else {
+      out.push({ el, wrapper });
+    }
+  }
+  return out;
+}
+
 /**
  * Parse source HTML and detect legal articles with titles.
  *
@@ -53,10 +121,13 @@ function isStructuralLine(text: string): boolean {
  * Mode B (Articles-only): If no title found, generates one from the first
  *   5-7 words of the article's first paragraph.
  */
-export function detectArticles(html: string): DetectedArticle[] {
+export function detectArticles(
+  html: string,
+  chapterHeadingType?: ChapterHeadingType,
+): DetectedArticle[] {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
-  const elements = Array.from(doc.body.children);
+  const elements = flattenElements(Array.from(doc.body.children));
 
   interface Line {
     text: string;
@@ -64,13 +135,14 @@ export function detectArticles(html: string): DetectedArticle[] {
     isArticle: boolean;
     articleNum: string;
     isHeading: boolean;
+    wrapper: Element | null;
   }
 
   const articleRegex = /^\s*(?:Č|č)(?:lan|LANAK|L(?:AN|ANAK)?\.?)\s+(\d+[a-z]?)\.?\s*$/i;
   const headingTags = new Set(["H1", "H2", "H3"]);
 
   const lines: Line[] = [];
-  for (const el of elements) {
+  for (const { el, wrapper } of elements) {
     const text = (el.textContent || "").trim();
     const outerHtml = el.outerHTML || "";
     // Skip heading elements — they are structural, not articles
@@ -82,6 +154,34 @@ export function detectArticles(html: string): DetectedArticle[] {
       isArticle: !!match,
       articleNum: match ? match[1] : "",
       isHeading,
+      wrapper,
+    });
+  }
+
+  /**
+   * True when `lines[idx]` is safe to treat as an independent title
+   * candidate: either it never came from a wrapper, or it is the FIRST line
+   * pulled from its wrapper. A later sibling from the same wrapper is part
+   * of a multi-paragraph group that must stay with that group, not be
+   * "stolen" as some other article's title.
+   */
+  function isFirstInWrapperGroup(idx: number): boolean {
+    const w = lines[idx].wrapper;
+    if (!w) return true;
+    return idx === 0 || lines[idx - 1].wrapper !== w;
+  }
+
+  // For each line, the nearest preceding (or current) structural heading of
+  // the chosen type — e.g. every line from "GLAVA III — ..." onward maps to
+  // that same text until the next "GLAVA" line replaces it. A single forward
+  // sweep keeps this in sync with `lines` regardless of article boundaries.
+  let chapterHeadingAtLine: (string | null)[] | null = null;
+  if (chapterHeadingType) {
+    const regex = CHAPTER_HEADING_REGEX[chapterHeadingType];
+    let current: string | null = null;
+    chapterHeadingAtLine = lines.map((line) => {
+      if (regex.test(line.text)) current = line.text;
+      return current;
     });
   }
 
@@ -97,7 +197,7 @@ export function detectArticles(html: string): DetectedArticle[] {
     let autoTitle = false;
     if (i > 0) {
       const candidate = lines[i - 1];
-      if (candidate.text && !candidate.isArticle) {
+      if (candidate.text && !candidate.isArticle && isFirstInWrapperGroup(i - 1)) {
         // Only treat as title if:
         // 1. It's directly above (no other article between)
         // 2. It looks like a heading (short, ≤80 chars) not a content paragraph
@@ -137,12 +237,18 @@ export function detectArticles(html: string): DetectedArticle[] {
           }
         }
         // If there are ≥2 content lines and the last one looks like a title
-        // (the next article will pick it up via backward scan), exclude it
+        // (the next article will pick it up via backward scan), exclude it —
+        // but only when that line is safe to stand alone as a title (see
+        // `isFirstInWrapperGroup`). Flattening a legal-provision/blockquote
+        // wrap can make its last paragraph *look* like the last of several
+        // "content lines" before the next article, but stealing it would
+        // silently move a sentence from this article's content into the
+        // next article's title.
         if (contentLinesBetween.length >= 2) {
           const lastContentIdx = contentLinesBetween[contentLinesBetween.length - 1];
-          // Check if this last line is actually used as title by next article
-          // by verifying it's directly adjacent (no other articles between)
-          nextBoundary = lastContentIdx;
+          if (isFirstInWrapperGroup(lastContentIdx)) {
+            nextBoundary = lastContentIdx;
+          }
         }
         break;
       }
@@ -174,6 +280,7 @@ export function detectArticles(html: string): DetectedArticle[] {
       essayName,
       contentHtml,
       plainSnippet,
+      chapterHeadingText: chapterHeadingAtLine ? chapterHeadingAtLine[i] : undefined,
     });
   }
 

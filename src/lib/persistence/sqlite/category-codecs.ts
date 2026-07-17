@@ -87,7 +87,7 @@ interface ChapterRow {
   sortOrder: number;
 }
 
-export function assembleCategoryRecords(
+function assembleCategoryRecords(
   catRows: readonly CategoryRow[],
   subRows: readonly SubcategoryRow[],
   chapterRows: readonly ChapterRow[],

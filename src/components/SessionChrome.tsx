@@ -4,7 +4,7 @@ import { useI18n } from "@/i18n";
 import { m } from "@/lib/motion";
 import ShortcutsHint from "@/components/ShortcutsHint";
 
-export interface SessionChromeShortcut {
+interface SessionChromeShortcut {
   keys: string;
   description: string;
 }

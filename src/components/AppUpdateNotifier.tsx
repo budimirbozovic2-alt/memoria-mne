@@ -39,7 +39,7 @@ export default function AppUpdateNotifier() {
           },
           cancel: {
             label: "Podešavanja",
-            onClick: () => navigate("/settings/data"),
+            onClick: () => navigate("/settings/system"),
           },
         });
       }

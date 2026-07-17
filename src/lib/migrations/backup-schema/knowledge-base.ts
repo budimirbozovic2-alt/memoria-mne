@@ -1,6 +1,16 @@
 import { z } from "zod";
-import type { KnowledgeBaseArticle } from "@/lib/db-types";
-import { SafeHtml, SafeText, NumberWithDefault, StringArray, EditorDocV4 } from "./helpers";
+import type { KnowledgeBaseArticle, LinkedProvision } from "@/lib/db-types";
+import { SafeHtml, SafeText, NumberWithDefault, StringArray, EditorDocV4, lenientArray } from "./helpers";
+
+const LinkedProvisionSchema = z
+  .object({
+    id: z.string(),
+    sourceId: z.string(),
+    anchor: SafeText,
+    label: SafeText,
+    createdAt: NumberWithDefault(Date.now()),
+  })
+  .transform((p): LinkedProvision => p);
 
 export const BackupKnowledgeBaseArticleSchema = z
   .object({
@@ -9,6 +19,7 @@ export const BackupKnowledgeBaseArticleSchema = z
     title: SafeHtml,
     contentDoc: EditorDocV4,
     linkedSourceIds: StringArray,
+    linkedProvisions: lenientArray(LinkedProvisionSchema, "knowledgeBaseArticle.linkedProvisions"),
     rootSubcategoryId: z.unknown().optional(),
     isIndex: z.unknown().optional().transform((v) => (v === true ? true : undefined)),
     tags: StringArray,
@@ -23,6 +34,7 @@ export const BackupKnowledgeBaseArticleSchema = z
     title: a.title,
     contentDoc: a.contentDoc,
     linkedSourceIds: a.linkedSourceIds,
+    linkedProvisions: a.linkedProvisions.length > 0 ? a.linkedProvisions : undefined,
     rootSubcategoryId: typeof a.rootSubcategoryId === "string" ? a.rootSubcategoryId : undefined,
     isIndex: a.isIndex,
     tags: a.tags,

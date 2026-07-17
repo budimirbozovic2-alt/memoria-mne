@@ -79,6 +79,9 @@ interface SourceReaderState {
   linkSelectedText: string;
   linkSelectedHtml: string;
   linkSelectedDoc: EditorDoc | null;
+  provisionLinkModalOpen: boolean;
+  provisionLinkSelectedText: string;
+  provisionLinkSelectedHtml: string;
   examQuestions: ExamQuestion[];
 
   // Actions
@@ -102,6 +105,9 @@ interface SourceReaderState {
   setLinkSelectedText: (v: string) => void;
   setLinkSelectedHtml: (v: string) => void;
   setLinkSelectedDoc: (v: EditorDoc | null) => void;
+  setProvisionLinkModalOpen: (v: boolean) => void;
+  setProvisionLinkSelectedText: (v: string) => void;
+  setProvisionLinkSelectedHtml: (v: string) => void;
   setExamQuestions: (v: ExamQuestion[] | ((prev: ExamQuestion[]) => ExamQuestion[])) => void;
   setWizardSubcategoryId: (v: string) => void;
   setWizardChapterId: (v: string) => void;
@@ -151,6 +157,9 @@ const initialState = {
   linkSelectedText: "",
   linkSelectedHtml: "",
   linkSelectedDoc: null as EditorDoc | null,
+  provisionLinkModalOpen: false,
+  provisionLinkSelectedText: "",
+  provisionLinkSelectedHtml: "",
   examQuestions: [] as ExamQuestion[],
   wizardSubcategoryId: "",
   wizardChapterId: "",
@@ -209,6 +218,9 @@ export const useSourceReaderStore = create<SourceReaderState>((set, get) => ({
   setLinkSelectedText: (v) => set({ linkSelectedText: v }),
   setLinkSelectedHtml: (v) => set({ linkSelectedHtml: v }),
   setLinkSelectedDoc: (v) => set({ linkSelectedDoc: v }),
+  setProvisionLinkModalOpen: (v) => set({ provisionLinkModalOpen: v }),
+  setProvisionLinkSelectedText: (v) => set({ provisionLinkSelectedText: v }),
+  setProvisionLinkSelectedHtml: (v) => set({ provisionLinkSelectedHtml: v }),
   setExamQuestions: (v) => {
     if (typeof v === "function") {
       set({ examQuestions: v(get().examQuestions) });

@@ -27,8 +27,8 @@ import {
 } from "@/lib/persistence/sqlite/category-codecs";
 
 import { requireSqlExecutor } from "./_shared/require-sql-executor";
-import { emitDomainChanged, onDomainChanged } from "@/lib/event-bus";
-import type { CategoriesChangedScope } from "@/lib/event-bus-types";
+import type { CategoriesChangedScope } from "@/lib/query/cache-scope-types";
+import { invalidateCategoriesCache } from "@/lib/query/categories-invalidation";
 
 
 
@@ -78,7 +78,17 @@ export async function countCategories(): Promise<number> {
 
  * Replace all categories atomically (bootstrap, restore, commit).
 
- * FK CASCADE wipes subcategories + chapters when categories are deleted.
+ *
+
+ * Subcategories + chapters are rebuilt wholesale — cards do NOT reference them
+
+ * via FK, so deleting them is safe. Category ROWS, however, are the cascade
+
+ * parent of `cards` (`cards.categoryId ON DELETE CASCADE`): deleting a live
+
+ * category row wipes all its cards. So we never `DELETE FROM categories`
+
+ * wholesale — we upsert survivors and delete only genuinely-removed rows.
 
  */
 
@@ -90,13 +100,27 @@ export async function replaceAllCategories(
 
   const exec = await requireSqlExecutor("categories:replaceAll");
 
+  const keepIds = new Set(records.map((c) => c.id));
+
   await exec.transaction(async (tx) => {
 
     await tx.run("DELETE FROM chapters");
 
     await tx.run("DELETE FROM subcategories");
 
-    await tx.run("DELETE FROM categories");
+    // Drop only categories that are gone (their cards intentionally cascade).
+
+    const existing = await tx.all<{ id: string }>("SELECT id FROM categories");
+
+    for (const row of existing) {
+
+      if (!keepIds.has(row.id)) {
+
+        await tx.run("DELETE FROM categories WHERE id = ?", [row.id]);
+
+      }
+
+    }
 
     if (records.length > 0) {
 
@@ -182,22 +206,14 @@ export async function clearCategories(): Promise<void> {
 
 }
 
-// ── Cache invalidation hook for TanStack bridges ─────────────────
+// ── Cache invalidation ───────────────────────────────────────────
 
 export type CategoriesScope = CategoriesChangedScope;
 
-export function onCategoriesChanged(
-  fn: (scope: CategoriesScope) => void,
-): () => void {
-  return onDomainChanged((p) => {
-    if (p.domain === "categories") fn(p.scope);
-  });
-}
-
 export function notifyCategoriesChanged(
-  scope: CategoriesScope = { kind: "all" },
+  _scope: CategoriesScope = { kind: "all" },
 ): void {
-  emitDomainChanged({ domain: "categories", scope });
+  invalidateCategoriesCache();
 }
 
 

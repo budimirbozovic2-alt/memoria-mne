@@ -1,4 +1,5 @@
 import { memo, useMemo, Fragment, type ReactNode } from "react";
+import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EditorDoc, JSONContent } from "@/lib/editor-v4";
 import { logger } from "@/lib/logger";
@@ -24,6 +25,8 @@ interface Props {
   onMindmapClick?: (mindmapId: string) => void;
   /** When set, `mindmapEmbed` nodes render live previews instead of placeholders. */
   categoryId?: string;
+  /** When set, propis (`legalProvision`) blocks with a `sourceId` show a "verify against source" button. */
+  onOpenSource?: (sourceId: string) => void;
 }
 
 type Mark = NonNullable<JSONContent["marks"]>[number];
@@ -83,6 +86,7 @@ interface RenderCtx {
   onWikiLinkClick?: (target: string) => void;
   onMindmapClick?: (mindmapId: string) => void;
   categoryId?: string;
+  onOpenSource?: (sourceId: string) => void;
 }
 
 function renderChildren(
@@ -118,18 +122,32 @@ function renderNode(node: JSONContent, key: string, ctx: RenderCtx): ReactNode {
       return <li key={key}>{renderChildren(node.content, key, ctx)}</li>;
     case "blockquote":
       return <blockquote key={key}>{renderChildren(node.content, key, ctx)}</blockquote>;
-    case "legalProvision":
+    case "legalProvision": {
+      const sourceId = node.attrs?.sourceId ? String(node.attrs.sourceId) : null;
       return (
         <div
           key={key}
           className="legal-provision relative my-4 rounded-r-md border-l-4 border-primary/50 bg-muted/40 pl-4 py-3 not-prose"
         >
-          <span className="block text-[0.65rem] font-semibold uppercase tracking-wide text-primary/70 mb-1">
-            Propis
-          </span>
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/70">
+              Propis
+            </span>
+            {ctx.onOpenSource && sourceId && (
+              <button
+                type="button"
+                onClick={() => ctx.onOpenSource?.(sourceId)}
+                className="inline-flex items-center gap-1 text-[10px] text-primary/70 hover:text-primary transition-colors"
+                title="Provjeri uz izvor"
+              >
+                <BookOpen className="h-3 w-3" /> Provjeri uz izvor
+              </button>
+            )}
+          </div>
           {renderChildren(node.content, key, ctx)}
         </div>
       );
+    }
     case "codeBlock":
       return (
         <pre key={key}>
@@ -192,14 +210,14 @@ function renderNode(node: JSONContent, key: string, ctx: RenderCtx): ReactNode {
   }
 }
 
-function AstNodeRendererImpl({ doc, className, onWikiLinkClick, onMindmapClick, categoryId }: Props) {
+function AstNodeRendererImpl({ doc, className, onWikiLinkClick, onMindmapClick, categoryId, onOpenSource }: Props) {
   const children = useMemo(() => {
     if (!doc || doc.version !== 4 || !doc.content) return null;
     const root = doc.content;
-    const ctx: RenderCtx = { onWikiLinkClick, onMindmapClick, categoryId };
+    const ctx: RenderCtx = { onWikiLinkClick, onMindmapClick, categoryId, onOpenSource };
     if (root.type === "doc") return renderChildren(root.content, "n", ctx);
     return renderNode(root, "n", ctx);
-  }, [doc, onWikiLinkClick, onMindmapClick, categoryId]);
+  }, [doc, onWikiLinkClick, onMindmapClick, categoryId, onOpenSource]);
 
   return <div className={cn(className)}>{children}</div>;
 }

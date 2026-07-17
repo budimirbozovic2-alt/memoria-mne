@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, Navigate } from "react-router-dom";
 import { useCardOnlyActions } from "@/hooks/cards/useActions";
 import { useCategoryData } from "@/hooks/cards/useCategoryState";
 import { useCardData, useReviewData } from "@/hooks/cards/useCardState";
@@ -43,6 +43,7 @@ export default function LearnPage() {
       mode: "strict-recall",
       categoryId: getParam(params, "category"),
       subcategoryId: getParam(params, "subcategory"),
+      chapterId: getParam(params, "chapter"),
       type: (type === "essay" || type === "flash") ? type : "all",
       frequencyTag: (FREQUENCY_TAGS.some(t => t.value === freq) ? (freq as FrequencyTag) : "all"),
       sortMode: sort === "weakest" ? "weakest" : "order",
@@ -97,6 +98,13 @@ export default function LearnPage() {
     stashEditReturn(card.id);
     setView("edit");
   }, [stashEditReturn, setEditingCardId, setView]);
+
+  // Subject-centric strict-recall only. The old global filter-setup learning
+  // was removed; reaching /learn without a strict-recall mode (and not resuming
+  // an in-flight session) redirects home instead of showing a global picker.
+  if (!initialFilters && !initialSnapshot?.started) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <DataReadyGate ready={ready} skeleton={<SessionSetupSkeleton />}>

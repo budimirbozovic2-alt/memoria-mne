@@ -9,10 +9,11 @@
  import { ContentRenderer } from "@/components/ui/ContentRenderer";
  import {
    ChevronDown, ChevronRight, ArrowRightLeft, Flame, Link2, BookOpen,
-   AlertTriangle, Pencil, Trash2,
+   AlertTriangle, Pencil, Trash2, Compass,
  } from "lucide-react";
  import { Checkbox } from "@/components/ui/checkbox";
  import { Badge } from "@/components/ui/badge";
+ import { isLegacyCard } from "@/lib/cards/legacy-card";
  import { Button } from "@/components/ui/button";
  import { type Card, SectionState } from "@/lib/spaced-repetition";
  import type { FrequencyTag } from "@/lib/sr/types";
@@ -169,6 +170,11 @@
              {card.needsReview && (
                <Badge className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
                  <AlertTriangle className="h-3 w-3" /> Izvor ažuriran
+               </Badge>
+             )}
+             {isLegacyCard(card) && (
+               <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground border-dashed">
+                 <Compass className="h-3 w-3" /> Van zettelkastena
                </Badge>
              )}
            </div>

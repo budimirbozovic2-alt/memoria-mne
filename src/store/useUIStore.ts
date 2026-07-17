@@ -44,10 +44,6 @@ export function setImmersiveMode(active: boolean): void {
   uiStore.setState({ immersiveMode: active });
 }
 
-export function getImmersiveMode(): boolean {
-  return uiStore.getState().immersiveMode;
-}
-
 export function setTitleBarContext(context: TitleBarContext | null): void {
   uiStore.setState({ titleBarContext: context });
 }

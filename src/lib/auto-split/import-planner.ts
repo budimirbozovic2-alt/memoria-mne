@@ -11,6 +11,7 @@ import type { EditorDoc } from "@/lib/editor-v4/types";
 import { createCard, type Card, type SourceModule } from "@/lib/spaced-repetition";
 import { createTextAnchor, type Source } from "@/domains/sources/sources-storage";
 import type { DetectedArticle } from "@/lib/auto-split-engine";
+import type { ChapterNode } from "@/lib/db-types";
 
 type ArticleStatus = "new" | "exists";
 
@@ -38,6 +39,165 @@ export interface CardUpdatePatch {
 export interface ImportPlan {
   toCreate: Card[];
   toUpdate: Array<{ id: string; patch: CardUpdatePatch }>;
+}
+
+/**
+ * Optional glava (chapter) auto-assignment for propis auto-split — see
+ * `docs` chat: user picks ONE target subcategory + which structural marker
+ * (DIO/GLAVA/POGLAVLJE/ODJELJAK) counts as the chapter boundary for this
+ * import. Only EXISTING chapters (by name) are matched; nothing is
+ * auto-created. Applies to newly created cards only — never retroactively
+ * to matched "exists" rows, so already-organized cards are not moved.
+ */
+export interface ChapterAssignment {
+  subcategoryId: string;
+  chapters: readonly ChapterNode[];
+}
+
+function normalizeForMatch(s: string): string {
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Result of matching a chapter-heading string against existing chapter
+ * names. `ambiguous` is true when the match could not be resolved with
+ * confidence — the caller should surface this to the user instead of
+ * silently guessing (or silently assigning nothing, which looks identical
+ * to "no chapter mentioned at all" and hides the real problem).
+ */
+export interface ChapterMatchResult {
+  chapter: ChapterNode | undefined;
+  ambiguous: boolean;
+}
+
+const NO_MATCH: ChapterMatchResult = { chapter: undefined, ambiguous: false };
+const AMBIGUOUS_MATCH: ChapterMatchResult = { chapter: undefined, ambiguous: true };
+
+/**
+ * Match a detected chapter-heading line against existing chapter names —
+ * substring containment (case-insensitive) so it works whether the user
+ * named the chapter with or without the "GLAVA III" prefix.
+ *
+ * Two or more chapter names can match the same heading in two different
+ * ways: (a) nested names, e.g. "Krivična djela" and "Krivična djela protiv
+ * života" — here the longer, more specific name is unambiguously the right
+ * one; (b) two unrelated chapter names that both happen to appear in one
+ * composite heading — here there is genuinely no correct single answer, so
+ * this returns `ambiguous: true` rather than picking whichever happens to
+ * come first in `chapters`.
+ */
+export function findMatchingChapter(
+  headingText: string | null | undefined,
+  chapters: readonly ChapterNode[],
+): ChapterMatchResult {
+  if (!headingText) return NO_MATCH;
+  const normalizedHeading = normalizeForMatch(headingText);
+  const matches = chapters.filter((ch) => {
+    const name = normalizeForMatch(ch.name);
+    return name.length > 0 && normalizedHeading.includes(name);
+  });
+
+  if (matches.length === 0) return NO_MATCH;
+  if (matches.length === 1) return { chapter: matches[0], ambiguous: false };
+
+  const byLongestName = [...matches].sort((a, b) => b.name.length - a.name.length);
+  const longest = byLongestName[0];
+  const longestNormalized = normalizeForMatch(longest.name);
+  const allNestedInLongest = byLongestName.every(
+    (ch) => longestNormalized.includes(normalizeForMatch(ch.name)),
+  );
+  return allNestedInLongest ? { chapter: longest, ambiguous: false } : AMBIGUOUS_MATCH;
+}
+
+/**
+ * Resolve chapter assignment for a whole row, including merged/grouped rows
+ * spanning several detected articles. A group is only assigned a chapter
+ * when every one of its articles agrees on the same chapter — a
+ * cross-chapter merge (articles from different glave combined into one
+ * card) is surfaced as ambiguous instead of silently using the first
+ * article's chapter for the whole card.
+ */
+export function findMatchingChapterForRow(
+  row: Pick<ArticleRow, "articles">,
+  chapters: readonly ChapterNode[],
+): ChapterMatchResult {
+  const perArticle = row.articles.map((art) => findMatchingChapter(art.chapterHeadingText, chapters));
+  if (perArticle.some((r) => r.ambiguous)) return AMBIGUOUS_MATCH;
+
+  const resolved = perArticle.map((r) => r.chapter).filter((c): c is ChapterNode => !!c);
+  if (resolved.length === 0) return NO_MATCH;
+
+  const distinctIds = new Set(resolved.map((c) => c.id));
+  if (distinctIds.size > 1) return AMBIGUOUS_MATCH;
+  return { chapter: resolved[0], ambiguous: false };
+}
+
+/** Sentence case: whole string lowercased, first letter capitalized. Keeps
+ * Serbian/Montenegrin diacritics + digraphs correct (Unicode lower/upper). */
+function toSentenceCase(s: string): string {
+  const lower = s.toLowerCase();
+  return lower.charAt(0).toUpperCase() + lower.slice(1);
+}
+
+/**
+ * Human-friendly chapter name derived from a raw structural heading, for glave
+ * created during auto-split. Strips the leading structural marker + its ordinal
+ * and separator ("GLAVA 1 - OPŠTE ODREDBE" or "1. GLAVA - OSNOVNE ODREDBE" →
+ * "Opšte odredbe" / "Osnovne odredbe") and renders the rest in Sentence case.
+ * If nothing remains after stripping (e.g. bare "GLAVA 1"), the whole heading
+ * is sentence-cased instead so the chapter is never left nameless.
+ *
+ * Note: matching created chapters back to headings on re-import stays correct
+ * because `findMatchingChapter` compares case-insensitively — "opšte odredbe"
+ * is still a substring of "glava 1 - opšte odredbe".
+ */
+export function chapterNameFromHeading(heading: string): string {
+  let t = heading.trim();
+  // Leading ordinal + structural keyword: "1. GLAVA", "10a. POGLAVLJE", "GLAVA".
+  t = t.replace(/^(?:\d+[a-z]?\.?\s*)?(?:DIO|GLAVA|POGLAVLJE|ODJELJAK)\b/i, "");
+  // A keyword-trailing ordinal ("GLAVA 1", "GLAVA III"), only as its own token.
+  t = t.replace(/^\s*(?:\d+[a-z]?|[IVXLCDM]+)(?=[\s\-–—:.]|$)/i, "");
+  // Leftover separators between marker and name.
+  t = t.replace(/^[\s\-–—:.]+/, "").trim();
+  return toSentenceCase(t || heading.trim());
+}
+
+/**
+ * Distinct chapter-heading texts among the SELECTED rows that do NOT already
+ * match an existing chapter — the input to the optional "create missing glave"
+ * step run just before import. Order follows first appearance so newly created
+ * chapters keep document order. A heading that matches an existing chapter
+ * (even ambiguously) is skipped: we never duplicate or overwrite, and an
+ * ambiguous heading is left for the user to resolve manually.
+ */
+export function collectMissingChapterNames(
+  rows: ReadonlyArray<ArticleRow>,
+  chapters: readonly ChapterNode[],
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const row of rows) {
+    if (!row.selected) continue;
+    for (const art of row.articles) {
+      const heading = art.chapterHeadingText?.trim();
+      if (!heading || seen.has(heading)) continue;
+      seen.add(heading);
+      const { chapter, ambiguous } = findMatchingChapter(heading, chapters);
+      if (!chapter && !ambiguous) out.push(heading);
+    }
+  }
+  return out;
+}
+
+function applyChapterAssignment(
+  card: Card,
+  row: ArticleRow,
+  assignment: ChapterAssignment | undefined,
+): void {
+  if (!assignment) return;
+  card.subcategoryId = assignment.subcategoryId;
+  const { chapter } = findMatchingChapterForRow(row, assignment.chapters);
+  if (chapter) card.chapterId = chapter.id;
 }
 
 export function buildArticleRows(
@@ -104,6 +264,7 @@ export function ungroupRow(rows: ReadonlyArray<ArticleRow>, idx: number): Articl
 export function buildImportPlan(
   rows: ReadonlyArray<ArticleRow>,
   source: Source,
+  chapterAssignment?: ChapterAssignment,
 ): ImportPlan {
   const toImport = rows.filter((r) => r.selected);
   const toCreate: Card[] = [];
@@ -136,6 +297,7 @@ export function buildImportPlan(
       card.originalSourceSnippet = combinedSnippet;
       card.childCardIds = sourceModules.map((m) => m.id);
       card.sourceModules = sourceModules;
+      applyChapterAssignment(card, row, chapterAssignment);
       toCreate.push(card);
     } else {
       const art = row.articles[0];
@@ -161,6 +323,7 @@ export function buildImportPlan(
         card.sourceId = source.id;
         card.textAnchor = anchor;
         card.originalSourceSnippet = art.plainSnippet;
+        applyChapterAssignment(card, row, chapterAssignment);
         toCreate.push(card);
       }
     }

@@ -36,13 +36,6 @@ export function cleanupSplash() {
   } catch (e) { logger.warn("[boot] splash cleanup failed", e); }
 }
 
-export function forceRemoveSplash() {
-  try {
-    const splash = document.getElementById("app-splash");
-    if (splash) splash.remove();
-  } catch (e) { logger.warn("[boot] splash cleanup failed", e); }
-}
-
 export function notifyElectronReady() {
   try {
     if (window.electronAPI?.notifyReady) {

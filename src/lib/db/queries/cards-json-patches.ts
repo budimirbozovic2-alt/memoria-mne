@@ -1,7 +1,7 @@
 /**
  * JSON-native card UPDATE statements (SQLite json_set / json_remove).
  *
- * Shared by `cardRepository` and `cards-writes` so denormalised columns
+ * Shared by `cardRepository` so denormalised columns
  * and `payload` stay in sync without a full decode/re-encode round-trip.
  */
 
@@ -39,6 +39,15 @@ export const SQL_SET_NEEDS_REVIEW = `UPDATE cards
                       '$.updatedAt', ?
                     )
   WHERE id = ?`;
+
+/** Faza 3 drift: flag every card linked to an article as "za pregled". */
+export const SQL_SET_NEEDS_REVIEW_BY_ARTICLE = `UPDATE cards
+    SET updatedAt = ?,
+        payload   = json_set(
+                      json_set(payload, '$.needsReview', json('true')),
+                      '$.updatedAt', ?
+                    )
+  WHERE linkedArticleId = ?`;
 
 export const SQL_UPDATE_CHAPTER = `UPDATE cards
     SET chapterId = ?,

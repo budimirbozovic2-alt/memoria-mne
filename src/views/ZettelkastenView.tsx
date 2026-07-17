@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { deriveMarkdown } from "@/lib/editor-v4/derived";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import {
   ArrowLeft, Plus, Trash2, FileText, Compass,
   Pencil, Check, BookMarked,
@@ -12,8 +13,18 @@ import { useExplorerCollapsed } from "@/hooks/zettelkasten/useExplorerCollapsed"
 import { useArticleDraft } from "@/hooks/zettelkasten/useArticleDraft";
 import { useArticleIndex } from "@/hooks/zettelkasten/useArticleIndex";
 import { useArticleMutations } from "@/hooks/zettelkasten/useArticleMutations";
+import { useKnowledgeBaseMutations } from "@/hooks/zettelkasten/useKnowledgeBaseMutations";
 import { type Source } from "@/domains/sources/sources-storage";
 import { useCategorySources } from "@/hooks/useCategorySources";
+import type { Card } from "@/lib/spaced-repetition";
+import { useEndangeredArticleIds } from "@/hooks/card/useCardsQuery";
+import { cardRepository } from "@/lib/repositories";
+import { useCardOnlyActions } from "@/hooks/cards/useActions";
+import { buildEssayCardFromArticleSelection } from "@/lib/source-reader/build-essay-from-article";
+import type { SelectionPayload } from "@/lib/source-reader/selection-payload";
+import { logger } from "@/lib/logger";
+import { setEditingCardId } from "@/store/useUIStore";
+import { setEditReturn } from "@/lib/edit-return";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,6 +37,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ZettelEditor from "@/components/zettelkasten/ZettelEditor";
 import ZettelPreview from "@/components/zettelkasten/ZettelPreview";
 import BacklinksPanel from "@/components/zettelkasten/BacklinksPanel";
+import LinkedCardsPanel from "@/components/zettelkasten/LinkedCardsPanel";
+import LinkedProvisionsPanel from "@/components/zettelkasten/LinkedProvisionsPanel";
 import LinkedSourcesPicker from "@/components/zettelkasten/LinkedSourcesPicker";
 import SourceSidePanel from "@/components/zettelkasten/SourceSidePanel";
 import ZettelExplorerPanel from "@/components/zettelkasten/ZettelExplorerPanel";
@@ -74,6 +87,75 @@ function ZettelkastenViewImpl() {
     indexArticleId, activeArticle, draftApi,
   });
   const { open: openArticle } = mutations;
+
+  const navigate = useNavigate();
+  const { addCard } = useCardOnlyActions();
+
+  // Faza 2: memorize a selection from the article as a NEW essay card linked to
+  // the article, then open CardForm so the taxonomy (sub/chapter) is set manually.
+  const handleMemorizeSelection = useCallback(
+    async (payload: SelectionPayload) => {
+      if (!activeArticle || !categoryId) return;
+      try {
+        const draft = buildEssayCardFromArticleSelection(payload, activeArticle.subjectId);
+        const card = await addCard(draft.question, draft.sections, draft.categoryId);
+        await cardRepository.linkCardsToArticle([card.id], activeArticle.id);
+        setEditingCardId(card.id);
+        setEditReturn({ path: `/subject/${categoryId}/zettelkasten?open=${activeArticle.id}` });
+        navigate("/edit");
+      } catch (err) {
+        logger.error("[ZettelkastenView] memorize selection failed", err);
+        toast.error("Kreiranje kartice nije uspjelo", { description: "Pokušajte ponovo." });
+      }
+    },
+    [activeArticle, categoryId, addCard, navigate],
+  );
+
+  // Open a linked card for editing, returning to this article afterwards.
+  const handleOpenCard = useCallback(
+    (card: Card) => {
+      setEditingCardId(card.id);
+      if (categoryId) {
+        const back = activeId
+          ? `/subject/${categoryId}/zettelkasten?open=${activeId}`
+          : `/subject/${categoryId}/zettelkasten`;
+        setEditReturn({ path: back });
+      }
+      navigate("/edit");
+    },
+    [navigate, categoryId, activeId],
+  );
+
+  const handleLinkCards = useCallback(
+    async (cardIds: string[], articleId: string) => {
+      if (cardIds.length === 0) return;
+      await cardRepository.linkCardsToArticle(cardIds, articleId);
+      toast.success(
+        cardIds.length === 1
+          ? "Kartica povezana s pojmom."
+          : `${cardIds.length} kartica povezano s pojmom.`,
+      );
+    },
+    [],
+  );
+
+  const handleUnlinkCard = useCallback(async (cardId: string) => {
+    await cardRepository.linkCardToArticle(cardId, undefined);
+    toast.success("Veza s pojmom uklonjena.");
+  }, []);
+
+  const { save: saveArticleMutation } = useKnowledgeBaseMutations();
+  const handleUnlinkProvision = useCallback(async (provisionId: string) => {
+    if (!activeArticle) return;
+    const updated = {
+      ...activeArticle,
+      linkedProvisions: (activeArticle.linkedProvisions ?? []).filter((p) => p.id !== provisionId),
+    };
+    await saveArticleMutation.mutateAsync(updated);
+    toast.success("Veza sa propisom uklonjena.");
+  }, [activeArticle, saveArticleMutation]);
+
+  const endangeredArticleIds = useEndangeredArticleIds(categoryId);
 
   // Auto-open article when arriving with ?open={articleId} (GlobalSearch, wiki embeds).
   useEffect(() => {
@@ -158,6 +240,7 @@ function ZettelkastenViewImpl() {
         onToggleCollapsed={toggleExplorer}
         onOpen={mutations.open}
         onCreate={() => setCreateDialogOpen(true)}
+        endangeredArticleIds={endangeredArticleIds}
       />
 
       <div className="flex-1 min-w-0 flex flex-col">
@@ -297,6 +380,7 @@ function ZettelkastenViewImpl() {
                     onChangeDoc={(doc) => draftApi.updateDraftDoc(doc)}
                     onInsertMindMap={() => setMmPickerOpen(true)}
                     categoryId={categoryId}
+                    onMemorizeSelection={handleMemorizeSelection}
                   />
                 ) : (
                   <ZettelPreview
@@ -317,7 +401,26 @@ function ZettelkastenViewImpl() {
                 activeTitle={activeArticle.title}
                 onOpen={mutations.open}
                 isEditing={isEditing}
+                endangeredArticleIds={endangeredArticleIds}
               />
+              {!isEditing && (
+                <LinkedCardsPanel
+                  subjectId={categoryId!}
+                  articleId={activeArticle.id}
+                  articleTitle={activeArticle.title}
+                  onOpenCard={handleOpenCard}
+                  onLink={(ids) => void handleLinkCards(ids, activeArticle.id)}
+                  onUnlink={(id) => void handleUnlinkCard(id)}
+                />
+              )}
+              {!isEditing && (
+                <LinkedProvisionsPanel
+                  linkedProvisions={activeArticle.linkedProvisions ?? []}
+                  sources={sources}
+                  onOpenSource={(sid) => setReadingSourceId(sid)}
+                  onUnlink={(id) => void handleUnlinkProvision(id)}
+                />
+              )}
             </div>
 
             <Sheet open={Boolean(readingSource)} onOpenChange={(open) => { if (!open) setReadingSourceId(null); }}>

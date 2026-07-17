@@ -17,12 +17,6 @@ vi.mock("@/components/review/ReviewComplete", () => ({
   default: () => <div data-testid="review-complete" />,
 }));
 
-vi.mock("@/components/learn/FilterSetup", () => ({
-  default: ({ onStart }: { onStart: () => void }) => (
-    <button type="button" onClick={onStart}>Start</button>
-  ),
-}));
-
 vi.mock("@/components/learn/SessionComplete", () => ({
   default: () => null,
 }));
@@ -49,10 +43,14 @@ vi.mock("@/domains/review/review-session-storage", () => ({
   clearSavedReviewSession: vi.fn(),
 }));
 
-vi.mock("@/lib/storage", () => ({
-  loadLearnProgress: vi.fn(async () => ({})),
-  saveLearnProgress: vi.fn(),
-}));
+vi.mock("@/lib/db/queries", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/db/queries")>();
+  return {
+    ...actual,
+    loadAllLearnProgress: vi.fn(async () => ({})),
+    replaceAllLearnProgress: vi.fn(async () => {}),
+  };
+});
 
 const reviewProps = {
   dueCards: [makeCard()],

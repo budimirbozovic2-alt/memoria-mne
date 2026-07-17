@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/tooltip";
 import { getMasteryColor, MASTERY_LEVELS } from "@/lib/mastery";
 import { buildQuery } from "@/lib/url-params";
+import { countLegacyCards } from "@/lib/cards/legacy-card";
 import { useSubjectDashboardModel } from "@/hooks/useSubjectDashboardModel";
 
 export default function SubjectDashboard() {
@@ -39,6 +40,7 @@ export default function SubjectDashboard() {
       category: categoryId,
       mode: "strict-recall",
       subcategory: f.subcategoryId,
+      chapter: f.chapterId,
       type: f.type,
       freq: f.frequencyTag,
       sort: f.sortMode,
@@ -46,13 +48,23 @@ export default function SubjectDashboard() {
     navigate(`/learn${qs}`);
   };
 
+  // Glave per subcategory (id + name) for the Matrix "Glava" filter.
+  const chaptersBySub = useMemo(() => {
+    const m: Record<string, { id: string; name: string }[]> = {};
+    for (const s of categoryRec?.subcategories ?? []) {
+      m[s.id] = (s.chapters ?? []).map(ch => ({ id: ch.id, name: ch.name }));
+    }
+    return m;
+  }, [categoryRec]);
+
+  const legacyEssayCount = useMemo(
+    () => countLegacyCards(subjectCards),
+    [subjectCards],
+  );
+
+  // Redosljed prati pipeline: Izvori → Zettelkasten → Kartice (→ Aktivno učenje
+  // u sljedećoj sekciji "Alati za učenje").
   const knowledgeBaseCards = useMemo(() => [
-    {
-      to: `/subject/${categoryId}/zettelkasten`,
-      icon: Network,
-      title: "Lokalni Wiki",
-      desc: "Baza znanja i mentalne mape",
-    },
     {
       to: `/category/${categoryId}`,
       icon: BookOpen,
@@ -60,12 +72,20 @@ export default function SubjectDashboard() {
       desc: "Zakoni, skripte i fokusirano čitanje",
     },
     {
+      to: `/subject/${categoryId}/zettelkasten`,
+      icon: Network,
+      title: "Lokalni Wiki",
+      desc: legacyEssayCount > 0
+        ? `Baza znanja i mentalne mape · ${legacyEssayCount} eseja van baze`
+        : "Baza znanja i mentalne mape",
+    },
+    {
       to: `/subject/${categoryId}/cards`,
       icon: Layers,
       title: "Kartice",
       desc: "Uređivanje i raspored kartica",
     },
-  ], [categoryId]);
+  ], [categoryId, legacyEssayCount]);
 
   const coreActions = useMemo(() => [
     {
@@ -291,6 +311,7 @@ export default function SubjectDashboard() {
         categoryName={categoryName}
         cards={subjectCards}
         subcategories={subjectSubcategories}
+        chaptersBySub={chaptersBySub}
         onStart={handleMatrixStart}
       />
     </div>
